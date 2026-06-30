@@ -1,4 +1,3 @@
-
 /**
  * Vercel Serverless Function — /api/chat
  *
@@ -116,8 +115,49 @@ VERB FORMS — mandatory lemma rules:
 Grammar for verbs MUST use: "past simple (V2)", "past participle (V3)", "V-ing", "present perfect", "past continuous", "passive", "modal + V", "base form"
 Cover EVERY word in the sentence. Never skip a word.`;
 
-  // B1 và B2 dùng chung prompt này (đúng hành vi của code gốc — không có branch riêng cho B2)
-  return `Analyze this English sentence for Vietnamese B1 learners: "${sentence}"
+  // Nhánh riêng cho B1: trả về 'chunks' (cụm từ) để buildA2Html/buildChunkCardHtml render đúng.
+  if(level==="B1") return `Analyze this English sentence for Vietnamese B1 learners: "${sentence}"
+Return ONLY valid JSON — no markdown.
+
+CHUNKING GOAL: Group words into MEANINGFUL CLAUSES and PHRASES (2-8 words each).
+Think grammatically — NOT by individual words:
+- Subject + verb group: "The U.S. carried out" / "Bahrain reported" / "Iranian forces hit"
+- Subordinate clause: "after Iranian forces hit" / "which the IRGC claimed" / "which targeted..."
+- Object + complement: "retaliatory strikes against Iran" / "a cargo vessel in the Strait"
+- Prepositional phrase: "on Friday" / "in the Gulf state" / "a day earlier"
+- Relative clause: "which the Iranian Revolutionary Guard Corps claimed"
+
+CHUNK SIZE GUIDE:
+- Minimum: 2 words (avoid single-word chunks unless truly standalone)
+- Maximum: 8-10 words for a clause
+- "I won't be able to join you at the workshop" → ["I won't be able to join you", "at the workshop"]
+- "after Iranian forces hit a cargo vessel" → ONE chunk (not split)
+- "which the Iranian Revolutionary Guard Corps claimed targeted" → ONE chunk
+
+MEANING RULES — critical for accurate Vietnamese:
+- "The U.S." / "the US" → "Hoa Kỳ" (NEVER "cái Mỹ")
+- "carried out" (phrasal verb) → "đã tiến hành" (NOT "mang ra")  
+- "on" + day of week → "vào": "on Friday"→"vào thứ Sáu", "on Saturday morning"→"vào sáng thứ Bảy"
+- "on" + surface → "trên": "on the table"→"trên bàn"
+- "claimed" in news = "tuyên bố" (NOT "yêu cầu")
+- token_meanings["The"/"the"] before country/org → "(mạo từ)" (NEVER "cái")
+- token_meanings["on"] before weekday → "vào" (NEVER "trên")
+
+RETURN FORMAT:
+{"sentence":"Vietnamese translation","chunks":[{"text":"ENGLISH chunk","meaning":"Vietnamese (1-5 words)","grammar":"grammar label or null","tokens":["word1","word2"],"token_meanings":{"word1":"nghĩa","word2":"nghĩa"}}],"words":{"each_word":{"meaning":"Vietnamese","lemma":"base form","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrasal verb","grammar":"tense/form or null","irregular":"V1→V2→V3 or empty"}}}
+
+STRICT RULES:
+- "text" = ENGLISH only, never Vietnamese
+- Every word in "${sentence}" must appear in exactly one chunk's tokens[]
+- token_meanings must cover ALL tokens in the chunk
+- token_meanings["The"] before proper noun = "(mạo từ)"
+- token_meanings["on"] before Mon/Tue/Wed/Thu/Fri/Sat/Sun = "vào"
+- VERB FORMS: "went"→lemma:"go",grammar:"past simple (V2)"; "carried out"→lemma:"carry out",grammar:"past simple (V2)",type:"phrasal verb"
+- grammar labels: "past simple (V2)" / "present perfect" / "passive (be+V3)" / "relative clause" / "subordinate clause" / "prepositional phrase" / "noun phrase" / "phrasal verb"
+`;
+
+  // B2 dùng prompt dưới đây (trả về 'words' với field 'phrase', render qua buildB12Html).
+  return `Analyze this English sentence for Vietnamese B2 learners: "${sentence}"
 Return ONLY valid JSON — no markdown.
 
 CHUNKING GOAL: Group words into MEANINGFUL CLAUSES and PHRASES (2-8 words each).
