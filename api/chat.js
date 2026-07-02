@@ -20,16 +20,20 @@ const ALLOWED_ORIGINS = [
 const DAILY_LIMIT_PER_IP = 100;
 const MAX_TOKENS_CAP = 4000;
 
-// ====== Kiểm tra tầng Student (Free/Basic/Pro) trước khi gọi OpenAI ======
+// ====== ƯU TIÊN 0: bắt buộc danh tính hợp lệ (Mentor hoặc Student đã đăng nhập
+// thật) cho MỌI action gọi OpenAI — không còn "dùng thử miễn phí không đăng nhập",
+// vì điều đó phá vỡ toàn bộ mô hình Free/Basic/Pro. Áp dụng 1 lần duy nhất ở
+// handler() bên dưới trước khi dispatch action, không cần sửa từng ACTIONS.
 // SUPABASE_URL/ANON_KEY là khoá công khai (giống hệt frontend), chỉ dùng để xác
-// thực token thật sự thuộc về ai. SUPABASE_SERVICE_ROLE_KEY là bí mật, CHỈ dùng
-// trong consumeStudentCredit() để gọi RPC consume_student_credit — không dùng ở
-// bất kỳ chỗ nào khác trong file này.
+// thực token thật sự thuộc về ai. SUPABASE_SERVICE_ROLE_KEY là bí mật — dùng ở 2
+// chỗ: consumeStudentCredit() (RPC trừ credit) và getUserRole() (tra bảng
+// mentors/students để biết vai trò thật, CHỈ ĐỌC, không sửa) — không dùng ở bất kỳ
+// chỗ nào khác trong file này.
 const SUPABASE_URL = "https://ijwttrlxsmgaqxszphlp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_D6NUatDu3ZapsLRwjKiBJw_Uh0ku3An";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-async function getStudentIdFromToken(token) {
+async function getUserIdFromToken(token) {
   if (!token) return null;
   try {
     const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -39,7 +43,25 @@ async function getStudentIdFromToken(token) {
     const u = await r.json();
     return u?.id || null;
   } catch (e) {
-    console.error("getStudentIdFromToken error:", e);
+    console.error("getUserIdFromToken error:", e);
+    return null;
+  }
+}
+
+// Tra vai trò THẬT của 1 user id đã xác thực JWT — bằng service_role (bypass RLS,
+// an toàn vì đây là request CHỈ ĐỌC id, không trả về hay sửa dữ liệu nào khác).
+async function getUserRole(userId) {
+  try {
+    const headers = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
+    const [mentorRes, studentRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/mentors?id=eq.${userId}&select=id`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${userId}&select=id`, { headers }),
+    ]);
+    if (mentorRes.ok && (await mentorRes.json()).length) return "mentor";
+    if (studentRes.ok && (await studentRes.json()).length) return "student";
+    return null;
+  } catch (e) {
+    console.error("getUserRole error:", e);
     return null;
   }
 }
@@ -846,11 +868,23 @@ export default async function handler(req, res) {
     return;
   }
 
-  const studentToken = req.headers["x-student-token"];
-  const studentId = await getStudentIdFromToken(studentToken);
+  // ƯU TIÊN 0: bắt buộc JWT hợp lệ cho MỌI action ở đây — trước khi dispatch tới bất
+  // kỳ ACTIONS[action] nào, nên không có action nào (kể cả action mới thêm sau này)
+  // lọt qua được nếu quên tự kiểm tra riêng.
+  const authToken = req.headers["x-auth-token"];
+  const userId = await getUserIdFromToken(authToken);
+  if (!userId) {
+    res.status(401).json({ error: "Vui lòng đăng nhập để sử dụng tính năng này." });
+    return;
+  }
+  const role = await getUserRole(userId);
+  if (!role) {
+    res.status(401).json({ error: "Tài khoản không hợp lệ." });
+    return;
+  }
 
   try {
-    const result = await fn(data, { studentId });
+    const result = await fn(data, { studentId: role==="student"?userId:null, mentorId: role==="mentor"?userId:null });
     const status = result.error ? result.status || 502 : 200;
     res.status(status).json(result);
   } catch (e) {
