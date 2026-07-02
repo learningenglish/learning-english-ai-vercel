@@ -20,6 +20,53 @@ const ALLOWED_ORIGINS = [
 const DAILY_LIMIT_PER_IP = 100;
 const MAX_TOKENS_CAP = 4000;
 
+// ====== Kiểm tra tầng Student (Free/Basic/Pro) trước khi gọi OpenAI ======
+// SUPABASE_URL/ANON_KEY là khoá công khai (giống hệt frontend), chỉ dùng để xác
+// thực token thật sự thuộc về ai. SUPABASE_SERVICE_ROLE_KEY là bí mật, CHỈ dùng
+// trong consumeStudentCredit() để gọi RPC consume_student_credit — không dùng ở
+// bất kỳ chỗ nào khác trong file này.
+const SUPABASE_URL = "https://ijwttrlxsmgaqxszphlp.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_D6NUatDu3ZapsLRwjKiBJw_Uh0ku3An";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+async function getStudentIdFromToken(token) {
+  if (!token) return null;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+    });
+    if (!r.ok) return null;
+    const u = await r.json();
+    return u?.id || null;
+  } catch (e) {
+    console.error("getStudentIdFromToken error:", e);
+    return null;
+  }
+}
+
+async function consumeStudentCredit(studentId, requestedLevel) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_student_credit`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_student_id: studentId, p_requested_level: requestedLevel || null }),
+    });
+    if (!r.ok) {
+      console.error("consume_student_credit RPC error:", r.status, await r.text());
+      return { allowed: false, message: "Không kiểm tra được lượt sử dụng, thử lại sau." };
+    }
+    const rows = await r.json();
+    return rows?.[0] || { allowed: false, message: "Không tìm thấy dữ liệu học viên." };
+  } catch (e) {
+    console.error("consumeStudentCredit error:", e);
+    return { allowed: false, message: "Không kiểm tra được lượt sử dụng, thử lại sau." };
+  }
+}
+
 // ====== PROMPTS PHÂN TÍCH CÂU + GIẢI THÍCH TỪ/CÂU/CỤM (trích nguyên văn từ Worker Cloudflare) ======
 // ====== PROMPTS (gộp nguyên văn, không tách file) ======
 /**
@@ -620,8 +667,12 @@ function rateLimit(ip) {
 
 // ====== ACTIONS ======
 const ACTIONS = {
-  async analyze_sentence(data) {
+  async analyze_sentence(data, ctx) {
     if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
+    if (ctx?.studentId) {
+      const check = await consumeStudentCredit(ctx.studentId, data.level);
+      if (!check.allowed) return { error: check.message, status: 403 };
+    }
     const prompt = buildAnalyzePrompt(data.sentence, data.level || "A1-A2");
     const r = await callOpenAI({
       max_tokens: 4000,
@@ -795,8 +846,11 @@ export default async function handler(req, res) {
     return;
   }
 
+  const studentToken = req.headers["x-student-token"];
+  const studentId = await getStudentIdFromToken(studentToken);
+
   try {
-    const result = await fn(data);
+    const result = await fn(data, { studentId });
     const status = result.error ? result.status || 502 : 200;
     res.status(status).json(result);
   } catch (e) {
