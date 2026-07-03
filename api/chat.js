@@ -89,6 +89,31 @@ async function consumeStudentCredit(studentId, requestedLevel) {
   }
 }
 
+// Student Pro tự tạo đề — hạn mức 300 credit/tháng riêng, tách biệt hoàn toàn khỏi
+// consumeStudentCredit() (hạn mức phân tích). Xem supabase/015_student_pro_exams.sql.
+async function consumeStudentExamCredit(studentId) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_student_exam_credit`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_student_id: studentId }),
+    });
+    if (!r.ok) {
+      console.error("consume_student_exam_credit RPC error:", r.status, await r.text());
+      return { allowed: false, message: "Không kiểm tra được credit tạo đề, thử lại sau." };
+    }
+    const rows = await r.json();
+    return rows?.[0] || { allowed: false, message: "Không tìm thấy dữ liệu học viên." };
+  } catch (e) {
+    console.error("consumeStudentExamCredit error:", e);
+    return { allowed: false, message: "Không kiểm tra được credit tạo đề, thử lại sau." };
+  }
+}
+
 // ====== PROMPTS PHÂN TÍCH CÂU + GIẢI THÍCH TỪ/CÂU/CỤM (trích nguyên văn từ Worker Cloudflare) ======
 // ====== PROMPTS (gộp nguyên văn, không tách file) ======
 /**
@@ -689,6 +714,16 @@ function rateLimit(ip) {
 
 // ====== ACTIONS ======
 const ACTIONS = {
+  // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
+  // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —
+  // chỉ là cổng kiểm tra credit, tách riêng để không trừ nhiều lần cho 1 đề).
+  async consume_exam_credit(data, ctx) {
+    if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+    const check = await consumeStudentExamCredit(ctx.studentId);
+    if (!check.allowed) return { error: check.message, status: 403 };
+    return { content: "ok" };
+  },
+
   async analyze_sentence(data, ctx) {
     if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
     if (ctx?.studentId) {
@@ -804,6 +839,13 @@ const ACTIONS = {
   },
 
   // Giữ tương thích ngược cho phiên bản frontend cũ (nếu còn dùng generate_exam_legacy).
+  // Đây cũng là action THẬT dùng để Student Pro tự tạo đề (mục 3). QUAN TRỌNG: 1 lần tạo
+  // đề gọi action này NHIỀU LẦN song song (Vocab+Reading, Nghe, Viết — xem
+  // createExamWithAI() trong app.js), nên KHÔNG được trừ credit ở đây (sẽ trừ nhiều lần
+  // cho 1 đề) — việc trừ credit atomic đã chuyển sang action riêng
+  // "consume_exam_credit", frontend gọi action đó ĐÚNG 1 LẦN trước khi bắt đầu các lệnh
+  // gọi song song này. Mentor gọi action này không có ctx.studentId nên không bị ảnh
+  // hưởng gì (giữ nguyên hành vi cũ).
   async generate_exam_legacy(data) {
     if (!Array.isArray(data.messages) || data.messages.length === 0) {
       return { error: "Thiếu 'messages'", status: 400 };
