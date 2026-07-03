@@ -259,15 +259,34 @@ MEANING RULES — critical for accurate Vietnamese:
 - token_meanings["The"/"the"] before country/org → "(mạo từ)" (NEVER "cái")
 - token_meanings["on"] before weekday → "vào" (NEVER "trên")
 
-WORDS FIELD — GROUP INTO A2-STYLE FORMULA PHRASES, NOT SINGLE WORDS:
-The "words" object is a SEPARATE, more detailed breakdown used when the learner opens a chunk to see
-its inner structure — it must use the SAME phrase-grouping style as A2-level analysis (2-5 word
-meaningful phrases: verb groups, tense/aspect phrases, noun phrases, prepositional phrases, fixed
-expressions), NOT single isolated words. Only use a single-word key when that word truly stands alone
-with no natural grouping. Examples of correct grouping: "is going to" (not "is"+"going"+"to"
-separately), "a cargo vessel" (not "a"+"cargo"+"vessel" separately), "on Friday" (not "on"+"Friday"
-separately). Every "words" key MUST be an exact substring found inside one of the "chunks" text —
+WORDS FIELD — BREAK EACH CHUNK DOWN INTO SMALLER A2-STYLE FORMULA PHRASES:
+The "words" object is a SEPARATE, MORE DETAILED breakdown shown when the learner opens a chunk to see
+its inner structure. CRITICAL: "words" entries must be SMALLER than the chunks — NEVER repeat a whole
+chunk's text as a single "words" entry. Split each chunk into 2-5 word meaningful phrases (verb
+groups, tense/aspect phrases, noun phrases, prepositional phrases, fixed expressions), the SAME
+granularity as A2-level analysis. Only use a single-word key when that word truly stands alone with no
+natural grouping. Every "words" key MUST be an exact substring found inside one of the "chunks" text —
 never invent a grouping that spans across 2 different chunks.
+
+WORKED EXAMPLE showing the chunks/words relationship (this is the exact granularity expected):
+Input: "The manager decided to give up the project after the budget was cut."
+{"sentence":"Người quản lý đã quyết định từ bỏ dự án sau khi ngân sách bị cắt giảm.",
+"chunks":[
+  {"text":"The manager decided to give up the project","meaning":"Người quản lý quyết định từ bỏ dự án","grammar":"verb pattern (decide + to-V)","tokens":["The","manager","decided","to","give","up","the","project"],"token_meanings":{"The":"(mạo từ)","manager":"người quản lý","decided":"quyết định","to":"","give":"từ bỏ","up":"(particle)","the":"(mạo từ)","project":"dự án"}},
+  {"text":"after the budget was cut","meaning":"sau khi ngân sách bị cắt giảm","grammar":"subordinate clause (passive)","tokens":["after","the","budget","was","cut"],"token_meanings":{"after":"sau khi","the":"(mạo từ)","budget":"ngân sách","was":"bị","cut":"cắt giảm"}}
+],
+"words":{
+  "The manager":{"meaning":"người quản lý","lemma":"manager","level":"A2","type":"noun","grammar":null,"irregular":""},
+  "decided to":{"meaning":"quyết định","lemma":"decide","level":"B1","type":"verb","grammar":"verb pattern (decide + to-V)","irregular":""},
+  "give up":{"meaning":"từ bỏ","lemma":"give up","level":"B1","type":"phrasal verb","grammar":null,"irregular":"give→gave→given"},
+  "the project":{"meaning":"dự án","lemma":"project","level":"A2","type":"noun","grammar":null,"irregular":""},
+  "after":{"meaning":"sau khi","lemma":"after","level":"A2","type":"conjunction","grammar":null,"irregular":""},
+  "the budget":{"meaning":"ngân sách","lemma":"budget","level":"B1","type":"noun","grammar":null,"irregular":""},
+  "was cut":{"meaning":"bị cắt giảm","lemma":"cut","level":"B1","type":"verb","grammar":"passive (be+V3)","irregular":"cut→cut→cut"}
+}}
+NOTICE: chunk 1 ("The manager decided to give up the project", 8 words) became FOUR separate "words"
+entries (2-3 words each) — NOT one entry repeating the full chunk text. Apply this SAME splitting to
+every chunk in your actual answer.
 
 RETURN FORMAT:
 {"sentence":"Vietnamese translation","chunks":[{"text":"ENGLISH chunk","meaning":"Vietnamese (1-5 words)","grammar":"grammar label or null","tokens":["word1","word2"],"token_meanings":{"word1":"nghĩa","word2":"nghĩa"}}],"words":{"PHRASE (2-5 words per the WORDS FIELD rule above, single word only if truly standalone)":{"meaning":"Vietnamese","lemma":"base form","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrase|phrasal verb","grammar":"tense/form or null","irregular":"V1→V2→V3 or empty"}}}
