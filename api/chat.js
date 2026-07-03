@@ -127,10 +127,28 @@ async function consumeStudentExamCredit(studentId) {
  * Frontend chỉ gửi {action, ...data}, Worker tự ráp prompt từ đây.
  */
 
+// Mô hình 2 lớp: LỚP 1 (phân loại level) dùng CHUNG cho A1/A1-A2/B1 qua bảng tham chiếu
+// này — trước đây mỗi prompt chỉ mô tả quy tắc chung bằng lời văn cho AI tự suy luận,
+// không có danh sách cụ thể để đối chiếu, dẫn tới cùng 1 cụm bị gắn level khác nhau tuỳ
+// câu. LỚP 2 (độ chi tiết hiển thị: tách từng từ / cụm công thức / đoạn theo nghĩa) vẫn
+// khác nhau theo từng nhánh bên dưới, KHÔNG đụng vào bảng này. B2 không dùng bảng này
+// (giữ nguyên theo yêu cầu, prompt B2 đã có ví dụ CEFR đa dạng sẵn).
+const CEFR_LEVEL_REFERENCE = `CEFR LEVEL REFERENCE TABLE — use this to assign "level" for EVERY word/phrase. Check here FIRST before relying on general judgment. If a chunk isn't listed exactly, match it to the closest PATTERN/STRUCTURE type below (e.g. an unlisted basic phrasal verb → same group as the basic phrasal verbs listed under A2):
+- A1: familiar set phrases learned as vocabulary (good morning, thank you, excuse me), basic prepositional phrases (at home, in bed), simple noun phrases (my mother, a big house), simple verb phrases (can swim, want to eat), time expressions (every day, at six o'clock).
+- A2: "be going to", "have to", "would like to", "there is/are", some/any, too...to, enough to, adjective + to-V, common verb+preposition combos, basic phrasal verbs (wake up, get up).
+- B1: verb patterns (decide to do, stop doing/to do, remember doing/to do), phrasal verbs (give up, find out, look after, carry on), advanced modals (should/must/might have done), passive voice (is built, was made), simple relative clauses (who/that...), because/although/if clauses.
+- B2: participle/infinitive/gerund phrases, noun clauses, reduced relative clauses, perfect/passive infinitives, cleft sentences, basic inversion, parallel structure, correlative conjunctions, complex phrasal verbs, fixed expressions, collocations.
+- C1/C2 (reference only — still tag honestly if a structure clearly belongs here, do NOT force it down to B2): absolute phrases, advanced inversion, ellipsis, nominalisation, discourse markers, idioms, academic collocations.
+Assign the level that TRUTHFULLY matches the word/phrase's real difficulty using this table — do NOT simplify the level just because the current analysis mode targets beginners.`;
+
 // Nguyên văn buildPrompt() lấy từ index.html (dòng ~3087-3310), không sửa nội dung.
 function buildAnalyzePrompt(sentence, level) {
   if (level === "A1") return `Analyze this English sentence for A1 Vietnamese beginners: "${sentence}"
 Return ONLY valid JSON — no markdown. ALWAYS return the "words" object even for 1-word sentences.
+
+${CEFR_LEVEL_REFERENCE}
+Note: this A1 mode SPLITS words/phrases small for beginner display (see grouping rules below) —
+that display granularity is unrelated to the "level" tag, which must still follow the table above.
 
 GROUPING RULES — group these into ONE key (they form a single meaning):
 1. TENSE CLUSTERS (highest priority — always group):
@@ -163,7 +181,7 @@ Input: "It's Friday!"
 Output: {"sentence":"Hôm nay là thứ Sáu!","words":{"It's":{"meaning":"đó là/hôm nay là","lemma":"be","level":"A1","type":"auxiliary","grammar":"it+is contraction","irregular":null,"example":"It's a beautiful day."},"Friday":{"meaning":"thứ Sáu","lemma":null,"level":"A1","type":"noun","grammar":null,"irregular":null,"example":"Friday is the last day of the week."}}}
 
 Return JSON:
-{"sentence":"Vietnamese translation","words":{"KEY":{"meaning":"Vietnamese 1-4 words (REQUIRED, never empty)","lemma":"base form or null","level":"A1|A2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrase|interjection","grammar":"tense/structure note or null","irregular":"V2→V3 for irregular verbs or null","example":"English example sentence (REQUIRED, never empty)"}}}
+{"sentence":"Vietnamese translation","words":{"KEY":{"meaning":"Vietnamese 1-4 words (REQUIRED, never empty)","lemma":"base form or null","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrase|interjection","grammar":"tense/structure note or null","irregular":"V2→V3 for irregular verbs or null","example":"English example sentence (REQUIRED, never empty)"}}}
 
 STRICT RULES:
 - Keys for tense clusters use the EXACT text from sentence: "is going to", "will have", "has eaten"
@@ -174,10 +192,12 @@ STRICT RULES:
 - "example": real English sentence, never "", never null
 - Cover EVERY word — either in a group key or individually
 - do/does/did in questions → meaning:"(trợ từ hỏi)"
-- "level": A1 for most basic, A2 for harder words`;
+- "level": use the CEFR LEVEL REFERENCE TABLE above — most words/phrases here will be A1/A2 since this mode is for beginners, but tag honestly if a phrase is genuinely harder (do not force B1+ down to A2)`;
 
   if (level === "A1-A2") return `Analyze this English sentence for Vietnamese A2 learners: "${sentence}"
 Return ONLY valid JSON — no markdown.
+
+${CEFR_LEVEL_REFERENCE}
 
 GROUPING RULES — group words into MEANINGFUL PHRASES (2-5 words), NOT individual words:
 1. VERB GROUPS: subject+verb together — "I am", "We used to live", "she doesn't like", "they went"
@@ -193,7 +213,7 @@ GOOD example for "Sometimes, we went to the museum":
 {"sentence":"Đôi khi, chúng tôi đã đến bảo tàng.","words":{"Sometimes":{"meaning":"đôi khi","lemma":"sometimes","level":"A2","type":"adverb","grammar":null,"example":"Sometimes I go for a walk."},"we went":{"meaning":"chúng tôi đã đi","lemma":"go","level":"A1","type":"verb","grammar":"past simple (V2)","example":"We went to the park."},"to the museum":{"meaning":"đến bảo tàng","lemma":null,"level":"A2","type":"phrase","grammar":"to + noun","example":"We went to the museum on Sunday."}}}
 
 Return JSON:
-{"sentence":"Vietnamese translation (REQUIRED, never empty, never null)","words":{"WORD OR PHRASE":{"meaning":"Vietnamese 1-5 words (REQUIRED, NEVER empty or null)","lemma":"base form or null","level":"A1|A2|B1|B2","type":"noun|verb|adj|adv|pronoun|prep|conj|article|aux|phrase","grammar":"structure note or null","example":"English example sentence (REQUIRED, NEVER empty or null)"}}}
+{"sentence":"Vietnamese translation (REQUIRED, never empty, never null)","words":{"WORD OR PHRASE":{"meaning":"Vietnamese 1-5 words (REQUIRED, NEVER empty or null)","lemma":"base form or null","level":"A1|A2|B1|B2|C1|C2 (use the CEFR LEVEL REFERENCE TABLE above, tag honestly)","type":"noun|verb|adj|adv|pronoun|prep|conj|article|aux|phrase","grammar":"structure note or null","example":"English example sentence (REQUIRED, NEVER empty or null)"}}}
 
 ⚠️ CRITICAL — every single entry MUST have:
 - "meaning": real Vietnamese translation, NEVER "", NEVER null, NEVER "meaning", NEVER a field name
@@ -212,6 +232,8 @@ Cover EVERY word in the sentence. Never skip a word.`;
   // Nhánh riêng cho B1: trả về 'chunks' (cụm từ) để buildA2Html/buildChunkCardHtml render đúng.
   if(level==="B1") return `Analyze this English sentence for Vietnamese B1 learners: "${sentence}"
 Return ONLY valid JSON — no markdown.
+
+${CEFR_LEVEL_REFERENCE}
 
 CHUNKING GOAL: Group words into MEANINGFUL CLAUSES and PHRASES (2-8 words each).
 Think grammatically — NOT by individual words:
@@ -237,13 +259,24 @@ MEANING RULES — critical for accurate Vietnamese:
 - token_meanings["The"/"the"] before country/org → "(mạo từ)" (NEVER "cái")
 - token_meanings["on"] before weekday → "vào" (NEVER "trên")
 
+WORDS FIELD — GROUP INTO A2-STYLE FORMULA PHRASES, NOT SINGLE WORDS:
+The "words" object is a SEPARATE, more detailed breakdown used when the learner opens a chunk to see
+its inner structure — it must use the SAME phrase-grouping style as A2-level analysis (2-5 word
+meaningful phrases: verb groups, tense/aspect phrases, noun phrases, prepositional phrases, fixed
+expressions), NOT single isolated words. Only use a single-word key when that word truly stands alone
+with no natural grouping. Examples of correct grouping: "is going to" (not "is"+"going"+"to"
+separately), "a cargo vessel" (not "a"+"cargo"+"vessel" separately), "on Friday" (not "on"+"Friday"
+separately). Every "words" key MUST be an exact substring found inside one of the "chunks" text —
+never invent a grouping that spans across 2 different chunks.
+
 RETURN FORMAT:
-{"sentence":"Vietnamese translation","chunks":[{"text":"ENGLISH chunk","meaning":"Vietnamese (1-5 words)","grammar":"grammar label or null","tokens":["word1","word2"],"token_meanings":{"word1":"nghĩa","word2":"nghĩa"}}],"words":{"each_word":{"meaning":"Vietnamese","lemma":"base form","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrasal verb","grammar":"tense/form or null","irregular":"V1→V2→V3 or empty"}}}
+{"sentence":"Vietnamese translation","chunks":[{"text":"ENGLISH chunk","meaning":"Vietnamese (1-5 words)","grammar":"grammar label or null","tokens":["word1","word2"],"token_meanings":{"word1":"nghĩa","word2":"nghĩa"}}],"words":{"PHRASE (2-5 words per the WORDS FIELD rule above, single word only if truly standalone)":{"meaning":"Vietnamese","lemma":"base form","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrase|phrasal verb","grammar":"tense/form or null","irregular":"V1→V2→V3 or empty"}}}
 
 STRICT RULES:
 - "text" = ENGLISH only, never Vietnamese
 - Every word in "${sentence}" must appear in exactly one chunk's tokens[]
-- token_meanings must cover ALL tokens in the chunk
+- token_meanings must cover ALL individual tokens in the chunk (this stays per-token — only "words" is phrase-grouped)
+- "words" keys must be 2-5 word phrases per the WORDS FIELD rule above, each fully contained within one chunk's text
 - token_meanings["The"] before proper noun = "(mạo từ)"
 - token_meanings["on"] before Mon/Tue/Wed/Thu/Fri/Sat/Sun = "vào"
 - VERB FORMS: "went"→lemma:"go",grammar:"past simple (V2)"; "carried out"→lemma:"carry out",grammar:"past simple (V2)",type:"phrasal verb"
