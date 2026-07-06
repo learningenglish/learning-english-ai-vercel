@@ -1017,7 +1017,7 @@ async function getWordImageFromCache(key) {
     return null;
   }
 }
-async function saveWordImageToCache(key, term, image) {
+async function saveWordImageToCache(key, term, image, status = "pending") {
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache`, {
       method: "POST",
@@ -1030,10 +1030,12 @@ async function saveWordImageToCache(key, term, image) {
       body: JSON.stringify({
         lookup_key: key, term, url: image.url, source: image.source,
         license: image.license || null, attribution: image.attribution || null,
-        // "pending" mặc định — ảnh tự động (đặc biệt tìm-kiếm-text như Wikimedia) có thể trật
-        // ngữ cảnh hoàn toàn (đã gặp thật: "can leave" trả về tranh cổ điển không liên quan).
-        // Không hiển thị cho học viên tới khi Mentor duyệt qua list_pending_images/moderate_image.
-        status: "pending",
+        // "pending" mặc định — ảnh tự động TÌM-KIẾM-TỪ-KHOÁ (Wikimedia/Unsplash/Pexels) có thể
+        // trật ngữ cảnh hoàn toàn (đã gặp thật: "can leave" trả về tranh cổ điển không liên
+        // quan) — không hiển thị cho học viên tới khi Mentor duyệt. Ảnh cover AI SINH RIÊNG theo
+        // đúng nội dung bài (get_lesson_cover_image) truyền status="approved" ngay vì rủi ro sai
+        // ngữ cảnh thấp hơn nhiều (sinh theo nội dung thật, không phải search chung chung).
+        status,
       }),
     });
   } catch (e) {
@@ -1112,6 +1114,65 @@ async function generateImageWithAI(term) {
     return { url, source: "ai_generated", license: null, attribution: null };
   } catch (e) {
     console.error("generateImageWithAI error:", e);
+    return null;
+  }
+}
+// Ảnh minh hoạ CHO CẢ BÀI (hero cover, main workspace) — KHÁC với getOrFetchWordImage() ở trên:
+// đi thẳng vào AI sinh ảnh, KHÔNG thử Wikimedia/Unsplash/Pexels trước, vì tìm-kiếm-từ-khoá cho
+// CẢ MỘT ĐOẠN VĂN (nhiều câu, nhiều ý) gần như chắc chắn trật ngữ cảnh (khác hẳn 1 danh từ đơn
+// như "school" ở Việc 1/3, nơi search-theo-từ-khoá còn khả thi). Cùng 1 phong cách vẽ CỐ ĐỊNH
+// (style descriptor) áp cho MỌI ảnh cover trên toàn hệ thống — đây là mức đồng bộ THỰC SỰ đạt
+// được với OpenAI Images API hiện tại (endpoint sinh ảnh không có bộ nhớ giữa các lần gọi, nên
+// không thể đảm bảo 1 nhân vật trông giống hệt nhau tuyệt đối qua nhiều ảnh riêng biệt — chỉ có
+// thể tối đa hoá khả năng giống nhau bằng cách DÙNG LẠI ĐÚNG 1 đoạn mô tả bối cảnh/nhân vật cho
+// mọi ảnh thuộc cùng 1 bài, lưu lại "term" (chính là mô tả) trong cache để tái dùng về sau).
+const LESSON_COVER_STYLE = "flat vector storybook illustration, warm soft color palette, gentle rounded shapes, consistent simple character design";
+async function generateLessonCoverImage(text) {
+  try {
+    const scene = (text || "").slice(0, 500);
+    const prompt = `${LESSON_COVER_STYLE}. Illustrate this English learning passage's main scene, keeping any recurring characters, objects, and setting visually consistent throughout: "${scene}"`;
+    const r = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: "dall-e-3", prompt, size: "1024x1024", n: 1, quality: "standard" }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const url = data?.data?.[0]?.url;
+    if (!url) return null;
+    return { url, source: "ai_generated", license: null, attribution: null, term: prompt };
+  } catch (e) {
+    console.error("generateLessonCoverImage error:", e);
+    return null;
+  }
+}
+// Ảnh minh hoạ CHO TỪNG CÂU trong A1 (mục 3 mockup) — TẠM THỜI đi thẳng AI sinh ảnh cho MỌI câu
+// (không phân biệt noun/phrase như getOrFetchWordImage/pickIllustrationTermForSentence, không
+// qua nguồn free Wikimedia/Unsplash/Pexels) theo đúng yêu cầu: "các câu đều có hình". Việc chọn
+// nguồn ảnh (free trước / AI trước, theo loại từ...) sẽ tinh chỉnh ở đợt sau — bản này ưu tiên
+// đảm bảo CÓ ảnh cho mọi câu và các ảnh trong CÙNG 1 bài trông đồng bộ.
+// dall-e-2 (rẻ hơn dall-e-3 nhiều) vì 1 bài có thể có hàng chục câu -> hàng chục lần gọi, khác
+// ảnh cover (chỉ 1 lần/bài) đang dùng dall-e-3 cho chất lượng cao hơn.
+// "passageText" = TOÀN BỘ đoạn văn gốc (không chỉ câu này) — đưa vào prompt làm "bối cảnh
+// chung" để các câu trong cùng 1 bài có xu hướng ra nhân vật/trang phục/bối cảnh giống nhau hơn
+// (cùng lý do đã giải thích với ảnh cover: OpenAI Images không có bộ nhớ giữa các lần gọi, đây
+// là cách tối đa hoá khả năng giống nhau khả thi nhất, không phải đảm bảo tuyệt đối).
+async function generateA1SentenceImage(sentence, passageText) {
+  try {
+    const context = (passageText || "").slice(0, 400);
+    const prompt = `${LESSON_COVER_STYLE}. This illustrates one moment in a longer story: "${context}". Specifically depict this exact moment: "${sentence}". Keep character appearance, clothing, and setting visually consistent with the rest of the story.`;
+    const r = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: "dall-e-2", prompt, size: "512x512", n: 1 }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const url = data?.data?.[0]?.url;
+    if (!url) return null;
+    return { url, source: "ai_generated", license: null, attribution: null, term: prompt };
+  } catch (e) {
+    console.error("generateA1SentenceImage error:", e);
     return null;
   }
 }
@@ -1281,6 +1342,33 @@ const ACTIONS = {
   // LAZY sau khi đã hiển thị text (không chặn hiển thị câu chờ ảnh). Nhận "words" (dict đã có
   // sẵn từ response analyze_sentence — key là cụm/từ, value có "type"/"grammar") thay vì gọi
   // lại AI phân tích. Tự chọn 1 cụm đáng minh hoạ nhất trong câu rồi chạy qua pipeline ảnh.
+  // Ảnh minh hoạ CHO CẢ BÀI (hero cover, hiển thị ngay dưới thanh công cụ) — tự động, người
+  // dùng KHÔNG chọn. Khoá cache = hash nguyên văn bài (cùng bảng word_image_cache, khác
+  // get_sentence_image ở chỗ đi thẳng AI, không thử nguồn free trước — xem generateLessonCoverImage().
+  async get_lesson_cover_image(data) {
+    if (!data.text) return { error: "Thiếu 'text'", status: 400 };
+    const key = createHash("sha256").update(data.text).digest("hex");
+    const cached = await getWordImageFromCache(key);
+    if (cached) return { content: JSON.stringify({ image: { url: cached.url, source: cached.source } }) };
+    const image = await generateLessonCoverImage(data.text);
+    if (!image) return { content: JSON.stringify({ image: null }) };
+    saveWordImageToCache(key, image.term, image, "approved");
+    return { content: JSON.stringify({ image: { url: image.url, source: image.source } }) };
+  },
+
+  // Ảnh cho TỪNG câu trong A1 — TẠM THỜI đi thẳng AI cho MỌI câu (xem generateA1SentenceImage).
+  // Khoá cache theo CÂU (không theo bài) — cùng 1 câu xuất hiện ở bài khác vẫn dùng lại được.
+  async get_a1_sentence_image(data) {
+    if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
+    const key = createHash("sha256").update(data.sentence).digest("hex");
+    const cached = await getWordImageFromCache(key);
+    if (cached) return { content: JSON.stringify({ image: { url: cached.url, source: cached.source } }) };
+    const image = await generateA1SentenceImage(data.sentence, data.passageText || data.sentence);
+    if (!image) return { content: JSON.stringify({ image: null }) };
+    saveWordImageToCache(key, image.term, image, "approved");
+    return { content: JSON.stringify({ image: { url: image.url, source: image.source } }) };
+  },
+
   async get_sentence_image(data) {
     if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
     const wordsDict = data.words || {};
