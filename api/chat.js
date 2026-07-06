@@ -210,13 +210,43 @@ Assign the level that TRUTHFULLY matches the word/phrase's real difficulty using
 // Nguyên văn buildPrompt() lấy từ index.html (dòng ~3087-3310), không sửa nội dung.
 function buildAnalyzePrompt(sentence, level) {
   if (level === "A1") return `Analyze this English sentence for A1 Vietnamese beginners: "${sentence}"
-Return ONLY valid JSON — no markdown. ALWAYS return the "words" object even for 1-word sentences.
+Return ONLY valid JSON — no markdown. ALWAYS return both the "words" object AND the "tokens"
+array even for 1-word sentences.
 
 ${CEFR_LEVEL_REFERENCE}
 Note: this A1 mode SPLITS words/phrases small for beginner display (see grouping rules below) —
 that display granularity is unrelated to the "level" tag, which must still follow the table above.
 
-GROUPING RULES — group these into ONE key (they form a single meaning):
+"tokens" — SEPARATE from "words" below, used for a word-by-word colored display. Split the
+WHOLE sentence into token entries, IN ORDER, covering 100% of the sentence. This is NARROWER
+grouping than "words" below (which also groups tense clusters/phrasal verbs/fixed phrases for
+vocabulary teaching) — "tokens" ONLY groups a phrase into ONE entry when it exactly matches one
+of the CLOSED A1 categories in the CEFR table above, specifically:
+  - familiar set phrases (good morning, thank you, of course, a lot of...)
+  - basic prepositional phrases (at home, in bed, on the table...)
+  - simple noun phrases (my mother, a big house, the red car — article/possessive+adjective+noun)
+  - simple verb phrases = modal/semi-modal + BARE VERB ONLY, exactly 2 words (can swim, can
+    speak, want to eat, like playing, have breakfast) — STOP at the verb, do NOT continue
+    absorbing the subject before it or the object/complement after it into the same token:
+    "you can leave school" is WRONG (4 words wrongly merged, subject+object leaked in); correct
+    is 3 separate tokens "you" + "can leave" (2-word verb phrase, matches "can swim" pattern) +
+    "school" (object, its own token).
+  - fixed time expressions (every day, last year, this morning, at six o'clock)
+EVERY other word — subjects, objects, complements, anything not an exact match to one of those
+5 categories — is its OWN separate 1-word token, even sitting right next to a grouped token.
+CONTRACTIONS ALWAYS SPLIT into 2 tokens regardless of the above — stem + the reduced suffix as
+its own token, exactly as it appears (keep the apostrophe attached to the suffix): "You're" →
+"You" + "'re"; "don't" → "do" + "n't"; "I'm" → "I" + "'m"; "she's" → "she" + "'s"; "we'll" →
+"we" + "'ll". Numbers get type "number". Punctuation (. , ! ? ; : " ') gets type "punctuation".
+A grouped 2-word verb phrase gets type "phrase" (not "verb").
+Worked example — this exact sentence previously caused wrong splitting, study it closely:
+Input: "You're 16 and finally you can leave school!"
+"tokens": [{"text":"You","type":"pronoun"},{"text":"'re","type":"auxiliary"},{"text":"16","type":"number"},{"text":"and","type":"conjunction"},{"text":"finally","type":"adverb"},{"text":"you","type":"pronoun"},{"text":"can leave","type":"phrase"},{"text":"school","type":"noun"},{"text":"!","type":"punctuation"}]
+(NOTICE: "You're" still splits into 2 tokens — contractions ALWAYS split, no exception. "can
+leave" stays as ONE token because it matches the "simple verb phrases" category exactly (modal
++ bare verb, 2 words) — but "school" right after it is its OWN separate token, NOT absorbed.)
+
+GROUPING RULES for "words" ONLY (does not affect "tokens" above) — group these into ONE key (they form a single meaning):
 1. TENSE CLUSTERS (highest priority — always group):
    "is/am/are going to" → one key "is going to" = "sẽ"
    "was/were going to" → one key "was going to" = "định sẽ"
@@ -228,13 +258,19 @@ GROUPING RULES — group these into ONE key (they form a single meaning):
    "had V3" → one key e.g. "had gone" = "đã đi"
    "will + verb" → one key e.g. "will have" = "sẽ có"
    "used to + verb" → one key = "đã từng"
-2. MODAL CLUSTERS: "can play", "should go", "must be", "could have", "would like" → one key
+2. MODAL CLUSTERS: modal + the BARE VERB ONLY, exactly 2 words — "can play", "should go",
+   "must be", "could have", "would like". STOP at the verb — do NOT continue absorbing the
+   object/complement that follows into the same key: "you can leave school" is WRONG (4 words
+   merged); correct is "can leave" (2 words, one key) + "school" (its own separate key).
 3. NEGATIVES: "do not/don't", "does not/doesn't", "did not/didn't", "will not/won't", "cannot/can't", "is not/isn't", "are not/aren't" → one key
 4. CONTRACTIONS: "I'm", "it's", "you're", "we'll", "I've", "don't", "can't" → one key exactly as written
 5. PHRASAL VERBS: "look at", "go to", "come back", "pick up" → one key
-6. FIXED PHRASES: "a lot of", "there is", "there are", "would like", "how are you" → one key
+6. FIXED PHRASES (verbatim only — this is a closed list, do NOT invent new multi-word groups
+   beyond it): "a lot of", "there is", "there are", "would like", "how are you" → one key
 
-After grouping the above, remaining individual words get their own key.
+After grouping the above, remaining individual words get their own key — every word not
+explicitly covered by rules 1-6 above is its OWN key, even if it sits right next to a grouped
+key. Never merge a noun/object into a neighboring verb or modal-cluster key "for context."
 
 EXAMPLES:
 Input: "A friend is going to visit me."
@@ -247,7 +283,7 @@ Input: "It's Friday!"
 Output: {"sentence":"Hôm nay là thứ Sáu!","words":{"It's":{"meaning":"đó là/hôm nay là","lemma":"be","level":"A1","type":"auxiliary","grammar":"it+is contraction","irregular":null,"example":"It's a beautiful day."},"Friday":{"meaning":"thứ Sáu","lemma":null,"level":"A1","type":"noun","grammar":null,"irregular":null,"example":"Friday is the last day of the week."}}}
 
 Return JSON:
-{"sentence":"Vietnamese translation","words":{"KEY":{"meaning":"Vietnamese 1-4 words (REQUIRED, never empty)","lemma":"base form or null","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrase|interjection","grammar":"tense/structure note or null","irregular":"V2→V3 for irregular verbs or null","example":"English example sentence (REQUIRED, never empty)"}}}
+{"sentence":"Vietnamese translation","words":{"KEY":{"meaning":"Vietnamese 1-4 words (REQUIRED, never empty)","lemma":"base form or null","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrase|interjection","grammar":"tense/structure note or null","irregular":"V2→V3 for irregular verbs or null","example":"English example sentence (REQUIRED, never empty)"}},"tokens":[{"text":"word, punctuation, or a closed-category A1 phrase exactly as in the sentence","type":"noun|verb|modal|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|number|interjection|punctuation|phrase"}]}
 
 STRICT RULES:
 - Keys for tense clusters use the EXACT text from sentence: "is going to", "will have", "has eaten"
@@ -259,7 +295,8 @@ STRICT RULES:
 - Cover EVERY word — either in a group key or individually
 - do/does/did in questions → meaning:"(trợ từ hỏi)"
 - "level": use the CEFR LEVEL REFERENCE TABLE above — most words/phrases here will be A1/A2 since this mode is for beginners, but tag honestly if a phrase is genuinely harder (do not force B1+ down to A2)
-- "lemma"/"grammar"/"irregular" with no value = JSON null (the literal null value) — NEVER the text string "null"`;
+- "lemma"/"grammar"/"irregular" with no value = JSON null (the literal null value) — NEVER the text string "null"
+- "tokens" only groups within the 5 closed A1 categories listed above (never as broadly as "words" groups tense/phrasal-verb/fixed-phrase clusters) and ALWAYS splits contractions into stem+suffix regardless — joining every "tokens[].text" with single spaces, then removing spaces immediately before punctuation, must reconstruct the original sentence exactly`;
 
   // A1-A2/B1/B2 giờ dùng chung 1 prompt hợp nhất (buildUnifiedPrompt) — xem action
   // analyze_sentence trong ACTIONS: 3 mode chia sẻ ĐÚNG 1 lần gọi AI, đảm bảo A2 và B2 luôn
@@ -714,6 +751,63 @@ function buildUnifiedJsonSchema() {
     additionalProperties: false,
   };
 }
+// A1 — strict schema: "words" giữ nguyên ý nghĩa cũ (gộp cụm cho mục Từ vựng) nhưng phải
+// chuyển thành ARRAY {key,...} vì strict mode không cho phép object key động; "tokens" là
+// mảng PHẲNG (không gộp) dùng riêng cho hiển thị tag màu từng từ — xem buildAnalyzePrompt().
+function buildA1JsonSchema() {
+  return {
+    type: "object",
+    properties: {
+      sentence: { type: "string" },
+      words: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            key: { type: "string" },
+            meaning: { type: "string" },
+            lemma: { type: ["string", "null"] },
+            level: { type: "string" },
+            type: { type: "string" },
+            grammar: { type: ["string", "null"] },
+            irregular: { type: ["string", "null"] },
+            example: { type: "string" },
+          },
+          required: ["key", "meaning", "lemma", "level", "type", "grammar", "irregular", "example"],
+          additionalProperties: false,
+        },
+      },
+      tokens: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: { text: { type: "string" }, type: { type: "string" } },
+          required: ["text", "type"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["sentence", "words", "tokens"],
+    additionalProperties: false,
+  };
+}
+function reshapeA1Words(wordsArray) {
+  const words = {};
+  (wordsArray || []).forEach(w => {
+    words[w.key] = { meaning: w.meaning, lemma: w.lemma, level: w.level, type: w.type, grammar: w.grammar, irregular: w.irregular, example: w.example };
+  });
+  return words;
+}
+// "tokens" phải ghép lại (nối bằng khoảng trắng, bỏ khoảng trắng ngay trước dấu câu) đúng bằng
+// câu gốc — cùng nguyên lý validateUnified() nhưng áp cho mảng token phẳng của A1.
+function validateA1Tokens(tokens, sentence) {
+  if (!Array.isArray(tokens) || !tokens.length) return { valid: false, reason: "no_tokens" };
+  const rebuilt = tokens.map(t => t.text || "").join(" ").replace(/\s+([.,!?;:])/g, "$1");
+  if (normalizeForCompareServer(rebuilt) !== normalizeForCompareServer(sentence)) {
+    return { valid: false, reason: "tokens_mismatch_sentence" };
+  }
+  return { valid: true };
+}
 // A1-A2: render trực tiếp từ "words" dict (buildA12Html/buildChunkCardHtml, level="A1-A2") —
 // mỗi cluster = 1 entry, key = cluster.text, y hệt cấu trúc A2 cũ.
 function reshapeForA2(clusters) {
@@ -883,12 +977,18 @@ function imageStrategyForCluster(cluster) {
 function pickIllustrationTermForSentence(clusters) {
   if (!Array.isArray(clusters) || !clusters.length) return null;
   const withStrategy = clusters.map(c => ({ c, strategy: imageStrategyForCluster(c) }));
+  // Ưu tiên NOUN CỤ THỂ trước tiên — từ khoá dễ tìm ảnh liên quan/chính xác nhất (vd "school",
+  // "taxi"). Cụm/phrase trừu tượng (vd "can leave" — modal+verb, không phải vật thể) tìm ảnh
+  // qua Wikimedia/Unsplash rất dễ trật ngữ cảnh vì đây là cụm ngữ pháp, không phải khái niệm
+  // hình ảnh cụ thể — đây chính là nguyên nhân đã gây ảnh sai hoàn toàn cho câu test thực tế
+  // ("You're 16 and finally you can leave school!" -> picker cũ chọn "can leave" thay vì
+  // "school"). Chỉ rơi xuống phrase/verb khi câu KHÔNG có noun cụ thể nào.
+  const noun = withStrategy.find(x => x.strategy === "photo_no_ai" && (x.c.type || "").toLowerCase() === "noun");
+  if (noun) return { term: noun.c.text, allowAiGenerate: false };
   const phrase = withStrategy.find(x => x.strategy === "photo_allow_ai" && IMAGE_PHRASE_TYPES.has((x.c.type || "").toLowerCase()));
   if (phrase) return { term: phrase.c.text, allowAiGenerate: true };
   const longChunk = withStrategy.find(x => x.strategy === "photo_allow_ai");
   if (longChunk) return { term: longChunk.c.text, allowAiGenerate: true };
-  const noun = withStrategy.find(x => x.strategy === "photo_no_ai" && (x.c.type || "").toLowerCase() === "noun");
-  if (noun) return { term: noun.c.text, allowAiGenerate: false };
   const verbOrNoun = withStrategy.find(x => x.strategy === "photo_no_ai");
   if (verbOrNoun) return { term: verbOrNoun.c.text, allowAiGenerate: false };
   return null;
@@ -930,7 +1030,10 @@ async function saveWordImageToCache(key, term, image) {
       body: JSON.stringify({
         lookup_key: key, term, url: image.url, source: image.source,
         license: image.license || null, attribution: image.attribution || null,
-        status: "approved", // chưa dựng UI duyệt Mentor đợt này — xem ghi chú trong 018_word_image_cache.sql
+        // "pending" mặc định — ảnh tự động (đặc biệt tìm-kiếm-text như Wikimedia) có thể trật
+        // ngữ cảnh hoàn toàn (đã gặp thật: "can leave" trả về tranh cổ điển không liên quan).
+        // Không hiển thị cho học viên tới khi Mentor duyệt qua list_pending_images/moderate_image.
+        status: "pending",
       }),
     });
   } catch (e) {
@@ -1107,20 +1210,33 @@ const ACTIONS = {
     if (level === "A1") {
       const cacheKeyA1 = cacheKeyFor(data.sentence, level);
       const cachedA1 = await getCachedAnalysis(cacheKeyA1);
-      if (cachedA1) return { content: JSON.stringify(cachedA1) };
+      // Cache CŨ (trước khi thêm field "tokens") không có mảng "tokens" -> coi như MISS, chạy
+      // lại để tự "chữa lành" dần theo lượt đọc, không cần xoá cache thủ công hàng loạt.
+      if (cachedA1 && Array.isArray(cachedA1.tokens)) return { content: JSON.stringify(cachedA1) };
       const r = await callOpenAI({
         max_tokens: 4000,
-        response_format: { type: "json_object" },
+        response_format: { type: "json_schema", json_schema: { name: "a1_analysis", strict: true, schema: buildA1JsonSchema() } },
         messages: [
           { role: "system", content: ANALYZE_SYSTEM },
           { role: "user", content: buildAnalyzePrompt(data.sentence, level) },
         ],
       });
       if (!r.ok) return safeOpenAIError(r);
-      let parsedA1 = null;
-      try { parsedA1 = JSON.parse(content(r)); } catch (e) { /* không cache khi parse lỗi */ }
-      if (parsedA1) saveCachedAnalysis(cacheKeyA1, data.sentence, level, parsedA1);
-      return { content: content(r) };
+      let parsedRaw;
+      try {
+        parsedRaw = JSON.parse(content(r));
+      } catch (e) {
+        console.error("A1 analyze_sentence parse error:", e, content(r).slice(0, 500));
+        return safeOpenAIError({ status: 502, data: {} });
+      }
+      const parsedA1 = { sentence: parsedRaw.sentence, words: reshapeA1Words(parsedRaw.words), tokens: parsedRaw.tokens };
+      const validation = validateA1Tokens(parsedRaw.tokens, data.sentence);
+      if (validation.valid) {
+        saveCachedAnalysis(cacheKeyA1, data.sentence, level, parsedA1);
+      } else {
+        console.error("[A1 tokens validate] FAIL:", validation.reason, JSON.stringify(parsedRaw.tokens).slice(0, 500));
+      }
+      return { content: JSON.stringify(parsedA1) };
     }
 
     // A1-A2/B1/B2 — Phần 3: dùng CHUNG đúng 1 lần gọi AI (khoá cache theo CÂU, không phân
@@ -1174,8 +1290,51 @@ const ACTIONS = {
     const picked = pickIllustrationTermForSentence(clusters);
     if (!picked) return { content: JSON.stringify({ image: null }) };
     const image = await getOrFetchWordImage(picked.term, { allowAiGenerate: picked.allowAiGenerate });
-    if (!image) return { content: JSON.stringify({ image: null }) };
+    // Chỉ trả ảnh đã Mentor DUYỆT ("approved") cho học viên — "pending" (mặc định khi vừa lấy
+    // xong) vẫn nằm trong cache (không tự gọi lại pipeline nữa) nhưng KHÔNG hiển thị công khai
+    // tới khi có người duyệt qua moderate_image, tránh lặp lại bug ảnh sai ngữ cảnh đã gặp.
+    if (!image || image.status !== "approved") return { content: JSON.stringify({ image: null }) };
     return { content: JSON.stringify({ image: { url: image.url, source: image.source, license: image.license, attribution: image.attribution, term: picked.term } }) };
+  },
+
+  // Mentor xem danh sách ảnh đang chờ duyệt (mới nhất trước) — chỉ Mentor mới gọi được.
+  async list_pending_images(data, ctx) {
+    if (!ctx?.mentorId) return { error: "Chỉ Mentor mới có quyền duyệt ảnh.", status: 403 };
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache?status=eq.pending&select=*&order=created_at.desc&limit=50`, {
+        headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+      });
+      if (!r.ok) return { error: "Không tải được danh sách ảnh chờ duyệt.", status: 502 };
+      const rows = await r.json();
+      return { content: JSON.stringify({ items: rows }) };
+    } catch (e) {
+      console.error("list_pending_images error:", e);
+      return { error: "Lỗi server.", status: 500 };
+    }
+  },
+
+  // Mentor duyệt/từ chối 1 ảnh theo lookup_key — chỉ Mentor mới gọi được.
+  async moderate_image(data, ctx) {
+    if (!ctx?.mentorId) return { error: "Chỉ Mentor mới có quyền duyệt ảnh.", status: 403 };
+    if (!data.lookup_key) return { error: "Thiếu 'lookup_key'", status: 400 };
+    if (!["approved", "rejected"].includes(data.decision)) return { error: "'decision' phải là 'approved' hoặc 'rejected'", status: 400 };
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache?lookup_key=eq.${encodeURIComponent(data.lookup_key)}`, {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ status: data.decision }),
+      });
+      if (!r.ok) return { error: "Không cập nhật được trạng thái ảnh.", status: 502 };
+      return { content: "ok" };
+    } catch (e) {
+      console.error("moderate_image error:", e);
+      return { error: "Lỗi server.", status: 500 };
+    }
   },
 
   // Xoá thủ công cache của 1 câu cụ thể (mọi level, hoặc đúng 1 level nếu truyền kèm) — dùng
