@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /**
  * Vercel Serverless Function — /api/chat
  *
@@ -114,6 +116,70 @@ async function consumeStudentExamCredit(studentId) {
   }
 }
 
+// ====== CACHE PHÍA SERVER cho kết quả phân tích câu (analyze_sentence) — dùng chung cho MỌI
+// người dùng đọc cùng 1 nội dung, thay vì cache riêng từng máy (localStorage không chia sẻ
+// được giữa nhiều học viên cùng đọc 1 bài). Xem supabase/017_sentence_analysis_cache.sql.
+// CHỈ cache kết quả sau khi qua validate PASS (A1-A2/B1/B2 dùng validateUnified() chung, vì
+// giờ cả 3 mode chia sẻ đúng 1 lần gọi AI — xem Phần 3 "gộp A2/B1/B2"). A1 vẫn tách biệt
+// hoàn toàn (khoá cache riêng, không có validate — giữ đúng hành vi cũ).
+function cacheKeyFor(sentence, level) {
+  return createHash("sha256").update(`${sentence}|${level}`).digest("hex");
+}
+// A1-A2/B1/B2 dùng CHUNG 1 khoá cache theo CÂU (không phân biệt mode) — vì 1 lần gọi AI phục
+// vụ cả 3, cache theo mode sẽ tạo 3 bản trùng lặp không cần thiết cho cùng 1 dữ liệu gốc.
+function cacheKeyForUnified(sentence) {
+  return createHash("sha256").update(sentence).digest("hex");
+}
+async function getCachedAnalysis(cacheKey) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/sentence_analysis_cache?cache_key=eq.${cacheKey}&select=result`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows?.[0]?.result || null;
+  } catch (e) {
+    console.error("getCachedAnalysis error:", e);
+    return null;
+  }
+}
+async function saveCachedAnalysis(cacheKey, sentence, level, result) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/sentence_analysis_cache`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify({ cache_key: cacheKey, sentence, level, result }),
+    });
+  } catch (e) {
+    console.error("saveCachedAnalysis error (không chặn response, chỉ log):", e);
+  }
+}
+// Validate "clusters" ghép lại phải khớp câu gốc token-cho-token — CÙNG nguyên lý
+// validateB1Chunks() bên app.js trước đây, áp dụng cho cả A2/B1/B2 vì cả 3 đọc chung
+// "clusters". KHÔNG còn validate "b1_grouping" — B1 giờ tính bằng thuật toán xác định
+// (computeB1FromClusters, xem bên dưới), không còn field nào từ AI cần kiểm tra cho B1 nữa.
+function normalizeForCompareServer(s) {
+  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function validateUnified(clusters, sentence) {
+  if (!Array.isArray(clusters) || !clusters.length) return { valid: false, reason: "no_clusters" };
+  const rebuiltAll = clusters.map(c => (c.tokens || []).join(" ")).join(" ");
+  if (normalizeForCompareServer(rebuiltAll) !== normalizeForCompareServer(sentence)) {
+    return { valid: false, reason: "clusters_mismatch_sentence" };
+  }
+  for (const c of clusters) {
+    if (normalizeForCompareServer(c.text || "") !== normalizeForCompareServer((c.tokens || []).join(" "))) {
+      return { valid: false, reason: "cluster_text_mismatch_tokens" };
+    }
+  }
+  return { valid: true };
+}
+
 // ====== PROMPTS PHÂN TÍCH CÂU + GIẢI THÍCH TỪ/CÂU/CỤM (trích nguyên văn từ Worker Cloudflare) ======
 // ====== PROMPTS (gộp nguyên văn, không tách file) ======
 /**
@@ -134,11 +200,11 @@ async function consumeStudentExamCredit(studentId) {
 // khác nhau theo từng nhánh bên dưới, KHÔNG đụng vào bảng này. B2 không dùng bảng này
 // (giữ nguyên theo yêu cầu, prompt B2 đã có ví dụ CEFR đa dạng sẵn).
 const CEFR_LEVEL_REFERENCE = `CEFR LEVEL REFERENCE TABLE — use this to assign "level" for EVERY word/phrase. Check here FIRST before relying on general judgment. If a chunk isn't listed exactly, match it to the closest PATTERN/STRUCTURE type below (e.g. an unlisted basic phrasal verb → same group as the basic phrasal verbs listed under A2):
-- A1: familiar set phrases learned as vocabulary (good morning, thank you, excuse me), basic prepositional phrases (at home, in bed), simple noun phrases (my mother, a big house), simple verb phrases (can swim, want to eat), time expressions (every day, at six o'clock).
-- A2: "be going to", "have to", "would like to", "there is/are", some/any, too...to, enough to, adjective + to-V, common verb+preposition combos, basic phrasal verbs (wake up, get up).
-- B1: verb patterns (decide to do, stop doing/to do, remember doing/to do), phrasal verbs (give up, find out, look after, carry on), advanced modals (should/must/might have done), passive voice (is built, was made), simple relative clauses (who/that...), because/although/if clauses.
-- B2: participle/infinitive/gerund phrases, noun clauses, reduced relative clauses, perfect/passive infinitives, cleft sentences, basic inversion, parallel structure, correlative conjunctions, complex phrasal verbs, fixed expressions, collocations.
-- C1/C2 (reference only — still tag honestly if a structure clearly belongs here, do NOT force it down to B2): absolute phrases, advanced inversion, ellipsis, nominalisation, discourse markers, idioms, academic collocations.
+- A1: familiar set phrases (good morning, thank you, excuse me, how are you, nice to meet you, see you later, of course, I'm sorry, I don't know, a lot of, every day, next week, last year); basic prepositional phrases (at home, at work, at school, in bed, in class, on the table, under the chair, next to the door); simple noun phrases (my mother, your friend, a big house, the red car, an old man); simple verb phrases (can swim, can speak English, want to eat, like playing football, have breakfast); time expressions (every day, every week, this morning, last night, next month, at six o'clock).
+- A2: "be going to", "have to", "would like to", "there is/are", some/any, too...to, enough to, adjective+to-V, adjective+preposition; common verb+preposition combos, basic phrasal verbs (wake up, get up); prepositional verbs (depend on, belong to, listen to, insist on, apologize for); basic comparison (as...as, more...than, less...than); quantity phrases (a few, a little, a great deal of, plenty of, a large number of, lots of); fixed noun phrases (a piece of advice, a bit of, a number of, the majority of).
+- B1: verb patterns (decide to do, stop doing/to do, remember doing/to do); phrasal verbs (give up, find out, look after, carry on); advanced modals (should/must/might have done); passive voice (is built, was made, has been written); simple relative clauses (the man who..., the book that...); because/although/if clauses; verb+object+to-V (ask him to come, tell me to wait, force them to leave); verb+object+bare infinitive — IMPORTANT: these use short common words (let, go, make, laugh) but the PATTERN itself (verb+object+bare infinitive, no "to") is B1-level grammar, NOT A2 — do not downgrade just because the individual words look simple: let him go, make me laugh, have someone clean; fixed adjective+preposition (afraid of, interested in, proud of, responsible for, good at, familiar with, similar to); fixed prepositional phrases (in charge of, in front of, because of, due to, according to, instead of, in spite of, on behalf of).
+- B2: participle/infinitive/gerund phrases, noun clauses, reduced relative clauses, perfect/passive infinitives, cleft sentences, basic inversion, parallel structure, correlative conjunctions, complex phrasal verbs, fixed expressions, collocations; verb+object+V-ing (catch him cheating, keep me waiting, leave the water running); verb+object+past participle (get it repaired, have my hair cut, leave the door locked); advanced verb patterns — "somebody"/"doing" below are PLACEHOLDERS that must match ANY person (him/her/them/the fire/the students/etc.) and ANY -ing verb, not just the literal words "somebody"/"doing": prevent somebody from doing (e.g. "prevent him from leaving", "prevent the fire from spreading", "prevent students from cheating"), accuse somebody of doing (e.g. "accuse her of lying"), remind somebody to do (e.g. "remind me to call"), persuade somebody to do (e.g. "persuade them to stay"); special structures (It is...that..., It takes..., It seems..., It appears...); strong collocations (make a decision, take a break, heavy rain, strong coffee, pay attention).
+- C1/C2 (reference only — still tag honestly if a structure clearly belongs here, do NOT force it down to B2): absolute phrases, advanced inversion, ellipsis, nominalisation, discourse markers, academic collocations; idioms (once in a blue moon, break the ice, hit the sack, cost an arm and a leg); advanced academic writing structures.
 Assign the level that TRUTHFULLY matches the word/phrase's real difficulty using this table — do NOT simplify the level just because the current analysis mode targets beginners.`;
 
 // Nguyên văn buildPrompt() lấy từ index.html (dòng ~3087-3310), không sửa nội dung.
@@ -192,198 +258,108 @@ STRICT RULES:
 - "example": real English sentence, never "", never null
 - Cover EVERY word — either in a group key or individually
 - do/does/did in questions → meaning:"(trợ từ hỏi)"
-- "level": use the CEFR LEVEL REFERENCE TABLE above — most words/phrases here will be A1/A2 since this mode is for beginners, but tag honestly if a phrase is genuinely harder (do not force B1+ down to A2)`;
+- "level": use the CEFR LEVEL REFERENCE TABLE above — most words/phrases here will be A1/A2 since this mode is for beginners, but tag honestly if a phrase is genuinely harder (do not force B1+ down to A2)
+- "lemma"/"grammar"/"irregular" with no value = JSON null (the literal null value) — NEVER the text string "null"`;
 
-  if (level === "A1-A2") return `Analyze this English sentence for Vietnamese A2 learners: "${sentence}"
+  // A1-A2/B1/B2 giờ dùng chung 1 prompt hợp nhất (buildUnifiedPrompt) — xem action
+  // analyze_sentence trong ACTIONS: 3 mode chia sẻ ĐÚNG 1 lần gọi AI, đảm bảo A2 và B2 luôn
+  // nhất quán ranh giới cụm (cùng đọc từ "clusters"). B1 tính bằng thuật toán xác định
+  // (computeB1FromClusters) chạy trên "clusters" đó, không tốn thêm lượt gọi AI nào.
+  return buildUnifiedPrompt(sentence);
+}
+
+function buildUnifiedPrompt(sentence) {
+  return `Analyze this English sentence for Vietnamese learners: "${sentence}"
 Return ONLY valid JSON — no markdown.
 
 ${CEFR_LEVEL_REFERENCE}
+REQUIRED REASONING STEPS — do this BEFORE producing "clusters" (do not skip, this prevents
+mis-grouping words that look like one part of speech but function as another):
+1. Find the MAIN FINITE VERB of each clause first (the verb that's actually conjugated for
+   the subject — e.g. in "The manager decided to give up the project", the main finite verb
+   is "decided", NOT "give").
+2. Some words are spelled the same but act as DIFFERENT parts of speech depending on this
+   specific sentence — decide by ROLE HERE, never by the word's usual/default category:
+   "decided" in "the manager decided to..." = VERB. "decided" in "the decided outcome was
+   clear" = ADJECTIVE modifying "outcome", stays inside that noun-phrase cluster. Apply this
+   real-role check to every ambiguous word.
 
-GROUPING RULES — group words into MEANINGFUL PHRASES (2-5 words), NOT individual words:
-1. VERB GROUPS: subject+verb together — "I am", "We used to live", "she doesn't like", "they went"
-2. TENSE/ASPECT: full verb phrase — "used to live", "have been", "is going to", "don't know", "couldn't play"
-3. NOUN PHRASES: article+adj+noun — "a big city", "the north of Italy", "the children"
-4. PREPOSITIONAL PHRASES: prep+noun — "in Turin", "at school", "on Monday", "to the museum"
-5. FIXED EXPRESSIONS: "good morning", "nice to meet you", "a lot of", "there is/are", "lots of people"
-6. PROPER NOUNS: consecutive caps = one entry — "New York", "United Kingdom"
-Only use single-word entries when a word truly stands alone.
-KEEP CHUNKS SHORT (max 4 words). Split long groups sensibly.
-
-GOOD example for "Sometimes, we went to the museum":
-{"sentence":"Đôi khi, chúng tôi đã đến bảo tàng.","words":{"Sometimes":{"meaning":"đôi khi","lemma":"sometimes","level":"A2","type":"adverb","grammar":null,"example":"Sometimes I go for a walk."},"we went":{"meaning":"chúng tôi đã đi","lemma":"go","level":"A1","type":"verb","grammar":"past simple (V2)","example":"We went to the park."},"to the museum":{"meaning":"đến bảo tàng","lemma":null,"level":"A2","type":"phrase","grammar":"to + noun","example":"We went to the museum on Sunday."}}}
-
-Return JSON:
-{"sentence":"Vietnamese translation (REQUIRED, never empty, never null)","words":{"WORD OR PHRASE":{"meaning":"Vietnamese 1-5 words (REQUIRED, NEVER empty or null)","lemma":"base form or null","level":"A1|A2|B1|B2|C1|C2 (use the CEFR LEVEL REFERENCE TABLE above, tag honestly)","type":"noun|verb|adj|adv|pronoun|prep|conj|article|aux|phrase","grammar":"structure note or null","example":"English example sentence (REQUIRED, NEVER empty or null)"}}}
-
-⚠️ CRITICAL — every single entry MUST have:
-- "meaning": real Vietnamese translation, NEVER "", NEVER null, NEVER "meaning", NEVER a field name
-- "example": a real English sentence using the word/phrase, NEVER "", NEVER null
-
-VERB FORMS — mandatory lemma rules:
-- "went" → lemma:"go", grammar:"past simple (V2)"
-- "enjoyed" → lemma:"enjoy", grammar:"past simple (V2)"
-- "couldn't" → lemma:"can", grammar:"modal negative"
-- "playing" → lemma:"play", grammar:"V-ing"
-- "been" → lemma:"be", grammar:"past participle (V3)"
-- "were" → lemma:"be", grammar:"past simple (V2)"
-Grammar for verbs MUST use: "past simple (V2)", "past participle (V3)", "V-ing", "present perfect", "past continuous", "passive", "modal + V", "base form"
-Cover EVERY word in the sentence. Never skip a word.`;
-
-  // Nhánh riêng cho B1: trả về 'chunks' (cụm từ) để buildA2Html/buildChunkCardHtml render đúng.
-  if(level==="B1") return `Analyze this English sentence for Vietnamese B1 learners: "${sentence}"
-Return ONLY valid JSON — no markdown.
-
-${CEFR_LEVEL_REFERENCE}
-
-CHUNKING GOAL: Group words into MEANINGFUL CLAUSES and PHRASES (2-8 words each).
-Think grammatically — NOT by individual words:
-- Subject + verb group: "The U.S. carried out" / "Bahrain reported" / "Iranian forces hit"
-- Subordinate clause: "after Iranian forces hit" / "which the IRGC claimed" / "which targeted..."
-- Object + complement: "retaliatory strikes against Iran" / "a cargo vessel in the Strait"
-- Prepositional phrase: "on Friday" / "in the Gulf state" / "a day earlier"
-- Relative clause: "which the Iranian Revolutionary Guard Corps claimed"
-
-CHUNK SIZE GUIDE:
-- Minimum: 2 words (avoid single-word chunks unless truly standalone)
-- Maximum: 8-10 words for a clause
-- "I won't be able to join you at the workshop" → ["I won't be able to join you", "at the workshop"]
-- "after Iranian forces hit a cargo vessel" → ONE chunk (not split)
-- "which the Iranian Revolutionary Guard Corps claimed targeted" → ONE chunk
+STEP 1 — "clusters": split the WHOLE sentence into small grammar-bounded phrases (2-5 words
+each; single word only when it truly stands alone — an article/possessive/adjective is NEVER
+alone if a noun follows it in the same phrase). EVERY word in the sentence must belong to
+EXACTLY ONE cluster — clusters cover 100% of the sentence, no gaps, no overlaps. Group by
+these categories:
+1. VERB GROUPS: subject+verb together — "I am", "she doesn't like", "they went", "decided to"
+2. TENSE/ASPECT: full verb phrase — "used to live", "have been", "is going to", "was parked"
+3. NOUN PHRASES: (article/possessive/possessive-'s) + (adjective, including comparative
+   "-er"/"more ___" and superlative "-est"/"most ___" forms) + noun, ALL in ONE cluster —
+   "the biggest mall", "a more convenient location", "my beautiful house", "John's beautiful house"
+4. PREPOSITIONAL PHRASES: prep+noun phrase together, prep NEVER split from what follows —
+   "in Turin", "at school", "in the south west" — and a noun right BEFORE a preposition must
+   NEVER be pulled into it: in "...mall in the south west", "mall" ends its own cluster and
+   "in the south west" is a separate cluster; "mall in" is WRONG.
+5. COMPOUND NOUNS: two+ nouns naming ONE thing stay in one cluster — "south west", "bus station"
+6. FIXED EXPRESSIONS / PROPER NOUNS: "good morning", "New York", "United Kingdom"
+7. COORDINATING CONJUNCTIONS ("and"/"but"/"or"/"so"): each is its OWN 1-word cluster, never
+   merged with a neighboring cluster's tokens.
+8. WORDS THAT CAN BE EITHER A SUBORDINATING CONJUNCTION OR A PREPOSITION ("since", "before",
+   "after", "while", "although", "though" etc.) — decide by REAL ROLE in this sentence, same
+   principle as the "decided" verb/adjective check above:
+   - If a FINITE VERB follows within that phrase (a genuine subordinate CLAUSE) → the word is
+     a subordinating conjunction and becomes its OWN 1-word cluster, separate from the clause
+     that follows — e.g. "Because the weather WAS terrible" → "Because" is its own cluster
+     (verb "was" follows); "Since the company MERGED" → "Since" is its own cluster.
+   - If NO verb follows (just a noun phrase) → the word is acting as a PREPOSITION, stays
+     bound to that noun phrase as ONE cluster (rule 4 above) — e.g. "Since the merger" (no
+     verb — "merger" is a noun, not "merged") → "Since the merger" is ONE cluster, "Since" is
+     NEVER isolated here.
+Only use single-word clusters when a word truly stands alone (lone verb, lone conjunction).
+Note: B1 display is now computed DETERMINISTICALLY by code from these "clusters" (a clause-
+split + balanced-pairing algorithm) — you do NOT need to produce any B1-specific grouping
+field. Focus entirely on getting "clusters" grammatically correct per rules 1-8 above.
 
 MEANING RULES — critical for accurate Vietnamese:
 - "The U.S." / "the US" → "Hoa Kỳ" (NEVER "cái Mỹ")
-- "carried out" (phrasal verb) → "đã tiến hành" (NOT "mang ra")  
-- "on" + day of week → "vào": "on Friday"→"vào thứ Sáu", "on Saturday morning"→"vào sáng thứ Bảy"
-- "on" + surface → "trên": "on the table"→"trên bàn"
+- "carried out" (phrasal verb) → "đã tiến hành" (NOT "mang ra")
+- "on" + day of week → "vào": "on Friday"→"vào thứ Sáu"; "on" + surface → "trên": "on the table"→"trên bàn"
+- "in" + month/year → "vào"/"năm": "in May"→"vào tháng Năm", "in 2024"→"năm 2024"
 - "claimed" in news = "tuyên bố" (NOT "yêu cầu")
-- token_meanings["The"/"the"] before country/org → "(mạo từ)" (NEVER "cái")
-- token_meanings["on"] before weekday → "vào" (NEVER "trên")
+- token_meanings pair for "The"/"the" before country/org/proper noun → meaning "(mạo từ)" (NEVER "cái")
+- token_meanings pair for "on" before weekday → meaning "vào" (NEVER "trên")
 
-RETURN FORMAT:
-{"sentence":"Vietnamese translation","chunks":[{"text":"ENGLISH chunk","meaning":"Vietnamese (1-5 words)","grammar":"grammar label or null","tokens":["word1","word2"],"token_meanings":{"word1":"nghĩa","word2":"nghĩa"}}],"words":{"each_word":{"meaning":"Vietnamese","lemma":"base form","level":"A1|A2|B1|B2|C1|C2","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrasal verb","grammar":"tense/form or null","irregular":"V1→V2→V3 or empty"}}}
+WORKED EXAMPLE (study closely — this exact sentence previously caused wrong grouping):
+Input: "My beautiful house has a big garden, and her old car is parked outside."
+"clusters" (index: text):
+0: "My beautiful house" (noun phrase, level A2)
+1: "has" (verb, level A1)
+2: "a big garden" (noun phrase, level A1)
+3: "and" (conjunction, level A1)
+4: "her old car" (noun phrase, level A2)
+5: "is parked" (passive verb, level B1, grammar "passive (be+V3)")
+6: "outside" (adverb, level A1)
+NOTICE: 7 clusters, covering all 14 tokens of the sentence with no gaps; "and" is its own
+cluster (rule 7); "is parked" stays together as one passive-verb cluster, not split.
+
+WORKED EXAMPLE — preposition vs subordinating conjunction (rule 8 above):
+"Since the merger, the company has doubled its profits." → cluster "Since the merger" is
+ONE cluster (no verb follows "since" — it's a preposition here), NOT split into "Since" +
+"the merger".
+"Because the weather was terrible, they cancelled the event." → "Because" is its OWN
+cluster (verb "was" follows it inside that clause), separate from "the weather" and "was terrible".
+
+RETURN FORMAT (this exact shape is enforced by the API's structured-output schema):
+{"sentence":"Vietnamese translation","clusters":[{"text":"ENGLISH cluster","tokens":["word1","word2"],"meaning":"Vietnamese 1-4 words","grammar":"grammar label or null","level":"A1|A2|B1|B2|C1|C2","lemma":"base form or null","type":"noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrasal verb|phrase","irregular":"V1→V2→V3 or null","token_meanings":[{"token":"word1","meaning":"nghĩa"},{"token":"word2","meaning":"nghĩa"}]}]}
 
 STRICT RULES:
-- "text" = ENGLISH only, never Vietnamese
-- Every word in "${sentence}" must appear in exactly one chunk's tokens[]
-- token_meanings must cover ALL tokens in the chunk
-- token_meanings["The"] before proper noun = "(mạo từ)"
-- token_meanings["on"] before Mon/Tue/Wed/Thu/Fri/Sat/Sun = "vào"
+- "text"/tokens = ENGLISH only, never Vietnamese
+- Every word in "${sentence}" must appear in exactly one cluster's tokens[] — clusters cover
+  the ENTIRE sentence with no gaps
+- cluster "text" must correspond EXACTLY to tokens.join(" ") for that cluster
+- token_meanings must cover ALL tokens in the cluster (one {token,meaning} pair per token)
 - VERB FORMS: "went"→lemma:"go",grammar:"past simple (V2)"; "carried out"→lemma:"carry out",grammar:"past simple (V2)",type:"phrasal verb"
 - grammar labels: "past simple (V2)" / "present perfect" / "passive (be+V3)" / "relative clause" / "subordinate clause" / "prepositional phrase" / "noun phrase" / "phrasal verb"
-`;
-
-  // B2 dùng prompt dưới đây (trả về 'words' với field 'phrase', render qua buildB12Html).
-  return `Analyze this English sentence for Vietnamese B2 learners: "${sentence}"
-Return ONLY valid JSON — no markdown.
-
-CHUNKING GOAL: Group words into MEANINGFUL CLAUSES and PHRASES (2-8 words each).
-Think grammatically — NOT by individual words:
-- Subject + verb group: "The U.S. carried out" / "Bahrain reported" / "Iranian forces hit"
-- Subordinate clause: "after Iranian forces hit" / "which the IRGC claimed" / "which targeted..."
-
-STEP 1 — Identify these unit types in the sentence:
-A) VERB PHRASES — phrasal verbs and verb + complement:
-   - Phrasal verbs (verb+particle as ONE unit): "carried out", "called off", "set up", "broke out", "taken over"
-   - Verb + auxiliary chain: "has been carrying out", "claimed targeted", "was reported to have"
-
-B) PROPER NOUN PHRASES — names, organizations, places (group fully):
-   - "The U.S." / "the United States" → one entry
-   - "the Iranian Revolutionary Guard Corps" → one entry
-   - "the Gulf state" / "the Strait of Hormuz" → one entry
-   - RULE: "The" before a proper noun is NOT translated as "cái" — use "(mạo từ)" in token_meanings
-
-C) PREPOSITIONAL PHRASES — prep + noun phrase:
-   - TIME prepositions — CRITICAL context rules:
-     * "on" + day/date = "vào": "on Friday"→"vào thứ Sáu", "on Saturday morning"→"vào sáng thứ Bảy", "on Sunday"→"vào Chủ nhật"
-     * "on" + surface = "trên": "on the table"→"trên bàn", "on the ground"→"dưới đất"
-     * "in" + month/year/period = "vào": "in May"→"vào tháng Năm", "in 2024"→"năm 2024"
-     * "at" + time = "lúc": "at 9am"→"lúc 9 giờ", "at night"→"vào ban đêm"
-     * "after" + event = "sau khi": "after Iranian forces hit"→"sau khi lực lượng Iran tấn công"
-     * "a day earlier" = "một ngày trước đó"
-   - Place: "in the Gulf" / "at the station" / "to the museum"
-
-D) NOUN PHRASES — determiner + adj + noun:
-   - "a cargo vessel" / "retaliatory strikes" / "Iranian drones" / "the Gulf state"
-
-E) FIXED EXPRESSIONS: "as well as" / "in spite of" / "a lot of" / "in order to" / "as a result"
-
-STEP 2 — GROUP into entries. Each entry = one meaningful unit from Step 1.
-STEP 3 — For each entry, provide ALL fields accurately.
-
-MEANING RULES (critical for Vietnamese accuracy):
-- Phrasal verbs: use natural Vietnamese equivalent of the WHOLE phrase:
-  "carried out" → "đã tiến hành" (NOT "mang ra ngoài")
-  "called off" → "đã hủy bỏ"
-  "set up" → "thành lập" / "thiết lập"
-  "broke out" → "bùng nổ"
-  "taken over" → "tiếp quản"
-- "The U.S." / "The US" → "Hoa Kỳ" or "nước Mỹ" (NEVER "cái Mỹ")
-- "on Friday" → "vào thứ Sáu" (NOT "trên thứ Sáu")
-- "on Saturday morning" → "vào sáng thứ Bảy" (NOT "trên sáng thứ Bảy")
-- "targeted" (phrasal context) → "đã nhắm mục tiêu" (NOT "nhắm" only)
-- "claimed" = "tuyên bố" (in news context, NOT "yêu cầu")
-- "hit" (a ship) = "tấn công" (NOT "đánh", NOT "trúng" unless projectile context)
-- Meaning = 1-4 Vietnamese words, precise in THIS context. No parentheses, no "hoặc".
-
-FEW-SHOT EXAMPLES:
-
-Input: "The U.S. carried out retaliatory strikes against Iran on Friday after Iranian forces hit a cargo vessel in the Strait of Hormuz a day earlier."
-Output:
-{
-  "sentence": "Mỹ đã tiến hành các cuộc không kích trả đũa nhằm vào Iran vào thứ Sáu sau khi lực lượng Iran tấn công một tàu hàng ở eo biển Hormuz một ngày trước đó.",
-  "words": {
-    "The U.S.": {"phrase":"The U.S.","meaning":"Hoa Kỳ","lemma":"","level":"B1","type":"noun","grammar":"proper noun (country)","token_meanings":{"The":"(mạo từ)","U.S.":"Hoa Kỳ"},"fixed_phrase":"","irregular":""},
-    "carried out": {"phrase":"carried out","meaning":"đã tiến hành","lemma":"carry out","level":"B1","type":"phrasal verb","grammar":"past simple (V2)","token_meanings":{"carried":"tiến hành (V2)","out":"(particle)"},"fixed_phrase":"carry out = thực hiện/tiến hành","irregular":"carry→carried→carried"},
-    "retaliatory strikes": {"phrase":"retaliatory strikes","meaning":"các cuộc không kích trả đũa","lemma":"","level":"B2","type":"noun","grammar":"noun phrase","token_meanings":{"retaliatory":"trả đũa","strikes":"cuộc không kích"},"fixed_phrase":"","irregular":""},
-    "against Iran": {"phrase":"against Iran","meaning":"nhằm vào Iran","lemma":"","level":"A2","type":"phrase","grammar":"prep + proper noun","token_meanings":{"against":"nhằm vào","Iran":"Iran"},"fixed_phrase":"","irregular":""},
-    "on Friday": {"phrase":"on Friday","meaning":"vào thứ Sáu","lemma":"","level":"A1","type":"phrase","grammar":"on + day of week = time","token_meanings":{"on":"vào","Friday":"thứ Sáu"},"fixed_phrase":"on + day = vào (NOT trên)","irregular":""},
-    "after Iranian forces hit": {"phrase":"after Iranian forces hit","meaning":"sau khi lực lượng Iran tấn công","lemma":"","level":"B1","type":"phrase","grammar":"after + clause (subordinator)","token_meanings":{"after":"sau khi","Iranian":"của Iran","forces":"lực lượng","hit":"tấn công (V2)"},"fixed_phrase":"","irregular":"hit→hit→hit"},
-    "a cargo vessel": {"phrase":"a cargo vessel","meaning":"một tàu hàng","lemma":"","level":"B2","type":"noun","grammar":"noun phrase","token_meanings":{"a":"một","cargo":"hàng hóa","vessel":"tàu"},"fixed_phrase":"","irregular":""},
-    "in the Strait of Hormuz": {"phrase":"in the Strait of Hormuz","meaning":"ở eo biển Hormuz","lemma":"","level":"B2","type":"phrase","grammar":"prep + proper noun","token_meanings":{"in":"ở","the":"(mạo từ)","Strait":"eo biển","of":"của","Hormuz":"Hormuz"},"fixed_phrase":"","irregular":""},
-    "a day earlier": {"phrase":"a day earlier","meaning":"một ngày trước đó","lemma":"","level":"B1","type":"phrase","grammar":"time expression","token_meanings":{"a":"một","day":"ngày","earlier":"trước đó"},"fixed_phrase":"","irregular":""}
-  }
-}
-
-Input: "On Saturday morning, Bahrain reported strikes by Iranian drones, which the Iranian Revolutionary Guard Corps claimed targeted a U.S. terrorist army in the Gulf state."
-Output:
-{
-  "sentence": "Vào sáng thứ Bảy, Bahrain báo cáo các cuộc không kích của máy bay không người lái Iran, mà Lực lượng Vệ binh Cách mạng Iran tuyên bố nhắm mục tiêu vào một quân đội khủng bố của Mỹ ở tiểu vương quốc Vùng Vịnh.",
-  "words": {
-    "On Saturday morning": {"phrase":"On Saturday morning","meaning":"vào sáng thứ Bảy","lemma":"","level":"A2","type":"phrase","grammar":"on + day + time = time adverb","token_meanings":{"On":"vào","Saturday":"thứ Bảy","morning":"sáng"},"fixed_phrase":"on + day = vào (NOT trên)","irregular":""},
-    "Bahrain reported": {"phrase":"Bahrain reported","meaning":"Bahrain báo cáo","lemma":"report","level":"B1","type":"verb","grammar":"past simple (V2)","token_meanings":{"Bahrain":"Bahrain","reported":"báo cáo (V2)"},"fixed_phrase":"","irregular":""},
-    "strikes by Iranian drones": {"phrase":"strikes by Iranian drones","meaning":"cuộc không kích bằng UAV Iran","lemma":"","level":"B2","type":"noun","grammar":"noun phrase + by-agent","token_meanings":{"strikes":"cuộc không kích","by":"bằng / của","Iranian":"Iran","drones":"máy bay không người lái"},"fixed_phrase":"","irregular":""},
-    "which": {"phrase":"which","meaning":"mà","lemma":"which","level":"A2","type":"pronoun","grammar":"relative pronoun","token_meanings":{},"fixed_phrase":"","irregular":""},
-    "the Iranian Revolutionary Guard Corps": {"phrase":"the Iranian Revolutionary Guard Corps","meaning":"Lực lượng Vệ binh Cách mạng Iran","lemma":"","level":"C1","type":"noun","grammar":"proper noun","token_meanings":{"the":"(mạo từ)","Iranian":"Iran","Revolutionary":"Cách mạng","Guard":"Vệ binh","Corps":"Lực lượng"},"fixed_phrase":"IRGC = Lực lượng Vệ binh Cách mạng Iran","irregular":""},
-    "claimed targeted": {"phrase":"claimed targeted","meaning":"tuyên bố đã nhắm mục tiêu","lemma":"claim","level":"B2","type":"verb","grammar":"past simple + V3 complement","token_meanings":{"claimed":"tuyên bố (V2)","targeted":"nhắm mục tiêu (V3)"},"fixed_phrase":"claim + V3 = tuyên bố đã làm gì","irregular":""},
-    "a U.S. terrorist army": {"phrase":"a U.S. terrorist army","meaning":"một quân đội khủng bố của Mỹ","lemma":"","level":"B2","type":"noun","grammar":"noun phrase","token_meanings":{"a":"một","U.S.":"Hoa Kỳ","terrorist":"khủng bố","army":"quân đội"},"fixed_phrase":"","irregular":""},
-    "in the Gulf state": {"phrase":"in the Gulf state","meaning":"ở tiểu vương quốc Vùng Vịnh","lemma":"","level":"B2","type":"phrase","grammar":"prep + noun phrase","token_meanings":{"in":"ở","the":"(mạo từ)","Gulf":"Vùng Vịnh","state":"tiểu vương quốc"},"fixed_phrase":"","irregular":""}
-  }
-}
-
-RETURN FORMAT — ONLY valid JSON, no markdown:
-{
-  "sentence": "Vietnamese translation of the full sentence",
-  "words": {
-    "EXACT_TEXT_FROM_SENTENCE": {
-      "phrase": "same as key",
-      "meaning": "1-4 word Vietnamese meaning (precise in context)",
-      "lemma": "base form of main verb or empty",
-      "level": "A1|A2|B1|B2|C1|C2",
-      "type": "noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|auxiliary|phrasal verb|phrase",
-      "grammar": "specific label e.g. past simple (V2) / passive (be+V3) / prep + day / proper noun / etc.",
-      "token_meanings": {"each_token_in_phrase": "its Vietnamese meaning"},
-      "fixed_phrase": "usage note or empty",
-      "irregular": "V1→V2→V3 for irregular verbs or empty"
-    }
-  }
-}
-
-STRICT VALIDATION before returning:
-1. Every word in "${sentence}" must be a key OR appear in some token_meanings
-2. No phrasal verb split: if verb+particle are adjacent, they MUST be one key
-3. "on" before Mon/Tue/Wed/Thu/Fri/Sat/Sun → token_meanings["on"]="vào" (NEVER "trên")
-4. "The/the" before country/organization → token_meanings["The"]="(mạo từ)" (NEVER "cái")
-5. Phrasal verb meaning = whole-phrase Vietnamese, not literal translation of individual words`;
+- "grammar"/"lemma"/"irregular" with no value = JSON null (the literal null value) — NEVER the text string "null"
+- "level": use the CEFR LEVEL REFERENCE TABLE above, tag honestly (do not force everything down to A1/A2 just because some clusters in this sentence are simple)`;
 }
 
 const ANALYZE_SYSTEM = "You are a linguistic analyzer. Return complete valid JSON only. No markdown. No truncation.";
@@ -691,6 +667,377 @@ Return ONLY JSON: {"name":"${pd.name}","sections":[{"title":"${pd.sectionTitle}"
 }
 
 
+// ====== Phần 3 — schema HỢP NHẤT cho A1-A2/B1/B2 (Structured Outputs, json_schema strict) ======
+// 1 lần gọi AI trả về "clusters" (ranh giới cụm nhỏ, A2 dùng trực tiếp, B2 dùng để xác định
+// phạm vi tooltip) — đảm bảo A2/B1/B2 luôn nhất quán vì đọc CHUNG 1 nguồn. KHÔNG còn field
+// "b1_grouping" do AI trả — B1 giờ tính bằng thuật toán xác định (computeB1FromClusters bên
+// dưới), không tốn thêm lượt gọi AI, không có rủi ro bất ổn định giữa các lần chạy.
+//
+// GIỚI HẠN strict mode: object không được có key ĐỘNG — "token_meanings" (mỗi cluster) đổi
+// sang mảng {token,meaning} thay vì dict khoá theo từ thật. Client (app.js) KHÔNG cần đổi gì —
+// reshapeForA2()/computeB1FromClusters()/reshapeForB2() bên dưới chuyển ngược về đúng dạng
+// dict CŨ mà 3 hàm render (buildA12Html/buildChunkCardHtml/buildB12Html) đã quen dùng.
+function buildUnifiedJsonSchema() {
+  return {
+    type: "object",
+    properties: {
+      sentence: { type: "string" },
+      clusters: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            text: { type: "string" },
+            tokens: { type: "array", items: { type: "string" } },
+            meaning: { type: "string" },
+            grammar: { type: ["string", "null"] },
+            level: { type: "string" },
+            lemma: { type: ["string", "null"] },
+            type: { type: "string" },
+            irregular: { type: ["string", "null"] },
+            token_meanings: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { token: { type: "string" }, meaning: { type: "string" } },
+                required: ["token", "meaning"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["text", "tokens", "meaning", "grammar", "level", "lemma", "type", "irregular", "token_meanings"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["sentence", "clusters"],
+    additionalProperties: false,
+  };
+}
+// A1-A2: render trực tiếp từ "words" dict (buildA12Html/buildChunkCardHtml, level="A1-A2") —
+// mỗi cluster = 1 entry, key = cluster.text, y hệt cấu trúc A2 cũ.
+function reshapeForA2(clusters) {
+  const words = {};
+  (clusters || []).forEach(c => {
+    words[c.text] = { meaning: c.meaning, lemma: c.lemma, level: c.level, type: c.type, grammar: c.grammar, irregular: c.irregular };
+  });
+  return words;
+}
+// ====== B1 — thuật toán XÁC ĐỊNH (không gọi AI), áp lên "clusters" đã có ======
+// Bước 1: cắt clusters thành các MỆNH ĐỀ tại ranh giới thực sự — hai tín hiệu:
+// (a) DẤU PHẨY trong câu gốc nối 2 mệnh đề độc lập (tín hiệu CHÍNH — dùng vì liên từ/giới từ mở
+//     đầu mệnh đề thường đứng ở VỊ TRÍ ĐẦU TIÊN của câu hoặc của mệnh đề, nên không thể phát
+//     hiện qua "cluster liền trước" như bản cũ — "If"/"Since"/"Because" luôn là cluster đầu tiên
+//     nên current.length luôn = 0 tại đó, không bao giờ kích hoạt được ranh giới);
+// (b) một cluster liên từ KẾT HỢP đơn lẻ ("and"/"but"/"or"/"so") đứng GIỮA câu, nối 2 mệnh đề
+//     độc lập KHÔNG có dấu phẩy phía trước.
+// Vị trí dấu phẩy được quy đổi sang "ranh giới sau bao nhiêu từ" bằng cách đếm số từ mỗi đoạn
+// trong câu gốc tách theo dấu phẩy, rồi cộng dồn số từ của các cluster để tìm đúng điểm cắt.
+const CLAUSE_BOUNDARY_WORDS = new Set(["and","but","or","so","because","although","if","since","while","though","unless","when"]);
+function commaWordThresholds(sentence) {
+  const segWordCounts = (sentence || "")
+    .split(",")
+    .map(seg => seg.trim().split(/\s+/).filter(Boolean).length)
+    .filter(n => n > 0);
+  const thresholds = [];
+  let acc = 0;
+  for (let i = 0; i < segWordCounts.length - 1; i++) {
+    acc += segWordCounts[i];
+    thresholds.push(acc);
+  }
+  return thresholds; // số từ tích luỹ TẠI mỗi dấu phẩy (bỏ ngưỡng cuối vì đó là hết câu)
+}
+function splitClustersIntoClauses(clusters, sentence) {
+  const commaThresholds = commaWordThresholds(sentence);
+  const clauses = [];
+  let current = [];
+  let wordsSoFar = 0;
+  let nextThresholdIdx = 0;
+  clusters.forEach((c, idx) => {
+    const t = (c.text || "").trim().toLowerCase();
+    const isConjMidSentence = CLAUSE_BOUNDARY_WORDS.has(t) && current.length > 0;
+    const isCommaBoundary = !isConjMidSentence && current.length > 0 &&
+      nextThresholdIdx < commaThresholds.length && wordsSoFar >= commaThresholds[nextThresholdIdx];
+    if (isConjMidSentence) {
+      clauses.push(current);
+      current = [];
+    } else if (isCommaBoundary) {
+      clauses.push(current);
+      current = [];
+      nextThresholdIdx++;
+    }
+    current.push(idx);
+    wordsSoFar += (c.tokens || []).length;
+  });
+  if (current.length) clauses.push(current);
+  return clauses; // mảng các mảng chỉ số cluster, mỗi mảng con = 1 mệnh đề
+}
+// Bước 2: trong 1 mệnh đề, tìm điểm chia (giữa 2 "box" liền kề) có độ chênh lệch số từ 2 bên
+// NHỎ NHẤT. Hoà thì chọn điểm chia SAU hơn (giữ chủ ngữ+động từ chính trọn vẹn ở nửa đầu,
+// chia trước phần bổ ngữ/tân ngữ) — quét i tăng dần, cùng độ chênh thì ưu tiên i lớn hơn.
+// Một "box" thường là 1 cluster, TRỪ khi cluster đó là liên từ phụ thuộc đứng 1 mình
+// ("although"/"because"/"if"/"since"/"while"/"though"/"unless"/"when") — ở A2 nó vẫn là 1 cluster
+// riêng, nhưng KHÔNG được coi là mệnh đề/điểm chia riêng: nó luôn hàn CỨNG vào cụm liền sau
+// thành 1 box duy nhất, không bao giờ bị điểm chia tách khỏi cụm đó.
+const SUBORDINATING_CONJ = new Set(["although","because","if","since","while","though","unless","when"]);
+function buildSplitBoxes(clauseIdx, clusters) {
+  const boxes = [];
+  let i = 0;
+  while (i < clauseIdx.length) {
+    const c = clusters[clauseIdx[i]];
+    const isBareSubordinator = (c.tokens || []).length === 1 &&
+      SUBORDINATING_CONJ.has((c.text || "").trim().toLowerCase());
+    if (isBareSubordinator && i + 1 < clauseIdx.length) {
+      boxes.push([clauseIdx[i], clauseIdx[i + 1]]);
+      i += 2;
+    } else {
+      boxes.push([clauseIdx[i]]);
+      i += 1;
+    }
+  }
+  return boxes;
+}
+function bestSplitForClause(clauseIdx, clusters) {
+  const boxes = buildSplitBoxes(clauseIdx, clusters);
+  if (boxes.length <= 1) return [clauseIdx]; // hàn hết thành 1 box duy nhất -> không có gì để chia
+  const wordCounts = boxes.map(box => box.reduce((s, i) => s + (clusters[i].tokens || []).length, 0));
+  const total = wordCounts.reduce((a, b) => a + b, 0);
+  let bestI = -1, bestDiff = Infinity, cum = 0;
+  for (let i = 0; i < boxes.length - 1; i++) {
+    cum += wordCounts[i];
+    const diff = Math.abs(cum - (total - cum));
+    if (diff <= bestDiff) { bestDiff = diff; bestI = i; } // <= để hoà thì lấy i SAU hơn
+  }
+  return [boxes.slice(0, bestI + 1).flat(), boxes.slice(bestI + 1).flat()];
+}
+function clusterRangeToChunkPiece(idxArr, clusters) {
+  const members = idxArr.map(i => clusters[i]);
+  return {
+    text: members.map(c => c.text).join(" "),
+    tokens: members.flatMap(c => c.tokens || []),
+    meaning: members.map(c => c.meaning).join(" "),
+    grammar: members.find(c => c.grammar)?.grammar || null,
+    token_meanings: Object.assign({}, ...members.map(c => Object.fromEntries((c.token_meanings || []).map(tm => [tm.token, tm.meaning])))),
+  };
+}
+// Bước 3: câu <15 từ -> gộp TOÀN BỘ mệnh đề thành 1 chunk duy nhất (groups = nối các nhóm của
+// từng mệnh đề); câu >=15 từ -> mỗi mệnh đề thành 1 chunk riêng (mỗi chunk tự có groups riêng).
+function computeB1FromClusters(clusters, sentence) {
+  const clauses = splitClustersIntoClauses(clusters, sentence);
+  const clauseSplits = clauses.map(clauseIdx => bestSplitForClause(clauseIdx, clusters)); // mỗi phần tử: 1 hoặc 2 mảng chỉ số
+  const totalWords = clusters.reduce((s, c) => s + (c.tokens || []).length, 0);
+
+  if (totalWords < 15) {
+    const allGroupIdxArrays = clauseSplits.flat(); // nối hết các nhóm của mọi mệnh đề lại
+    const groups = allGroupIdxArrays.map(idxArr => idxArr.flatMap(i => clusters[i].tokens || []));
+    const tokens = clusters.flatMap(c => c.tokens || []);
+    const token_meanings = Object.assign({}, ...clusters.map(c => Object.fromEntries((c.token_meanings || []).map(tm => [tm.token, tm.meaning]))));
+    const grammar = clusters.find(c => c.grammar)?.grammar || null;
+    return [{ text: sentence, meaning: clusters.map(c => c.meaning).join(" "), grammar, tokens, token_meanings, groups }];
+  }
+  // >=15 từ: mỗi mệnh đề = 1 chunk riêng, "groups" = các nhóm (1 hoặc 2) của ĐÚNG mệnh đề đó
+  return clauses.map((clauseIdx, ci) => {
+    const piece = clusterRangeToChunkPiece(clauseIdx, clusters);
+    const groups = clauseSplits[ci].map(idxArr => idxArr.flatMap(i => clusters[i].tokens || []));
+    return { ...piece, groups };
+  });
+}
+// B2: render qua buildB12Html() — cần "words" dict với field "phrase"/"token_meanings" như
+// schema B2 cũ. Key = cluster.text — nghĩa là phạm vi tooltip B2 giờ LUÔN khớp đúng 1 cluster
+// (đúng ranh giới A2), giải quyết luôn bug "tumble dryer hiện nguyên câu" từ trước — B2 không
+// còn tự sinh "phrase" riêng, mà dùng CHUNG ranh giới với A2.
+function reshapeForB2(clusters) {
+  const words = {};
+  (clusters || []).forEach(c => {
+    const token_meanings = {};
+    (c.token_meanings || []).forEach(tm => { token_meanings[tm.token] = tm.meaning; });
+    words[c.text] = { phrase: c.text, meaning: c.meaning, lemma: c.lemma, level: c.level, type: c.type, grammar: c.grammar, token_meanings, fixed_phrase: "", irregular: c.irregular };
+  });
+  return words;
+}
+
+// ====== ẢNH MINH HOẠ — Việc 2: quyết định "từ nào cần ảnh, minh hoạ kiểu gì" (thuần code,
+// KHÔNG gọi AI) ======
+// "grammar_diagram": đã có sơ đồ ngữ pháp riêng (client tự vẽ) -> KHÔNG gọi pipeline ảnh.
+// "none": không cần minh hoạ (hư từ, đa số adverb, adjective...).
+// "photo_allow_ai": cụm dài/phrase cố định -> cho phép rơi tới bước AI sinh ảnh nếu 3 nguồn
+// free không có (khó tìm sẵn trong kho ảnh free vì là ý tưởng trừu tượng/kết hợp).
+// "photo_no_ai": noun/verb đơn -> CHỈ dùng 3 nguồn free, không tốn tiền AI (từ đơn giản luôn
+// có sẵn ảnh free).
+const GRAMMAR_STRUCTURE_RE = /present perfect|past perfect|present continuous|past continuous|passive|relative clause|subordinate clause|conditional|reported speech|future continuous|future perfect/i;
+const IMAGE_NO_NEED_TYPES = new Set(["article", "pronoun", "preposition", "conjunction", "auxiliary", "adverb", "adjective"]);
+const IMAGE_PHRASE_TYPES = new Set(["phrase", "phrasal verb", "fixed expression", "idiom"]);
+function imageStrategyForCluster(cluster) {
+  const grammar = (cluster.grammar || "").toLowerCase();
+  const type = (cluster.type || "").toLowerCase();
+  const wordCount = Array.isArray(cluster.tokens) ? cluster.tokens.length : (cluster.text || "").trim().split(/\s+/).filter(Boolean).length;
+  if (GRAMMAR_STRUCTURE_RE.test(grammar)) return "grammar_diagram";
+  if (IMAGE_NO_NEED_TYPES.has(type)) return "none";
+  if (IMAGE_PHRASE_TYPES.has(type) || wordCount >= 3) return "photo_allow_ai";
+  if (type === "noun" || type === "verb") return "photo_no_ai";
+  return "none";
+}
+// Chọn 1 cụm "đáng minh hoạ nhất" trong câu để làm từ khoá tìm ảnh đại diện cho CẢ câu (Việc 3
+// dùng 1 ảnh nhỏ/câu, không phải 1 ảnh/từ) — ưu tiên cụm dài (phrase) trước, rồi tới noun/verb
+// đầu tiên gặp trong câu (thường là chủ ngữ/hành động chính, dễ minh hoạ nhất).
+function pickIllustrationTermForSentence(clusters) {
+  if (!Array.isArray(clusters) || !clusters.length) return null;
+  const withStrategy = clusters.map(c => ({ c, strategy: imageStrategyForCluster(c) }));
+  const phrase = withStrategy.find(x => x.strategy === "photo_allow_ai" && IMAGE_PHRASE_TYPES.has((x.c.type || "").toLowerCase()));
+  if (phrase) return { term: phrase.c.text, allowAiGenerate: true };
+  const longChunk = withStrategy.find(x => x.strategy === "photo_allow_ai");
+  if (longChunk) return { term: longChunk.c.text, allowAiGenerate: true };
+  const noun = withStrategy.find(x => x.strategy === "photo_no_ai" && (x.c.type || "").toLowerCase() === "noun");
+  if (noun) return { term: noun.c.text, allowAiGenerate: false };
+  const verbOrNoun = withStrategy.find(x => x.strategy === "photo_no_ai");
+  if (verbOrNoun) return { term: verbOrNoun.c.text, allowAiGenerate: false };
+  return null;
+}
+
+// ====== ẢNH MINH HOẠ — Việc 1: pipeline lấy ảnh theo thứ tự ưu tiên ======
+// 1. cache DB (word_image_cache) -> 2. Wikimedia Commons (free) -> 3. Unsplash (key riêng) ->
+// 4. Pexels (key riêng) -> 5. AI sinh ảnh (CHỈ khi allowAiGenerate=true VÀ cả 3 nguồn trên đều
+// không có). Mỗi nguồn lỗi (mất mạng/hết quota) KHÔNG được làm sập cả chuỗi — log rồi thử
+// nguồn kế tiếp. Ảnh tìm được (bất kỳ nguồn nào) được lưu cache dùng chung mãi mãi.
+function normalizeImageKey(term) {
+  return (term || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+async function getWordImageFromCache(key) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache?lookup_key=eq.${encodeURIComponent(key)}&select=*`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    const row = rows?.[0];
+    if (!row || row.status === "rejected") return null; // rejected -> coi như miss, chạy lại pipeline
+    return row;
+  } catch (e) {
+    console.error("getWordImageFromCache error:", e);
+    return null;
+  }
+}
+async function saveWordImageToCache(key, term, image) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify({
+        lookup_key: key, term, url: image.url, source: image.source,
+        license: image.license || null, attribution: image.attribution || null,
+        status: "approved", // chưa dựng UI duyệt Mentor đợt này — xem ghi chú trong 018_word_image_cache.sql
+      }),
+    });
+  } catch (e) {
+    console.error("saveWordImageToCache error (không chặn response, chỉ log):", e);
+  }
+}
+// Chỉ chấp nhận giấy phép mở — CC0/Public Domain/CC-BY/CC-BY-SA. Từ chối CC-BY-NC, CC-BY-ND,
+// "All rights reserved", hoặc giấy phép không xác định.
+const WIKIMEDIA_ALLOWED_LICENSE_RE = /^(cc0|public domain|cc[\s-]?by(?:[\s-]?sa)?)([\s-]?\d.*)?$/i;
+async function fetchFromWikimedia(term) {
+  try {
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const pages = Object.values(data?.query?.pages || {});
+    for (const page of pages) {
+      const info = page?.imageinfo?.[0];
+      if (!info) continue;
+      const licenseShort = (info.extmetadata?.LicenseShortName?.value || "").trim();
+      if (!licenseShort || !WIKIMEDIA_ALLOWED_LICENSE_RE.test(licenseShort.replace(/\s+/g, " "))) continue;
+      const artist = (info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
+      return { url: info.url, source: "wikimedia", license: licenseShort, attribution: artist || null };
+    }
+    return null;
+  } catch (e) {
+    console.error("fetchFromWikimedia error:", e);
+    return null;
+  }
+}
+async function fetchFromUnsplash(term) {
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=1`, {
+      headers: { Authorization: `Client-ID ${key}` },
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const photo = data?.results?.[0];
+    if (!photo) return null;
+    return { url: photo.urls?.regular || photo.urls?.small, source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
+  } catch (e) {
+    console.error("fetchFromUnsplash error:", e);
+    return null;
+  }
+}
+async function fetchFromPexels(term) {
+  const key = process.env.PEXELS_API_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=1`, {
+      headers: { Authorization: key },
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const photo = data?.photos?.[0];
+    if (!photo) return null;
+    return { url: photo.src?.medium || photo.src?.large, source: "pexels", license: "Pexels License", attribution: photo.photographer || null };
+  } catch (e) {
+    console.error("fetchFromPexels error:", e);
+    return null;
+  }
+}
+async function generateImageWithAI(term) {
+  try {
+    const r = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: "dall-e-2", prompt: `Simple, clear illustration for an English learning flashcard: ${term}`, size: "256x256", n: 1 }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const url = data?.data?.[0]?.url;
+    if (!url) return null;
+    return { url, source: "ai_generated", license: null, attribution: null };
+  } catch (e) {
+    console.error("generateImageWithAI error:", e);
+    return null;
+  }
+}
+async function getOrFetchWordImage(term, { allowAiGenerate } = {}) {
+  const key = normalizeImageKey(term);
+  if (!key) return null;
+  const cached = await getWordImageFromCache(key);
+  if (cached) {
+    console.log(`[image pipeline] cache HIT: "${term}"`);
+    return cached;
+  }
+  const sources = [
+    ["wikimedia", () => fetchFromWikimedia(term)],
+    ["unsplash", () => fetchFromUnsplash(term)],
+    ["pexels", () => fetchFromPexels(term)],
+  ];
+  if (allowAiGenerate) sources.push(["ai_generated", () => generateImageWithAI(term)]);
+  for (const [name, fn] of sources) {
+    const image = await fn();
+    if (image) {
+      console.log(`[image pipeline] "${term}" served by ${name}`);
+      saveWordImageToCache(key, term, image);
+      return image;
+    }
+  }
+  console.log(`[image pipeline] "${term}" — no source found`);
+  return null;
+}
+
 // ====== HELPERS (Node.js / Vercel) ======
 async function callOpenAI(body) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -752,17 +1099,110 @@ const ACTIONS = {
       const check = await consumeStudentCredit(ctx.studentId, data.level);
       if (!check.allowed) return { error: check.message, status: 403 };
     }
-    const prompt = buildAnalyzePrompt(data.sentence, data.level || "A1-A2");
-    const r = await callOpenAI({
-      max_tokens: 4000,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: ANALYZE_SYSTEM },
-        { role: "user", content: prompt },
-      ],
-    });
-    if (!r.ok) return safeOpenAIError(r);
-    return { content: content(r) };
+    const level = data.level || "A1-A2";
+    // Credit vẫn trừ 1/lần bấm Phân tích NGAY TRÊN (không đổi) — cache/gộp mode chỉ ảnh
+    // hưởng có gọi AI thật hay không, KHÔNG ảnh hưởng mô hình credit hiện có.
+
+    // A1 giữ NGUYÊN luồng riêng — không gộp, khoá cache có kèm level như trước Phần 3.
+    if (level === "A1") {
+      const cacheKeyA1 = cacheKeyFor(data.sentence, level);
+      const cachedA1 = await getCachedAnalysis(cacheKeyA1);
+      if (cachedA1) return { content: JSON.stringify(cachedA1) };
+      const r = await callOpenAI({
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: ANALYZE_SYSTEM },
+          { role: "user", content: buildAnalyzePrompt(data.sentence, level) },
+        ],
+      });
+      if (!r.ok) return safeOpenAIError(r);
+      let parsedA1 = null;
+      try { parsedA1 = JSON.parse(content(r)); } catch (e) { /* không cache khi parse lỗi */ }
+      if (parsedA1) saveCachedAnalysis(cacheKeyA1, data.sentence, level, parsedA1);
+      return { content: content(r) };
+    }
+
+    // A1-A2/B1/B2 — Phần 3: dùng CHUNG đúng 1 lần gọi AI (khoá cache theo CÂU, không phân
+    // biệt mode) để đảm bảo A2/B1/B2 luôn nhất quán ranh giới cụm, không lệ thuộc việc 3 lần
+    // gọi độc lập tình cờ khớp nhau.
+    const cacheKey = cacheKeyForUnified(data.sentence);
+    let unified = await getCachedAnalysis(cacheKey);
+    if (!unified) {
+      const r = await callOpenAI({
+        max_tokens: 4000,
+        response_format: { type: "json_schema", json_schema: { name: "unified_analysis", strict: true, schema: buildUnifiedJsonSchema() } },
+        messages: [
+          { role: "system", content: ANALYZE_SYSTEM },
+          { role: "user", content: buildUnifiedPrompt(data.sentence) },
+        ],
+      });
+      if (!r.ok) return safeOpenAIError(r);
+      let parsed;
+      try {
+        parsed = JSON.parse(content(r));
+      } catch (e) {
+        console.error("unified analyze_sentence parse error:", e, content(r).slice(0, 500));
+        return safeOpenAIError({ status: 502, data: {} });
+      }
+      const validation = validateUnified(parsed.clusters, data.sentence);
+      if (validation.valid) {
+        saveCachedAnalysis(cacheKey, data.sentence, "unified", parsed);
+      } else {
+        console.error("[unified validate] FAIL:", validation.reason, JSON.stringify(parsed).slice(0, 1000));
+      }
+      unified = parsed; // vẫn trả về dù validate fail — client tự fallback (groupTokens() cho B1)
+    }
+
+    if (level === "A1-A2") return { content: JSON.stringify({ sentence: unified.sentence, words: reshapeForA2(unified.clusters) }) };
+    // B1 giờ tính bằng thuật toán xác định (computeB1FromClusters), KHÔNG gọi thêm AI nào —
+    // chạy trên "clusters" đã có sẵn (từ cache hoặc vừa gọi ở trên).
+    if (level === "B1") return { content: JSON.stringify({ sentence: unified.sentence, chunks: computeB1FromClusters(unified.clusters, data.sentence) }) };
+    return { content: JSON.stringify({ sentence: unified.sentence, words: reshapeForB2(unified.clusters) }) }; // B2
+  },
+
+  // Ảnh minh hoạ cho 1 câu (Việc 1+2+3) — TÁCH RIÊNG khỏi analyze_sentence để client gọi
+  // LAZY sau khi đã hiển thị text (không chặn hiển thị câu chờ ảnh). Nhận "words" (dict đã có
+  // sẵn từ response analyze_sentence — key là cụm/từ, value có "type"/"grammar") thay vì gọi
+  // lại AI phân tích. Tự chọn 1 cụm đáng minh hoạ nhất trong câu rồi chạy qua pipeline ảnh.
+  async get_sentence_image(data) {
+    if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
+    const wordsDict = data.words || {};
+    const clusters = Object.entries(wordsDict).map(([text, info]) => ({
+      text, tokens: text.split(/\s+/), type: info?.type || null, grammar: info?.grammar || null,
+    }));
+    const picked = pickIllustrationTermForSentence(clusters);
+    if (!picked) return { content: JSON.stringify({ image: null }) };
+    const image = await getOrFetchWordImage(picked.term, { allowAiGenerate: picked.allowAiGenerate });
+    if (!image) return { content: JSON.stringify({ image: null }) };
+    return { content: JSON.stringify({ image: { url: image.url, source: image.source, license: image.license, attribution: image.attribution, term: picked.term } }) };
+  },
+
+  // Xoá thủ công cache của 1 câu cụ thể (mọi level, hoặc đúng 1 level nếu truyền kèm) — dùng
+  // khi Mentor muốn buộc phân tích lại 1 câu đã có cache (nghi ngờ kết quả cũ sai). Không có
+  // UI riêng ở đợt này, gọi qua action thẳng như các action khác — vẫn qua cổng JWT bắt buộc
+  // ở handler() nên không mở công khai cho người chưa đăng nhập.
+  async clear_sentence_cache(data) {
+    if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
+    try {
+      // A1 dùng khoá riêng theo level (cacheKeyFor); A1-A2/B1/B2 dùng chung 1 khoá theo câu
+      // (cacheKeyForUnified, Phần 3) — không truyền "level" thì xoá theo CÂU (mọi bản ghi
+      // khớp sentence, gồm cả A1 lẫn unified).
+      const url = data.level === "A1"
+        ? `${SUPABASE_URL}/rest/v1/sentence_analysis_cache?cache_key=eq.${cacheKeyFor(data.sentence, data.level)}`
+        : data.level
+        ? `${SUPABASE_URL}/rest/v1/sentence_analysis_cache?cache_key=eq.${cacheKeyForUnified(data.sentence)}`
+        : `${SUPABASE_URL}/rest/v1/sentence_analysis_cache?sentence=eq.${encodeURIComponent(data.sentence)}`;
+      const r = await fetch(url, {
+        method: "DELETE",
+        headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+      });
+      if (!r.ok) return { error: "Không xoá được cache.", status: 502 };
+      return { content: "ok" };
+    } catch (e) {
+      console.error("clear_sentence_cache error:", e);
+      return { error: "Không xoá được cache.", status: 502 };
+    }
   },
 
   async word_tip(data) {
