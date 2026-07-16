@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1247,6 +1248,12 @@ function rateLimit(ip) {
 
 // ====== ACTIONS ======
 const ACTIONS = {
+  // Student App (PWA) — kiến trúc Lesson-first: sinh + lưu trọn Lesson JSON, xem
+  // api/_generate/lesson.js. Đặt ở "_generate" (không phải "generate") để Vercel không
+  // tự deploy thành endpoint riêng né qua gate JWT/CORS bên dưới — xem chú thích đầu file đó.
+  generate_lesson,
+  analyze_user_text,
+
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —
   // chỉ là cổng kiểm tra credit, tách riêng để không trừ nhiều lần cho 1 đề).
