@@ -22,14 +22,59 @@ const MAX_TOKENS_CAP = 4000; // giữ đồng bộ với MAX_TOKENS_CAP của ch
 const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 
-// ====== Credit — copy nguyên văn consumeStudentExamCredit() từ chat.js (RPC
-// consume_student_exam_credit, 10 credit cố định — supabase/015_student_pro_exams.sql).
-// Dùng CHUNG cho cả generate_lesson và analyze_user_text (tạo bài học = thao tác AI đắt
-// nhất, không tinh chỉnh mức giá riêng ở giai đoạn MVP — quyết định của Mentor, để lại
-// cho Phase 3 dựa vào số liệu thật). ĐIỂM KHÁC BIỆT so với các action cũ: 2 action ở đây
-// gọi hàm này SAU KHI đã có kết quả AI hợp lệ (xem 2 handler bên dưới), KHÔNG gọi trước
-// khi gửi request lên OpenAI — đổi lại để thoả đúng yêu cầu "không trừ credit khi AI trả
-// JSON lỗi" mà không cần thêm 1 RPC hoàn credit mới (xem NỢ KỸ THUẬT cuối file).
+// ====== Credit — luồng 3 bước cho cả generate_lesson và analyze_user_text (tạo bài học
+// = thao tác AI đắt nhất, dùng chung mức giá 10 credit/hạn mức 300/tháng với đề thi,
+// không tinh chỉnh riêng ở MVP):
+//   (a) checkStudentExamCreditBalance() — ĐỌC số dư, KHÔNG trừ. Hết credit thì chặn NGAY,
+//       trước khi tốn 1 lượt gọi OpenAI thật (tiền OpenAI do chủ app trả, không phải user
+//       — không thể coi "tốn lượt gọi AI rồi mới báo hết credit" là nợ chấp nhận được).
+//   (b) gọi AI + parse + validate.
+//   (c) consumeStudentExamCredit() — RPC atomic, trừ THẬT ngay trước khi insert.
+// Cố ý KHÔNG khoá race giữa (a) và (c): 2 request bắn gần như đồng thời có thể cùng lọt
+// qua bước (a) (đọc thấy còn credit) rồi cùng vào bước (b) — CHẤP NHẬN, vì bước (c) vẫn
+// là cổng chặn atomic thật sự (RPC có "for update"), nhiều nhất 1 trong 2 request bị
+// chặn ở (c) chứ không lọt được vào insert. (a) chỉ là tối ưu chi phí (đỡ tốn lượt AI),
+// không phải lớp bảo vệ credit duy nhất.
+//
+// EXAM_CREDIT_COST/EXAM_CREDIT_MONTHLY_LIMIT PHẢI khớp v_cost/v_limit trong RPC
+// consume_student_exam_credit (supabase/015_student_pro_exams.sql) — đổi 1 bên mà quên
+// bên kia sẽ làm (a) và (c) lệch nhau (vd (a) cho qua nhưng (c) vẫn chặn, gây tốn 1 lượt
+// AI oan uổng dù đã có bước đọc trước).
+const EXAM_CREDIT_COST = 10;
+const EXAM_CREDIT_MONTHLY_LIMIT = 300;
+
+async function checkStudentExamCreditBalance(studentId) {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=plan,monthly_exam_credit_used,monthly_exam_credit_reset_date`,
+      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+    );
+    if (!r.ok) {
+      console.error("checkStudentExamCreditBalance error:", r.status, await r.text());
+      return { allowed: false, message: "Không kiểm tra được credit tạo bài, thử lại sau." };
+    }
+    const rows = await r.json();
+    const row = rows?.[0];
+    if (!row) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
+    if (row.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo đề chỉ dành cho gói Pro." };
+
+    // date_trunc('month', current_date) phía RPC ~ ngày 1 đầu tháng hiện tại (UTC) ở đây —
+    // so sánh chuỗi ISO "YYYY-MM-DD" là đủ chính xác vì cùng định dạng.
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    const monthStartStr = monthStart.toISOString().slice(0, 10);
+    const used = row.monthly_exam_credit_reset_date < monthStartStr ? 0 : row.monthly_exam_credit_used;
+    if (used + EXAM_CREDIT_COST > EXAM_CREDIT_MONTHLY_LIMIT) {
+      return { allowed: false, message: "Đã dùng hết 300 credit tạo đề tháng này, quay lại tháng sau." };
+    }
+    return { allowed: true };
+  } catch (e) {
+    console.error("checkStudentExamCreditBalance error:", e);
+    return { allowed: false, message: "Không kiểm tra được credit tạo bài, thử lại sau." };
+  }
+}
+
+// Copy nguyên văn consumeStudentExamCredit() từ chat.js (RPC atomic, trừ credit THẬT).
 async function consumeStudentExamCredit(studentId) {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_student_exam_credit`, {
@@ -394,6 +439,11 @@ export async function generate_lesson(data, ctx) {
   if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
   if (!VALID_CONTENT_TYPES.includes(data.content_type)) return { error: "Thiếu hoặc sai 'content_type'.", status: 400 };
 
+  // (a) Đọc số dư TRƯỚC — hết credit thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
+  const balanceCheck = await checkStudentExamCreditBalance(ctx.studentId);
+  if (!balanceCheck.allowed) return { error: balanceCheck.message, status: 403 };
+
+  // (b) Gọi AI + parse + validate.
   const r = await callOpenAI({
     max_tokens: 3500,
     temperature: 0.7,
@@ -418,8 +468,8 @@ export async function generate_lesson(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
-  // Trừ credit CHỈ SAU KHI đã có kết quả hợp lệ — xem ghi chú ở consumeStudentExamCredit()
-  // phía trên + NỢ KỸ THUẬT cuối file.
+  // (c) Trừ credit THẬT (atomic) ngay trước khi insert — vẫn là cổng chặn cuối cùng
+  // ngay cả khi 2 request cùng lọt qua bước (a) (xem ghi chú ở checkStudentExamCreditBalance()).
   const creditCheck = await consumeStudentExamCredit(ctx.studentId);
   if (!creditCheck.allowed) return { error: creditCheck.message, status: 403 };
 
@@ -436,6 +486,11 @@ export async function analyze_user_text(data, ctx) {
   if (wc < 20) return { error: "Văn bản quá ngắn (tối thiểu 20 từ).", status: 400 };
   if (wc > 3000) return { error: "Văn bản quá dài (tối đa 3000 từ), vui lòng chia nhỏ.", status: 400 };
 
+  // (a) Đọc số dư TRƯỚC — hết credit thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
+  const balanceCheck = await checkStudentExamCreditBalance(ctx.studentId);
+  if (!balanceCheck.allowed) return { error: balanceCheck.message, status: 403 };
+
+  // (b) Gọi AI + parse + validate.
   const r = await callOpenAI({
     max_tokens: 3500,
     temperature: 0.7,
@@ -460,6 +515,7 @@ export async function analyze_user_text(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
+  // (c) Trừ credit THẬT (atomic) ngay trước khi insert.
   const creditCheck = await consumeStudentExamCredit(ctx.studentId);
   if (!creditCheck.allowed) return { error: creditCheck.message, status: 403 };
 
