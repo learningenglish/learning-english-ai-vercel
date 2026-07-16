@@ -1,12 +1,14 @@
 // app/sw.js — service worker tối thiểu: cache-first cho app shell tĩnh, KHÔNG cache
 // /api/chat hay bất kỳ request Supabase nào (luôn cần dữ liệu/xác thực mới nhất).
-const CACHE_NAME = "lea-student-shell-v1";
+const CACHE_NAME = "lea-student-shell-v2";
 const SHELL_FILES = [
   "./",
   "./index.html",
   "./manifest.json",
   "./css/style.css",
   "./icons/icon.svg",
+  "./icons/bg-scene.svg",
+  "./icons/avatar-placeholder.svg",
   "./js/app.js",
   "./js/router.js",
   "./js/session.js",
@@ -17,12 +19,12 @@ const SHELL_FILES = [
   "./js/utils.js",
   "./js/config.js",
   "./js/views/login.js",
-  "./js/views/home.js",
   "./js/views/createLesson.js",
   "./js/views/lessons.js",
   "./js/views/lesson.js",
+  "./js/views/history.js",
+  "./js/views/stats.js",
   "./js/views/profile.js",
-  "./js/views/comingSoon.js",
 ];
 
 self.addEventListener("install", (event) => {

@@ -62,15 +62,6 @@ export async function setLessonFavorite(id, isFavorite) {
   });
 }
 
-// Card "Tiếp tục học" ở Trang chủ: bản ghi completed_at is null, last_opened_at mới nhất —
-// dùng đúng partial index lesson_progress_continue_idx (supabase/019_lessons.sql).
-export async function getContinueLearning() {
-  const rows = await restFetch(
-    "lesson_progress?completed_at=is.null&order=last_opened_at.desc&limit=1&select=*,lessons(id,title,title_vi,level,cover_image_url)"
-  );
-  return rows?.[0] || null;
-}
-
 export async function getLessonProgress(lessonId) {
   const rows = await restFetch(`lesson_progress?lesson_id=eq.${encodeURIComponent(lessonId)}&select=*`);
   return rows?.[0] || null;
@@ -86,11 +77,41 @@ export async function upsertLessonProgress(lessonId, patch) {
   });
 }
 
-// Hồ sơ: tổng XP + số bài đã hoàn thành — tính trên lesson_progress của chính user (RLS
-// tự lọc, không cần truyền user_id trong query).
+// Hồ sơ + Thống kê: tổng XP + số bài đã hoàn thành — tính trên lesson_progress của chính
+// user (RLS tự lọc, không cần truyền user_id trong query).
 export async function getProfileStats() {
   const rows = await restFetch("lesson_progress?select=xp_earned,completed_at");
   const totalXp = (rows || []).reduce((s, r) => s + (r.xp_earned || 0), 0);
   const completedCount = (rows || []).filter((r) => r.completed_at).length;
   return { totalXp, completedCount };
+}
+
+// "Streak" (số ngày học liên tục) — KHÔNG có cột riêng lưu streak, tính suy ra từ các
+// ngày lịch có ít nhất 1 lần last_opened_at. Cho phép streak không rớt về 0 nếu HÔM NAY
+// chưa mở bài nào (chỉ rớt khi bỏ lỡ trọn 1 ngày) — đếm lùi từ hôm nay hoặc hôm qua.
+export async function getStreakDays() {
+  const rows = await restFetch("lesson_progress?select=last_opened_at");
+  const activeDates = new Set((rows || []).map((r) => (r.last_opened_at || "").slice(0, 10)).filter(Boolean));
+
+  const cursor = new Date();
+  if (!activeDates.has(isoDate(cursor))) cursor.setDate(cursor.getDate() - 1);
+
+  let streak = 0;
+  while (activeDates.has(isoDate(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+// Màn "Lịch sử": danh sách bài đã mở, kèm thông tin bài học qua embed quan hệ FK
+// (lesson_progress.lesson_id -> lessons), mới mở gần nhất trước.
+export async function getHistory() {
+  return restFetch(
+    "lesson_progress?order=last_opened_at.desc&select=lesson_id,completed_at,xp_earned,last_opened_at,lessons(id,title,title_vi,level,content_type)"
+  );
 }

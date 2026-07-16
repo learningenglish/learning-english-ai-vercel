@@ -1,0 +1,67 @@
+<svg viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#bfe3ff" />
+      <stop offset="35%" stop-color="#e6f4ff" />
+      <stop offset="100%" stop-color="#fdf6ea" />
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#fff6d8" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#fff6d8" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="hill1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#bfe0b8" />
+      <stop offset="100%" stop-color="#a3d69a" />
+    </linearGradient>
+    <linearGradient id="hill2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d7ecc9" />
+      <stop offset="100%" stop-color="#c3e2b0" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="1600" fill="url(#sky)" />
+  <circle cx="400" cy="260" r="420" fill="url(#sun)" />
+
+  <!-- mây -->
+  <g fill="#ffffff" opacity="0.85">
+    <ellipse cx="140" cy="160" rx="70" ry="26" />
+    <ellipse cx="190" cy="150" rx="50" ry="22" />
+    <ellipse cx="640" cy="220" rx="80" ry="28" />
+    <ellipse cx="700" cy="210" rx="55" ry="24" />
+  </g>
+
+  <!-- toà nhà xa xa -->
+  <g fill="#cfe3f2" opacity="0.7">
+    <rect x="520" y="420" width="30" height="120" />
+    <rect x="560" y="380" width="26" height="160" />
+    <rect x="596" y="440" width="22" height="100" />
+    <rect x="200" y="440" width="24" height="100" />
+    <rect x="232" y="400" width="28" height="140" />
+  </g>
+
+  <!-- đồi xa -->
+  <path d="M0,560 Q200,500 400,560 T800,560 L800,700 L0,700 Z" fill="url(#hill2)" />
+  <!-- đồi gần -->
+  <path d="M0,640 Q220,570 400,640 T800,630 L800,900 L0,900 Z" fill="url(#hill1)" />
+
+  <!-- con đường/dòng sông uốn lượn -->
+  <path d="M370,900 C400,1050 320,1150 360,1300 C390,1420 340,1520 370,1600 L440,1600 C420,1500 460,1420 430,1300 C400,1150 470,1050 440,900 Z" fill="#eaf6ff" opacity="0.85" />
+
+  <!-- cây hai bên -->
+  <g fill="#7fb774">
+    <circle cx="90" cy="820" r="46" />
+    <circle cx="150" cy="850" r="34" />
+    <circle cx="700" cy="840" r="50" />
+    <circle cx="640" cy="870" r="30" />
+  </g>
+
+  <!-- hoa nhỏ cuối trang -->
+  <g fill="#f7a8c4" opacity="0.9">
+    <circle cx="60" cy="1500" r="8" />
+    <circle cx="90" cy="1520" r="6" />
+    <circle cx="40" cy="1530" r="5" />
+    <circle cx="740" cy="1500" r="8" />
+    <circle cx="710" cy="1520" r="6" />
+    <circle cx="760" cy="1530" r="5" />
+  </g>
+</svg>
