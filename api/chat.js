@@ -1580,7 +1580,15 @@ const ACTIONS = {
 // ====== ENTRYPOINT (Vercel handler) ======
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
-  const originAllowed = ALLOWED_ORIGINS.includes(origin);
+  // Student App (/app/) giờ được Vercel serve CÙNG deployment với /api/chat (thay vì
+  // domain GitHub Pages riêng như app cũ) — request từ /app/ vẫn có header Origin dù kỹ
+  // thuật là same-origin, nên vẫn phải qua whitelist. KHÔNG hardcode được vào
+  // ALLOWED_ORIGINS tĩnh vì mỗi lần deploy preview Vercel cấp 1 host ngẫu nhiên khác
+  // nhau — so khớp ĐỘNG với process.env.VERCEL_URL (Vercel tự inject, đúng host của
+  // CHÍNH deployment đang chạy request này, không cần cấu hình tay). Whitelist
+  // ALLOWED_ORIGINS cũ giữ NGUYÊN, chỉ CỘNG THÊM điều kiện này.
+  const selfOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+  const originAllowed = ALLOWED_ORIGINS.includes(origin) || (!!selfOrigin && origin === selfOrigin);
 
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", originAllowed ? origin : "null");

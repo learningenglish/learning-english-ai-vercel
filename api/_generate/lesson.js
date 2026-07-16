@@ -120,6 +120,16 @@ function content(result) {
   return result?.data?.choices?.[0]?.message?.content || "";
 }
 
+// Đo riêng thời gian gọi OpenAI (khác thời gian tổng round-trip mà trình duyệt đo được ở
+// /app/ — chênh lệch cho biết độ trễ nằm ở OpenAI hay ở phần còn lại: cold start, mạng...).
+// Trả kèm "usage" (prompt/completion/total tokens) để /app/ tự tính chi phí ước tính, hiển
+// thị cùng đồng hồ thời gian trên màn hình Tạo bài học — phục vụ bài đo Phase 0/3.
+async function timedCallOpenAI(args) {
+  const start = Date.now();
+  const r = await callOpenAI(args);
+  return { ...r, durationMs: Date.now() - start };
+}
+
 function safeOpenAIError(r) {
   console.error("OpenAI error (lesson):", r.status, JSON.stringify(r.data));
   if (r.status === 429) return { error: "Hệ thống đang quá tải, vui lòng thử lại sau ít phút.", status: 503 };
@@ -444,7 +454,7 @@ export async function generate_lesson(data, ctx) {
   if (!balanceCheck.allowed) return { error: balanceCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
-  const r = await callOpenAI({
+  const r = await timedCallOpenAI({
     max_tokens: 3500,
     temperature: 0.7,
     messages: [
@@ -476,7 +486,7 @@ export async function generate_lesson(data, ctx) {
   const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated" }));
   if (!saved) return { error: "Tạo bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
-  return { content: JSON.stringify(saved) };
+  return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };
 }
 
 export async function analyze_user_text(data, ctx) {
@@ -491,7 +501,7 @@ export async function analyze_user_text(data, ctx) {
   if (!balanceCheck.allowed) return { error: balanceCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
-  const r = await callOpenAI({
+  const r = await timedCallOpenAI({
     max_tokens: 3500,
     temperature: 0.7,
     messages: [
@@ -522,7 +532,13 @@ export async function analyze_user_text(data, ctx) {
   const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "user_text" }));
   if (!saved) return { error: "Phân tích thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
-  return { content: JSON.stringify(saved) };
+  return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };
+}
+
+// meta không phải 1 phần "hợp đồng dữ liệu" Lesson JSON (mục 4 brief) — chỉ để /app/ hiển
+// thị thời gian/token/chi phí ước tính lúc đo Phase 0/3, KHÔNG lưu vào bảng "lessons".
+function buildMeta(r) {
+  return { usage: r.data?.usage || null, openai_duration_ms: r.durationMs, model: "gpt-4o-mini" };
 }
 
 // ============================================================
