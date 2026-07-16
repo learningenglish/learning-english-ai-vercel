@@ -1,4 +1,12 @@
 import { createHash } from "node:crypto";
+import { CEFR_LEVEL_REFERENCE } from "./catalogs/cefr-catalog.js";
+import { cacheKeyFor, cacheKeyForUnified, getCachedAnalysis, saveCachedAnalysis } from "./cache/sentence-cache.js";
+import { getWordImageFromCache, saveWordImageToCache } from "./cache/image-cache.js";
+import { pickIllustrationTermForSentence } from "./image/illustration-rules.js";
+import { generateLessonCoverImage, generateA1SentenceImage, getOrFetchWordImage } from "./image/image-pipeline.js";
+import { mentorQuestions } from "./generate/mentor-questions.js";
+import { grammarSuggestions } from "./generate/grammar-suggestions.js";
+import { buildCoreAnalysis, isFreshCache, validateUnified, validateA1Tokens, CURRENT_ANALYSIS_VERSION } from "./core-analysis.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -68,6 +76,24 @@ async function getUserRole(userId) {
   }
 }
 
+// Tra "plan" thật của 1 Mentor (free/go/pro) — dùng cho Curriculum Builder (panel gợi ý AI
+// tab Grammar), action đầu tiên cần chặn theo "plan" thay vì chỉ theo vai trò Mentor/Student
+// như các action khác hiện có. Cột "plan" đã tồn tại sẵn (001_tutors.sql) nhưng CHƯA có
+// action nào đọc để chặn trước action này.
+async function getMentorPlan(mentorId) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/mentors?id=eq.${mentorId}&select=plan`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows?.[0]?.plan || null;
+  } catch (e) {
+    console.error("getMentorPlan error:", e);
+    return null;
+  }
+}
+
 async function consumeStudentCredit(studentId, requestedLevel) {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_student_credit`, {
@@ -116,69 +142,8 @@ async function consumeStudentExamCredit(studentId) {
   }
 }
 
-// ====== CACHE PHÍA SERVER cho kết quả phân tích câu (analyze_sentence) — dùng chung cho MỌI
-// người dùng đọc cùng 1 nội dung, thay vì cache riêng từng máy (localStorage không chia sẻ
-// được giữa nhiều học viên cùng đọc 1 bài). Xem supabase/017_sentence_analysis_cache.sql.
-// CHỈ cache kết quả sau khi qua validate PASS (A1-A2/B1/B2 dùng validateUnified() chung, vì
-// giờ cả 3 mode chia sẻ đúng 1 lần gọi AI — xem Phần 3 "gộp A2/B1/B2"). A1 vẫn tách biệt
-// hoàn toàn (khoá cache riêng, không có validate — giữ đúng hành vi cũ).
-function cacheKeyFor(sentence, level) {
-  return createHash("sha256").update(`${sentence}|${level}`).digest("hex");
-}
-// A1-A2/B1/B2 dùng CHUNG 1 khoá cache theo CÂU (không phân biệt mode) — vì 1 lần gọi AI phục
-// vụ cả 3, cache theo mode sẽ tạo 3 bản trùng lặp không cần thiết cho cùng 1 dữ liệu gốc.
-function cacheKeyForUnified(sentence) {
-  return createHash("sha256").update(sentence).digest("hex");
-}
-async function getCachedAnalysis(cacheKey) {
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/sentence_analysis_cache?cache_key=eq.${cacheKey}&select=result`, {
-      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-    });
-    if (!r.ok) return null;
-    const rows = await r.json();
-    return rows?.[0]?.result || null;
-  } catch (e) {
-    console.error("getCachedAnalysis error:", e);
-    return null;
-  }
-}
-async function saveCachedAnalysis(cacheKey, sentence, level, result) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/sentence_analysis_cache`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates",
-      },
-      body: JSON.stringify({ cache_key: cacheKey, sentence, level, result }),
-    });
-  } catch (e) {
-    console.error("saveCachedAnalysis error (không chặn response, chỉ log):", e);
-  }
-}
-// Validate "clusters" ghép lại phải khớp câu gốc token-cho-token — CÙNG nguyên lý
-// validateB1Chunks() bên app.js trước đây, áp dụng cho cả A2/B1/B2 vì cả 3 đọc chung
-// "clusters". KHÔNG còn validate "b1_grouping" — B1 giờ tính bằng thuật toán xác định
-// (computeB1FromClusters, xem bên dưới), không còn field nào từ AI cần kiểm tra cho B1 nữa.
-function normalizeForCompareServer(s) {
-  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-function validateUnified(clusters, sentence) {
-  if (!Array.isArray(clusters) || !clusters.length) return { valid: false, reason: "no_clusters" };
-  const rebuiltAll = clusters.map(c => (c.tokens || []).join(" ")).join(" ");
-  if (normalizeForCompareServer(rebuiltAll) !== normalizeForCompareServer(sentence)) {
-    return { valid: false, reason: "clusters_mismatch_sentence" };
-  }
-  for (const c of clusters) {
-    if (normalizeForCompareServer(c.text || "") !== normalizeForCompareServer((c.tokens || []).join(" "))) {
-      return { valid: false, reason: "cluster_text_mismatch_tokens" };
-    }
-  }
-  return { valid: true };
-}
+// Validate "clusters"/"tokens" (validateUnified/validateA1Tokens) đã MOVE sang
+// core-analysis.js Đợt 3 — import ở đầu file.
 
 // ====== PROMPTS PHÂN TÍCH CÂU + GIẢI THÍCH TỪ/CÂU/CỤM (trích nguyên văn từ Worker Cloudflare) ======
 // ====== PROMPTS (gộp nguyên văn, không tách file) ======
@@ -192,20 +157,6 @@ function validateUnified(clusters, sentence) {
  * File này CHỈ tồn tại trong Worker, không bao giờ gửi xuống frontend.
  * Frontend chỉ gửi {action, ...data}, Worker tự ráp prompt từ đây.
  */
-
-// Mô hình 2 lớp: LỚP 1 (phân loại level) dùng CHUNG cho A1/A1-A2/B1 qua bảng tham chiếu
-// này — trước đây mỗi prompt chỉ mô tả quy tắc chung bằng lời văn cho AI tự suy luận,
-// không có danh sách cụ thể để đối chiếu, dẫn tới cùng 1 cụm bị gắn level khác nhau tuỳ
-// câu. LỚP 2 (độ chi tiết hiển thị: tách từng từ / cụm công thức / đoạn theo nghĩa) vẫn
-// khác nhau theo từng nhánh bên dưới, KHÔNG đụng vào bảng này. B2 không dùng bảng này
-// (giữ nguyên theo yêu cầu, prompt B2 đã có ví dụ CEFR đa dạng sẵn).
-const CEFR_LEVEL_REFERENCE = `CEFR LEVEL REFERENCE TABLE — use this to assign "level" for EVERY word/phrase. Check here FIRST before relying on general judgment. If a chunk isn't listed exactly, match it to the closest PATTERN/STRUCTURE type below (e.g. an unlisted basic phrasal verb → same group as the basic phrasal verbs listed under A2):
-- A1: familiar set phrases (good morning, thank you, excuse me, how are you, nice to meet you, see you later, of course, I'm sorry, I don't know, a lot of, every day, next week, last year); basic prepositional phrases (at home, at work, at school, in bed, in class, on the table, under the chair, next to the door); simple noun phrases (my mother, your friend, a big house, the red car, an old man); simple verb phrases (can swim, can speak English, want to eat, like playing football, have breakfast); time expressions (every day, every week, this morning, last night, next month, at six o'clock).
-- A2: "be going to", "have to", "would like to", "there is/are", some/any, too...to, enough to, adjective+to-V, adjective+preposition; common verb+preposition combos, basic phrasal verbs (wake up, get up); prepositional verbs (depend on, belong to, listen to, insist on, apologize for); basic comparison (as...as, more...than, less...than); quantity phrases (a few, a little, a great deal of, plenty of, a large number of, lots of); fixed noun phrases (a piece of advice, a bit of, a number of, the majority of).
-- B1: verb patterns (decide to do, stop doing/to do, remember doing/to do); phrasal verbs (give up, find out, look after, carry on); advanced modals (should/must/might have done); passive voice (is built, was made, has been written); simple relative clauses (the man who..., the book that...); because/although/if clauses; verb+object+to-V (ask him to come, tell me to wait, force them to leave); verb+object+bare infinitive — IMPORTANT: these use short common words (let, go, make, laugh) but the PATTERN itself (verb+object+bare infinitive, no "to") is B1-level grammar, NOT A2 — do not downgrade just because the individual words look simple: let him go, make me laugh, have someone clean; fixed adjective+preposition (afraid of, interested in, proud of, responsible for, good at, familiar with, similar to); fixed prepositional phrases (in charge of, in front of, because of, due to, according to, instead of, in spite of, on behalf of).
-- B2: participle/infinitive/gerund phrases, noun clauses, reduced relative clauses, perfect/passive infinitives, cleft sentences, basic inversion, parallel structure, correlative conjunctions, complex phrasal verbs, fixed expressions, collocations; verb+object+V-ing (catch him cheating, keep me waiting, leave the water running); verb+object+past participle (get it repaired, have my hair cut, leave the door locked); advanced verb patterns — "somebody"/"doing" below are PLACEHOLDERS that must match ANY person (him/her/them/the fire/the students/etc.) and ANY -ing verb, not just the literal words "somebody"/"doing": prevent somebody from doing (e.g. "prevent him from leaving", "prevent the fire from spreading", "prevent students from cheating"), accuse somebody of doing (e.g. "accuse her of lying"), remind somebody to do (e.g. "remind me to call"), persuade somebody to do (e.g. "persuade them to stay"); special structures (It is...that..., It takes..., It seems..., It appears...); strong collocations (make a decision, take a break, heavy rain, strong coffee, pay attention).
-- C1/C2 (reference only — still tag honestly if a structure clearly belongs here, do NOT force it down to B2): absolute phrases, advanced inversion, ellipsis, nominalisation, discourse markers, academic collocations; idioms (once in a blue moon, break the ice, hit the sack, cost an arm and a leg); advanced academic writing structures.
-Assign the level that TRUTHFULLY matches the word/phrase's real difficulty using this table — do NOT simplify the level just because the current analysis mode targets beginners.`;
 
 // Nguyên văn buildPrompt() lấy từ index.html (dòng ~3087-3310), không sửa nội dung.
 function buildAnalyzePrompt(sentence, level) {
@@ -791,416 +742,9 @@ function buildA1JsonSchema() {
     additionalProperties: false,
   };
 }
-function reshapeA1Words(wordsArray) {
-  const words = {};
-  (wordsArray || []).forEach(w => {
-    words[w.key] = { meaning: w.meaning, lemma: w.lemma, level: w.level, type: w.type, grammar: w.grammar, irregular: w.irregular, example: w.example };
-  });
-  return words;
-}
-// "tokens" phải ghép lại (nối bằng khoảng trắng, bỏ khoảng trắng ngay trước dấu câu) đúng bằng
-// câu gốc — cùng nguyên lý validateUnified() nhưng áp cho mảng token phẳng của A1.
-function validateA1Tokens(tokens, sentence) {
-  if (!Array.isArray(tokens) || !tokens.length) return { valid: false, reason: "no_tokens" };
-  const rebuilt = tokens.map(t => t.text || "").join(" ").replace(/\s+([.,!?;:])/g, "$1");
-  if (normalizeForCompareServer(rebuilt) !== normalizeForCompareServer(sentence)) {
-    return { valid: false, reason: "tokens_mismatch_sentence" };
-  }
-  return { valid: true };
-}
-// A1-A2: render trực tiếp từ "words" dict (buildA12Html/buildChunkCardHtml, level="A1-A2") —
-// mỗi cluster = 1 entry, key = cluster.text, y hệt cấu trúc A2 cũ.
-function reshapeForA2(clusters) {
-  const words = {};
-  (clusters || []).forEach(c => {
-    words[c.text] = { meaning: c.meaning, lemma: c.lemma, level: c.level, type: c.type, grammar: c.grammar, irregular: c.irregular };
-  });
-  return words;
-}
-// ====== B1 — thuật toán XÁC ĐỊNH (không gọi AI), áp lên "clusters" đã có ======
-// Bước 1: cắt clusters thành các MỆNH ĐỀ tại ranh giới thực sự — hai tín hiệu:
-// (a) DẤU PHẨY trong câu gốc nối 2 mệnh đề độc lập (tín hiệu CHÍNH — dùng vì liên từ/giới từ mở
-//     đầu mệnh đề thường đứng ở VỊ TRÍ ĐẦU TIÊN của câu hoặc của mệnh đề, nên không thể phát
-//     hiện qua "cluster liền trước" như bản cũ — "If"/"Since"/"Because" luôn là cluster đầu tiên
-//     nên current.length luôn = 0 tại đó, không bao giờ kích hoạt được ranh giới);
-// (b) một cluster liên từ KẾT HỢP đơn lẻ ("and"/"but"/"or"/"so") đứng GIỮA câu, nối 2 mệnh đề
-//     độc lập KHÔNG có dấu phẩy phía trước.
-// Vị trí dấu phẩy được quy đổi sang "ranh giới sau bao nhiêu từ" bằng cách đếm số từ mỗi đoạn
-// trong câu gốc tách theo dấu phẩy, rồi cộng dồn số từ của các cluster để tìm đúng điểm cắt.
-const CLAUSE_BOUNDARY_WORDS = new Set(["and","but","or","so","because","although","if","since","while","though","unless","when"]);
-function commaWordThresholds(sentence) {
-  const segWordCounts = (sentence || "")
-    .split(",")
-    .map(seg => seg.trim().split(/\s+/).filter(Boolean).length)
-    .filter(n => n > 0);
-  const thresholds = [];
-  let acc = 0;
-  for (let i = 0; i < segWordCounts.length - 1; i++) {
-    acc += segWordCounts[i];
-    thresholds.push(acc);
-  }
-  return thresholds; // số từ tích luỹ TẠI mỗi dấu phẩy (bỏ ngưỡng cuối vì đó là hết câu)
-}
-function splitClustersIntoClauses(clusters, sentence) {
-  const commaThresholds = commaWordThresholds(sentence);
-  const clauses = [];
-  let current = [];
-  let wordsSoFar = 0;
-  let nextThresholdIdx = 0;
-  clusters.forEach((c, idx) => {
-    const t = (c.text || "").trim().toLowerCase();
-    const isConjMidSentence = CLAUSE_BOUNDARY_WORDS.has(t) && current.length > 0;
-    const isCommaBoundary = !isConjMidSentence && current.length > 0 &&
-      nextThresholdIdx < commaThresholds.length && wordsSoFar >= commaThresholds[nextThresholdIdx];
-    if (isConjMidSentence) {
-      clauses.push(current);
-      current = [];
-    } else if (isCommaBoundary) {
-      clauses.push(current);
-      current = [];
-      nextThresholdIdx++;
-    }
-    current.push(idx);
-    wordsSoFar += (c.tokens || []).length;
-  });
-  if (current.length) clauses.push(current);
-  return clauses; // mảng các mảng chỉ số cluster, mỗi mảng con = 1 mệnh đề
-}
-// Bước 2: trong 1 mệnh đề, tìm điểm chia (giữa 2 "box" liền kề) có độ chênh lệch số từ 2 bên
-// NHỎ NHẤT. Hoà thì chọn điểm chia SAU hơn (giữ chủ ngữ+động từ chính trọn vẹn ở nửa đầu,
-// chia trước phần bổ ngữ/tân ngữ) — quét i tăng dần, cùng độ chênh thì ưu tiên i lớn hơn.
-// Một "box" thường là 1 cluster, TRỪ khi cluster đó là liên từ phụ thuộc đứng 1 mình
-// ("although"/"because"/"if"/"since"/"while"/"though"/"unless"/"when") — ở A2 nó vẫn là 1 cluster
-// riêng, nhưng KHÔNG được coi là mệnh đề/điểm chia riêng: nó luôn hàn CỨNG vào cụm liền sau
-// thành 1 box duy nhất, không bao giờ bị điểm chia tách khỏi cụm đó.
-const SUBORDINATING_CONJ = new Set(["although","because","if","since","while","though","unless","when"]);
-function buildSplitBoxes(clauseIdx, clusters) {
-  const boxes = [];
-  let i = 0;
-  while (i < clauseIdx.length) {
-    const c = clusters[clauseIdx[i]];
-    const isBareSubordinator = (c.tokens || []).length === 1 &&
-      SUBORDINATING_CONJ.has((c.text || "").trim().toLowerCase());
-    if (isBareSubordinator && i + 1 < clauseIdx.length) {
-      boxes.push([clauseIdx[i], clauseIdx[i + 1]]);
-      i += 2;
-    } else {
-      boxes.push([clauseIdx[i]]);
-      i += 1;
-    }
-  }
-  return boxes;
-}
-function bestSplitForClause(clauseIdx, clusters) {
-  const boxes = buildSplitBoxes(clauseIdx, clusters);
-  if (boxes.length <= 1) return [clauseIdx]; // hàn hết thành 1 box duy nhất -> không có gì để chia
-  const wordCounts = boxes.map(box => box.reduce((s, i) => s + (clusters[i].tokens || []).length, 0));
-  const total = wordCounts.reduce((a, b) => a + b, 0);
-  let bestI = -1, bestDiff = Infinity, cum = 0;
-  for (let i = 0; i < boxes.length - 1; i++) {
-    cum += wordCounts[i];
-    const diff = Math.abs(cum - (total - cum));
-    if (diff <= bestDiff) { bestDiff = diff; bestI = i; } // <= để hoà thì lấy i SAU hơn
-  }
-  return [boxes.slice(0, bestI + 1).flat(), boxes.slice(bestI + 1).flat()];
-}
-function clusterRangeToChunkPiece(idxArr, clusters) {
-  const members = idxArr.map(i => clusters[i]);
-  return {
-    text: members.map(c => c.text).join(" "),
-    tokens: members.flatMap(c => c.tokens || []),
-    meaning: members.map(c => c.meaning).join(" "),
-    grammar: members.find(c => c.grammar)?.grammar || null,
-    token_meanings: Object.assign({}, ...members.map(c => Object.fromEntries((c.token_meanings || []).map(tm => [tm.token, tm.meaning])))),
-  };
-}
-// Bước 3: câu <15 từ -> gộp TOÀN BỘ mệnh đề thành 1 chunk duy nhất (groups = nối các nhóm của
-// từng mệnh đề); câu >=15 từ -> mỗi mệnh đề thành 1 chunk riêng (mỗi chunk tự có groups riêng).
-function computeB1FromClusters(clusters, sentence) {
-  const clauses = splitClustersIntoClauses(clusters, sentence);
-  const clauseSplits = clauses.map(clauseIdx => bestSplitForClause(clauseIdx, clusters)); // mỗi phần tử: 1 hoặc 2 mảng chỉ số
-  const totalWords = clusters.reduce((s, c) => s + (c.tokens || []).length, 0);
-
-  if (totalWords < 15) {
-    const allGroupIdxArrays = clauseSplits.flat(); // nối hết các nhóm của mọi mệnh đề lại
-    const groups = allGroupIdxArrays.map(idxArr => idxArr.flatMap(i => clusters[i].tokens || []));
-    const tokens = clusters.flatMap(c => c.tokens || []);
-    const token_meanings = Object.assign({}, ...clusters.map(c => Object.fromEntries((c.token_meanings || []).map(tm => [tm.token, tm.meaning]))));
-    const grammar = clusters.find(c => c.grammar)?.grammar || null;
-    return [{ text: sentence, meaning: clusters.map(c => c.meaning).join(" "), grammar, tokens, token_meanings, groups }];
-  }
-  // >=15 từ: mỗi mệnh đề = 1 chunk riêng, "groups" = các nhóm (1 hoặc 2) của ĐÚNG mệnh đề đó
-  return clauses.map((clauseIdx, ci) => {
-    const piece = clusterRangeToChunkPiece(clauseIdx, clusters);
-    const groups = clauseSplits[ci].map(idxArr => idxArr.flatMap(i => clusters[i].tokens || []));
-    return { ...piece, groups };
-  });
-}
-// B2: render qua buildB12Html() — cần "words" dict với field "phrase"/"token_meanings" như
-// schema B2 cũ. Key = cluster.text — nghĩa là phạm vi tooltip B2 giờ LUÔN khớp đúng 1 cluster
-// (đúng ranh giới A2), giải quyết luôn bug "tumble dryer hiện nguyên câu" từ trước — B2 không
-// còn tự sinh "phrase" riêng, mà dùng CHUNG ranh giới với A2.
-function reshapeForB2(clusters) {
-  const words = {};
-  (clusters || []).forEach(c => {
-    const token_meanings = {};
-    (c.token_meanings || []).forEach(tm => { token_meanings[tm.token] = tm.meaning; });
-    words[c.text] = { phrase: c.text, meaning: c.meaning, lemma: c.lemma, level: c.level, type: c.type, grammar: c.grammar, token_meanings, fixed_phrase: "", irregular: c.irregular };
-  });
-  return words;
-}
-
-// ====== ẢNH MINH HOẠ — Việc 2: quyết định "từ nào cần ảnh, minh hoạ kiểu gì" (thuần code,
-// KHÔNG gọi AI) ======
-// "grammar_diagram": đã có sơ đồ ngữ pháp riêng (client tự vẽ) -> KHÔNG gọi pipeline ảnh.
-// "none": không cần minh hoạ (hư từ, đa số adverb, adjective...).
-// "photo_allow_ai": cụm dài/phrase cố định -> cho phép rơi tới bước AI sinh ảnh nếu 3 nguồn
-// free không có (khó tìm sẵn trong kho ảnh free vì là ý tưởng trừu tượng/kết hợp).
-// "photo_no_ai": noun/verb đơn -> CHỈ dùng 3 nguồn free, không tốn tiền AI (từ đơn giản luôn
-// có sẵn ảnh free).
-const GRAMMAR_STRUCTURE_RE = /present perfect|past perfect|present continuous|past continuous|passive|relative clause|subordinate clause|conditional|reported speech|future continuous|future perfect/i;
-const IMAGE_NO_NEED_TYPES = new Set(["article", "pronoun", "preposition", "conjunction", "auxiliary", "adverb", "adjective"]);
-const IMAGE_PHRASE_TYPES = new Set(["phrase", "phrasal verb", "fixed expression", "idiom"]);
-function imageStrategyForCluster(cluster) {
-  const grammar = (cluster.grammar || "").toLowerCase();
-  const type = (cluster.type || "").toLowerCase();
-  const wordCount = Array.isArray(cluster.tokens) ? cluster.tokens.length : (cluster.text || "").trim().split(/\s+/).filter(Boolean).length;
-  if (GRAMMAR_STRUCTURE_RE.test(grammar)) return "grammar_diagram";
-  if (IMAGE_NO_NEED_TYPES.has(type)) return "none";
-  if (IMAGE_PHRASE_TYPES.has(type) || wordCount >= 3) return "photo_allow_ai";
-  if (type === "noun" || type === "verb") return "photo_no_ai";
-  return "none";
-}
-// Chọn 1 cụm "đáng minh hoạ nhất" trong câu để làm từ khoá tìm ảnh đại diện cho CẢ câu (Việc 3
-// dùng 1 ảnh nhỏ/câu, không phải 1 ảnh/từ) — ưu tiên cụm dài (phrase) trước, rồi tới noun/verb
-// đầu tiên gặp trong câu (thường là chủ ngữ/hành động chính, dễ minh hoạ nhất).
-function pickIllustrationTermForSentence(clusters) {
-  if (!Array.isArray(clusters) || !clusters.length) return null;
-  const withStrategy = clusters.map(c => ({ c, strategy: imageStrategyForCluster(c) }));
-  // Ưu tiên NOUN CỤ THỂ trước tiên — từ khoá dễ tìm ảnh liên quan/chính xác nhất (vd "school",
-  // "taxi"). Cụm/phrase trừu tượng (vd "can leave" — modal+verb, không phải vật thể) tìm ảnh
-  // qua Wikimedia/Unsplash rất dễ trật ngữ cảnh vì đây là cụm ngữ pháp, không phải khái niệm
-  // hình ảnh cụ thể — đây chính là nguyên nhân đã gây ảnh sai hoàn toàn cho câu test thực tế
-  // ("You're 16 and finally you can leave school!" -> picker cũ chọn "can leave" thay vì
-  // "school"). Chỉ rơi xuống phrase/verb khi câu KHÔNG có noun cụ thể nào.
-  const noun = withStrategy.find(x => x.strategy === "photo_no_ai" && (x.c.type || "").toLowerCase() === "noun");
-  if (noun) return { term: noun.c.text, allowAiGenerate: false };
-  const phrase = withStrategy.find(x => x.strategy === "photo_allow_ai" && IMAGE_PHRASE_TYPES.has((x.c.type || "").toLowerCase()));
-  if (phrase) return { term: phrase.c.text, allowAiGenerate: true };
-  const longChunk = withStrategy.find(x => x.strategy === "photo_allow_ai");
-  if (longChunk) return { term: longChunk.c.text, allowAiGenerate: true };
-  const verbOrNoun = withStrategy.find(x => x.strategy === "photo_no_ai");
-  if (verbOrNoun) return { term: verbOrNoun.c.text, allowAiGenerate: false };
-  return null;
-}
-
-// ====== ẢNH MINH HOẠ — Việc 1: pipeline lấy ảnh theo thứ tự ưu tiên ======
-// 1. cache DB (word_image_cache) -> 2. Wikimedia Commons (free) -> 3. Unsplash (key riêng) ->
-// 4. Pexels (key riêng) -> 5. AI sinh ảnh (CHỈ khi allowAiGenerate=true VÀ cả 3 nguồn trên đều
-// không có). Mỗi nguồn lỗi (mất mạng/hết quota) KHÔNG được làm sập cả chuỗi — log rồi thử
-// nguồn kế tiếp. Ảnh tìm được (bất kỳ nguồn nào) được lưu cache dùng chung mãi mãi.
-function normalizeImageKey(term) {
-  return (term || "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-async function getWordImageFromCache(key) {
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache?lookup_key=eq.${encodeURIComponent(key)}&select=*`, {
-      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-    });
-    if (!r.ok) return null;
-    const rows = await r.json();
-    const row = rows?.[0];
-    if (!row || row.status === "rejected") return null; // rejected -> coi như miss, chạy lại pipeline
-    return row;
-  } catch (e) {
-    console.error("getWordImageFromCache error:", e);
-    return null;
-  }
-}
-async function saveWordImageToCache(key, term, image, status = "pending") {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates",
-      },
-      body: JSON.stringify({
-        lookup_key: key, term, url: image.url, source: image.source,
-        license: image.license || null, attribution: image.attribution || null,
-        // "pending" mặc định — ảnh tự động TÌM-KIẾM-TỪ-KHOÁ (Wikimedia/Unsplash/Pexels) có thể
-        // trật ngữ cảnh hoàn toàn (đã gặp thật: "can leave" trả về tranh cổ điển không liên
-        // quan) — không hiển thị cho học viên tới khi Mentor duyệt. Ảnh cover AI SINH RIÊNG theo
-        // đúng nội dung bài (get_lesson_cover_image) truyền status="approved" ngay vì rủi ro sai
-        // ngữ cảnh thấp hơn nhiều (sinh theo nội dung thật, không phải search chung chung).
-        status,
-      }),
-    });
-  } catch (e) {
-    console.error("saveWordImageToCache error (không chặn response, chỉ log):", e);
-  }
-}
-// Chỉ chấp nhận giấy phép mở — CC0/Public Domain/CC-BY/CC-BY-SA. Từ chối CC-BY-NC, CC-BY-ND,
-// "All rights reserved", hoặc giấy phép không xác định.
-const WIKIMEDIA_ALLOWED_LICENSE_RE = /^(cc0|public domain|cc[\s-]?by(?:[\s-]?sa)?)([\s-]?\d.*)?$/i;
-async function fetchFromWikimedia(term) {
-  try {
-    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const data = await r.json();
-    const pages = Object.values(data?.query?.pages || {});
-    for (const page of pages) {
-      const info = page?.imageinfo?.[0];
-      if (!info) continue;
-      const licenseShort = (info.extmetadata?.LicenseShortName?.value || "").trim();
-      if (!licenseShort || !WIKIMEDIA_ALLOWED_LICENSE_RE.test(licenseShort.replace(/\s+/g, " "))) continue;
-      const artist = (info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
-      return { url: info.url, source: "wikimedia", license: licenseShort, attribution: artist || null };
-    }
-    return null;
-  } catch (e) {
-    console.error("fetchFromWikimedia error:", e);
-    return null;
-  }
-}
-async function fetchFromUnsplash(term) {
-  const key = process.env.UNSPLASH_ACCESS_KEY;
-  if (!key) return null;
-  try {
-    const r = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=1`, {
-      headers: { Authorization: `Client-ID ${key}` },
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const photo = data?.results?.[0];
-    if (!photo) return null;
-    return { url: photo.urls?.regular || photo.urls?.small, source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
-  } catch (e) {
-    console.error("fetchFromUnsplash error:", e);
-    return null;
-  }
-}
-async function fetchFromPexels(term) {
-  const key = process.env.PEXELS_API_KEY;
-  if (!key) return null;
-  try {
-    const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=1`, {
-      headers: { Authorization: key },
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const photo = data?.photos?.[0];
-    if (!photo) return null;
-    return { url: photo.src?.medium || photo.src?.large, source: "pexels", license: "Pexels License", attribution: photo.photographer || null };
-  } catch (e) {
-    console.error("fetchFromPexels error:", e);
-    return null;
-  }
-}
-async function generateImageWithAI(term) {
-  try {
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: "dall-e-2", prompt: `Simple, clear illustration for an English learning flashcard: ${term}`, size: "256x256", n: 1 }),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const url = data?.data?.[0]?.url;
-    if (!url) return null;
-    return { url, source: "ai_generated", license: null, attribution: null };
-  } catch (e) {
-    console.error("generateImageWithAI error:", e);
-    return null;
-  }
-}
-// Ảnh minh hoạ CHO CẢ BÀI (hero cover, main workspace) — KHÁC với getOrFetchWordImage() ở trên:
-// đi thẳng vào AI sinh ảnh, KHÔNG thử Wikimedia/Unsplash/Pexels trước, vì tìm-kiếm-từ-khoá cho
-// CẢ MỘT ĐOẠN VĂN (nhiều câu, nhiều ý) gần như chắc chắn trật ngữ cảnh (khác hẳn 1 danh từ đơn
-// như "school" ở Việc 1/3, nơi search-theo-từ-khoá còn khả thi). Cùng 1 phong cách vẽ CỐ ĐỊNH
-// (style descriptor) áp cho MỌI ảnh cover trên toàn hệ thống — đây là mức đồng bộ THỰC SỰ đạt
-// được với OpenAI Images API hiện tại (endpoint sinh ảnh không có bộ nhớ giữa các lần gọi, nên
-// không thể đảm bảo 1 nhân vật trông giống hệt nhau tuyệt đối qua nhiều ảnh riêng biệt — chỉ có
-// thể tối đa hoá khả năng giống nhau bằng cách DÙNG LẠI ĐÚNG 1 đoạn mô tả bối cảnh/nhân vật cho
-// mọi ảnh thuộc cùng 1 bài, lưu lại "term" (chính là mô tả) trong cache để tái dùng về sau).
-const LESSON_COVER_STYLE = "flat vector storybook illustration, warm soft color palette, gentle rounded shapes, consistent simple character design";
-async function generateLessonCoverImage(text) {
-  try {
-    const scene = (text || "").slice(0, 500);
-    const prompt = `${LESSON_COVER_STYLE}. Illustrate this English learning passage's main scene, keeping any recurring characters, objects, and setting visually consistent throughout: "${scene}"`;
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: "dall-e-3", prompt, size: "1024x1024", n: 1, quality: "standard" }),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const url = data?.data?.[0]?.url;
-    if (!url) return null;
-    return { url, source: "ai_generated", license: null, attribution: null, term: prompt };
-  } catch (e) {
-    console.error("generateLessonCoverImage error:", e);
-    return null;
-  }
-}
-// Ảnh minh hoạ CHO TỪNG CÂU trong A1 (mục 3 mockup) — TẠM THỜI đi thẳng AI sinh ảnh cho MỌI câu
-// (không phân biệt noun/phrase như getOrFetchWordImage/pickIllustrationTermForSentence, không
-// qua nguồn free Wikimedia/Unsplash/Pexels) theo đúng yêu cầu: "các câu đều có hình". Việc chọn
-// nguồn ảnh (free trước / AI trước, theo loại từ...) sẽ tinh chỉnh ở đợt sau — bản này ưu tiên
-// đảm bảo CÓ ảnh cho mọi câu và các ảnh trong CÙNG 1 bài trông đồng bộ.
-// dall-e-2 (rẻ hơn dall-e-3 nhiều) vì 1 bài có thể có hàng chục câu -> hàng chục lần gọi, khác
-// ảnh cover (chỉ 1 lần/bài) đang dùng dall-e-3 cho chất lượng cao hơn.
-// "passageText" = TOÀN BỘ đoạn văn gốc (không chỉ câu này) — đưa vào prompt làm "bối cảnh
-// chung" để các câu trong cùng 1 bài có xu hướng ra nhân vật/trang phục/bối cảnh giống nhau hơn
-// (cùng lý do đã giải thích với ảnh cover: OpenAI Images không có bộ nhớ giữa các lần gọi, đây
-// là cách tối đa hoá khả năng giống nhau khả thi nhất, không phải đảm bảo tuyệt đối).
-async function generateA1SentenceImage(sentence, passageText) {
-  try {
-    const context = (passageText || "").slice(0, 400);
-    const prompt = `${LESSON_COVER_STYLE}. This illustrates one moment in a longer story: "${context}". Specifically depict this exact moment: "${sentence}". Keep character appearance, clothing, and setting visually consistent with the rest of the story.`;
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: "dall-e-2", prompt, size: "512x512", n: 1 }),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const url = data?.data?.[0]?.url;
-    if (!url) return null;
-    return { url, source: "ai_generated", license: null, attribution: null, term: prompt };
-  } catch (e) {
-    console.error("generateA1SentenceImage error:", e);
-    return null;
-  }
-}
-async function getOrFetchWordImage(term, { allowAiGenerate } = {}) {
-  const key = normalizeImageKey(term);
-  if (!key) return null;
-  const cached = await getWordImageFromCache(key);
-  if (cached) {
-    console.log(`[image pipeline] cache HIT: "${term}"`);
-    return cached;
-  }
-  const sources = [
-    ["wikimedia", () => fetchFromWikimedia(term)],
-    ["unsplash", () => fetchFromUnsplash(term)],
-    ["pexels", () => fetchFromPexels(term)],
-  ];
-  if (allowAiGenerate) sources.push(["ai_generated", () => generateImageWithAI(term)]);
-  for (const [name, fn] of sources) {
-    const image = await fn();
-    if (image) {
-      console.log(`[image pipeline] "${term}" served by ${name}`);
-      saveWordImageToCache(key, term, image);
-      return image;
-    }
-  }
-  console.log(`[image pipeline] "${term}" — no source found`);
-  return null;
-}
+// reshapeA1Words/reshapeForA2/computeB1FromClusters(+helpers)/reshapeForB2 đã MOVE sang
+// core-analysis.js Đợt 3 (đổi tên viewAsA1/viewAsA2/viewAsB1/viewAsB2) — import ở đầu file
+// qua buildCoreAnalysis().
 
 // ====== HELPERS (Node.js / Vercel) ======
 async function callOpenAI(body) {
@@ -1257,6 +801,24 @@ const ACTIONS = {
     return { content: "ok" };
   },
 
+  // Mentor Mode: action "generate/" — Đợt 2 (2026-07) tách sang api/generate/mentor-questions.js
+  // nhưng CHƯA deploy/kích hoạt (theo đúng quyết định: giữ template mặc định cho đợt này).
+  // callOpenAI/safeOpenAIError/content truyền vào qua dependency injection vì đó là helper
+  // dùng chung nhiều action khác trong file này, không thuộc phạm vi tách riêng.
+  async mentor_questions(data) {
+    return mentorQuestions(data, { callOpenAI, safeOpenAIError, content });
+  },
+
+  // Curriculum Builder — tab Grammar, panel "Gợi ý AI". Tiền lệ MỚI: action đầu tiên chặn
+  // theo "plan" (chỉ Mentor plan==='pro' mới dùng được), không chỉ chặn theo vai trò như
+  // các action khác — xem getMentorPlan() ở trên.
+  async grammar_suggestions(data, ctx) {
+    if (!ctx?.mentorId) return { error: "Chỉ Mentor mới có quyền dùng gợi ý ngữ pháp.", status: 403 };
+    const plan = await getMentorPlan(ctx.mentorId);
+    if (plan !== "pro") return { error: "Tính năng gợi ý AI chỉ dành cho Mentor gói Pro.", status: 403 };
+    return grammarSuggestions(data, { callOpenAI, safeOpenAIError, content });
+  },
+
   async analyze_sentence(data, ctx) {
     if (!data.sentence) return { error: "Thiếu 'sentence'", status: 400 };
     if (ctx?.studentId) {
@@ -1271,9 +833,11 @@ const ACTIONS = {
     if (level === "A1") {
       const cacheKeyA1 = cacheKeyFor(data.sentence, level);
       const cachedA1 = await getCachedAnalysis(cacheKeyA1);
-      // Cache CŨ (trước khi thêm field "tokens") không có mảng "tokens" -> coi như MISS, chạy
-      // lại để tự "chữa lành" dần theo lượt đọc, không cần xoá cache thủ công hàng loạt.
-      if (cachedA1 && Array.isArray(cachedA1.tokens)) return { content: JSON.stringify(cachedA1) };
+      // "analysis_version" thay cho check dò field "tokens" cũ — cache thiếu/lệch version coi
+      // như MISS, tự tính lại và tự lành cache dần theo lượt đọc (xem core-analysis.js).
+      if (isFreshCache(cachedA1)) {
+        return { content: JSON.stringify({ sentence: cachedA1.sentence, words: cachedA1.view.a1.words, tokens: cachedA1.view.a1.tokens, core_analysis: cachedA1 }) };
+      }
       const r = await callOpenAI({
         max_tokens: 4000,
         response_format: { type: "json_schema", json_schema: { name: "a1_analysis", strict: true, schema: buildA1JsonSchema() } },
@@ -1290,21 +854,25 @@ const ACTIONS = {
         console.error("A1 analyze_sentence parse error:", e, content(r).slice(0, 500));
         return safeOpenAIError({ status: 502, data: {} });
       }
-      const parsedA1 = { sentence: parsedRaw.sentence, words: reshapeA1Words(parsedRaw.words), tokens: parsedRaw.tokens };
       const validation = validateA1Tokens(parsedRaw.tokens, data.sentence);
+      const coreA1 = buildCoreAnalysis({ sentence: parsedRaw.sentence, level: "A1", wordsArray: parsedRaw.words, tokens: parsedRaw.tokens });
       if (validation.valid) {
-        saveCachedAnalysis(cacheKeyA1, data.sentence, level, parsedA1);
+        saveCachedAnalysis(cacheKeyA1, data.sentence, level, coreA1);
       } else {
         console.error("[A1 tokens validate] FAIL:", validation.reason, JSON.stringify(parsedRaw.tokens).slice(0, 500));
       }
-      return { content: JSON.stringify(parsedA1) };
+      return { content: JSON.stringify({ sentence: coreA1.sentence, words: coreA1.view.a1.words, tokens: coreA1.view.a1.tokens, core_analysis: coreA1 }) };
     }
 
     // A1-A2/B1/B2 — Phần 3: dùng CHUNG đúng 1 lần gọi AI (khoá cache theo CÂU, không phân
     // biệt mode) để đảm bảo A2/B1/B2 luôn nhất quán ranh giới cụm, không lệ thuộc việc 3 lần
-    // gọi độc lập tình cờ khớp nhau.
+    // gọi độc lập tình cờ khớp nhau. Cache CHỈ lưu "clusters" thô (không lưu view đã reshape) —
+    // vì 3 mode chia sẻ đúng 1 bản "clusters" nhưng mỗi request cần view KHÁC NHAU theo "level"
+    // của chính request đó, nên view luôn được tính lại (thuần code, không tốn gì) sau khi có
+    // "clusters", dù "clusters" đến từ cache hay vừa gọi AI xong.
     const cacheKey = cacheKeyForUnified(data.sentence);
-    let unified = await getCachedAnalysis(cacheKey);
+    const cachedUnified = await getCachedAnalysis(cacheKey);
+    let unified = isFreshCache(cachedUnified) ? cachedUnified : null;
     if (!unified) {
       const r = await callOpenAI({
         max_tokens: 4000,
@@ -1323,19 +891,21 @@ const ACTIONS = {
         return safeOpenAIError({ status: 502, data: {} });
       }
       const validation = validateUnified(parsed.clusters, data.sentence);
+      const withVersion = { analysis_version: CURRENT_ANALYSIS_VERSION, sentence: parsed.sentence, clusters: parsed.clusters };
       if (validation.valid) {
-        saveCachedAnalysis(cacheKey, data.sentence, "unified", parsed);
+        saveCachedAnalysis(cacheKey, data.sentence, "unified", withVersion);
       } else {
         console.error("[unified validate] FAIL:", validation.reason, JSON.stringify(parsed).slice(0, 1000));
       }
-      unified = parsed; // vẫn trả về dù validate fail — client tự fallback (groupTokens() cho B1)
+      unified = withVersion; // vẫn trả về dù validate fail — client tự fallback (groupTokens() cho B1)
     }
 
-    if (level === "A1-A2") return { content: JSON.stringify({ sentence: unified.sentence, words: reshapeForA2(unified.clusters) }) };
-    // B1 giờ tính bằng thuật toán xác định (computeB1FromClusters), KHÔNG gọi thêm AI nào —
-    // chạy trên "clusters" đã có sẵn (từ cache hoặc vừa gọi ở trên).
-    if (level === "B1") return { content: JSON.stringify({ sentence: unified.sentence, chunks: computeB1FromClusters(unified.clusters, data.sentence) }) };
-    return { content: JSON.stringify({ sentence: unified.sentence, words: reshapeForB2(unified.clusters) }) }; // B2
+    const core = buildCoreAnalysis({ sentence: unified.sentence, level, clusters: unified.clusters });
+    if (level === "A1-A2") return { content: JSON.stringify({ sentence: core.sentence, words: core.view.a2.words, core_analysis: core }) };
+    // B1 giờ tính bằng thuật toán xác định (viewAsB1 trong core-analysis.js), KHÔNG gọi thêm AI
+    // nào — chạy trên "clusters" đã có sẵn (từ cache hoặc vừa gọi ở trên).
+    if (level === "B1") return { content: JSON.stringify({ sentence: core.sentence, chunks: core.view.b1.chunks, core_analysis: core }) };
+    return { content: JSON.stringify({ sentence: core.sentence, words: core.view.b2.words, core_analysis: core }) }; // B2
   },
 
   // Ảnh minh hoạ cho 1 câu (Việc 1+2+3) — TÁCH RIÊNG khỏi analyze_sentence để client gọi
