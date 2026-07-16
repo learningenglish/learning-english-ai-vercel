@@ -31,8 +31,15 @@ async function render() {
 
   const mount = document.getElementById("view");
   mount.innerHTML = "";
-  const renderFn = routes[path] || routes["/home"];
-  teardownCurrent = (await renderFn(mount, params)) || null;
+  // "/lessons" là màn chính mặc định — fallback cho hash lạ/route đã xoá (vd bookmark cũ,
+  // link cache từ trước khi đổi nav) thay vì lỗi im lặng làm trắng màn hình.
+  const renderFn = routes[path] || routes["/lessons"];
+  try {
+    teardownCurrent = (await renderFn(mount, params)) || null;
+  } catch (e) {
+    console.error("Router render error:", e);
+    mount.innerHTML = `<div class="screen"><p class="error-text">Có lỗi khi hiển thị màn hình này. Vui lòng thử lại.</p></div>`;
+  }
 
   if (hooks.afterRender) hooks.afterRender(path);
 }

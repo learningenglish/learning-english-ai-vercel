@@ -37,7 +37,7 @@ export function renderLogin(mount) {
     try {
       const session = await signInWithPassword(form.email.value.trim(), form.password.value);
       setSession(session);
-      navigate("/home");
+      navigate("/lessons");
     } catch (err) {
       errorEl.textContent = err.message || "Đăng nhập thất bại.";
       errorEl.hidden = false;
