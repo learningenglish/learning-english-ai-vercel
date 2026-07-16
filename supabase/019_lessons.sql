@@ -112,3 +112,15 @@ create policy "Users manage own lesson progress"
   on public.lesson_progress for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ============================================================
+-- NỢ KỸ THUẬT (ghi nhận, chưa xử lý ở migration này):
+-- lesson_progress.xp_earned hiện do CLIENT tự ghi trực tiếp (không qua
+-- backend) — chấp nhận được cho MVP vì XP chỉ hiển thị cho chính chủ,
+-- không có hệ quả gì ngoài UI cá nhân. Khi làm leaderboard/bảng xếp
+-- hạng (Phase 4 trở đi, XP của 1 user ảnh hưởng đến thứ hạng hiển thị
+-- cho người khác), PHẢI chuyển việc cộng xp_earned về 1 action backend
+-- (service role) tính toán và ghi, đồng thời giới hạn UPDATE cột này
+-- từ client giống cách đã làm với lessons.is_favorite ở trên — tránh
+-- user tự sửa xp_earned để gian lận thứ hạng.
+-- ============================================================
