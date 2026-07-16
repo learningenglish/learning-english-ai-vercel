@@ -1,0 +1,14 @@
+{
+  "name": "Learning English AI — Student",
+  "short_name": "LEA Student",
+  "description": "Học tiếng Anh với bài học do AI tạo riêng cho bạn.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

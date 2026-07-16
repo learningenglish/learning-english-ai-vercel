@@ -1,0 +1,18 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0d12" />
+      <stop offset="100%" stop-color="#161a23" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+  <circle cx="256" cy="230" r="120" fill="none" stroke="#2dd4bf" stroke-width="14" opacity="0.35" />
+  <path d="M140 230 L256 170 L372 230 L256 290 Z" fill="url(#accent)" />
+  <path d="M256 290 L256 340" stroke="#2dd4bf" stroke-width="10" stroke-linecap="round" />
+  <circle cx="256" cy="360" r="10" fill="#2dd4bf" />
+  <text x="256" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="#e8eaed">LEA</text>
+</svg>
