@@ -6,6 +6,8 @@
 // bánh răng ở góc phải màn "Bài học" (xem views/lessons.js).
 import { getSession } from "./session.js";
 import { registerRoute, startRouter, navigate } from "./router.js";
+import { applyTheme, watchSystemTheme } from "./theme.js";
+import { icon } from "./icons.js";
 import { renderLogin } from "./views/login.js";
 import { renderLessons } from "./views/lessons.js";
 import { renderCreateLesson } from "./views/createLesson.js";
@@ -14,12 +16,15 @@ import { renderHistory } from "./views/history.js";
 import { renderStats } from "./views/stats.js";
 import { renderProfile } from "./views/profile.js";
 
+applyTheme();
+watchSystemTheme();
+
 const NAV_TABS = [
-  { path: "/lessons", label: "Bài học", icon: "📖" },
-  { path: "/favorites", label: "Yêu thích", icon: "🤍" },
-  { path: "/create", label: "Tạo bài học", icon: "➕", fab: true },
-  { path: "/history", label: "Lịch sử", icon: "🕐" },
-  { path: "/stats", label: "Thống kê", icon: "📊" },
+  { path: "/lessons", label: "Bài học", icon: "book" },
+  { path: "/favorites", label: "Yêu thích", icon: "heart" },
+  { path: "/create", label: "Tạo bài học", icon: "plus", fab: true },
+  { path: "/history", label: "Lịch sử", icon: "clock" },
+  { path: "/stats", label: "Thống kê", icon: "bar-chart" },
 ];
 
 registerRoute("/login", renderLogin);
@@ -66,11 +71,12 @@ function renderBottomNav(activePath) {
   nav.innerHTML = NAV_TABS.map((tab) => {
     const isActive = activePath === tab.path;
     if (tab.fab) {
-      return `<button type="button" class="nav-tab-fab" data-path="${tab.path}" aria-label="${tab.label}">${tab.icon}</button>`;
+      return `<button type="button" class="nav-tab-fab" data-path="${tab.path}" aria-label="${tab.label}">${icon(tab.icon, { size: 24, strokeWidth: 2.25 })}</button>`;
     }
+    const isFavoriteActive = isActive && tab.path === "/favorites";
     return `
       <button type="button" class="nav-tab ${isActive ? "active" : ""}" data-path="${tab.path}">
-        <span class="nav-icon">${isActive && tab.path === "/favorites" ? "❤️" : tab.icon}</span>
+        <span class="nav-icon">${icon(tab.icon, { size: 22, filled: isFavoriteActive })}</span>
         <span class="nav-label">${tab.label}</span>
       </button>
     `;

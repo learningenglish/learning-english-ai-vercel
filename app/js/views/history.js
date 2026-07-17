@@ -2,6 +2,7 @@
 import { navigate } from "../router.js";
 import { getHistory } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
+import { icon } from "../icons.js";
 
 export function renderHistory(mount) {
   mount.innerHTML = `
@@ -26,7 +27,7 @@ export function renderHistory(mount) {
           const done = !!r.completed_at;
           return `
             <div class="history-item" data-id="${r.lesson_id}">
-              <div class="history-status">${done ? "✅" : "📖"}</div>
+              <div class="history-status ${done ? "history-status-done" : ""}">${icon(done ? "check-circle" : "book", { size: 22 })}</div>
               <div>
                 <div class="history-title">${escapeHtml(lesson?.title_vi || lesson?.title || "(Bài học đã xoá)")}</div>
                 <div class="history-date muted">

@@ -6,6 +6,7 @@ import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavori
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported } from "../tts.js";
+import { icon } from "../icons.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
@@ -126,9 +127,9 @@ export async function renderLessonDetail(mount, params) {
   mount.innerHTML = `
     <div class="screen">
       <div class="lesson-header-row">
-        <button type="button" class="lesson-back-btn" id="lesson-back-btn" aria-label="Quay lại">←</button>
+        <button type="button" class="lesson-back-btn" id="lesson-back-btn" aria-label="Quay lại">${icon("arrow-left", { size: 20 })}</button>
         <h1 class="screen-title">${escapeHtml(lesson.title_vi || lesson.title)}</h1>
-        <button type="button" class="lesson-fav-btn" id="lesson-fav-btn" aria-label="Yêu thích">${state.isFavorite ? "❤️" : "🤍"}</button>
+        <button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>
       </div>
       <div class="tabs" role="tablist">
         <button type="button" class="tab-btn active" data-tab="content">Nội dung</button>
@@ -155,7 +156,8 @@ export async function renderLessonDetail(mount, params) {
     try {
       await setLessonFavorite(lesson.id, next);
       state.isFavorite = next;
-      btn.textContent = next ? "❤️" : "🤍";
+      btn.innerHTML = icon("heart", { size: 19, filled: next });
+      btn.classList.toggle("is-favorite", next);
     } catch {
       // Lỗi mạng cho 1 toggle nhỏ — giữ nguyên trạng thái cũ, không cần báo ồn ào.
     } finally {
@@ -192,10 +194,8 @@ export async function renderLessonDetail(mount, params) {
     const pages = lesson.content || [];
     panel.innerHTML = `
       <div class="content-toolbar">
-        <button type="button" class="icon-toggle-btn ${state.showAllContent ? "active" : ""}" id="toggle-all-btn" title="Xem tất cả">☰</button>
-        <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">
-          <span class="translate-icon">文A</span>
-        </button>
+        <button type="button" class="icon-toggle-btn ${state.showAllContent ? "active" : ""}" id="toggle-all-btn" title="Xem tất cả">${icon("list", { size: 18 })}</button>
+        <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">${icon("languages", { size: 18 })}</button>
       </div>
       <div id="content-body"></div>
       ${ttsSupported ? audioBarHtml() : ""}
@@ -254,9 +254,9 @@ export async function renderLessonDetail(mount, params) {
         body.innerHTML = `
           <div class="content-page">
             <div class="content-nav">
-              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${idx === 0 ? "disabled" : ""}>‹</button>
+              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${idx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
               <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
-              <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${idx === pages.length - 1 ? "disabled" : ""}>›</button>
+              <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${idx === pages.length - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
             </div>
             <div class="content-item-header">
               <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
@@ -338,12 +338,12 @@ export async function renderLessonDetail(mount, params) {
 
   function contentActionsHtml(idx) {
     if (!ttsSupported) {
-      return `<div class="content-item-actions"><button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">💬</button></div>`;
+      return `<div class="content-item-actions"><button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">${icon("message-circle", { size: 15 })}</button></div>`;
     }
     return `
       <div class="content-item-actions">
-        <button type="button" class="sentence-icon-btn" data-action="speak" data-idx="${idx}" title="Đọc câu này">🔊</button>
-        <button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">💬</button>
+        <button type="button" class="sentence-icon-btn" data-action="speak" data-idx="${idx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>
+        <button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">${icon("message-circle", { size: 15 })}</button>
       </div>
     `;
   }
@@ -366,15 +366,15 @@ export async function renderLessonDetail(mount, params) {
   function audioBarHtml() {
     return `
       <div class="audio-bar" id="audio-bar">
-        <button type="button" class="audio-btn" id="audio-back" title="Về đoạn trước">⏮</button>
-        <button type="button" class="audio-btn" id="audio-back10" title="Lùi 10 giây">⏪</button>
-        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">▶️</button>
-        <button type="button" class="audio-btn" id="audio-fwd10" title="Tiến 10 giây">⏩</button>
+        <button type="button" class="audio-btn" id="audio-back" title="Về đoạn trước">${icon("skip-back", { size: 17 })}</button>
+        <button type="button" class="audio-btn" id="audio-back10" title="Lùi 10 giây">${icon("rewind", { size: 17 })}</button>
+        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
+        <button type="button" class="audio-btn" id="audio-fwd10" title="Tiến 10 giây">${icon("fast-forward", { size: 17 })}</button>
         <div class="audio-volume-wrap">
-          <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">🔊</button>
+          <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 17 })}</button>
           <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
         </div>
-        <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">🔁</button>
+        <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">${icon("repeat", { size: 17 })}</button>
         <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
       </div>
     `;
@@ -409,7 +409,7 @@ export async function renderLessonDetail(mount, params) {
     const playBtn = document.getElementById("audio-play");
     const speedBtn = document.getElementById("audio-speed");
     const volSlider = document.getElementById("audio-volume-slider");
-    if (playBtn) playBtn.textContent = s.playing ? "⏸" : "▶️";
+    if (playBtn) playBtn.innerHTML = s.playing ? icon("pause", { size: 18, filled: true }) : icon("play", { size: 18, filled: true });
     if (speedBtn) speedBtn.textContent = `${s.rate}x`;
     if (volSlider) volSlider.value = String(s.volume);
   }
@@ -462,7 +462,7 @@ export async function renderLessonDetail(mount, params) {
       <div class="word-popover-head">
         <span class="word-popover-level" data-level="${escapeHtml(data.level)}">${escapeHtml(data.level)}</span>
         <span class="word-popover-word">${escapeHtml(word)}</span>
-        ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="Đọc từ này">🔊</button>` : ""}
+        ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="Đọc từ này">${icon("volume", { size: 14 })}</button>` : ""}
       </div>
       <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
       ${data.collocation ? `<div class="word-popover-colloc">${escapeHtml(data.collocation)}</div>` : ""}
@@ -486,8 +486,8 @@ export async function renderLessonDetail(mount, params) {
     const allWords = lesson.vocabulary || [];
     panel.innerHTML = `
       <div class="content-toolbar">
-        <button type="button" class="icon-toggle-btn" id="vocab-view-phrase" title="Xem cụm từ">Cụm</button>
-        <button type="button" class="icon-toggle-btn" id="vocab-view-word" title="Xem từ đơn">Từ</button>
+        <button type="button" class="icon-toggle-btn" id="vocab-view-phrase" title="Xem cụm từ">${icon("languages", { size: 15 })} Cụm</button>
+        <button type="button" class="icon-toggle-btn" id="vocab-view-word" title="Xem từ đơn">${icon("book-open", { size: 15 })} Từ</button>
       </div>
       <div id="vocab-list-body"></div>
     `;
@@ -520,7 +520,7 @@ export async function renderLessonDetail(mount, params) {
                 <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""}" data-word="${escapeHtml(w.word)}">
                   ${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span>
                 </div>
-                ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">🔊</button>` : ""}
+                ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">${icon("volume", { size: 15 })}</button>` : ""}
               </div>
               <div class="vocab-type muted">${escapeHtml(w.type || "")}</div>
               <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
@@ -595,6 +595,11 @@ export async function renderLessonDetail(mount, params) {
     `;
   }
 
+  function feedbackHtml(correct, label, rest) {
+    const cls = correct ? "feedback-correct" : "feedback-wrong";
+    return `<span class="feedback-icon ${cls}">${icon(correct ? "check-circle" : "x-circle", { size: 16 })}</span> ${escapeHtml(label)}${escapeHtml(rest || "")}`;
+  }
+
   function wireExercise(panel, ex, i) {
     if (state.completedExercises.has(i)) return;
     const item = panel.querySelector(`.exercise-item[data-idx="${i}"]`);
@@ -609,7 +614,7 @@ export async function renderLessonDetail(mount, params) {
           item.querySelectorAll(".option-btn").forEach((b) => (b.disabled = true));
           btn.classList.add(correct ? "option-correct" : "option-wrong");
           feedback.hidden = false;
-          feedback.textContent = (correct ? "✅ Chính xác! " : "❌ Chưa đúng. ") + (ex.explanation || "");
+          feedback.innerHTML = feedbackHtml(correct, correct ? "Chính xác! " : "Chưa đúng. ", ex.explanation);
           markExerciseDone(i, correct);
         });
       });
@@ -620,7 +625,7 @@ export async function renderLessonDetail(mount, params) {
         input.disabled = true;
         item.querySelector(".check-fill-btn").disabled = true;
         feedback.hidden = false;
-        feedback.textContent = correct ? "✅ Chính xác!" : `❌ Đáp án đúng: ${ex.answer}`;
+        feedback.innerHTML = correct ? feedbackHtml(true, "Chính xác!") : feedbackHtml(false, "Đáp án đúng: ", ex.answer);
         markExerciseDone(i, correct);
       });
     }

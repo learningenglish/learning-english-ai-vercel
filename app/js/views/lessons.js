@@ -11,6 +11,7 @@
 import { navigate } from "../router.js";
 import { listLessons, setLessonFavorite, getStreakDays, getProfileStats } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
+import { icon } from "../icons.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const XP_TIERS = [
@@ -37,18 +38,18 @@ export function renderLessons(mount, params) {
       <div class="app-header">
         <div class="header-avatar-block">
           <div class="header-avatar"><img src="../icons/avatar-placeholder.svg" alt="" /></div>
-          <div class="explorer-badge">🧭 <span id="tier-label">...</span></div>
+          <div class="explorer-badge">${icon("compass", { size: 15 })} <span id="tier-label">...</span></div>
         </div>
         <div class="header-right">
-          <div class="streak-badge">🔥 <span id="streak-value">--</span> ngày học</div>
-          <button type="button" class="settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">⚙️</button>
+          <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">--</span> ngày học</div>
+          <button type="button" class="settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
         </div>
       </div>
 
       <div class="search-row">
-        <button type="button" class="filter-btn" id="toggle-level-filter">▽ Tìm lọc</button>
+        <button type="button" class="filter-btn" id="toggle-level-filter">${icon("filter", { size: 16 })} Tìm lọc</button>
         <div class="search-box">
-          <span>🔎</span>
+          <span class="search-icon">${icon("search", { size: 18 })}</span>
           <input type="text" id="search-input" placeholder="Tìm kiếm bài học..." />
         </div>
       </div>
@@ -59,8 +60,8 @@ export function renderLessons(mount, params) {
       </div>
 
       <div class="content-tabs" role="tablist">
-        <button type="button" class="content-tab-btn active" data-type="reading">📖 Bài đọc</button>
-        <button type="button" class="content-tab-btn" data-type="dialogue">💬 Hội thoại</button>
+        <button type="button" class="content-tab-btn active" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
+        <button type="button" class="content-tab-btn" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
       </div>
 
       <div id="lessons-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
@@ -151,7 +152,8 @@ export function renderLessons(mount, params) {
             renderList(); // đang ở tab Yêu thích -> bỏ tim thì phải biến mất khỏi danh sách
           } else {
             btn.dataset.fav = String(!nowFav);
-            btn.textContent = !nowFav ? "❤️" : "🤍";
+            btn.innerHTML = icon("heart", { size: 18, filled: !nowFav });
+            btn.classList.toggle("is-favorite", !nowFav);
           }
         } catch {
           // Giữ nguyên trạng thái cũ nếu lỗi mạng — không cần thông báo ồn ào cho 1 toggle nhỏ.
@@ -170,15 +172,15 @@ export function renderLessons(mount, params) {
           ${l.situation ? `<div class="lesson-card-sub">${escapeHtml(l.situation)}</div>` : ""}
           <div class="lesson-card-meta">
             <span class="badge">${escapeHtml(l.level)}</span>
-            <span class="muted">📅 ${formatDate(l.created_at)}</span>
+            <span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(l.created_at)}</span>
           </div>
         </div>
         <div class="lesson-card-cover">${
           l.cover_image_url
             ? `<img src="${escapeHtml(l.cover_image_url)}" alt="" />`
-            : `<div class="cover-placeholder">${l.content_type === "dialogue" ? "💬" : "📖"}</div>`
+            : `<div class="cover-placeholder">${icon(l.content_type === "dialogue" ? "message-circle" : "book", { size: 28 })}</div>`
         }</div>
-        <button type="button" class="fav-btn" data-fav="${l.is_favorite}">${l.is_favorite ? "❤️" : "🤍"}</button>
+        <button type="button" class="fav-btn ${l.is_favorite ? "is-favorite" : ""}" data-fav="${l.is_favorite}">${icon("heart", { size: 18, filled: l.is_favorite })}</button>
       </div>
     `;
   }

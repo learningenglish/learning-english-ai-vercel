@@ -24,9 +24,34 @@
   --shadow-float: 0 10px 30px rgba(124, 92, 255, 0.35);
   --touch-min: 44px;
   --nav-height: 68px;
+  --bg-scene-opacity: 1;
   /* 1 font DUY NHẤT cho toàn app (kể cả button/input vốn không tự kế thừa font ở 1 số
      trình duyệt) — đúng font đã dùng cho .content-text, không có font riêng nào khác. */
   --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ===== Theme Tối — kích hoạt bằng data-theme="dark" trên <html> (xem app/js/theme.js).
+   Đổi NGUYÊN bộ biến màu, mọi rule bên dưới dùng var(--...) nên tự động ăn theo, không cần
+   viết lại CSS riêng cho từng thành phần. Minh hoạ nền (bg-scene.svg) được LÀM MỜ + TỐI lại
+   (không đổ chính xác 1 bản SVG tối riêng) qua --bg-scene-opacity + filter ở body::before. */
+:root[data-theme="dark"] {
+  --bg-fallback: #10131a;
+  --surface: #1b2029;
+  --surface-soft: #242a35;
+  --border: #323a48;
+  --text: #e8eaf0;
+  --text-dim: #9aa4b6;
+  --purple: #a78bfa;
+  --purple-soft: rgba(167, 139, 250, 0.16);
+  --gradient-primary: linear-gradient(135deg, #8b5cf6, #ec4899);
+  --orange: #fbbf24;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.16);
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.16);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 10px 30px rgba(167, 139, 250, 0.3);
+  --bg-scene-opacity: 0.25;
 }
 
 * {
@@ -50,6 +75,12 @@ select,
 textarea {
   font-family: inherit;
   font-size: inherit;
+  /* "color" KHÔNG tự kế thừa trên <button> ở UA stylesheet mặc định (khác hầu hết thẻ
+     thường) — phát hiện thực tế khi icon SVG mới (stroke="currentColor") ra màu ĐEN thay vì
+     đúng var(--text)/var(--text-dim) của từng nút dù không có rule nào ghi đè. Ép "inherit"
+     1 lần ở đây cho TOÀN BỘ input/select/textarea/button, thay vì tự dò từng class thiếu
+     "color" rải rác khắp file. */
+  color: inherit;
 }
 
 /* Nền minh hoạ full màn hình, KHÔNG dùng background-attachment:fixed trực tiếp trên body —
@@ -65,6 +96,25 @@ body::before {
   background-size: cover;
   background-position: top center;
   background-repeat: no-repeat;
+  opacity: var(--bg-scene-opacity);
+  transition: opacity 0.2s ease;
+}
+
+/* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
+   nên chỉ cần set "color" trên phần tử cha là icon đổi màu theo, không cần class riêng cho
+   từng ngữ cảnh (nav active, badge, nút...). ===== */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Bọc "icon + chữ" cần canh giữa đều nhau ở những chỗ không sẵn display:flex (vd badge
+   ngày tháng/XP trong text muted) — tránh icon lệch baseline so với chữ. */
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 #app-shell {
@@ -112,7 +162,11 @@ body::before {
   cursor: pointer;
   color: var(--text);
   background: var(--surface-soft);
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
 }
 
 .btn:active {
@@ -126,7 +180,7 @@ body::before {
 
 .btn-block {
   width: 100%;
-  display: block;
+  display: flex;
 }
 
 .btn-primary {
@@ -356,7 +410,7 @@ textarea:focus {
   background: var(--surface);
   border: none;
   border-radius: 999px;
-  color: var(--text);
+  color: var(--text-dim);
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow-card);
@@ -383,6 +437,11 @@ textarea:focus {
 
 .search-box input:focus {
   box-shadow: none;
+}
+
+.search-icon {
+  display: flex;
+  color: var(--text-dim);
 }
 
 /* ===== Content-type tabs (Bài đọc / Hội thoại) ===== */
@@ -607,6 +666,17 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-dim);
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.fav-btn:active {
+  transform: scale(0.9);
+}
+
+.fav-btn.is-favorite,
+.lesson-fav-btn.is-favorite {
+  color: #ef4476;
 }
 
 .badge {
@@ -684,12 +754,6 @@ textarea:focus {
   color: #fff;
   background: var(--purple);
   border-color: var(--purple);
-}
-
-.icon-toggle-btn .translate-icon {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 /* ===== Hàng đầu mỗi đoạn/lượt thoại: tên nhân vật (trái) đối xứng icon loa/giải thích
@@ -1007,6 +1071,20 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
+.feedback-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
+.feedback-correct {
+  color: var(--success);
+}
+
+.feedback-wrong {
+  color: var(--danger);
+}
+
 .exercise-done {
   opacity: 0.75;
 }
@@ -1038,6 +1116,43 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
+.profile-section-title {
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  background: var(--surface-soft);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.theme-option.active {
+  border-color: var(--purple);
+  color: var(--purple);
+  background: var(--purple-soft);
+}
+
 .cover-placeholder {
   width: 100%;
   height: 100%;
@@ -1065,8 +1180,13 @@ textarea:focus {
 }
 
 .history-status {
-  font-size: 1.3rem;
   flex-shrink: 0;
+  color: var(--text-dim);
+  display: flex;
+}
+
+.history-status-done {
+  color: var(--success);
 }
 
 .history-title {

@@ -1,6 +1,11 @@
 // app/sw.js — service worker tối thiểu: cache-first cho app shell tĩnh, KHÔNG cache
 // /api/chat hay bất kỳ request Supabase nào (luôn cần dữ liệu/xác thực mới nhất).
-const CACHE_NAME = "lea-student-shell-v2";
+// CACHE_NAME PHẢI tăng version mỗi lần đổi bất kỳ file nào trong SHELL_FILES — cache-first
+// nghĩa là service worker cũ sẽ phục vụ MÃI MÃI bytes cũ, kể cả sau khi người dùng
+// reload/đổi mới code, cho tới khi tên cache đổi (activate xoá cache cũ, xem bên dưới).
+// Bài học thực tế: đợt redesign icon SVG + theme này đổi hầu hết SHELL_FILES nhưng quên
+// tăng version -> preview cứ hiện lại emoji cũ dù code trên đĩa đã đổi hẳn.
+const CACHE_NAME = "lea-student-shell-v3";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -18,6 +23,9 @@ const SHELL_FILES = [
   "./js/lessonApi.js",
   "./js/utils.js",
   "./js/config.js",
+  "./js/icons.js",
+  "./js/theme.js",
+  "./js/tts.js",
   "./js/views/login.js",
   "./js/views/createLesson.js",
   "./js/views/lessons.js",

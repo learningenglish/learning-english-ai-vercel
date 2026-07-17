@@ -10,6 +10,22 @@
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./icons/icon.svg" />
   <link rel="stylesheet" href="./css/style.css" />
+  <script>
+    // Chặn nháy theme: đọc + áp dụng NGAY trước khi CSS vẽ, không đợi <script type="module">
+    // (luôn bị hoãn) — xem ghi chú đầy đủ trong app/js/theme.js, PHẢI cùng STORAGE_KEY.
+    (function () {
+      try {
+        var pref = localStorage.getItem("lea_student_theme") || "system";
+        var resolved =
+          pref === "dark" || pref === "light"
+            ? pref
+            : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        document.documentElement.setAttribute("data-theme", resolved);
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <div id="app-shell">

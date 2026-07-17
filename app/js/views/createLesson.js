@@ -4,6 +4,7 @@
 import { navigate } from "../router.js";
 import { createLessonFromAI, createLessonFromText } from "../lessonApi.js";
 import { escapeHtml, countWords } from "../utils.js";
+import { icon } from "../icons.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const LENGTH_OPTIONS = [
@@ -118,7 +119,7 @@ export function renderCreateLesson(mount, params) {
 
         <!-- CHỈ DÙNG ĐỂ ĐO THỜI GIAN (Phase 0/3) — TODO(xoá trước khi merge feature/student-app vào main) -->
         <button type="button" class="btn btn-ghost btn-block test-fill-btn" id="test-fill-btn">
-          🧪 Điền mẫu test (bài nặng nhất) — xoá trước khi merge
+          ${icon("flask", { size: 16 })} Điền mẫu test (bài nặng nhất) — xoá trước khi merge
         </button>
 
         <div id="result-slot"></div>
@@ -258,13 +259,13 @@ export function renderCreateLesson(mount, params) {
       : null;
     return `
       <div class="result-panel result-success">
-        <div class="result-title">✅ Đã tạo xong: ${escapeHtml(lesson.title_vi || lesson.title)}</div>
+        <div class="result-title icon-text">${icon("check-circle", { size: 18 })} Đã tạo xong: ${escapeHtml(lesson.title_vi || lesson.title)}</div>
         <div class="result-metrics">
-          <div>⏱ Tổng thời gian: <strong>${totalSeconds.toFixed(1)}s</strong>${meta?.openai_duration_ms != null ? ` (AI: ${(meta.openai_duration_ms / 1000).toFixed(1)}s)` : ""}</div>
-          ${usage ? `<div>🔤 Token: ${usage.prompt_tokens} in / ${usage.completion_tokens} out (${usage.total_tokens} tổng)</div>` : ""}
-          ${cost != null ? `<div>💰 Chi phí ước tính: $${cost.toFixed(5)}</div>` : ""}
+          <div class="icon-text">${icon("clock", { size: 14 })} Tổng thời gian: <strong>${totalSeconds.toFixed(1)}s</strong>${meta?.openai_duration_ms != null ? ` (AI: ${(meta.openai_duration_ms / 1000).toFixed(1)}s)` : ""}</div>
+          ${usage ? `<div class="icon-text">${icon("hash", { size: 14 })} Token: ${usage.prompt_tokens} in / ${usage.completion_tokens} out (${usage.total_tokens} tổng)</div>` : ""}
+          ${cost != null ? `<div class="icon-text">${icon("dollar-sign", { size: 14 })} Chi phí ước tính: $${cost.toFixed(5)}</div>` : ""}
         </div>
-        <button type="button" class="btn btn-primary btn-block" id="goto-lesson-btn">Xem bài học →</button>
+        <button type="button" class="btn btn-primary btn-block" id="goto-lesson-btn">Xem bài học ${icon("chevron-right", { size: 16 })}</button>
       </div>
     `;
   }
@@ -272,8 +273,8 @@ export function renderCreateLesson(mount, params) {
   function errorPanelHtml(totalSeconds, status, message) {
     return `
       <div class="result-panel result-error">
-        <div class="result-title">❌ Không tạo được bài học</div>
-        <div>⏱ Đã chờ: <strong>${totalSeconds.toFixed(1)}s</strong></div>
+        <div class="result-title icon-text">${icon("x-circle", { size: 18 })} Không tạo được bài học</div>
+        <div class="icon-text">${icon("clock", { size: 14 })} Đã chờ: <strong>${totalSeconds.toFixed(1)}s</strong></div>
         <div>Mã lỗi: ${status != null ? escapeHtml(String(status)) : "—"} — ${escapeHtml(message || "")}</div>
       </div>
     `;
