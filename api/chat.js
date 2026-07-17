@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
+import { word_lookup } from "./_generate/wordLookup.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1253,6 +1254,9 @@ const ACTIONS = {
   // tự deploy thành endpoint riêng né qua gate JWT/CORS bên dưới — xem chú thích đầu file đó.
   generate_lesson,
   analyze_user_text,
+  // Tooltip rê chuột trong màn Bài học: level CEFR + nghĩa ngắn + cụm từ đi kèm cho 1 từ,
+  // khác word_tip/word_explain có sẵn (2 action đó trả text tự do dài, không có level).
+  word_lookup,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

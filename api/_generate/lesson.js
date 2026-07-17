@@ -11,13 +11,13 @@
 //
 // KHÔNG import ngược bất kỳ thứ gì từ chat.js: chat.js "đóng băng" theo luật của dự án
 // (chỉ được thêm dòng import + entry ACTIONS, không thêm export mới vào các hàm sẵn có).
-// Vì vậy vài hằng số/hàm nhỏ (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-// consumeStudentExamCredit, callOpenAI) được COPY nguyên văn từ chat.js sang đây thay vì
-// tái sử dụng — chấp nhận trùng lặp nhỏ để giữ chat.js không bị đụng vào.
+// Vì vậy vài hằng số/hàm nhỏ (SUPABASE_URL, callOpenAI, content, safeOpenAIError,
+// stripJsonFence) được COPY nguyên văn từ chat.js — nhưng CHỈ COPY 1 LẦN DUY NHẤT, đặt ở
+// api/_generate/_shared.js để các module khác trong CÙNG thư mục _generate/ (như
+// wordLookup.js) dùng chung, không phải copy lại lần nữa mỗi khi thêm action mới.
+import { SUPABASE_URL, callOpenAI, content, safeOpenAIError, stripJsonFence } from "./_shared.js";
 
-const SUPABASE_URL = "https://ijwttrlxsmgaqxszphlp.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const MAX_TOKENS_CAP = 4000; // giữ đồng bộ với MAX_TOKENS_CAP của chat.js
 
 const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const VALID_CONTENT_TYPES = ["dialogue", "reading"];
@@ -98,28 +98,6 @@ async function consumeStudentExamCredit(studentId) {
   }
 }
 
-async function callOpenAI({ max_tokens, temperature, messages }) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      max_tokens: Math.min(max_tokens || 2000, MAX_TOKENS_CAP),
-      temperature,
-      messages,
-    }),
-  });
-  const data = await response.json();
-  return { ok: response.ok, status: response.status, data };
-}
-
-function content(result) {
-  return result?.data?.choices?.[0]?.message?.content || "";
-}
-
 // Đo riêng thời gian gọi OpenAI (khác thời gian tổng round-trip mà trình duyệt đo được ở
 // /app/ — chênh lệch cho biết độ trễ nằm ở OpenAI hay ở phần còn lại: cold start, mạng...).
 // Trả kèm "usage" (prompt/completion/total tokens) để /app/ tự tính chi phí ước tính, hiển
@@ -128,18 +106,6 @@ async function timedCallOpenAI(args) {
   const start = Date.now();
   const r = await callOpenAI(args);
   return { ...r, durationMs: Date.now() - start };
-}
-
-function safeOpenAIError(r) {
-  console.error("OpenAI error (lesson):", r.status, JSON.stringify(r.data));
-  if (r.status === 429) return { error: "Hệ thống đang quá tải, vui lòng thử lại sau ít phút.", status: 503 };
-  return { error: "Dịch vụ AI tạm thời không khả dụng.", status: 502 };
-}
-
-// Dặn AI không bọc ```json ở prompt rồi, nhưng vẫn strip phòng hờ trước khi parse (đúng
-// ghi chú tích hợp trong docs/prompt-ai-tao-bai-hoc.md mục 4.1).
-function stripJsonFence(text) {
-  return (text || "").replace(/```json|```/g, "").trim();
 }
 
 function wordCount(text) {
