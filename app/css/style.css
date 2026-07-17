@@ -618,6 +618,7 @@ textarea:focus {
   margin: 0;
 }
 
+.lesson-back-btn,
 .lesson-fav-btn {
   flex-shrink: 0;
   width: var(--touch-min);
@@ -630,6 +631,16 @@ textarea:focus {
   box-shadow: var(--shadow-card);
 }
 
+.lesson-back-btn {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lesson-header-row .screen-title {
+  flex: 1;
+}
+
 .content-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -640,14 +651,16 @@ textarea:focus {
 .icon-toggle-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  min-height: 36px;
-  padding: 0 12px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow-card);
@@ -657,6 +670,83 @@ textarea:focus {
   color: #fff;
   background: var(--purple);
   border-color: var(--purple);
+}
+
+.icon-toggle-btn .translate-icon {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* ===== Icon loa/giải thích dưới mỗi câu ===== */
+.content-item-actions {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.sentence-icon-btn {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  background: var(--surface-soft);
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* ===== Thanh audio (thay cho nút Trước/Sau cũ) ===== */
+.audio-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 8px 10px;
+  margin-top: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.audio-btn {
+  flex-shrink: 0;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.audio-btn-play {
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.audio-btn-speed {
+  font-size: 0.75rem;
+  font-weight: 800;
+  min-width: 34px;
+}
+
+.audio-volume-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.audio-volume-slider {
+  position: absolute;
+  bottom: 46px;
+  left: 50%;
+  width: 80px;
+  transform: translateX(-50%) rotate(-90deg);
+  transform-origin: center;
+  z-index: 60;
 }
 
 .content-page {
@@ -770,6 +860,18 @@ textarea:focus {
 
 .word-popover-word {
   font-weight: 700;
+  flex: 1;
+}
+
+.word-popover-speak-btn {
+  flex-shrink: 0;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 50%;
+  background: var(--surface-soft);
+  border: none;
+  font-size: 0.8rem;
+  cursor: pointer;
 }
 
 .word-popover-colloc {

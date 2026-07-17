@@ -1,11 +1,14 @@
 // app/js/views/lesson.js — render TỪ 1 bản ghi "lessons", KHÔNG gọi AI để sinh nội dung
-// (kiến trúc Lesson-first). "Hỏi AI" (word_lookup) là action lẻ, realtime, không lưu —
-// khác hoàn toàn với generate_lesson/analyze_user_text.
+// (kiến trúc Lesson-first). "Hỏi AI" (word_lookup, sentence_tip) là action lẻ, realtime,
+// không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
+// app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
 import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite } from "../db.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
+import { createPlayer, isTTSSupported } from "../tts.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
+const SPEEDS = [0.75, 1, 1.25, 1.5];
 
 export async function renderLessonDetail(mount, params) {
   const lessonId = params?.[0];
@@ -33,15 +36,35 @@ export async function renderLessonDetail(mount, params) {
     completedExercises: new Set(progress?.completed_exercises || []),
     xpEarned: progress?.xp_earned || 0,
     showAllContent: false,
-    showTranslation: false,
+    showTranslation: true, // luôn hiện dịch mặc định, tắt được qua icon
     isFavorite: !!lesson.is_favorite,
   };
-  // Cache trong phiên xem bài này — rê lại đúng 1 từ không gọi AI thêm lần nữa.
+  // Cache trong phiên xem bài này — tra lại đúng 1 từ không gọi AI thêm lần nữa.
   const wordLookupCache = new Map();
+  const ttsSupported = isTTSSupported();
+
+  // Player dùng CHUNG cho toàn bộ tab "Nội dung" — nạp 1 lần với TẤT CẢ đoạn/lượt thoại
+  // (không phụ thuộc đang xem "Từng câu" hay "Tất cả"), để nút back/tua/lặp lại của thanh
+  // audio có thể đi xuyên trang khi ở chế độ "Từng câu" mà không cần tải lại player.
+  let ttsLoaded = false;
+  let lastSyncedPage = state.page;
+  let renderContentBodyFn = null;
+  const ttsPlayer = createPlayer({
+    onStateChange: (s) => {
+      updateAudioBarUI(s);
+      if (!state.showAllContent && s.itemIndex !== lastSyncedPage) {
+        lastSyncedPage = s.itemIndex;
+        state.page = s.itemIndex;
+        saveProgress();
+        if (renderContentBodyFn) renderContentBodyFn();
+      }
+    },
+  });
 
   mount.innerHTML = `
     <div class="screen">
       <div class="lesson-header-row">
+        <button type="button" class="lesson-back-btn" id="lesson-back-btn" aria-label="Quay lại">←</button>
         <h1 class="screen-title">${escapeHtml(lesson.title_vi || lesson.title)}</h1>
         <button type="button" class="lesson-fav-btn" id="lesson-fav-btn" aria-label="Yêu thích">${state.isFavorite ? "❤️" : "🤍"}</button>
       </div>
@@ -54,6 +77,14 @@ export async function renderLessonDetail(mount, params) {
       <div id="lesson-panel"></div>
     </div>
   `;
+
+  mount.querySelector("#lesson-back-btn").addEventListener("click", () => {
+    ttsPlayer.stop();
+    // history.back() thay vì navigate cố định "/lessons" — quay đúng về chỗ đã vào bài
+    // (Bài học / Yêu thích / Lịch sử đều dẫn tới đây), hash router hoạt động đúng với
+    // Back trình duyệt nên history.back() an toàn.
+    history.back();
+  });
 
   mount.querySelector("#lesson-fav-btn").addEventListener("click", async (e) => {
     const btn = e.currentTarget;
@@ -74,6 +105,10 @@ export async function renderLessonDetail(mount, params) {
     btn.addEventListener("click", () => {
       mount.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
+      if (state.tab === "content" && btn.dataset.tab !== "content") {
+        ttsPlayer.stop();
+        renderContentBodyFn = null;
+      }
       state.tab = btn.dataset.tab;
       renderPanel();
     });
@@ -90,104 +125,188 @@ export async function renderLessonDetail(mount, params) {
     return renderExercisesTab(panel);
   }
 
-  // ====== Tab Nội dung (trước là "Đoạn") ======
+  // ====== Tab Nội dung ======
   function renderContentTab(panel) {
     const pages = lesson.content || [];
     panel.innerHTML = `
       <div class="content-toolbar">
-        <button type="button" class="icon-toggle-btn ${state.showAllContent ? "active" : ""}" id="toggle-all-btn" title="Xem tất cả / từng câu">
-          ${state.showAllContent ? "☰ Tất cả" : "▤ Từng câu"}
-        </button>
-        <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Hiện/ẩn bản dịch">
-          🌐 Dịch
+        <button type="button" class="icon-toggle-btn ${state.showAllContent ? "active" : ""}" id="toggle-all-btn" title="Xem tất cả">☰</button>
+        <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">
+          <span class="translate-icon">文A</span>
         </button>
       </div>
       <div id="content-body"></div>
+      ${ttsSupported ? audioBarHtml() : ""}
     `;
 
     panel.querySelector("#toggle-all-btn").addEventListener("click", () => {
       state.showAllContent = !state.showAllContent;
-      renderPanel();
+      panel.querySelector("#toggle-all-btn").classList.toggle("active", state.showAllContent);
+      renderContentBody();
     });
     panel.querySelector("#toggle-translate-btn").addEventListener("click", () => {
       state.showTranslation = !state.showTranslation;
-      renderPanel();
+      panel.querySelector("#toggle-translate-btn").classList.toggle("active", state.showTranslation);
+      renderContentBody();
     });
 
-    const body = panel.querySelector("#content-body");
-    const idx = Math.min(state.page, Math.max(0, pages.length - 1));
-    const displayedPages = state.showAllContent ? pages : [pages[idx]];
-
-    if (state.showAllContent) {
-      // Yêu cầu: xem "Tất cả" không tách card riêng từng đoạn — gộp CHUNG 1 card, các đoạn
-      // ngăn cách bằng 1 đường gạch đậm màu (.content-divider), không phải card/border riêng.
-      body.innerHTML = `
-        <div class="content-page">
-          ${displayedPages
-            .map(
-              (item, i) => `
-            ${i > 0 ? '<div class="content-divider"></div>' : ""}
-            ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
-            <div class="content-text">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
-            ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-          `
-            )
-            .join("")}
-        </div>
-      `;
-    } else {
-      body.innerHTML = `
-        <div class="content-page">
-          <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
-          ${displayedPages[0]?.speaker ? `<div class="speaker-name">${escapeHtml(displayedPages[0].speaker)}</div>` : ""}
-          <div class="content-text">${renderInteractiveHtml(displayedPages[0]?.text || "", lesson.vocabulary || [])}</div>
-          ${state.showTranslation ? `<div class="content-translation">${escapeHtml(displayedPages[0]?.translation || "")}</div>` : ""}
-        </div>
-        <div class="content-nav">
-          <button type="button" class="btn btn-ghost" id="prev-page" ${idx === 0 ? "disabled" : ""}>← Trước</button>
-          <button type="button" class="btn btn-ghost" id="next-page" ${idx === pages.length - 1 ? "disabled" : ""}>Sau →</button>
-        </div>
-      `;
-      body.querySelector("#prev-page")?.addEventListener("click", () => {
-        state.page = Math.max(0, idx - 1);
-        saveProgress();
-        renderPanel();
-      });
-      body.querySelector("#next-page")?.addEventListener("click", () => {
-        state.page = Math.min(pages.length - 1, idx + 1);
-        saveProgress();
-        renderPanel();
-      });
+    if (ttsSupported) {
+      wireAudioBar(panel);
+      if (!ttsLoaded) {
+        ttsPlayer.load(
+          pages.map((p) => p?.text || ""),
+          Math.min(state.page, Math.max(0, pages.length - 1))
+        );
+        ttsLoaded = true;
+      }
+      updateAudioBarUI(ttsPlayer.getState());
     }
 
-    // Gắn tương tác rê/chạm cho TỪNG khối .content-text vừa render.
-    body.querySelectorAll(".content-text").forEach((el, i) => {
-      wireInteractiveWords(el, displayedPages[i]?.text || "");
+    renderContentBodyFn = renderContentBody;
+    renderContentBody();
+
+    function renderContentBody() {
+      const body = panel.querySelector("#content-body");
+      const idx = Math.min(state.page, Math.max(0, pages.length - 1));
+
+      if (state.showAllContent) {
+        body.innerHTML = `
+          <div class="content-page">
+            ${pages
+              .map(
+                (item, i) => `
+              ${i > 0 ? '<div class="content-divider"></div>' : ""}
+              ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
+              <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
+              ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
+              ${contentActionsHtml(i)}
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      } else {
+        const item = pages[idx];
+        body.innerHTML = `
+          <div class="content-page">
+            <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
+            ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
+            <div class="content-text" data-item-idx="${idx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
+            ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
+            ${contentActionsHtml(idx)}
+          </div>
+        `;
+      }
+
+      body.querySelectorAll(".content-text").forEach((el) => {
+        const itemIdx = Number(el.dataset.itemIdx);
+        wireInteractiveWords(el, pages[itemIdx]?.text || "");
+      });
+      body.querySelectorAll(".sentence-icon-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const itemIdx = Number(btn.dataset.idx);
+          const text = pages[itemIdx]?.text || "";
+          if (btn.dataset.action === "speak") {
+            ttsPlayer.speakOnce(text);
+          } else {
+            showSentenceExplain(btn, text);
+          }
+        });
+      });
+    }
+  }
+
+  function contentActionsHtml(idx) {
+    if (!ttsSupported) {
+      return `<div class="content-item-actions"><button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">💬</button></div>`;
+    }
+    return `
+      <div class="content-item-actions">
+        <button type="button" class="sentence-icon-btn" data-action="speak" data-idx="${idx}" title="Đọc câu này">🔊</button>
+        <button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">💬</button>
+      </div>
+    `;
+  }
+
+  async function showSentenceExplain(anchorEl, sentence) {
+    showPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang phân tích câu...</div>`);
+    const res = await callChatAction("sentence_tip", { sentence });
+    const text = res.ok ? res.content : res.error || "Không lấy được giải thích.";
+    showPopoverHtml(anchorEl, `<div class="word-popover-meaning">${escapeHtml(text)}</div>`);
+  }
+
+  // ====== Thanh audio (chỉ hiện khi trình duyệt hỗ trợ Web Speech API) ======
+  function audioBarHtml() {
+    return `
+      <div class="audio-bar" id="audio-bar">
+        <button type="button" class="audio-btn" id="audio-back" title="Về đoạn trước">⏮</button>
+        <button type="button" class="audio-btn" id="audio-back10" title="Lùi 10 giây">⏪</button>
+        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">▶️</button>
+        <button type="button" class="audio-btn" id="audio-fwd10" title="Tiến 10 giây">⏩</button>
+        <div class="audio-volume-wrap">
+          <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">🔊</button>
+          <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
+        </div>
+        <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">🔁</button>
+        <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
+      </div>
+    `;
+  }
+
+  function wireAudioBar(panel) {
+    panel.querySelector("#audio-back").addEventListener("click", () => ttsPlayer.back());
+    panel.querySelector("#audio-back10").addEventListener("click", () => ttsPlayer.skip(-10));
+    panel.querySelector("#audio-fwd10").addEventListener("click", () => ttsPlayer.skip(10));
+    panel.querySelector("#audio-replay").addEventListener("click", () => ttsPlayer.replay());
+    panel.querySelector("#audio-play").addEventListener("click", () => ttsPlayer.playPause());
+
+    const volBtn = panel.querySelector("#audio-volume-btn");
+    const volSlider = panel.querySelector("#audio-volume-slider");
+    volBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      volSlider.hidden = !volSlider.hidden;
     });
+    volSlider.addEventListener("input", (e) => ttsPlayer.setVolume(Number(e.target.value)));
+    document.addEventListener("click", (e) => {
+      if (!volSlider.hidden && !volBtn.contains(e.target) && !volSlider.contains(e.target)) volSlider.hidden = true;
+    });
+
+    panel.querySelector("#audio-speed").addEventListener("click", () => {
+      const cur = ttsPlayer.getState().rate;
+      const next = SPEEDS[(SPEEDS.indexOf(cur) + 1) % SPEEDS.length];
+      ttsPlayer.setRate(next);
+    });
+  }
+
+  function updateAudioBarUI(s) {
+    const playBtn = document.getElementById("audio-play");
+    const speedBtn = document.getElementById("audio-speed");
+    const volSlider = document.getElementById("audio-volume-slider");
+    if (playBtn) playBtn.textContent = s.playing ? "⏸" : "▶️";
+    if (speedBtn) speedBtn.textContent = `${s.rate}x`;
+    if (volSlider) volSlider.value = String(s.volume);
   }
 
   function wireInteractiveWords(container, sentence) {
     container.querySelectorAll("[data-token-idx]").forEach((span) => {
       const word = span.textContent;
-      let hoverTimer = null;
+      // CHỈ trigger bằng click/chạm — hiện NGAY, không delay (đó là lỗi trước: chờ 250ms).
+      // KHÔNG trigger bằng mouseenter nữa: chuột chỉ LƯỚT NGANG QUA từ (vd đang di chuyển
+      // tới nút khác) cũng đủ kích hoạt tra từ, gây gọi AI thừa và tooltip bị đè lẫn nhau
+      // giữa từ vừa lướt qua và từ vừa bấm.
       const trigger = () => showWordTooltip(span, word, sentence);
-      span.addEventListener("mouseenter", () => {
-        hoverTimer = setTimeout(trigger, 250);
-      });
-      span.addEventListener("mouseleave", () => clearTimeout(hoverTimer));
       span.addEventListener("click", (e) => {
         e.stopPropagation();
-        clearTimeout(hoverTimer);
         trigger();
       });
     });
   }
 
-  // Tooltip TỐI GIẢN: level (màu theo cấp độ) + từ + nghĩa + cụm từ đi kèm (nếu có) — không
-  // giải thích, không ví dụ, không lưu ý. Dữ liệu từ action "word_lookup" (JSON), khác hẳn
-  // word_tip/word_explain (trả text tự do dài, không có level).
+  // Tooltip TỐI GIẢN: level (màu theo cấp độ) + từ + nghĩa + cụm từ đi kèm (nếu có) + icon
+  // loa đọc từ/cụm đó — không giải thích, không ví dụ, không lưu ý.
   async function showWordTooltip(anchorEl, word, sentence) {
-    showWordPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang tra...</div>`);
+    showPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang tra...</div>`);
 
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
     let data = wordLookupCache.get(cacheKey);
@@ -204,20 +323,25 @@ export async function renderLessonDetail(mount, params) {
     }
 
     if (!data || !CEFR_LEVELS.includes(data.level)) {
-      showWordPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
+      showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
       return;
     }
-    showWordPopoverHtml(
+    showPopoverHtml(
       anchorEl,
       `
       <div class="word-popover-head">
         <span class="word-popover-level" data-level="${escapeHtml(data.level)}">${escapeHtml(data.level)}</span>
         <span class="word-popover-word">${escapeHtml(word)}</span>
+        ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="Đọc từ này">🔊</button>` : ""}
       </div>
       <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
       ${data.collocation ? `<div class="word-popover-colloc">${escapeHtml(data.collocation)}</div>` : ""}
     `
     );
+    document.getElementById("word-popover-speak")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      ttsPlayer.speakOnce(data.collocation || word);
+    });
   }
 
   // ====== Tab Từ vựng ======
@@ -350,16 +474,28 @@ export async function renderLessonDetail(mount, params) {
     });
   }
 
-  function showWordPopoverHtml(anchorEl, html) {
+  // Popover DÙNG CHUNG cho tooltip từ vựng + giải thích câu — tự định vị lại nếu không đủ
+  // chỗ bên dưới (hiện lên TRÊN từ thay vì tràn ra ngoài màn hình).
+  function showPopoverHtml(anchorEl, html) {
     document.getElementById("word-popover")?.remove();
     const popover = document.createElement("div");
     popover.id = "word-popover";
     popover.className = "word-popover";
     popover.innerHTML = html;
     document.body.appendChild(popover);
+
     const rect = anchorEl.getBoundingClientRect();
-    popover.style.top = `${window.scrollY + rect.bottom + 6}px`;
-    popover.style.left = `${Math.max(8, rect.left)}px`;
+    const popRect = popover.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top =
+      spaceBelow < popRect.height + 16 && rect.top > popRect.height + 16
+        ? window.scrollY + rect.top - popRect.height - 6
+        : window.scrollY + rect.bottom + 6;
+    const maxLeft = window.innerWidth - popRect.width - 8;
+    const left = Math.max(8, Math.min(rect.left, maxLeft));
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+
     setTimeout(() => {
       const closeHandler = (e) => {
         if (!popover.contains(e.target)) {
@@ -372,6 +508,7 @@ export async function renderLessonDetail(mount, params) {
   }
 
   return function teardown() {
+    ttsPlayer.stop();
     document.getElementById("word-popover")?.remove();
   };
 }
@@ -413,8 +550,8 @@ function tokenizeWords(text) {
 }
 
 // Bọc TẤT CẢ từ trong "text" thành span rê/chạm được — không chỉ riêng từ trong
-// "vocabulary" (khác hành vi cũ). Từ khớp vocabulary (kể cả biến thể s/es/ed/ing) vẫn tô
-// màu nổi bật như trước; từ thường khác vẫn tương tác được nhưng không tô màu.
+// "vocabulary". Từ khớp vocabulary (kể cả biến thể s/es/ed/ing) vẫn tô màu nổi bật; từ
+// thường khác vẫn tương tác được nhưng không tô màu (chữ đen).
 function renderInteractiveHtml(text, vocabulary) {
   if (!text) return "";
   const vocabMap = buildVocabMap(vocabulary);
