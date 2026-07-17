@@ -69,7 +69,8 @@ SCHEMA JSON:
     {
       "speaker": "chỉ có với dialogue",
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
-      "translation": "bản dịch tiếng Việt"
+      "translation": "bản dịch tiếng Việt",
+      "explanation": "giải thích ngắn gọn (2-3 dòng, tiếng Việt) về cấu trúc ngữ pháp/thì đang dùng trong ĐÚNG câu/đoạn này, vừa sức cấp độ người học — để hiển thị ngay khi bấm xem giải thích, không phân tích chung chung"
     }
   ],
   "vocabulary": [
@@ -150,3 +151,4 @@ nguồn gốc (hữu ích cho Thống kê sau này). Các trường chỉ luồn
    hoặc để AI xử lý — nếu muốn AI xử lý, thêm vào system prompt: "Nếu văn bản không phải
    tiếng Anh, trả về JSON {\"error\": \"not_english\"} và không làm gì thêm."
 4. **Strip trước khi parse**: như luồng kia — `text.replace(/```json|```/g, "").trim()` trong try/catch.
+5. **`content[].explanation`** (bổ sung sau lần đầu tích hợp): giống luồng "AI tạo bài học" — sinh sẵn giải thích ngữ pháp LÚC PHÂN TÍCH, không gọi AI lại khi bấm icon giải thích. Bài học tạo trước khi có trường này cần fallback gọi `sentence_tip`.

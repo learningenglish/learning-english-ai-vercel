@@ -169,7 +169,8 @@ SCHEMA JSON:
     {
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
       "text": "câu/đoạn tiếng Anh",
-      "translation": "bản dịch tiếng Việt của câu/đoạn này"
+      "translation": "bản dịch tiếng Việt của câu/đoạn này",
+      "explanation": "giải thích ngắn gọn (2-3 dòng, tiếng Việt) về cấu trúc ngữ pháp/thì đang dùng trong ĐÚNG câu/đoạn này — để hiển thị ngay khi người học bấm xem giải thích, không phân tích chung chung"
     }
   ],
   "vocabulary": [
@@ -285,7 +286,8 @@ SCHEMA JSON:
     {
       "speaker": "chỉ có với dialogue",
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
-      "translation": "bản dịch tiếng Việt"
+      "translation": "bản dịch tiếng Việt",
+      "explanation": "giải thích ngắn gọn (2-3 dòng, tiếng Việt) về cấu trúc ngữ pháp/thì đang dùng trong ĐÚNG câu/đoạn này, vừa sức cấp độ người học — để hiển thị ngay khi bấm xem giải thích, không phân tích chung chung"
     }
   ],
   "vocabulary": [

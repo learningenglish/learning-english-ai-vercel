@@ -678,11 +678,20 @@ textarea:focus {
   letter-spacing: -0.02em;
 }
 
-/* ===== Icon loa/giải thích dưới mỗi câu ===== */
+/* ===== Hàng đầu mỗi đoạn/lượt thoại: tên nhân vật (trái) đối xứng icon loa/giải thích
+   (phải) — cùng 1 hàng, không còn xếp icon rời phía dưới đoạn văn nữa. ===== */
+.content-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .content-item-actions {
   display: flex;
   gap: 6px;
-  margin: 8px 0 4px;
+  flex-shrink: 0;
 }
 
 .sentence-icon-btn {
@@ -695,17 +704,23 @@ textarea:focus {
   cursor: pointer;
 }
 
-/* ===== Thanh audio (thay cho nút Trước/Sau cũ) ===== */
+/* ===== Thanh audio — CỐ ĐỊNH đúng vị trí thanh điều hướng ngoài (thay thế hoàn toàn khi
+   đang ở tab Nội dung, xem app.js::renderBottomNav ẩn #bottom-nav cho route /lesson). ===== */
 .audio-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  height: var(--nav-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
   background: var(--surface);
   border-radius: 999px;
-  padding: 8px 10px;
-  margin-top: 14px;
-  box-shadow: var(--shadow-card);
+  padding: 0 10px;
+  box-shadow: 0 12px 30px rgba(31, 41, 55, 0.15);
+  z-index: 50;
 }
 
 .audio-btn {
@@ -761,7 +776,6 @@ textarea:focus {
 .speaker-name {
   color: var(--purple);
   font-weight: 700;
-  margin-bottom: 8px;
 }
 
 .content-text {

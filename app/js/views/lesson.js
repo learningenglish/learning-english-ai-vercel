@@ -10,6 +10,66 @@ import { createPlayer, isTTSSupported } from "../tts.js";
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 
+// Danh sách tên phổ biến để đoán giới tính nhân vật hội thoại — KHÔNG đầy đủ tuyệt đối
+// (không có API nào cho việc này), chỉ đủ bao phủ phần lớn tên AI hay đặt cho nhân vật.
+// Vai trò chung chung (Staff/Customer/Guest...) hoặc tên lạ không đoán được -> để
+// computeGenderHints() luân phiên gán, vẫn đảm bảo mỗi nhân vật có 1 giọng riêng biệt.
+const FEMALE_NAMES = new Set([
+  "anna", "mary", "emma", "sarah", "lisa", "laura", "emily", "jessica", "jennifer", "amanda",
+  "michelle", "kelly", "nancy", "susan", "karen", "linda", "patricia", "barbara", "elizabeth",
+  "maria", "helen", "sandra", "donna", "carol", "ruth", "sharon", "cynthia", "kathleen", "amy",
+  "angela", "brenda", "pamela", "nicole", "samantha", "katherine", "christine", "debra", "rachel",
+  "catherine", "carolyn", "janet", "virginia", "olivia", "sophia", "ava", "isabella", "mia",
+  "charlotte", "amelia", "harper", "evelyn", "abigail", "rose", "grace", "chloe", "victoria",
+  "hannah", "alice", "julia", "natalie", "diana", "claire", "megan", "waitress", "mom", "mother",
+]);
+const MALE_NAMES = new Set([
+  "steve", "tim", "john", "james", "robert", "michael", "william", "david", "richard", "joseph",
+  "thomas", "charles", "christopher", "daniel", "matthew", "anthony", "mark", "donald", "paul",
+  "george", "kenneth", "andrew", "joshua", "kevin", "brian", "edward", "ronald", "timothy",
+  "jason", "jeffrey", "ryan", "jacob", "gary", "nicholas", "eric", "jonathan", "stephen", "larry",
+  "justin", "scott", "brandon", "benjamin", "samuel", "frank", "raymond", "alexander", "patrick",
+  "jack", "dennis", "jerry", "tyler", "aaron", "peter", "henry", "adam", "nathan", "waiter",
+  "dad", "father",
+]);
+
+function guessGenderFromName(name) {
+  const n = (name || "").toLowerCase().trim();
+  if (FEMALE_NAMES.has(n)) return "female";
+  if (MALE_NAMES.has(n)) return "male";
+  return null;
+}
+
+// Tính giọng cho MỖI đoạn/lượt thoại 1 LẦN khi mở bài (ổn định suốt phiên xem):
+// - Hội thoại: đoán theo tên nhân vật; cùng 1 người nói luôn cùng 1 giọng suốt bài. Tên
+//   không đoán được (vai trò chung chung, tên lạ) -> gán theo giới đang ÍT DÙNG HƠN để cân
+//   bằng, vẫn đảm bảo phân biệt được các nhân vật.
+// - Bài đọc (không có speaker): luân phiên theo TỪNG ĐOẠN cho đỡ đơn điệu, không liên quan
+//   giới tính nhân vật nào.
+function computeGenderHints(content) {
+  const speakerGenderMap = new Map();
+  let maleCount = 0;
+  let femaleCount = 0;
+  function assignBalanced() {
+    if (maleCount <= femaleCount) {
+      maleCount += 1;
+      return "male";
+    }
+    femaleCount += 1;
+    return "female";
+  }
+  return (content || []).map((item) => {
+    if (!item?.speaker) return assignBalanced();
+    if (speakerGenderMap.has(item.speaker)) return speakerGenderMap.get(item.speaker);
+    let g = guessGenderFromName(item.speaker);
+    if (g === "male") maleCount += 1;
+    else if (g === "female") femaleCount += 1;
+    else g = assignBalanced();
+    speakerGenderMap.set(item.speaker, g);
+    return g;
+  });
+}
+
 export async function renderLessonDetail(mount, params) {
   const lessonId = params?.[0];
   if (!lessonId) {
@@ -42,6 +102,7 @@ export async function renderLessonDetail(mount, params) {
   // Cache trong phiên xem bài này — tra lại đúng 1 từ không gọi AI thêm lần nữa.
   const wordLookupCache = new Map();
   const ttsSupported = isTTSSupported();
+  const genderHints = computeGenderHints(lesson.content); // 1 giọng cố định/nhân vật suốt bài
 
   // Player dùng CHUNG cho toàn bộ tab "Nội dung" — nạp 1 lần với TẤT CẢ đoạn/lượt thoại
   // (không phụ thuộc đang xem "Từng câu" hay "Tất cả"), để nút back/tua/lặp lại của thanh
@@ -154,7 +215,7 @@ export async function renderLessonDetail(mount, params) {
       wireAudioBar(panel);
       if (!ttsLoaded) {
         ttsPlayer.load(
-          pages.map((p) => p?.text || ""),
+          pages.map((p, i) => ({ text: p?.text || "", genderHint: genderHints[i] })),
           Math.min(state.page, Math.max(0, pages.length - 1))
         );
         ttsLoaded = true;
@@ -176,10 +237,12 @@ export async function renderLessonDetail(mount, params) {
               .map(
                 (item, i) => `
               ${i > 0 ? '<div class="content-divider"></div>' : ""}
-              ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
+              <div class="content-item-header">
+                <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
+                ${contentActionsHtml(i)}
+              </div>
               <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
               ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-              ${contentActionsHtml(i)}
             `
               )
               .join("")}
@@ -190,27 +253,29 @@ export async function renderLessonDetail(mount, params) {
         body.innerHTML = `
           <div class="content-page">
             <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
-            ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
+            <div class="content-item-header">
+              <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
+              ${contentActionsHtml(idx)}
+            </div>
             <div class="content-text" data-item-idx="${idx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
             ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-            ${contentActionsHtml(idx)}
           </div>
         `;
       }
 
       body.querySelectorAll(".content-text").forEach((el) => {
         const itemIdx = Number(el.dataset.itemIdx);
-        wireInteractiveWords(el, pages[itemIdx]?.text || "");
+        wireInteractiveWords(el, pages[itemIdx]?.text || "", genderHints[itemIdx]);
       });
       body.querySelectorAll(".sentence-icon-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           const itemIdx = Number(btn.dataset.idx);
-          const text = pages[itemIdx]?.text || "";
+          const item = pages[itemIdx];
           if (btn.dataset.action === "speak") {
-            ttsPlayer.speakOnce(text);
+            ttsPlayer.speakOnce(item?.text || "", genderHints[itemIdx]);
           } else {
-            showSentenceExplain(btn, text);
+            showSentenceExplain(btn, item);
           }
         });
       });
@@ -229,9 +294,16 @@ export async function renderLessonDetail(mount, params) {
     `;
   }
 
-  async function showSentenceExplain(anchorEl, sentence) {
+  // Bài học tạo SAU khi có tính năng này: "explanation" đã được AI phân tích sẵn LÚC TẠO
+  // BÀI, hiện ra NGAY không cần gọi AI lại. Bài học tạo TRƯỚC đó (chưa có trường này trong
+  // "content") vẫn cần fallback gọi sentence_tip như cũ để không bị hỏng tính năng.
+  async function showSentenceExplain(anchorEl, item) {
+    if (item?.explanation) {
+      showPopoverHtml(anchorEl, `<div class="word-popover-meaning">${escapeHtml(item.explanation)}</div>`);
+      return;
+    }
     showPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang phân tích câu...</div>`);
-    const res = await callChatAction("sentence_tip", { sentence });
+    const res = await callChatAction("sentence_tip", { sentence: item?.text || "" });
     const text = res.ok ? res.content : res.error || "Không lấy được giải thích.";
     showPopoverHtml(anchorEl, `<div class="word-popover-meaning">${escapeHtml(text)}</div>`);
   }
@@ -288,14 +360,14 @@ export async function renderLessonDetail(mount, params) {
     if (volSlider) volSlider.value = String(s.volume);
   }
 
-  function wireInteractiveWords(container, sentence) {
+  function wireInteractiveWords(container, sentence, genderHint) {
     container.querySelectorAll("[data-token-idx]").forEach((span) => {
       const word = span.textContent;
       // CHỈ trigger bằng click/chạm — hiện NGAY, không delay (đó là lỗi trước: chờ 250ms).
       // KHÔNG trigger bằng mouseenter nữa: chuột chỉ LƯỚT NGANG QUA từ (vd đang di chuyển
       // tới nút khác) cũng đủ kích hoạt tra từ, gây gọi AI thừa và tooltip bị đè lẫn nhau
       // giữa từ vừa lướt qua và từ vừa bấm.
-      const trigger = () => showWordTooltip(span, word, sentence);
+      const trigger = () => showWordTooltip(span, word, sentence, genderHint);
       span.addEventListener("click", (e) => {
         e.stopPropagation();
         trigger();
@@ -304,8 +376,9 @@ export async function renderLessonDetail(mount, params) {
   }
 
   // Tooltip TỐI GIẢN: level (màu theo cấp độ) + từ + nghĩa + cụm từ đi kèm (nếu có) + icon
-  // loa đọc từ/cụm đó — không giải thích, không ví dụ, không lưu ý.
-  async function showWordTooltip(anchorEl, word, sentence) {
+  // loa đọc từ/cụm đó (đúng giọng nhân vật của câu chứa từ này) — không giải thích, không
+  // ví dụ, không lưu ý.
+  async function showWordTooltip(anchorEl, word, sentence, genderHint) {
     showPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang tra...</div>`);
 
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
@@ -340,7 +413,7 @@ export async function renderLessonDetail(mount, params) {
     );
     document.getElementById("word-popover-speak")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      ttsPlayer.speakOnce(data.collocation || word);
+      ttsPlayer.speakOnce(data.collocation || word, genderHint);
     });
   }
 

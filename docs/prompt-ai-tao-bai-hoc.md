@@ -72,7 +72,8 @@ SCHEMA JSON:
     {
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
       "text": "câu/đoạn tiếng Anh",
-      "translation": "bản dịch tiếng Việt của câu/đoạn này"
+      "translation": "bản dịch tiếng Việt của câu/đoạn này",
+      "explanation": "giải thích ngắn gọn (2-3 dòng, tiếng Việt) về cấu trúc ngữ pháp/thì đang dùng trong ĐÚNG câu/đoạn này — để hiển thị ngay khi người học bấm xem giải thích, không phân tích chung chung"
     }
   ],
   "vocabulary": [
@@ -151,3 +152,4 @@ nhưng cấp độ là A1), ưu tiên CẤP ĐỘ và NGỮ PHÁP TRỌNG TÂM, 
 4. **Phân trang + bản dịch:** mỗi phần tử của `content` là một "trang" trong giao diện phân trang từng đoạn + bản dịch thật bạn đã dựng — schema này khớp sẵn với UI đó.
 5. **Sinh ảnh bìa:** nếu muốn có ảnh như danh sách bài học hiện tại, thêm vào schema trường `"image_prompt": "mô tả ảnh bằng tiếng Anh"` và dùng nó gọi API sinh ảnh riêng — đừng bắt model tạo bài kiêm luôn việc này.
 6. **Model gọi qua API:** giữ `temperature` khoảng 0.7 cho phần nội dung tự nhiên; nếu JSON hay lỗi, giảm còn 0.4.
+7. **`content[].explanation`** (bổ sung sau lần đầu tích hợp): giải thích ngữ pháp cho ĐÚNG câu/đoạn đó, sinh sẵn LÚC TẠO BÀI — để icon "Giải thích" ở màn học hiện ra ngay, không phải gọi AI lại mỗi lần bấm. Bài học tạo TRƯỚC khi có trường này sẽ không có `explanation`, app cần tự fallback gọi action `sentence_tip` cho những bài cũ đó.

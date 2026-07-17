@@ -53,7 +53,9 @@ function afterRender(path) {
 
 function renderBottomNav(activePath) {
   const nav = document.getElementById("bottom-nav");
-  if (activePath === "/login") {
+  // Màn Bài học chi tiết tự vẽ thanh audio CỐ ĐỊNH ở đúng vị trí này (tab "Nội dung") —
+  // ẩn thanh điều hướng ngoài đi để không chồng 2 thanh cùng lúc (yêu cầu người dùng).
+  if (activePath === "/login" || activePath === "/lesson") {
     nav.hidden = true;
     nav.innerHTML = "";
     return;
