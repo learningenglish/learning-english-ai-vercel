@@ -243,6 +243,10 @@ export async function renderLessonDetail(mount, params) {
 
   function renderGrammarTab(panel) {
     const points = lesson.grammar || [];
+    if (!points.length) {
+      panel.innerHTML = `<p class="muted">Bài này không có điểm ngữ pháp nổi bật để học riêng.</p>`;
+      return;
+    }
     panel.innerHTML = `
       <div class="grammar-list">
         ${points

@@ -358,7 +358,12 @@ function validateLessonShape(parsed) {
   if (!VALID_CONTENT_TYPES.includes(parsed.content_type)) return { valid: false, reason: "invalid_content_type" };
   if (!Array.isArray(parsed.content) || !parsed.content.length) return { valid: false, reason: "empty_content" };
   if (!Array.isArray(parsed.vocabulary) || !parsed.vocabulary.length) return { valid: false, reason: "empty_vocabulary" };
-  if (!Array.isArray(parsed.grammar) || !parsed.grammar.length) return { valid: false, reason: "empty_grammar" };
+  // "grammar" ĐƯỢC PHÉP rỗng — đúng chỉ dẫn trong prompt "chỉ chọn điểm ngữ pháp THỰC SỰ
+  // xuất hiện trong bài", nội dung đơn giản (đặc biệt A1-A2, chủ đề chung chung) có thể
+  // hợp lệ mà không có điểm ngữ pháp nào nổi bật để dạy. Bug thật: bản cũ bắt buộc không
+  // rỗng, khiến những bài học HOÀN TOÀN HỢP LỆ bị từ chối oan (lỗi 502 giả, không phải do
+  // AI hỏng) — đây là nguyên nhân trực tiếp của báo cáo "không tạo được bài học".
+  if (!Array.isArray(parsed.grammar)) return { valid: false, reason: "grammar_not_array" };
   if (!Array.isArray(parsed.exercises) || !parsed.exercises.length) return { valid: false, reason: "empty_exercises" };
   return { valid: true };
 }
