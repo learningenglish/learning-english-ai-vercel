@@ -98,6 +98,7 @@ export async function renderLessonDetail(mount, params) {
     showAllContent: false,
     showTranslation: true, // luôn hiện dịch mặc định, tắt được qua icon
     isFavorite: !!lesson.is_favorite,
+    vocabView: "phrase", // mặc định hiện cụm từ ở tab Từ vựng, chuyển qua "word" để xem từ đơn
   };
   // Cache trong phiên xem bài này — tra lại đúng 1 từ không gọi AI thêm lần nữa.
   const wordLookupCache = new Map();
@@ -252,7 +253,11 @@ export async function renderLessonDetail(mount, params) {
         const item = pages[idx];
         body.innerHTML = `
           <div class="content-page">
-            <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
+            <div class="content-nav">
+              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${idx === 0 ? "disabled" : ""}>‹</button>
+              <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
+              <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${idx === pages.length - 1 ? "disabled" : ""}>›</button>
+            </div>
             <div class="content-item-header">
               <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
               ${contentActionsHtml(idx)}
@@ -261,6 +266,9 @@ export async function renderLessonDetail(mount, params) {
             ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
           </div>
         `;
+        body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(idx - 1));
+        body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(idx + 1));
+        if (item?.text) prefetchWordLookups(item.text);
       }
 
       body.querySelectorAll(".content-text").forEach((el) => {
@@ -280,6 +288,52 @@ export async function renderLessonDetail(mount, params) {
         });
       });
     }
+
+    // Chuyển câu thủ công (nút ‹/›), độc lập với việc trình duyệt có hỗ trợ đọc-to hay
+    // không. Có TTS -> đi qua ttsPlayer để thanh audio + trạng thái phát luôn khớp đúng
+    // đoạn đang xem (onStateChange ở trên tự cập nhật state.page + render lại). Không có
+    // TTS -> tự cập nhật state.page rồi render lại, không đụng gì tới ttsPlayer (gọi vào sẽ
+    // lỗi vì window.speechSynthesis không tồn tại).
+    function goToPage(newIdx) {
+      const clamped = Math.max(0, Math.min(pages.length - 1, newIdx));
+      if (clamped === state.page) return;
+      if (ttsSupported) {
+        ttsPlayer.goTo(clamped);
+      } else {
+        state.page = clamped;
+        saveProgress();
+        renderContentBody();
+      }
+    }
+  }
+
+  // Tra trước (nền, không chặn UI) toàn bộ từ trong CÂU ĐANG HIỂN THỊ — để khi người học
+  // bấm vào 1 từ, dữ liệu đã có sẵn trong cache và tooltip hiện ra NGAY, không cần chờ gọi
+  // AI lúc bấm (đó là lý do có "Đang tra..." trước đây). CHỈ áp dụng cho chế độ "Từng câu"
+  // (gọi từ nhánh else ở trên) — chế độ "Xem tất cả" có thể chứa hàng chục câu, tra trước
+  // hết sẽ tốn quá nhiều lượt gọi AI so với số từ người học thực sự bấm.
+  function prefetchWordLookups(sentence) {
+    // Dùng ĐÚNG computeInteractiveSpans() để tra trước theo từng ĐƠN VỊ BẤM ĐƯỢC thật sự
+    // (cụm đã gộp thành 1 khối, hoặc từ đơn lẻ) — không tra trước RIÊNG từng từ trong 1 cụm
+    // (vd "give"/"up" tách rời), vì lúc bấm span đã gộp gửi ĐÚNG chuỗi cụm ("give up") làm
+    // "word", tra rời sẽ tạo cache-key khác không bao giờ dùng tới (vừa sai vừa tốn thêm lượt AI).
+    const spans = computeInteractiveSpans(sentence, lesson.vocabulary || []);
+    const seen = new Set();
+    spans.forEach((s) => {
+      const key = `${s.text.toLowerCase()}|${sentence}`;
+      if (seen.has(key) || wordLookupCache.has(key)) return;
+      seen.add(key);
+      callChatAction("word_lookup", { word: s.text, sentence })
+        .then((res) => {
+          if (!res.ok) return;
+          try {
+            wordLookupCache.set(key, JSON.parse(res.content));
+          } catch {
+            // Bỏ qua — tra lỗi thì lúc bấm sẽ tự fetch lại (nhánh cache-miss trong showWordTooltip).
+          }
+        })
+        .catch(() => {});
+    });
   }
 
   function contentActionsHtml(idx) {
@@ -379,11 +433,14 @@ export async function renderLessonDetail(mount, params) {
   // loa đọc từ/cụm đó (đúng giọng nhân vật của câu chứa từ này) — không giải thích, không
   // ví dụ, không lưu ý.
   async function showWordTooltip(anchorEl, word, sentence, genderHint) {
-    showPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang tra...</div>`);
-
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
     let data = wordLookupCache.get(cacheKey);
+
+    // Bình thường đã có sẵn trong cache nhờ prefetchWordLookups() chạy nền khi hiện câu này
+    // -> tooltip hiện NGAY, không cần bước "Đang tra...". Chỉ khi cache thật sự chưa có
+    // (vd bấm quá nhanh trước khi prefetch xong) mới hiện spinner KHÔNG CHỮ chờ kết quả.
     if (!data) {
+      showPopoverHtml(anchorEl, `<div class="word-popover-loading"><span class="spinner spinner-sm"></span></div>`);
       const res = await callChatAction("word_lookup", { word, sentence });
       if (res.ok) {
         try {
@@ -418,24 +475,69 @@ export async function renderLessonDetail(mount, params) {
   }
 
   // ====== Tab Từ vựng ======
+  // "word" trong vocabulary có thể là 1 từ đơn hoặc 1 cụm từ (đúng schema "từ hoặc cụm từ"
+  // trong 2 file prompt) — toggle Cụm/Từ chỉ LỌC lại danh sách có sẵn theo việc "word" có
+  // khoảng trắng hay không, không gọi thêm AI.
+  function isPhrase(word) {
+    return /\s/.test((word || "").trim());
+  }
+
   function renderVocabularyTab(panel) {
-    const words = lesson.vocabulary || [];
+    const allWords = lesson.vocabulary || [];
     panel.innerHTML = `
-      <div class="vocab-list">
-        ${words
-          .map(
-            (w) => `
-          <div class="vocab-item ${w.is_specialized ? "vocab-item-specialized" : ""}">
-            <div class="vocab-word">${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span></div>
-            <div class="vocab-type muted">${escapeHtml(w.type || "")}</div>
-            <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
-            <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
-          </div>
-        `
-          )
-          .join("")}
+      <div class="content-toolbar">
+        <button type="button" class="icon-toggle-btn" id="vocab-view-phrase" title="Xem cụm từ">Cụm</button>
+        <button type="button" class="icon-toggle-btn" id="vocab-view-word" title="Xem từ đơn">Từ</button>
       </div>
+      <div id="vocab-list-body"></div>
     `;
+    panel.querySelector("#vocab-view-phrase").addEventListener("click", () => {
+      state.vocabView = "phrase";
+      renderVocabBody();
+    });
+    panel.querySelector("#vocab-view-word").addEventListener("click", () => {
+      state.vocabView = "word";
+      renderVocabBody();
+    });
+    renderVocabBody();
+
+    function renderVocabBody() {
+      panel.querySelector("#vocab-view-phrase").classList.toggle("active", state.vocabView === "phrase");
+      panel.querySelector("#vocab-view-word").classList.toggle("active", state.vocabView === "word");
+      const words = allWords.filter((w) => isPhrase(w.word) === (state.vocabView === "phrase"));
+      const body = panel.querySelector("#vocab-list-body");
+      if (!words.length) {
+        body.innerHTML = `<p class="muted">${state.vocabView === "phrase" ? "Bài này không có cụm từ nổi bật." : "Bài này không có từ đơn nổi bật."}</p>`;
+        return;
+      }
+      body.innerHTML = `
+        <div class="vocab-list">
+          ${words
+            .map(
+              (w) => `
+            <div class="vocab-item ${w.is_specialized ? "vocab-item-specialized" : ""}">
+              <div class="vocab-word-row">
+                <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""}" data-word="${escapeHtml(w.word)}">
+                  ${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span>
+                </div>
+                ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">🔊</button>` : ""}
+              </div>
+              <div class="vocab-type muted">${escapeHtml(w.type || "")}</div>
+              <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
+              <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `;
+      if (ttsSupported) {
+        // Cả icon loa lẫn bấm thẳng vào từ đều phát âm — không bắt buộc phải dùng icon.
+        body.querySelectorAll(".vocab-speak-btn, .vocab-word-clickable").forEach((el) => {
+          el.addEventListener("click", () => ttsPlayer.speakOnce(el.dataset.word));
+        });
+      }
+    }
   }
 
   function renderGrammarTab(panel) {
@@ -622,23 +724,77 @@ function tokenizeWords(text) {
   return { tokens };
 }
 
-// Bọc TẤT CẢ từ trong "text" thành span rê/chạm được — không chỉ riêng từ trong
-// "vocabulary". Từ khớp vocabulary (kể cả biến thể s/es/ed/ing) vẫn tô màu nổi bật; từ
-// thường khác vẫn tương tác được nhưng không tô màu (chữ đen).
+// Xác định các "đơn vị bấm được" trong 1 câu: mục "vocabulary" là CỤM (nhiều từ, vd "give
+// up") được GỘP thành 1 khối bấm được DUY NHẤT bao trọn cả cụm, thay vì để rời từng từ
+// "give"/"up" bấm riêng — đúng hành vi "gộp cụm" đã dùng ở app cũ
+// (learning-english-ai/render/render-interactive.js: khớp cụm DÀI NHẤT trước, các token đã
+// dùng cho 1 cụm thì không dùng lại cho cụm khác). Từ còn lại (không thuộc cụm nào) vẫn bấm
+// riêng từng từ như cũ. Dùng CHUNG cho dựng HTML (renderInteractiveHtml) lẫn tra trước
+// (prefetchWordLookups) để chỉ có 1 nơi định nghĩa "thế nào là khớp cụm".
+function computeInteractiveSpans(text, vocabulary) {
+  const { tokens } = tokenizeWords(text);
+  if (!tokens.length) return [];
+  const vocabMap = buildVocabMap(vocabulary);
+
+  const phraseEntries = (vocabulary || [])
+    .filter((w) => w.word && /\s/.test(w.word.trim()))
+    .map((w) => ({ entry: w, words: w.word.trim().toLowerCase().split(/\s+/) }))
+    .sort((a, b) => b.words.length - a.words.length || b.entry.word.length - a.entry.word.length);
+
+  const usedTokenIdx = new Set();
+  const matchByStart = new Map(); // token index bắt đầu -> { endIdx, entry }
+  phraseEntries.forEach(({ entry, words }) => {
+    for (let i = 0; i <= tokens.length - words.length; i++) {
+      if (usedTokenIdx.has(i)) continue;
+      let ok = true;
+      for (let j = 0; j < words.length; j++) {
+        const idx = i + j;
+        if (usedTokenIdx.has(idx) || !tokens[idx] || tokens[idx].word.toLowerCase() !== words[j]) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        for (let j = 0; j < words.length; j++) usedTokenIdx.add(i + j);
+        matchByStart.set(i, { endIdx: i + words.length - 1, entry });
+        break; // 1 cụm chỉ cần khớp lần xuất hiện đầu tiên trong câu là đủ để bấm/tra
+      }
+    }
+  });
+
+  const spans = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const phrase = matchByStart.get(i);
+    if (phrase) {
+      const startTok = tokens[i];
+      const endTok = tokens[phrase.endIdx];
+      spans.push({ text: text.slice(startTok.start, endTok.end), start: startTok.start, end: endTok.end, entry: phrase.entry });
+      i = phrase.endIdx + 1;
+    } else {
+      const t = tokens[i];
+      spans.push({ text: t.word, start: t.start, end: t.end, entry: findVocabEntry(t.word, vocabMap) });
+      i += 1;
+    }
+  }
+  return spans;
+}
+
+// Bọc TẤT CẢ từ/cụm trong "text" thành span rê/chạm được — không chỉ riêng từ trong
+// "vocabulary". Từ/cụm khớp vocabulary (kể cả biến thể s/es/ed/ing với từ đơn) vẫn tô màu
+// nổi bật; từ thường khác vẫn tương tác được nhưng không tô màu (chữ đen).
 function renderInteractiveHtml(text, vocabulary) {
   if (!text) return "";
-  const vocabMap = buildVocabMap(vocabulary);
-  const { tokens } = tokenizeWords(text);
-  if (!tokens.length) return escapeHtml(text);
+  const spans = computeInteractiveSpans(text, vocabulary);
+  if (!spans.length) return escapeHtml(text);
 
   let html = "";
   let cursor = 0;
-  tokens.forEach((t, i) => {
-    html += escapeHtml(text.slice(cursor, t.start));
-    const entry = findVocabEntry(t.word, vocabMap);
-    const cls = entry ? (entry.is_specialized ? "vocab-highlight-specialized" : "vocab-highlight") : "hover-word";
-    html += `<span class="${cls}" data-token-idx="${i}">${escapeHtml(t.word)}</span>`;
-    cursor = t.end;
+  spans.forEach((s, i) => {
+    html += escapeHtml(text.slice(cursor, s.start));
+    const cls = s.entry ? (s.entry.is_specialized ? "vocab-highlight-specialized" : "vocab-highlight") : "hover-word";
+    html += `<span class="${cls}" data-token-idx="${i}">${escapeHtml(s.text)}</span>`;
+    cursor = s.end;
   });
   html += escapeHtml(text.slice(cursor));
   return html;

@@ -104,16 +104,14 @@ export function renderCreateLesson(mount, params) {
             <textarea name="situation" rows="2" placeholder="VD: Khách phàn nàn vì phòng chưa dọn, nhân viên xin lỗi và xử lý"></textarea>
           </label>
           <label class="field">
-            <span>Ngữ pháp trọng tâm</span>
-            <input type="text" name="grammar_level" placeholder="VD: B1 - Trung cấp" />
-          </label>
-          <label class="field">
-            <span>Mật độ từ chuyên ngành</span>
+            <span>Lượng từ chuyên ngành</span>
             <select name="term_density">
               <option value="0">Không</option>
-              <option value="10">10%</option>
-              <option value="20">20%</option>
-              <option value="30">30%</option>
+              <option value="10">10 từ</option>
+              <option value="20">20 từ</option>
+              <option value="30">30 từ</option>
+              <option value="40">40 từ</option>
+              <option value="50">50 từ</option>
             </select>
           </label>
         </details>
@@ -160,7 +158,6 @@ export function renderCreateLesson(mount, params) {
       form.industry.value = "Khách sạn";
       form.product.value = "Dịch vụ đặt phòng khách sạn";
       form.situation.value = "Khách phàn nàn vì phòng chưa dọn, nhân viên xin lỗi và xử lý";
-      form.grammar_level.value = "B2 - Nâng cao";
       form.term_density.value = "30";
       panel.querySelector("details.advanced-options").open = true;
     });
@@ -178,7 +175,6 @@ export function renderCreateLesson(mount, params) {
         industry: (fd.get("industry") || "").trim(),
         product: (fd.get("product") || "").trim(),
         situation: (fd.get("situation") || "").trim(),
-        grammar_level: (fd.get("grammar_level") || "").trim(),
         term_density: Number(fd.get("term_density")) || 0,
       };
       await submitCreate(panel, form, () => createLessonFromAI(payload));

@@ -113,7 +113,8 @@ function wordCount(text) {
 }
 
 // Trường nâng cao rỗng -> "không có" (đúng quy ước 2 file prompt: field/industry/
-// product/situation/grammar_level đều thuộc "Tùy chọn nâng cao" ở form gốc index.html).
+// product/situation đều thuộc "Tùy chọn nâng cao" ở form. "Ngữ pháp trọng tâm" đã bỏ khỏi
+// form — chọn Cấp độ CEFR là đủ đảm bảo đúng phạm vi ngữ pháp, không cần chọn thêm).
 function orNone(v) {
   const s = (v ?? "").toString().trim();
   return s ? s : "không có";
@@ -133,9 +134,9 @@ QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ (CEFR):
 Tuyệt đối không dùng ngữ pháp hoặc từ vựng vượt cấp độ được yêu cầu, trừ các TỪ CHUYÊN NGÀNH được chỉ định.
 
 QUY TẮC VỀ TỪ CHUYÊN NGÀNH:
-- Mật độ từ chuyên ngành được cho dưới dạng phần trăm trên tổng số từ của bài.
-- Ví dụ: bài 100 từ, mật độ 10% → chèn khoảng 10 lượt từ/cụm từ chuyên ngành (một từ lặp lại vẫn tính mỗi lần xuất hiện).
-- Từ chuyên ngành phải lấy từ Lĩnh vực / Ngành nghề / Sản phẩm được cung cấp. Nếu cả ba đều là "không có" thì mật độ này bỏ qua, dùng từ vựng phổ thông.
+- Lượng từ chuyên ngành được cho dưới dạng SỐ LƯỢT xuất hiện tuyệt đối trong bài (không phải phần trăm), bất kể độ dài bài dài hay ngắn.
+- Ví dụ: lượng từ chuyên ngành = 20 → chèn khoảng 20 lượt từ/cụm từ chuyên ngành trong toàn bài (một từ lặp lại vẫn tính mỗi lần xuất hiện).
+- Từ chuyên ngành phải lấy từ Lĩnh vực / Ngành nghề / Sản phẩm được cung cấp. Nếu cả ba đều là "không có" thì bỏ qua yêu cầu này, dùng từ vựng phổ thông.
 - Mọi từ chuyên ngành xuất hiện trong bài PHẢI có mặt trong danh sách "vocabulary" của kết quả.
 
 QUY TẮC VỀ TÌNH HUỐNG:
@@ -226,15 +227,14 @@ function buildGenerateLessonUserPrompt(data) {
 - Chủ đề: ${orNone(data.topic)}
 - Loại nội dung: ${contentTypeVi}
 - Độ dài: khoảng ${data.length_words || 200} từ (cho phép lệch ±15%)
-- Ngữ pháp trọng tâm: ${orNone(data.grammar_level)}
 - Lĩnh vực: ${orNone(data.field)}
 - Ngành nghề: ${orNone(data.industry)}
 - Sản phẩm / Dịch vụ liên quan: ${orNone(data.product)}
 - Tình huống cụ thể: ${orNone(data.situation)}
-- Mật độ từ chuyên ngành: ${termDensity}% số từ của bài
+- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}
 
 Nếu mô tả của người học mâu thuẫn với các trường còn lại (ví dụ mô tả đòi thì quá khứ
-nhưng cấp độ là A1), ưu tiên CẤP ĐỘ và NGỮ PHÁP TRỌNG TÂM, điều chỉnh mô tả cho vừa cấp độ.`;
+nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho vừa cấp độ.`;
 }
 
 // ====== PROMPT 2: analyze_user_text — nguyên văn docs/prompt-phan-tich-van-ban.md, KHÔNG sửa. ======

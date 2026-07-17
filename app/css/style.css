@@ -482,6 +482,20 @@ textarea:focus {
   }
 }
 
+.spinner-sm {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border-width: 2px;
+}
+
+.word-popover-loading {
+  display: flex;
+  justify-content: center;
+  padding: 2px 6px;
+}
+
 /* ===== Lessons list ===== */
 .filter-row {
   display: flex;
@@ -803,9 +817,28 @@ textarea:focus {
 
 .content-nav {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 14px;
+  margin-bottom: 12px;
+}
+
+.content-nav-btn {
+  flex-shrink: 0;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  background: var(--surface-soft);
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.content-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* Trong đoạn văn: TẤT CẢ từ màu đen như văn bản thường (kể cả từ vựng trọng tâm) — CHỈ từ
@@ -916,9 +949,21 @@ textarea:focus {
   border-color: var(--orange);
 }
 
+.vocab-word-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .vocab-word {
   font-weight: 700;
   font-size: 1.05rem;
+}
+
+.vocab-word-clickable {
+  cursor: pointer;
+  border-bottom: 1px dotted var(--border);
 }
 
 .grammar-structure {

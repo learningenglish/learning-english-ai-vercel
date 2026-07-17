@@ -13,8 +13,11 @@
 | Ngành nghề (nâng cao) | `{INDUSTRY}` | Khách sạn |
 | Sản phẩm / Dịch vụ (nâng cao) | `{PRODUCT}` | (chuỗi người dùng nhập) |
 | Tình huống (nâng cao) | `{SITUATION}` | "Khách phàn nàn vì phòng chưa dọn, nhân viên phải xin lỗi và xử lý" |
-| Ngữ pháp | `{GRAMMAR_LEVEL}` | A1 - Cơ bản |
-| Từ chuyên ngành (mật độ) | `{TERM_DENSITY}` | 10 / 20 / 30 |
+| Lượng từ chuyên ngành (nâng cao, số lượt tuyệt đối) | `{TERM_DENSITY}` | 10 / 20 / 30 / 40 / 50 |
+
+Trường "Ngữ pháp trọng tâm" ĐÃ BỎ khỏi form: chọn Cấp độ (CEFR) là đủ đảm bảo đúng phạm vi
+ngữ pháp của cấp độ đó (xem QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ trong system prompt), không cần
+người học tự chọn thêm.
 
 Các trường nâng cao bỏ trống thì chèn chuỗi `"không có"` — prompt đã dặn AI bỏ qua khi gặp giá trị này.
 
@@ -36,9 +39,9 @@ QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ (CEFR):
 Tuyệt đối không dùng ngữ pháp hoặc từ vựng vượt cấp độ được yêu cầu, trừ các TỪ CHUYÊN NGÀNH được chỉ định.
 
 QUY TẮC VỀ TỪ CHUYÊN NGÀNH:
-- Mật độ từ chuyên ngành được cho dưới dạng phần trăm trên tổng số từ của bài.
-- Ví dụ: bài 100 từ, mật độ 10% → chèn khoảng 10 lượt từ/cụm từ chuyên ngành (một từ lặp lại vẫn tính mỗi lần xuất hiện).
-- Từ chuyên ngành phải lấy từ Lĩnh vực / Ngành nghề / Sản phẩm được cung cấp. Nếu cả ba đều là "không có" thì mật độ này bỏ qua, dùng từ vựng phổ thông.
+- Lượng từ chuyên ngành được cho dưới dạng SỐ LƯỢT xuất hiện tuyệt đối trong bài (không phải phần trăm), bất kể độ dài bài dài hay ngắn.
+- Ví dụ: lượng từ chuyên ngành = 20 → chèn khoảng 20 lượt từ/cụm từ chuyên ngành trong toàn bài (một từ lặp lại vẫn tính mỗi lần xuất hiện).
+- Từ chuyên ngành phải lấy từ Lĩnh vực / Ngành nghề / Sản phẩm được cung cấp. Nếu cả ba đều là "không có" thì bỏ qua yêu cầu này, dùng từ vựng phổ thông.
 - Mọi từ chuyên ngành xuất hiện trong bài PHẢI có mặt trong danh sách "vocabulary" của kết quả.
 
 QUY TẮC VỀ TÌNH HUỐNG:
@@ -130,15 +133,14 @@ Tạo bài học theo yêu cầu sau:
 - Chủ đề: {TOPIC}
 - Loại nội dung: {CONTENT_TYPE}
 - Độ dài: khoảng {LENGTH_WORDS} từ (cho phép lệch ±15%)
-- Ngữ pháp trọng tâm: {GRAMMAR_LEVEL}
 - Lĩnh vực: {FIELD}
 - Ngành nghề: {INDUSTRY}
 - Sản phẩm / Dịch vụ liên quan: {PRODUCT}
 - Tình huống cụ thể: {SITUATION}
-- Mật độ từ chuyên ngành: {TERM_DENSITY}% số từ của bài
+- Lượng từ chuyên ngành: {TERM_DENSITY === 0 ? "không có" : `khoảng ${TERM_DENSITY} lượt từ/cụm từ chuyên ngành trong bài`}
 
 Nếu mô tả của người học mâu thuẫn với các trường còn lại (ví dụ mô tả đòi thì quá khứ
-nhưng cấp độ là A1), ưu tiên CẤP ĐỘ và NGỮ PHÁP TRỌNG TÂM, điều chỉnh mô tả cho vừa cấp độ.
+nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho vừa cấp độ.
 ```
 
 ---
@@ -147,7 +149,7 @@ nhưng cấp độ là A1), ưu tiên CẤP ĐỘ và NGỮ PHÁP TRỌNG TÂM, 
 
 1. **Ép JSON sạch:** dù đã dặn không bọc ```, vẫn nên strip trước khi parse:
    `text.replace(/```json|```/g, "").trim()` rồi mới `JSON.parse`, bọc trong try/catch.
-2. **Mật độ % → thanh mốc:** trường `is_specialized` trong vocabulary chính là dữ liệu để vẽ lại "thanh mốc % mật độ" bạn đã làm ở giao diện Applied Learning — đếm số lượt từ có `is_specialized: true` trong content chia tổng số từ.
+2. **Lượng từ chuyên ngành → thanh mốc:** trường `is_specialized` trong vocabulary chính là dữ liệu để vẽ lại "thanh mốc lượng từ chuyên ngành" bạn đã làm ở giao diện Applied Learning — đếm số lượt từ có `is_specialized: true` xuất hiện trong content. Lưu ý: đây là chỉ dẫn cho AI khi SINH bài (không có bước đếm lại/xác nhận sau khi AI trả kết quả) — nếu cần đảm bảo chặt số lượt tối thiểu, cần thêm bước validate đếm số lần is_specialized xuất hiện trong content rồi so với lượng đã yêu cầu.
 3. **Tô màu từ trong đoạn văn:** khi render `content[].text`, đối chiếu với `vocabulary[].word` để bọc thẻ highlight — đúng khuôn "đoạn văn tô màu" của Mission. Nên so khớp không phân biệt hoa thường và bắt cả dạng biến thể đơn giản (thêm s/es/ed/ing).
 4. **Phân trang + bản dịch:** mỗi phần tử của `content` là một "trang" trong giao diện phân trang từng đoạn + bản dịch thật bạn đã dựng — schema này khớp sẵn với UI đó.
 5. **Sinh ảnh bìa:** nếu muốn có ảnh như danh sách bài học hiện tại, thêm vào schema trường `"image_prompt": "mô tả ảnh bằng tiếng Anh"` và dùng nó gọi API sinh ảnh riêng — đừng bắt model tạo bài kiêm luôn việc này.

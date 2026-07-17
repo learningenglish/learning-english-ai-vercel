@@ -129,6 +129,11 @@ export function createPlayer({ onStateChange } = {}) {
     replay() {
       goToItem(state.itemIndex, 0);
     },
+    // Nhảy thẳng tới 1 đoạn/lượt thoại bất kỳ (nút "câu trước/câu tiếp" thủ công ở tab Nội
+    // dung) — khác back()/replay() vì nhận index tuỳ ý, không chỉ lùi 1 hoặc lặp lại hiện tại.
+    goTo(index) {
+      goToItem(index, 0);
+    },
     skip(seconds) {
       const deltaWords = Math.round(seconds * WORDS_PER_SECOND_AT_RATE_1 * state.rate);
       const words = (state.items[state.itemIndex]?.text || "").split(/\s+/).filter(Boolean);
