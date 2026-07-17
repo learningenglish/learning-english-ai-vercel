@@ -1587,12 +1587,19 @@ export default async function handler(req, res) {
   // Student App (/app/) giờ được Vercel serve CÙNG deployment với /api/chat (thay vì
   // domain GitHub Pages riêng như app cũ) — request từ /app/ vẫn có header Origin dù kỹ
   // thuật là same-origin, nên vẫn phải qua whitelist. KHÔNG hardcode được vào
-  // ALLOWED_ORIGINS tĩnh vì mỗi lần deploy preview Vercel cấp 1 host ngẫu nhiên khác
-  // nhau — so khớp ĐỘNG với process.env.VERCEL_URL (Vercel tự inject, đúng host của
-  // CHÍNH deployment đang chạy request này, không cần cấu hình tay). Whitelist
-  // ALLOWED_ORIGINS cũ giữ NGUYÊN, chỉ CỘNG THÊM điều kiện này.
+  // ALLOWED_ORIGINS tĩnh vì mỗi lần deploy preview Vercel cấp host khác nhau — so khớp
+  // ĐỘNG với 2 biến Vercel tự inject: VERCEL_URL (host DUY NHẤT của CHÍNH lần build này,
+  // đổi mỗi lần push) và VERCEL_BRANCH_URL (host CỐ ĐỊNH theo tên nhánh, giữ nguyên qua
+  // nhiều lần build — đây mới là URL người dùng thực tế bookmark/dùng lại để test, vd
+  // "…-git-feature-student-app-…vercel.app"). BUG THẬT đã gặp: chỉ so VERCEL_URL khiến
+  // mọi request từ URL cố định theo nhánh bị chặn 403 "Origin blocked" dù đang chạy đúng
+  // deployment. Whitelist ALLOWED_ORIGINS cũ giữ NGUYÊN, chỉ CỘNG THÊM 2 điều kiện này.
   const selfOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
-  const originAllowed = ALLOWED_ORIGINS.includes(origin) || (!!selfOrigin && origin === selfOrigin);
+  const branchOrigin = process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null;
+  const originAllowed =
+    ALLOWED_ORIGINS.includes(origin) ||
+    (!!selfOrigin && origin === selfOrigin) ||
+    (!!branchOrigin && origin === branchOrigin);
 
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", originAllowed ? origin : "null");
