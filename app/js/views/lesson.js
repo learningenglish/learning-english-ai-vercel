@@ -1,17 +1,11 @@
 // app/js/views/lesson.js — render TỪ 1 bản ghi "lessons", KHÔNG gọi AI để sinh nội dung
-// (kiến trúc Lesson-first). "Hỏi AI" (word_explain) là action lẻ, realtime, không lưu —
+// (kiến trúc Lesson-first). "Hỏi AI" (word_lookup) là action lẻ, realtime, không lưu —
 // khác hoàn toàn với generate_lesson/analyze_user_text.
 import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite } from "../db.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 
-// Từ đứng NGAY TRƯỚC 1 từ đang rê chuột, nếu là trợ động từ/từ phủ định thường đi kèm, thì
-// ghép vào dòng "cụm đi chung" hiển thị trong tooltip (vd "learned" sau "has" -> "has learned").
-// Danh sách cố ý ngắn/thô — không phải phân tích ngữ pháp thật, chỉ là suy đoán hiển thị.
-const AUX_WORDS = new Set([
-  "has", "have", "had", "is", "am", "are", "was", "were", "will", "would",
-  "can", "could", "should", "must", "shall", "might", "do", "does", "did", "not", "to",
-]);
+const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
 export async function renderLessonDetail(mount, params) {
   const lessonId = params?.[0];
@@ -43,7 +37,7 @@ export async function renderLessonDetail(mount, params) {
     isFavorite: !!lesson.is_favorite,
   };
   // Cache trong phiên xem bài này — rê lại đúng 1 từ không gọi AI thêm lần nữa.
-  const wordExplainCache = new Map();
+  const wordLookupCache = new Map();
 
   mount.innerHTML = `
     <div class="screen">
@@ -121,21 +115,39 @@ export async function renderLessonDetail(mount, params) {
     });
 
     const body = panel.querySelector("#content-body");
-    const displayedPages = state.showAllContent ? pages : [pages[Math.min(state.page, Math.max(0, pages.length - 1))]];
+    const idx = Math.min(state.page, Math.max(0, pages.length - 1));
+    const displayedPages = state.showAllContent ? pages : [pages[idx]];
 
-    body.innerHTML = displayedPages
-      .map((item, i) => contentItemHtml(item, state.showAllContent ? i : Math.min(state.page, Math.max(0, pages.length - 1)), pages.length))
-      .join("");
-
-    if (!state.showAllContent) {
-      const idx = Math.min(state.page, Math.max(0, pages.length - 1));
-      body.insertAdjacentHTML(
-        "beforeend",
-        `<div class="content-nav">
+    if (state.showAllContent) {
+      // Yêu cầu: xem "Tất cả" không tách card riêng từng đoạn — gộp CHUNG 1 card, các đoạn
+      // ngăn cách bằng 1 đường gạch đậm màu (.content-divider), không phải card/border riêng.
+      body.innerHTML = `
+        <div class="content-page">
+          ${displayedPages
+            .map(
+              (item, i) => `
+            ${i > 0 ? '<div class="content-divider"></div>' : ""}
+            ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
+            <div class="content-text">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
+            ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
+          `
+            )
+            .join("")}
+        </div>
+      `;
+    } else {
+      body.innerHTML = `
+        <div class="content-page">
+          <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
+          ${displayedPages[0]?.speaker ? `<div class="speaker-name">${escapeHtml(displayedPages[0].speaker)}</div>` : ""}
+          <div class="content-text">${renderInteractiveHtml(displayedPages[0]?.text || "", lesson.vocabulary || [])}</div>
+          ${state.showTranslation ? `<div class="content-translation">${escapeHtml(displayedPages[0]?.translation || "")}</div>` : ""}
+        </div>
+        <div class="content-nav">
           <button type="button" class="btn btn-ghost" id="prev-page" ${idx === 0 ? "disabled" : ""}>← Trước</button>
           <button type="button" class="btn btn-ghost" id="next-page" ${idx === pages.length - 1 ? "disabled" : ""}>Sau →</button>
-        </div>`
-      );
+        </div>
+      `;
       body.querySelector("#prev-page")?.addEventListener("click", () => {
         state.page = Math.max(0, idx - 1);
         saveProgress();
@@ -148,36 +160,17 @@ export async function renderLessonDetail(mount, params) {
       });
     }
 
-    // Gắn tương tác rê/chạm cho TỪNG khối .content-text vừa render (mỗi khối tự tokenize
-    // lại từ chính text của nó — đơn giản hơn round-trip token qua data-attribute).
+    // Gắn tương tác rê/chạm cho TỪNG khối .content-text vừa render.
     body.querySelectorAll(".content-text").forEach((el, i) => {
-      const item = displayedPages[i];
-      const { tokens } = tokenizeWords(item?.text || "");
-      wireInteractiveWords(el, tokens.map((t) => t.word), item?.text || "");
+      wireInteractiveWords(el, displayedPages[i]?.text || "");
     });
   }
 
-  function contentItemHtml(item, idx, total) {
-    const html = renderInteractiveHtml(item?.text || "", lesson.vocabulary || []);
-    return `
-      <div class="content-page">
-        <div class="content-progress muted">Trang ${idx + 1}/${total}</div>
-        ${item?.speaker ? `<div class="speaker-name">${escapeHtml(item.speaker)}</div>` : ""}
-        <div class="content-text">${html}</div>
-        ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-      </div>
-    `;
-  }
-
-  function wireInteractiveWords(container, tokenWords, fullSentence) {
+  function wireInteractiveWords(container, sentence) {
     container.querySelectorAll("[data-token-idx]").forEach((span) => {
-      const idx = Number(span.dataset.tokenIdx);
-      const word = tokenWords[idx];
-      const prevWord = idx > 0 ? tokenWords[idx - 1] : null;
-      const phrase = prevWord && AUX_WORDS.has(prevWord.toLowerCase()) ? `${prevWord} ${word}` : word;
-
+      const word = span.textContent;
       let hoverTimer = null;
-      const trigger = () => showWordTooltip(span, word, phrase, fullSentence);
+      const trigger = () => showWordTooltip(span, word, sentence);
       span.addEventListener("mouseenter", () => {
         hoverTimer = setTimeout(trigger, 250);
       });
@@ -190,22 +183,41 @@ export async function renderLessonDetail(mount, params) {
     });
   }
 
-  async function showWordTooltip(anchorEl, word, phrase, sentence) {
-    const lemma = guessLemma(word);
-    const lines = [];
-    if (lemma && lemma !== word.toLowerCase()) lines.push(`${word} ← ${lemma}`);
-    if (phrase && phrase.toLowerCase() !== word.toLowerCase()) lines.push(phrase);
-
-    showWordPopover(anchorEl, [...lines, "Đang tra nghĩa..."].join("\n"));
+  // Tooltip TỐI GIẢN: level (màu theo cấp độ) + từ + nghĩa + cụm từ đi kèm (nếu có) — không
+  // giải thích, không ví dụ, không lưu ý. Dữ liệu từ action "word_lookup" (JSON), khác hẳn
+  // word_tip/word_explain (trả text tự do dài, không có level).
+  async function showWordTooltip(anchorEl, word, sentence) {
+    showWordPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang tra...</div>`);
 
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
-    let meaning = wordExplainCache.get(cacheKey);
-    if (!meaning) {
-      const res = await callChatAction("word_explain", { word, sentence });
-      meaning = res.ok ? res.content : res.error || "Không lấy được giải thích.";
-      wordExplainCache.set(cacheKey, meaning);
+    let data = wordLookupCache.get(cacheKey);
+    if (!data) {
+      const res = await callChatAction("word_lookup", { word, sentence });
+      if (res.ok) {
+        try {
+          data = JSON.parse(res.content);
+        } catch {
+          data = null;
+        }
+      }
+      if (data) wordLookupCache.set(cacheKey, data);
     }
-    showWordPopover(anchorEl, [...lines, meaning].join("\n"));
+
+    if (!data || !CEFR_LEVELS.includes(data.level)) {
+      showWordPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
+      return;
+    }
+    showWordPopoverHtml(
+      anchorEl,
+      `
+      <div class="word-popover-head">
+        <span class="word-popover-level" data-level="${escapeHtml(data.level)}">${escapeHtml(data.level)}</span>
+        <span class="word-popover-word">${escapeHtml(word)}</span>
+      </div>
+      <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
+      ${data.collocation ? `<div class="word-popover-colloc">${escapeHtml(data.collocation)}</div>` : ""}
+    `
+    );
   }
 
   // ====== Tab Từ vựng ======
@@ -334,12 +346,12 @@ export async function renderLessonDetail(mount, params) {
     });
   }
 
-  function showWordPopover(anchorEl, text) {
+  function showWordPopoverHtml(anchorEl, html) {
     document.getElementById("word-popover")?.remove();
     const popover = document.createElement("div");
     popover.id = "word-popover";
     popover.className = "word-popover";
-    popover.textContent = text;
+    popover.innerHTML = html;
     document.body.appendChild(popover);
     const rect = anchorEl.getBoundingClientRect();
     popover.style.top = `${window.scrollY + rect.bottom + 6}px`;
@@ -379,19 +391,6 @@ function findVocabEntry(matchedText, vocabMap) {
     if (lower.endsWith(suf) && lower.length > suf.length) {
       const base = lower.slice(0, -suf.length);
       if (vocabMap.has(base)) return vocabMap.get(base);
-    }
-  }
-  return null;
-}
-
-// Suy đoán dạng gốc bằng cách bỏ hậu tố phổ biến — CHỈ để hiển thị gợi ý trong tooltip
-// (vd "learned" -> "learn"), không phải phân tích hình thái học thật, không xử lý bất quy
-// tắc (vd "went" sẽ không suy ra được "go").
-function guessLemma(word) {
-  const w = (word || "").toLowerCase();
-  for (const suf of ["ing", "ed", "es", "s"]) {
-    if (w.endsWith(suf) && w.length > suf.length + 1) {
-      return w.slice(0, -suf.length);
     }
   }
   return null;

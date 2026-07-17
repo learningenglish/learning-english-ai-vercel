@@ -687,6 +687,16 @@ textarea:focus {
   margin: 10px 0 0;
 }
 
+/* Đường ngăn cách đậm màu giữa các đoạn khi xem "Tất cả" — CHUNG 1 card
+   (.content-page), không tách card riêng từng đoạn. */
+.content-divider {
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 999px;
+  margin: 18px 0;
+  opacity: 0.7;
+}
+
 .content-nav {
   display: flex;
   justify-content: space-between;
@@ -694,9 +704,13 @@ textarea:focus {
   margin-top: 14px;
 }
 
-.vocab-highlight {
-  color: var(--purple);
-  border-bottom: 1px dotted var(--purple);
+/* Trong đoạn văn: TẤT CẢ từ màu đen như văn bản thường (kể cả từ vựng trọng tâm) — CHỈ từ
+   chuyên ngành (.vocab-highlight-specialized) mới có màu nổi bật. Viền chấm mờ là gợi ý
+   duy nhất cho biết từ có thể rê/chạm để tra nghĩa. */
+.vocab-highlight,
+.hover-word {
+  color: var(--text);
+  border-bottom: 1px dotted var(--border);
   cursor: pointer;
 }
 
@@ -707,13 +721,6 @@ textarea:focus {
   font-weight: 600;
 }
 
-/* Từ THƯỜNG (không nằm trong vocabulary curated) — vẫn rê/chạm được để tra nghĩa, viền
-   chấm mờ hơn hẳn vocab-highlight để không cạnh tranh thị giác với từ vựng trọng tâm. */
-.hover-word {
-  border-bottom: 1px dotted var(--border);
-  cursor: pointer;
-}
-
 .hover-word:hover,
 .vocab-highlight:hover,
 .vocab-highlight-specialized:hover {
@@ -721,17 +728,54 @@ textarea:focus {
   border-radius: 3px;
 }
 
+/* Tooltip tối giản: nền TRẮNG, chữ đen, chỉ hiện level (màu theo cấp độ) + từ + nghĩa +
+   cụm từ đi kèm — không giải thích/ví dụ/lưu ý gì thêm. */
 .word-popover {
   position: absolute;
-  max-width: 260px;
-  background: var(--text);
-  color: #fff;
+  max-width: 220px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-size: 0.9rem;
-  white-space: pre-line;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   z-index: 100;
+}
+
+.word-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.word-popover-level {
+  display: inline-block;
+  min-width: 28px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--text-dim);
+}
+
+.word-popover-level[data-level="A1"] { background: #22c55e; }
+.word-popover-level[data-level="A2"] { background: #84cc16; }
+.word-popover-level[data-level="B1"] { background: #3b82f6; }
+.word-popover-level[data-level="B2"] { background: #8b5cf6; }
+.word-popover-level[data-level="C1"] { background: #ef4444; }
+
+.word-popover-word {
+  font-weight: 700;
+}
+
+.word-popover-colloc {
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
 }
 
 .vocab-list,
