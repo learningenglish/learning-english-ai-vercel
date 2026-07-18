@@ -35,7 +35,9 @@
         };
         var bgPref = localStorage.getItem("lea_student_bg") || "scene";
         var file = bgFiles.hasOwnProperty(bgPref) ? bgFiles[bgPref] : bgFiles.scene;
-        document.documentElement.style.setProperty("--bg-scene-image", file ? 'url("./icons/' + file + '")' : "none");
+        // "../icons/..." (tính từ app/css/style.css, KHÔNG phải từ index.html) — xem ghi
+        // chú đầy đủ trong app/js/background.js applyBackground().
+        document.documentElement.style.setProperty("--bg-scene-image", file ? 'url("../icons/' + file + '")' : "none");
       } catch (e) {}
     })();
   </script>

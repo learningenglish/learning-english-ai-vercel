@@ -21,9 +21,11 @@ export function getBackgroundPreference() {
 
 export function applyBackground(pref = getBackgroundPreference()) {
   const bg = BACKGROUNDS.find((b) => b.value === pref) || BACKGROUNDS[0];
-  // Ảnh SVG tĩnh, đường dẫn "./icons/..." tính TỪ index.html (document base) — khớp với
-  // getPropertyValue tương tự cách theme.js làm với thuộc tính data-theme.
-  document.documentElement.style.setProperty("--bg-scene-image", bg.file ? `url("./icons/${bg.file}")` : "none");
+  // "../icons/..." — url() bên trong 1 CSS custom property được trình duyệt phân giải THEO
+  // VỊ TRÍ FILE STYLESHEET nơi "var(--bg-scene-image)" thật sự được VIẾT (app/css/style.css),
+  // KHÔNG phải theo document base (index.html) dù giá trị được SET từ JS ở đây — ngược với
+  // trực giác ban đầu (đã gặp lỗi thật: set "./icons/..." ra sai đường dẫn "css/icons/...").
+  document.documentElement.style.setProperty("--bg-scene-image", bg.file ? `url("../icons/${bg.file}")` : "none");
 }
 
 export function setBackgroundPreference(pref) {
