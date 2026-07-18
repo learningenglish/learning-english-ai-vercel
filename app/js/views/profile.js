@@ -93,7 +93,7 @@ function renderBgPicker(mount) {
           .map(
             (b) => `
           <button type="button" class="bg-option ${currentBg === b.value ? "active" : ""}" data-bg="${b.value}">
-            <span class="bg-option-thumb" style="${b.file ? `background-image:url('../icons/${b.file}')` : ""}"></span>
+            <span class="bg-option-thumb" style="${b.file ? `background-image:url('icons/${b.file}')` : ""}"></span>
             <span>${escapeHtml(b.label)}</span>
           </button>
         `

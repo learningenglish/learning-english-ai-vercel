@@ -71,21 +71,27 @@ export function customPrefFor(id) {
   return CUSTOM_PREFIX + id;
 }
 
+// URL TUYỆT ĐỐI cho ảnh nền — chấm dứt hẳn chuỗi lỗi đường dẫn tương đối trong CSS custom
+// property: cách trình duyệt phân giải url() tương đối bên trong var() set từ JS không
+// nhất quán/khó đoán (đã sai 2 LẦN thật: "./icons/" bị phân giải theo vị trí style.css ra
+// "css/icons/..." khi test cục bộ ở gốc "/", rồi "../icons/" lại vỡ trên Vercel vì app nằm
+// ở thư mục con "/app/" — trỏ ra "/icons/" 404, test cục bộ không phát hiện được vì cục bộ
+// serve ở gốc nên "/../icons" vô tình đúng). Tuyệt đối hoá theo document.baseURI (vd
+// "https://host/app/" -> "https://host/app/icons/x.svg") thì đúng ở MỌI cách deploy.
+function absIconUrl(file) {
+  return new URL(`icons/${file}`, document.baseURI).href;
+}
+
 export function applyBackground(pref = getBackgroundPreference()) {
   let cssValue;
   if (isCustomPref(pref)) {
     const id = pref.slice(CUSTOM_PREFIX.length);
     const item = getCustomBackgrounds().find((c) => c.id === id);
     // Ảnh custom đã bị xoá (hoặc localStorage bị dọn) -> rơi về nền mặc định, không vỡ giao diện.
-    cssValue = item ? `url("${item.dataUrl}")` : `url("../icons/bg-scene.svg")`;
+    cssValue = item ? `url("${item.dataUrl}")` : `url("${absIconUrl("bg-scene.svg")}")`;
   } else {
     const bg = ALL_BUILTINS.find((b) => b.value === pref) || ALL_BUILTINS[0];
-    // "../icons/..." — url() bên trong 1 CSS custom property được trình duyệt phân giải THEO
-    // VỊ TRÍ FILE STYLESHEET nơi "var(--bg-scene-image)" thật sự được VIẾT (app/css/style.css),
-    // KHÔNG phải theo document base (index.html) dù giá trị được SET từ JS ở đây — ngược với
-    // trực giác ban đầu (đã gặp lỗi thật: set "./icons/..." ra sai đường dẫn "css/icons/...").
-    // Data-URL (nhánh custom ở trên) thì tuyệt đối, không bị ảnh hưởng bởi quy tắc này.
-    cssValue = bg.file ? `url("../icons/${bg.file}")` : "none";
+    cssValue = bg.file ? `url("${absIconUrl(bg.file)}")` : "none";
   }
   document.documentElement.style.setProperty("--bg-scene-image", cssValue);
 }

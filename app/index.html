@@ -40,6 +40,12 @@
         };
         var bgPref = localStorage.getItem("lea_student_bg") || "scene";
         var bgValue = null;
+        // URL TUYỆT ĐỐI theo document.baseURI — xem ghi chú absIconUrl() trong
+        // app/js/background.js (đường dẫn tương đối trong var() đã gây lỗi 2 lần thật,
+        // lần cuối chỉ vỡ trên Vercel vì app nằm ở thư mục con /app/).
+        function absIcon(file) {
+          return 'url("' + new URL("icons/" + file, document.baseURI).href + '")';
+        }
         if (bgPref.indexOf("custom:") === 0) {
           // Ảnh người dùng tự thêm — data-URL trong localStorage (xem app/js/background.js).
           var customList = JSON.parse(localStorage.getItem("lea_student_bg_custom") || "[]");
@@ -50,12 +56,10 @@
               break;
             }
           }
-          if (!bgValue) bgValue = 'url("../icons/bg-scene.svg")';
+          if (!bgValue) bgValue = absIcon("bg-scene.svg");
         } else {
           var file = bgFiles.hasOwnProperty(bgPref) ? bgFiles[bgPref] : bgFiles.scene;
-          // "../icons/..." (tính từ app/css/style.css, KHÔNG phải từ index.html) — xem ghi
-          // chú đầy đủ trong app/js/background.js applyBackground().
-          bgValue = file ? 'url("../icons/' + file + '")' : "none";
+          bgValue = file ? absIcon(file) : "none";
         }
         document.documentElement.style.setProperty("--bg-scene-image", bgValue);
       } catch (e) {}

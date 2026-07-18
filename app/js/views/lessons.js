@@ -37,7 +37,7 @@ export function renderLessons(mount, params) {
     <div class="screen">
       <div class="app-header">
         <div class="header-avatar-block">
-          <div class="header-avatar"><img src="../icons/avatar-placeholder.svg" alt="" /></div>
+          <div class="header-avatar"><img src="icons/avatar-placeholder.svg" alt="" /></div>
           <div class="explorer-badge">${icon("compass", { size: 15 })} <span id="tier-label">...</span></div>
         </div>
         <div class="header-right">
