@@ -1,0 +1,75 @@
+<svg viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a8c8ec" />
+      <stop offset="45%" stop-color="#d8e8f8" />
+      <stop offset="100%" stop-color="#f2f7ee" />
+    </linearGradient>
+    <linearGradient id="m1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7d95b8" />
+      <stop offset="100%" stop-color="#5f7899" />
+    </linearGradient>
+    <linearGradient id="m2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#9fb4d1" />
+      <stop offset="100%" stop-color="#8099ba" />
+    </linearGradient>
+    <linearGradient id="meadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a9cf9a" />
+      <stop offset="100%" stop-color="#8dbd7e" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="1600" fill="url(#sky)" />
+
+  <!-- mây -->
+  <g fill="#ffffff" opacity="0.85">
+    <ellipse cx="150" cy="180" rx="75" ry="26" />
+    <ellipse cx="205" cy="168" rx="50" ry="20" />
+    <ellipse cx="620" cy="130" rx="85" ry="28" />
+    <ellipse cx="685" cy="120" rx="55" ry="22" />
+  </g>
+
+  <!-- dãy núi sau -->
+  <path d="M0,600 L170,340 L300,540 L430,300 L570,540 L700,380 L800,560 L800,760 L0,760 Z" fill="url(#m2)" />
+  <!-- tuyết đỉnh núi sau -->
+  <g fill="#ffffff" opacity="0.9">
+    <path d="M170,340 L200,392 L170,380 L140,392 Z" />
+    <path d="M430,300 L462,356 L430,342 L398,356 Z" />
+  </g>
+
+  <!-- dãy núi trước -->
+  <path d="M0,700 L220,430 L400,660 L580,440 L800,690 L800,900 L0,900 Z" fill="url(#m1)" />
+  <g fill="#ffffff" opacity="0.92">
+    <path d="M220,430 L256,494 L220,478 L184,494 Z" />
+    <path d="M580,440 L614,500 L580,486 L546,500 Z" />
+  </g>
+
+  <!-- đồng cỏ -->
+  <path d="M0,850 Q200,800 400,850 T800,840 L800,1600 L0,1600 Z" fill="url(#meadow)" />
+
+  <!-- hồ nước nhỏ -->
+  <ellipse cx="400" cy="1150" rx="210" ry="70" fill="#bfe0f2" opacity="0.9" />
+  <ellipse cx="400" cy="1150" rx="150" ry="46" fill="#d5ecf8" opacity="0.8" />
+
+  <!-- thông hai bên -->
+  <g fill="#4f8a5d">
+    <path d="M100,980 L140,1080 L60,1080 Z" />
+    <path d="M100,1020 L150,1130 L50,1130 Z" />
+    <path d="M690,960 L730,1060 L650,1060 Z" />
+    <path d="M690,1000 L740,1110 L640,1110 Z" />
+  </g>
+  <g fill="#6b4a2f">
+    <rect x="92" y="1130" width="16" height="34" rx="4" />
+    <rect x="682" y="1110" width="16" height="34" rx="4" />
+  </g>
+
+  <!-- hoa nhỏ cuối trang -->
+  <g fill="#f2e28a" opacity="0.9">
+    <circle cx="70" cy="1480" r="8" />
+    <circle cx="110" cy="1510" r="6" />
+    <circle cx="45" cy="1525" r="5" />
+    <circle cx="730" cy="1490" r="8" />
+    <circle cx="700" cy="1520" r="6" />
+    <circle cx="758" cy="1532" r="5" />
+  </g>
+</svg>

@@ -1,0 +1,77 @@
+<svg viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d7ecd9" />
+      <stop offset="50%" stop-color="#e9f5ea" />
+      <stop offset="100%" stop-color="#f7fbf5" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="1600" fill="url(#sky)" />
+
+  <!-- rừng trúc hai bên -->
+  <g stroke="#79b06e" stroke-width="26" stroke-linecap="round">
+    <path d="M80,0 L80,1600" />
+    <path d="M190,0 L190,1600" opacity="0.55" />
+    <path d="M720,0 L720,1600" />
+    <path d="M615,0 L615,1600" opacity="0.55" />
+  </g>
+  <!-- đốt trúc -->
+  <g stroke="#5c9553" stroke-width="6">
+    <path d="M64,240 L96,240" /><path d="M64,520 L96,520" /><path d="M64,830 L96,830" /><path d="M64,1150 L96,1150" /><path d="M64,1430 L96,1430" />
+    <path d="M704,300 L736,300" /><path d="M704,600 L736,600" /><path d="M704,920 L736,920" /><path d="M704,1240 L736,1240" /><path d="M704,1500 L736,1500" />
+  </g>
+  <!-- lá trúc -->
+  <g fill="#79b06e" opacity="0.9">
+    <ellipse cx="140" cy="300" rx="46" ry="12" transform="rotate(-28 140 300)" />
+    <ellipse cx="126" cy="620" rx="44" ry="12" transform="rotate(24 126 620)" />
+    <ellipse cx="150" cy="1000" rx="42" ry="11" transform="rotate(-22 150 1000)" />
+    <ellipse cx="662" cy="380" rx="46" ry="12" transform="rotate(26 662 380)" />
+    <ellipse cx="676" cy="720" rx="44" ry="12" transform="rotate(-24 676 720)" />
+    <ellipse cx="655" cy="1080" rx="42" ry="11" transform="rotate(20 655 1080)" />
+  </g>
+
+  <!-- gấu trúc ôm măng -->
+  <g>
+    <!-- thân -->
+    <ellipse cx="400" cy="760" rx="180" ry="150" fill="#ffffff" />
+    <ellipse cx="400" cy="800" rx="140" ry="105" fill="#f5f2ec" />
+    <!-- tay ôm -->
+    <path d="M262,720 C240,780 260,846 320,868 L350,820 C312,806 296,764 306,724 Z" fill="#2f2a2a" />
+    <path d="M538,720 C560,780 540,846 480,868 L450,820 C488,806 504,764 494,724 Z" fill="#2f2a2a" />
+    <!-- chân -->
+    <ellipse cx="320" cy="892" rx="52" ry="38" fill="#2f2a2a" />
+    <ellipse cx="480" cy="892" rx="52" ry="38" fill="#2f2a2a" />
+    <!-- đầu -->
+    <circle cx="400" cy="520" r="130" fill="#ffffff" />
+    <!-- tai -->
+    <circle cx="306" cy="424" r="42" fill="#2f2a2a" />
+    <circle cx="494" cy="424" r="42" fill="#2f2a2a" />
+    <!-- vệt mắt -->
+    <ellipse cx="352" cy="516" rx="34" ry="42" transform="rotate(-14 352 516)" fill="#2f2a2a" />
+    <ellipse cx="448" cy="516" rx="34" ry="42" transform="rotate(14 448 516)" fill="#2f2a2a" />
+    <circle cx="356" cy="510" r="11" fill="#ffffff" />
+    <circle cx="444" cy="510" r="11" fill="#ffffff" />
+    <circle cx="358" cy="512" r="5" fill="#2f2a2a" />
+    <circle cx="442" cy="512" r="5" fill="#2f2a2a" />
+    <!-- mũi + miệng -->
+    <ellipse cx="400" cy="566" rx="16" ry="11" fill="#2f2a2a" />
+    <path d="M400,578 q0,14 -16,18 M400,578 q0,14 16,18" stroke="#2f2a2a" stroke-width="5" fill="none" stroke-linecap="round" />
+    <!-- măng trúc trong tay -->
+    <g transform="rotate(12 400 770)">
+      <path d="M388,690 L412,690 L406,830 L394,830 Z" fill="#a4cf8e" />
+      <path d="M386,712 L414,712 L410,704 L390,704 Z" fill="#82b56d" />
+      <path d="M388,748 L412,748 L409,740 L391,740 Z" fill="#82b56d" />
+      <path d="M400,690 L386,662 L400,672 L414,662 Z" fill="#82b56d" />
+    </g>
+  </g>
+
+  <!-- bụi cỏ + lá rơi cuối trang -->
+  <path d="M0,1100 Q200,1050 400,1100 T800,1090 L800,1600 L0,1600 Z" fill="#cfe7c3" />
+  <g fill="#9cc389" opacity="0.9">
+    <ellipse cx="180" cy="1300" rx="34" ry="9" transform="rotate(-18 180 1300)" />
+    <ellipse cx="420" cy="1400" rx="32" ry="9" transform="rotate(14 420 1400)" />
+    <ellipse cx="620" cy="1330" rx="34" ry="9" transform="rotate(-12 620 1330)" />
+    <ellipse cx="300" cy="1520" rx="30" ry="8" transform="rotate(20 300 1520)" />
+  </g>
+</svg>

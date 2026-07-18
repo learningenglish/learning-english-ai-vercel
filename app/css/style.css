@@ -1194,6 +1194,57 @@ textarea:focus {
   color: var(--purple);
 }
 
+.bg-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin: 12px 0 6px;
+}
+
+.bg-group-label:first-child {
+  margin-top: 0;
+}
+
+.bg-option-wrap {
+  position: relative;
+}
+
+.bg-option-wrap .bg-option {
+  width: 100%;
+}
+
+.bg-option-delete {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  color: var(--danger);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 1;
+}
+
+.bg-option-thumb-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  background-color: var(--surface);
+  border: 1.5px dashed var(--border);
+}
+
+.bg-picker-error {
+  margin: 10px 0 0;
+}
+
 .cover-placeholder {
   width: 100%;
   height: 100%;

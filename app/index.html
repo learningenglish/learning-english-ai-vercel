@@ -28,16 +28,35 @@
       try {
         var bgFiles = {
           scene: "bg-scene.svg",
+          mountains: "bg-scene-mountains.svg",
           sunset: "bg-scene-sunset.svg",
           ocean: "bg-scene-ocean.svg",
           night: "bg-scene-night.svg",
+          sakura: "bg-scene-sakura.svg",
+          cat: "bg-scene-cat.svg",
+          panda: "bg-scene-panda.svg",
           none: null,
         };
         var bgPref = localStorage.getItem("lea_student_bg") || "scene";
-        var file = bgFiles.hasOwnProperty(bgPref) ? bgFiles[bgPref] : bgFiles.scene;
-        // "../icons/..." (tính từ app/css/style.css, KHÔNG phải từ index.html) — xem ghi
-        // chú đầy đủ trong app/js/background.js applyBackground().
-        document.documentElement.style.setProperty("--bg-scene-image", file ? 'url("../icons/' + file + '")' : "none");
+        var bgValue = null;
+        if (bgPref.indexOf("custom:") === 0) {
+          // Ảnh người dùng tự thêm — data-URL trong localStorage (xem app/js/background.js).
+          var customList = JSON.parse(localStorage.getItem("lea_student_bg_custom") || "[]");
+          var wanted = bgPref.slice(7);
+          for (var i = 0; i < customList.length; i++) {
+            if (customList[i] && customList[i].id === wanted) {
+              bgValue = 'url("' + customList[i].dataUrl + '")';
+              break;
+            }
+          }
+          if (!bgValue) bgValue = 'url("../icons/bg-scene.svg")';
+        } else {
+          var file = bgFiles.hasOwnProperty(bgPref) ? bgFiles[bgPref] : bgFiles.scene;
+          // "../icons/..." (tính từ app/css/style.css, KHÔNG phải từ index.html) — xem ghi
+          // chú đầy đủ trong app/js/background.js applyBackground().
+          bgValue = file ? 'url("../icons/' + file + '")' : "none";
+        }
+        document.documentElement.style.setProperty("--bg-scene-image", bgValue);
       } catch (e) {}
     })();
   </script>

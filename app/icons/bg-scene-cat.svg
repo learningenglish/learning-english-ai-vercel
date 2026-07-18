@@ -1,0 +1,82 @@
+<svg viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fde8c8" />
+      <stop offset="50%" stop-color="#fdf3e0" />
+      <stop offset="100%" stop-color="#fefaf2" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="1600" fill="url(#sky)" />
+  <circle cx="620" cy="200" r="80" fill="#ffd98a" opacity="0.8" />
+
+  <!-- mèo ngủ cuộn tròn -->
+  <g>
+    <ellipse cx="400" cy="560" rx="230" ry="150" fill="#f2b878" />
+    <ellipse cx="400" cy="580" rx="190" ry="115" fill="#f7cd98" />
+    <!-- đuôi cuộn quanh -->
+    <path d="M180,600 C150,520 200,420 320,430 L330,470 C240,462 200,530 226,596 Z" fill="#e8a45f" />
+    <!-- đầu -->
+    <circle cx="520" cy="470" r="95" fill="#f2b878" />
+    <!-- tai -->
+    <path d="M448,400 L432,320 L500,362 Z" fill="#f2b878" />
+    <path d="M592,400 L608,320 L540,362 Z" fill="#f2b878" />
+    <path d="M452,388 L444,340 L488,366 Z" fill="#f2909e" />
+    <path d="M588,388 L596,340 L552,366 Z" fill="#f2909e" />
+    <!-- mắt nhắm + miệng -->
+    <path d="M478,470 q14,12 28,0" stroke="#8a5a30" stroke-width="6" fill="none" stroke-linecap="round" />
+    <path d="M534,470 q14,12 28,0" stroke="#8a5a30" stroke-width="6" fill="none" stroke-linecap="round" />
+    <path d="M512,502 q8,10 16,0" stroke="#8a5a30" stroke-width="5" fill="none" stroke-linecap="round" />
+    <!-- ria -->
+    <g stroke="#c98d52" stroke-width="4" stroke-linecap="round">
+      <path d="M430,486 L380,478" />
+      <path d="M432,502 L384,504" />
+      <path d="M610,486 L660,478" />
+      <path d="M608,502 L656,504" />
+    </g>
+    <!-- sọc lưng -->
+    <g stroke="#e8a45f" stroke-width="14" stroke-linecap="round" fill="none" opacity="0.85">
+      <path d="M300,470 q20,-24 52,-28" />
+      <path d="M270,520 q26,-28 62,-32" />
+      <path d="M258,576 q28,-26 66,-30" />
+    </g>
+  </g>
+
+  <!-- cuộn len -->
+  <g>
+    <circle cx="160" cy="920" r="58" fill="#9ec3e8" />
+    <g stroke="#7ba7d4" stroke-width="6" fill="none" opacity="0.9">
+      <path d="M110,900 q50,-26 100,4" />
+      <path d="M106,932 q54,-20 108,6" />
+      <path d="M118,960 q46,-16 88,2" />
+    </g>
+    <path d="M214,946 q80,40 150,18" stroke="#9ec3e8" stroke-width="7" fill="none" stroke-linecap="round" />
+  </g>
+  <g>
+    <circle cx="650" cy="1010" r="44" fill="#f2a0b4" />
+    <g stroke="#df7f98" stroke-width="5" fill="none" opacity="0.9">
+      <path d="M614,996 q38,-20 74,3" />
+      <path d="M612,1022 q40,-14 78,4" />
+    </g>
+  </g>
+
+  <!-- dấu chân mèo rải rác -->
+  <g fill="#e8c39a" opacity="0.85">
+    <g transform="translate(300,1150)">
+      <ellipse cx="0" cy="10" rx="16" ry="12" />
+      <circle cx="-16" cy="-8" r="6" /><circle cx="-5" cy="-13" r="6" /><circle cx="6" cy="-13" r="6" /><circle cx="17" cy="-8" r="6" />
+    </g>
+    <g transform="translate(420,1260) rotate(15)">
+      <ellipse cx="0" cy="10" rx="16" ry="12" />
+      <circle cx="-16" cy="-8" r="6" /><circle cx="-5" cy="-13" r="6" /><circle cx="6" cy="-13" r="6" /><circle cx="17" cy="-8" r="6" />
+    </g>
+    <g transform="translate(320,1390) rotate(-12)">
+      <ellipse cx="0" cy="10" rx="16" ry="12" />
+      <circle cx="-16" cy="-8" r="6" /><circle cx="-5" cy="-13" r="6" /><circle cx="6" cy="-13" r="6" /><circle cx="17" cy="-8" r="6" />
+    </g>
+    <g transform="translate(450,1500) rotate(10)">
+      <ellipse cx="0" cy="10" rx="16" ry="12" />
+      <circle cx="-16" cy="-8" r="6" /><circle cx="-5" cy="-13" r="6" /><circle cx="6" cy="-13" r="6" /><circle cx="17" cy="-8" r="6" />
+    </g>
+  </g>
+</svg>
