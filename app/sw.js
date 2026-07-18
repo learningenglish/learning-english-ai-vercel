@@ -5,7 +5,7 @@
 // reload/đổi mới code, cho tới khi tên cache đổi (activate xoá cache cũ, xem bên dưới).
 // Bài học thực tế: đợt redesign icon SVG + theme này đổi hầu hết SHELL_FILES nhưng quên
 // tăng version -> preview cứ hiện lại emoji cũ dù code trên đĩa đã đổi hẳn.
-const CACHE_NAME = "lea-student-shell-v5";
+const CACHE_NAME = "lea-student-shell-v6";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -20,6 +20,7 @@ const SHELL_FILES = [
   "./icons/bg-scene-sakura.svg",
   "./icons/bg-scene-cat.svg",
   "./icons/bg-scene-panda.svg",
+  "./icons/bg-scene-science.svg",
   "./icons/avatar-placeholder.svg",
   "./js/app.js",
   "./js/router.js",

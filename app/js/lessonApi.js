@@ -32,19 +32,11 @@ async function callAndParse(action, payload) {
   }
 }
 
-// Tự động lấy ảnh bìa NGAY sau khi tạo bài xong, không cần người học bấm gì — "lấy 1 lần và
-// lưu trữ luôn" (yêu cầu người dùng): gọi action có sẵn get_lesson_cover_image lấy URL, rồi
-// set_lesson_cover_image để PATCH vào đúng hàng lesson (client không có quyền UPDATE cột đó
-// trực tiếp). CỐ Ý tách khỏi createLessonFromAI/createLessonFromText, gọi RỜI SAU khi màn
-// "Tạo bài học" đã hiện kết quả — không kéo dài thời gian chờ tạo bài (đã gần trần
-// maxDuration=60s của Vercel, xem lessonApi.js đầu file). Fire-and-forget: lỗi ở bước này
-// (vd DALL-E tạm lỗi) không nên làm hỏng trải nghiệm "đã tạo bài xong", chỉ đơn giản là
-// chưa có ảnh bìa lần này — không throw, không có UI báo lỗi riêng.
 // Người học bấm tra 1 từ/cụm trong bài (word_lookup) -> tự thêm vào bảng Từ vựng của bài,
 // nhóm "Đã tra" (xem VOCAB_VIEWS trong views/lesson.js) — lưu THẬT vào lesson.vocabulary
 // (không chỉ hiện tạm trong phiên xem), để lần sau mở lại bài vẫn còn. Fire-and-forget như
-// fetchAndSaveLessonCover ở trên — lỗi mạng ở bước lưu không nên làm hỏng trải nghiệm tra từ
-// (tooltip đã hiện xong trước khi hàm này được gọi).
+// fetchAndSaveLessonCover bên dưới — lỗi mạng ở bước lưu không nên làm hỏng trải nghiệm tra
+// từ (tooltip đã hiện xong trước khi hàm này được gọi).
 export async function addLookedUpWord(lessonId, word, lookup) {
   try {
     await callChatAction("add_vocab_word", {
@@ -58,11 +50,21 @@ export async function addLookedUpWord(lessonId, word, lookup) {
   }
 }
 
+// Tự động lấy ảnh bìa NGAY sau khi tạo bài xong, không cần người học bấm gì — "lấy 1 lần và
+// lưu trữ luôn" (yêu cầu người dùng): search_lesson_cover_image tìm ảnh MIỄN PHÍ theo tiêu
+// đề tiếng Anh của bài (Unsplash/Pexels/Wikimedia — 0đ, URL vĩnh viễn; KHÔNG dùng DALL-E
+// nữa: ~1.000đ/ảnh và URL hết hạn sau ~1-2 giờ, xem quyết định chi phí trong
+// api/_generate/coverImage.js), rồi set_lesson_cover_image để PATCH vào đúng hàng lesson
+// (client không có quyền UPDATE cột đó trực tiếp). CỐ Ý tách khỏi createLessonFromAI/
+// createLessonFromText, gọi RỜI SAU khi màn "Tạo bài học" đã hiện kết quả — không kéo dài
+// thời gian chờ tạo bài (đã gần trần maxDuration=60s của Vercel). Fire-and-forget: không
+// tìm được ảnh (hiếm) hay lỗi mạng thì bài đơn giản là chưa có ảnh bìa (UI hiện icon mặc
+// định) — không throw, không có UI báo lỗi riêng.
 export async function fetchAndSaveLessonCover(lesson) {
   try {
-    const text = (lesson.content || []).map((c) => c.text || "").join(" ");
-    if (!text.trim()) return;
-    const imgRes = await callChatAction("get_lesson_cover_image", { text });
+    const title = (lesson.title || "").trim();
+    if (!title) return;
+    const imgRes = await callChatAction("search_lesson_cover_image", { title });
     if (!imgRes.ok) return;
     const { image } = JSON.parse(imgRes.content);
     if (!image?.url) return;

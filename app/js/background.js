@@ -35,6 +35,10 @@ export const BACKGROUND_GROUPS = [
     ],
   },
   {
+    label: "Học tập",
+    items: [{ value: "science", label: "Khoa học", file: "bg-scene-science.svg" }],
+  },
+  {
     label: "Khác",
     items: [{ value: "none", label: "Trơn", file: null }],
   },
