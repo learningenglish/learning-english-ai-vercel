@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
 import { word_lookup } from "./_generate/wordLookup.js";
+import { set_lesson_cover_image } from "./_generate/coverImage.js";
+import { add_vocab_word } from "./_generate/vocab.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1257,6 +1259,13 @@ const ACTIONS = {
   // Tooltip rê chuột trong màn Bài học: level CEFR + nghĩa ngắn + cụm từ đi kèm cho 1 từ,
   // khác word_tip/word_explain có sẵn (2 action đó trả text tự do dài, không có level).
   word_lookup,
+  // Lưu URL ảnh bìa (đã lấy qua get_lesson_cover_image bên dưới) vào đúng hàng lesson —
+  // xem api/_generate/coverImage.js. Tách riêng vì client bị REVOKE UPDATE cột
+  // cover_image_url trực tiếp (chỉ is_favorite mở cho client, xem supabase/019_lessons.sql).
+  set_lesson_cover_image,
+  // Người học bấm tra 1 từ trong bài -> tự thêm vào "vocabulary" của bài đó (nhóm "Đã tra"),
+  // xem api/_generate/vocab.js.
+  add_vocab_word,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

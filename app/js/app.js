@@ -7,6 +7,7 @@
 import { getSession } from "./session.js";
 import { registerRoute, startRouter, navigate } from "./router.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
+import { applyBackground } from "./background.js";
 import { icon } from "./icons.js";
 import { renderLogin } from "./views/login.js";
 import { renderLessons } from "./views/lessons.js";
@@ -18,6 +19,7 @@ import { renderProfile } from "./views/profile.js";
 
 applyTheme();
 watchSystemTheme();
+applyBackground();
 
 const NAV_TABS = [
   { path: "/lessons", label: "Bài học", icon: "book" },

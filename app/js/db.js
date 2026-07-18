@@ -44,7 +44,10 @@ async function restFetch(path, options = {}) {
 }
 
 export async function listLessons({ filter = "all" } = {}) {
-  let q = "select=id,title,title_vi,level,situation,content_type,cover_image_url,is_favorite,created_at&order=created_at.desc";
+  // "content" nằm trong select để thẻ danh sách hiện được ĐÚNG trích đoạn nội dung thật (câu
+  // đầu bài) thay vì "situation" — trường đó AI đôi khi viết kiểu mô tả meta ("Bài đọc mô tả
+  // ...") thay vì tóm tắt tình huống thật, xem cardHtml() trong views/lessons.js.
+  let q = "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
   return restFetch(`lessons?${q}`);

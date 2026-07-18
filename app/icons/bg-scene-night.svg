@@ -1,0 +1,78 @@
+<svg viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1c2140" />
+      <stop offset="45%" stop-color="#2d3560" />
+      <stop offset="100%" stop-color="#463a63" />
+    </linearGradient>
+    <radialGradient id="moon-glow" cx="50%" cy="24%" r="45%">
+      <stop offset="0%" stop-color="#e8ecff" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#e8ecff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="hill1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#232a4d" />
+      <stop offset="100%" stop-color="#181d38" />
+    </linearGradient>
+    <linearGradient id="hill2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2c335a" />
+      <stop offset="100%" stop-color="#232a4d" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="1600" fill="url(#sky)" />
+  <circle cx="400" cy="240" r="420" fill="url(#moon-glow)" />
+  <circle cx="400" cy="220" r="70" fill="#f2f4ff" opacity="0.95" />
+
+  <!-- sao -->
+  <g fill="#ffffff">
+    <circle cx="120" cy="140" r="3" opacity="0.9" />
+    <circle cx="180" cy="220" r="2" opacity="0.7" />
+    <circle cx="90" cy="300" r="2.5" opacity="0.8" />
+    <circle cx="640" cy="150" r="2.5" opacity="0.8" />
+    <circle cx="700" cy="260" r="2" opacity="0.7" />
+    <circle cx="600" cy="320" r="3" opacity="0.9" />
+    <circle cx="260" cy="100" r="2" opacity="0.6" />
+    <circle cx="520" cy="90" r="2" opacity="0.6" />
+  </g>
+
+  <!-- toà nhà xa xa, cửa sổ sáng đèn -->
+  <g fill="#1a1e39" opacity="0.9">
+    <rect x="520" y="420" width="30" height="120" />
+    <rect x="560" y="380" width="26" height="160" />
+    <rect x="596" y="440" width="22" height="100" />
+    <rect x="200" y="440" width="24" height="100" />
+    <rect x="232" y="400" width="28" height="140" />
+  </g>
+  <g fill="#ffd97a" opacity="0.85">
+    <rect x="528" y="440" width="5" height="6" />
+    <rect x="540" y="460" width="5" height="6" />
+    <rect x="568" y="410" width="5" height="6" />
+    <rect x="240" y="430" width="5" height="6" />
+  </g>
+
+  <!-- đồi xa -->
+  <path d="M0,560 Q200,500 400,560 T800,560 L800,700 L0,700 Z" fill="url(#hill2)" />
+  <!-- đồi gần -->
+  <path d="M0,640 Q220,570 400,640 T800,630 L800,900 L0,900 Z" fill="url(#hill1)" />
+
+  <!-- dòng sông phản chiếu ánh trăng -->
+  <path d="M370,900 C400,1050 320,1150 360,1300 C390,1420 340,1520 370,1600 L440,1600 C420,1500 460,1420 430,1300 C400,1150 470,1050 440,900 Z" fill="#3a3f6b" opacity="0.7" />
+
+  <!-- cây hai bên -->
+  <g fill="#151a33">
+    <circle cx="90" cy="820" r="46" />
+    <circle cx="150" cy="850" r="34" />
+    <circle cx="700" cy="840" r="50" />
+    <circle cx="640" cy="870" r="30" />
+  </g>
+
+  <!-- đom đóm cuối trang -->
+  <g fill="#ffe9a8" opacity="0.9">
+    <circle cx="60" cy="1500" r="4" />
+    <circle cx="90" cy="1520" r="3" />
+    <circle cx="40" cy="1530" r="3" />
+    <circle cx="740" cy="1500" r="4" />
+    <circle cx="710" cy="1520" r="3" />
+    <circle cx="760" cy="1530" r="3" />
+  </g>
+</svg>

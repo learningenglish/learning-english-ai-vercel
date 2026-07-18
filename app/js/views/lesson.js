@@ -3,6 +3,7 @@
 // không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
 import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite } from "../db.js";
+import { addLookedUpWord } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported } from "../tts.js";
@@ -99,8 +100,14 @@ export async function renderLessonDetail(mount, params) {
     showAllContent: false,
     showTranslation: true, // luôn hiện dịch mặc định, tắt được qua icon
     isFavorite: !!lesson.is_favorite,
-    vocabView: "phrase", // mặc định hiện cụm từ ở tab Từ vựng, chuyển qua "word" để xem từ đơn
+    vocabView: "specialized", // mặc định hiện từ chuyên ngành ở tab Từ vựng (xem VOCAB_VIEWS)
   };
+  // Tiêu đề mặc định tiếng Việt (title_vi) — tắt bản dịch thì đổi sang tiếng Anh (title),
+  // nhất quán với việc ẩn/hiện bản dịch trong nội dung bài (icon "văn/A" ở tab Nội dung).
+  function lessonTitleFor(showTranslation) {
+    return showTranslation ? lesson.title_vi || lesson.title : lesson.title || lesson.title_vi;
+  }
+
   // Cache trong phiên xem bài này — tra lại đúng 1 từ không gọi AI thêm lần nữa.
   const wordLookupCache = new Map();
   const ttsSupported = isTTSSupported();
@@ -128,7 +135,7 @@ export async function renderLessonDetail(mount, params) {
     <div class="screen">
       <div class="lesson-header-row">
         <button type="button" class="lesson-back-btn" id="lesson-back-btn" aria-label="Quay lại">${icon("arrow-left", { size: 20 })}</button>
-        <h1 class="screen-title">${escapeHtml(lesson.title_vi || lesson.title)}</h1>
+        <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
         <button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>
       </div>
       <div class="tabs" role="tablist">
@@ -210,6 +217,10 @@ export async function renderLessonDetail(mount, params) {
       state.showTranslation = !state.showTranslation;
       panel.querySelector("#toggle-translate-btn").classList.toggle("active", state.showTranslation);
       renderContentBody();
+      // Tiêu đề bài học cũng đổi theo: mặc định tiếng Việt (title_vi), tắt dịch thì hiện
+      // tiếng Anh (title) — nhất quán với việc tắt dịch trong nội dung bài.
+      const titleEl = document.getElementById("lesson-title");
+      if (titleEl) titleEl.textContent = lessonTitleFor(state.showTranslation);
     });
 
     if (ttsSupported) {
@@ -456,6 +467,7 @@ export async function renderLessonDetail(mount, params) {
       showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
       return;
     }
+    rememberLookedUpWord(word, data);
     showPopoverHtml(
       anchorEl,
       `
@@ -474,40 +486,74 @@ export async function renderLessonDetail(mount, params) {
     });
   }
 
+  // Tra 1 từ/cụm xong -> tự thêm vào bảng Từ vựng của bài (nhóm "Đã tra", xem VOCAB_VIEWS
+  // trong renderVocabularyTab) — cập nhật NGAY trong bộ nhớ (không cần tải lại trang mới
+  // thấy) + lưu thật xuống DB (fire-and-forget qua lessonApi.js) để lần sau mở lại bài vẫn còn.
+  function rememberLookedUpWord(word, data) {
+    const key = word.trim().toLowerCase();
+    const exists = (lesson.vocabulary || []).some((w) => (w.word || "").trim().toLowerCase() === key);
+    if (exists) return;
+    if (!lesson.vocabulary) lesson.vocabulary = [];
+    lesson.vocabulary.push({
+      word,
+      meaning: data.meaning || "",
+      ipa: "",
+      type: "",
+      example: "",
+      is_specialized: false,
+      source: "user_lookup",
+    });
+    addLookedUpWord(lesson.id, word, data);
+  }
+
   // ====== Tab Từ vựng ======
   // "word" trong vocabulary có thể là 1 từ đơn hoặc 1 cụm từ (đúng schema "từ hoặc cụm từ"
-  // trong 2 file prompt) — toggle Cụm/Từ chỉ LỌC lại danh sách có sẵn theo việc "word" có
-  // khoảng trắng hay không, không gọi thêm AI.
+  // trong 2 file prompt). 4 nhóm hiển thị, ưu tiên theo thứ tự (1 từ chỉ thuộc ĐÚNG 1 nhóm):
+  // "looked_up" (người học tự tra thêm — source==="user_lookup") > "specialized"
+  // (is_specialized, MẶC ĐỊNH hiện đầu tiên vì đây là mục đích chính của bài) > "phrase"
+  // (nhiều từ) > "word" (từ đơn thường).
+  const VOCAB_VIEWS = [
+    { value: "specialized", label: "Chuyên ngành", icon: "briefcase", empty: "Bài này không có từ chuyên ngành nổi bật." },
+    { value: "phrase", label: "Cụm", icon: "languages", empty: "Bài này không có cụm từ nổi bật." },
+    { value: "word", label: "Từ", icon: "book-open", empty: "Bài này không có từ đơn nổi bật." },
+    { value: "looked_up", label: "Đã tra", icon: "bookmark", empty: "Chưa tra thêm từ nào — bấm vào từ trong bài để tra, từ đó sẽ tự xuất hiện ở đây." },
+  ];
+
   function isPhrase(word) {
     return /\s/.test((word || "").trim());
   }
 
+  function categorizeVocabWord(w) {
+    if (w.source === "user_lookup") return "looked_up";
+    if (w.is_specialized) return "specialized";
+    if (isPhrase(w.word)) return "phrase";
+    return "word";
+  }
+
   function renderVocabularyTab(panel) {
-    const allWords = lesson.vocabulary || [];
     panel.innerHTML = `
       <div class="content-toolbar">
-        <button type="button" class="icon-toggle-btn" id="vocab-view-phrase" title="Xem cụm từ">${icon("languages", { size: 15 })} Cụm</button>
-        <button type="button" class="icon-toggle-btn" id="vocab-view-word" title="Xem từ đơn">${icon("book-open", { size: 15 })} Từ</button>
+        ${VOCAB_VIEWS.map((v) => `<button type="button" class="icon-toggle-btn" id="vocab-view-${v.value}" title="${escapeHtml(v.label)}">${icon(v.icon, { size: 15 })}</button>`).join("")}
       </div>
       <div id="vocab-list-body"></div>
     `;
-    panel.querySelector("#vocab-view-phrase").addEventListener("click", () => {
-      state.vocabView = "phrase";
-      renderVocabBody();
-    });
-    panel.querySelector("#vocab-view-word").addEventListener("click", () => {
-      state.vocabView = "word";
-      renderVocabBody();
+    VOCAB_VIEWS.forEach((v) => {
+      panel.querySelector(`#vocab-view-${v.value}`).addEventListener("click", () => {
+        state.vocabView = v.value;
+        renderVocabBody();
+      });
     });
     renderVocabBody();
 
     function renderVocabBody() {
-      panel.querySelector("#vocab-view-phrase").classList.toggle("active", state.vocabView === "phrase");
-      panel.querySelector("#vocab-view-word").classList.toggle("active", state.vocabView === "word");
-      const words = allWords.filter((w) => isPhrase(w.word) === (state.vocabView === "phrase"));
+      VOCAB_VIEWS.forEach((v) => {
+        panel.querySelector(`#vocab-view-${v.value}`).classList.toggle("active", state.vocabView === v.value);
+      });
+      const viewDef = VOCAB_VIEWS.find((v) => v.value === state.vocabView) || VOCAB_VIEWS[0];
+      const words = (lesson.vocabulary || []).filter((w) => categorizeVocabWord(w) === state.vocabView);
       const body = panel.querySelector("#vocab-list-body");
       if (!words.length) {
-        body.innerHTML = `<p class="muted">${state.vocabView === "phrase" ? "Bài này không có cụm từ nổi bật." : "Bài này không có từ đơn nổi bật."}</p>`;
+        body.innerHTML = `<p class="muted">${escapeHtml(viewDef.empty)}</p>`;
         return;
       }
       body.innerHTML = `

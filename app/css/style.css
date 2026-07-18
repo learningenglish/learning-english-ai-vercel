@@ -92,7 +92,10 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: url("../icons/bg-scene.svg");
+  /* --bg-scene-image set bởi app/js/background.js (đường dẫn TÍNH TỪ index.html) — biến
+     mặc định ở đây (tính từ file CSS này) chỉ dùng khi JS chưa kịp chạy/bị chặn. Có thể là
+     "none" nếu người dùng chọn nền "Trơn" ở Hồ sơ. */
+  background-image: var(--bg-scene-image, url("../icons/bg-scene.svg"));
   background-size: cover;
   background-position: top center;
   background-repeat: no-repeat;
@@ -1151,6 +1154,44 @@ textarea:focus {
   border-color: var(--purple);
   color: var(--purple);
   background: var(--purple-soft);
+}
+
+.bg-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.bg-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface-soft);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.bg-option-thumb {
+  display: block;
+  width: 100%;
+  height: 46px;
+  border-radius: 8px;
+  background-color: var(--bg-fallback);
+  background-size: cover;
+  background-position: top center;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.bg-option.active {
+  border-color: var(--purple);
+  color: var(--purple);
 }
 
 .cover-placeholder {

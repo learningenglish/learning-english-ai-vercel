@@ -1,0 +1,64 @@
+<svg viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8fd6e8" />
+      <stop offset="40%" stop-color="#cdeff2" />
+      <stop offset="100%" stop-color="#f3fbf5" />
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="26%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="hill1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3fa5c2" />
+      <stop offset="100%" stop-color="#2c8aa8" />
+    </linearGradient>
+    <linearGradient id="hill2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#89cdde" />
+      <stop offset="100%" stop-color="#5fb6cf" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="1600" fill="url(#sky)" />
+  <circle cx="400" cy="240" r="420" fill="url(#sun)" />
+
+  <!-- mây -->
+  <g fill="#ffffff" opacity="0.85">
+    <ellipse cx="140" cy="160" rx="70" ry="26" />
+    <ellipse cx="190" cy="150" rx="50" ry="22" />
+    <ellipse cx="640" cy="220" rx="80" ry="28" />
+    <ellipse cx="700" cy="210" rx="55" ry="24" />
+  </g>
+
+  <!-- cánh buồm xa xa -->
+  <g fill="#ffffff" opacity="0.8">
+    <path d="M534 460 L534 540 L566 540 Z" />
+    <path d="M220 480 L220 540 L246 540 Z" />
+  </g>
+
+  <!-- sóng xa -->
+  <path d="M0,560 Q200,500 400,560 T800,560 L800,700 L0,700 Z" fill="url(#hill2)" />
+  <!-- sóng gần -->
+  <path d="M0,640 Q220,570 400,640 T800,630 L800,900 L0,900 Z" fill="url(#hill1)" />
+
+  <!-- dòng nước uốn lượn -->
+  <path d="M370,900 C400,1050 320,1150 360,1300 C390,1420 340,1520 370,1600 L440,1600 C420,1500 460,1420 430,1300 C400,1150 470,1050 440,900 Z" fill="#eafcff" opacity="0.85" />
+
+  <!-- dừa/cây hai bên -->
+  <g fill="#2f8f6b">
+    <circle cx="90" cy="820" r="46" />
+    <circle cx="150" cy="850" r="34" />
+    <circle cx="700" cy="840" r="50" />
+    <circle cx="640" cy="870" r="30" />
+  </g>
+
+  <!-- vỏ sò cuối trang -->
+  <g fill="#ffd9a0" opacity="0.9">
+    <circle cx="60" cy="1500" r="8" />
+    <circle cx="90" cy="1520" r="6" />
+    <circle cx="40" cy="1530" r="5" />
+    <circle cx="740" cy="1500" r="8" />
+    <circle cx="710" cy="1520" r="6" />
+    <circle cx="760" cy="1530" r="5" />
+  </g>
+</svg>

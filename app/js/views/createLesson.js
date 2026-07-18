@@ -2,7 +2,7 @@
 // thật (Phase 0/3 timing test): hiện đồng hồ giây khi đang chờ, và khi xong/lỗi hiện rõ
 // tổng thời gian + token + chi phí ước tính + mã lỗi nếu có.
 import { navigate } from "../router.js";
-import { createLessonFromAI, createLessonFromText } from "../lessonApi.js";
+import { createLessonFromAI, createLessonFromText, fetchAndSaveLessonCover } from "../lessonApi.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 
@@ -241,6 +241,9 @@ export function renderCreateLesson(mount, params) {
         const { lesson, meta } = res.data;
         resultSlot.innerHTML = successPanelHtml(totalSeconds, meta, lesson);
         resultSlot.querySelector("#goto-lesson-btn")?.addEventListener("click", () => navigate(`/lesson/${lesson.id}`));
+        // Tự động lấy + lưu ảnh bìa NGAY, không cần bấm gì — chạy RỜI, không await (không
+        // trễ màn kết quả đang hiện). Xem ghi chú đầy đủ ở lessonApi.js.
+        fetchAndSaveLessonCover(lesson);
       }
     } catch (err) {
       stopTimer();

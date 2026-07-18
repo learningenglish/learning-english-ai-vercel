@@ -164,12 +164,23 @@ export function renderLessons(mount, params) {
     });
   }
 
+  // Trích đoạn hiện ở thẻ danh sách: ưu tiên NỘI DUNG THẬT (câu/đoạn đầu bài, đúng yêu cầu
+  // "hiển thị đúng nội dung bài đọc") — "situation" chỉ dùng khi bài cũ chưa có "content"
+  // (không nên xảy ra với dữ liệu hiện tại, chỉ là lớp phòng hờ).
+  function cardExcerpt(l) {
+    const first = (l.content || [])[0];
+    if (first?.translation) return first.translation;
+    if (first?.text) return first.text;
+    return l.situation || "";
+  }
+
   function cardHtml(l) {
+    const excerpt = cardExcerpt(l);
     return `
       <div class="lesson-card" data-id="${l.id}">
         <div class="lesson-card-body">
           <div class="lesson-card-title">${escapeHtml(l.title_vi || l.title)}</div>
-          ${l.situation ? `<div class="lesson-card-sub">${escapeHtml(l.situation)}</div>` : ""}
+          ${excerpt ? `<div class="lesson-card-sub">${escapeHtml(excerpt)}</div>` : ""}
           <div class="lesson-card-meta">
             <span class="badge">${escapeHtml(l.level)}</span>
             <span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(l.created_at)}</span>
