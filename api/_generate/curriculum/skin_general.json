@@ -1,5 +1,6 @@
 {
   "note_vi": "Da mặc định 'Tổng quát' — ánh xạ situation_frame -> danh sách chủ đề cụ thể (chính là các chủ đề gốc trước khi tách lớp da/xương, KHÔNG xoá). Dùng làm mẫu chuẩn cho các da lĩnh vực khác (Logistics, Nhà hàng, Y tế...) sau này: mỗi da mới là 1 file cùng khuôn, ánh xạ cùng bộ frame key sang chủ đề của lĩnh vực đó.",
+  "spec_da_linh_vuc_vi": "GHI CHÚ SPEC cho đợt làm da lĩnh vực (CHƯA làm, chốt 2026-07-19 lần 3): mỗi situation_frame phải sinh RA NHIỀU BIẾN THỂ chủ đề, tối thiểu bằng số lần khung đó xuất hiện trong level (đếm số slot có situation_frame_key đó trong spine_draft.json) — để các slot lặp lại cùng 1 khung KHÔNG bị trùng câu chuyện/ngữ cảnh. File này (24 chủ đề trải trên 12 khung ở A1, tỷ lệ tương tự các level khác) chính là MẪU TỶ LỆ TỐI THIỂU cần đạt cho mỗi da lĩnh vực mới — không được ít biến thể hơn bản 'Tổng quát' này.",
   "levels": {
     "A1": {
       "meeting_intro": ["Giới thiệu bản thân", "Bạn bè", "Giờ giải lao & trò chuyện nhỏ"],

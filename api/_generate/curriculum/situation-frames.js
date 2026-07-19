@@ -11,6 +11,11 @@
 //
 // Số frame/level ít hơn số chủ đề gốc (gộp các chủ đề cùng LOẠI tình huống) — đây chính là
 // điểm trừu tượng hoá: 1 frame có thể ứng với nhiều chủ đề/lĩnh vực khác nhau tuỳ da áp lên.
+//
+// SPEC cho đợt làm da lĩnh vực (CHƯA làm — xem "spec_da_linh_vuc_vi" trong skin_general.json):
+// mỗi frame ở đây được lặp lại nhiều slot trong 1 level (mỗi 4 slot đổi frame theo vòng xoay)
+// — da lĩnh vực áp lên PHẢI sinh đủ số biến thể chủ đề cho từng frame (tối thiểu = số lần
+// frame đó xuất hiện trong level), nếu không các slot lặp cùng frame sẽ trùng câu chuyện.
 export const SITUATION_FRAMES = {
   A1: [
     { key: "meeting_intro", name_vi: "Gặp gỡ & giới thiệu lần đầu" },
