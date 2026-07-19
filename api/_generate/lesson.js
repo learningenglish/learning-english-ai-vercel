@@ -17,6 +17,13 @@
 // wordLookup.js) dùng chung, không phải copy lại lần nữa mỗi khi thêm action mới.
 import { SUPABASE_URL, callOpenAI, content, safeOpenAIError, stripJsonFence } from "./_shared.js";
 
+// SPEC ghi sổ, CHƯA triển khai (2026-07-19 — xem project_ai_model_routing_spec trong memory):
+// model routing 2 bậc dự kiến — (1) sinh DA LĨNH VỰC (chưa có module, sẽ ở
+// api/_generate/curriculum/): luôn model bậc GIỮA thế hệ hiện hành qua env MODEL_SKIN, KHÔNG
+// dùng o-series/Pro (trả thêm tiền cho suy luận không cần); (2) sinh NỘI DUNG BÀI (hàm bên
+// dưới): giữ nguyên "gpt-4o-mini" mặc định, CHỈ leo thang lên model MODEL_SKIN khi lượt "Thử
+// lại" sau parse/validate fail (request MỚI từ client — không nhồi 2 lượt vào 1 request vì
+// trần 60s). Model mạnh là lưới cuối, KHÔNG thay cho việc siết prompt/validate.
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
