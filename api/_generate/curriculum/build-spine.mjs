@@ -21,6 +21,8 @@
 // - Chủ đề TRUNG TÍNH, chưa gắn lĩnh vực (lĩnh vực là lớp phủ áp dụng sau, việc riêng).
 import { GRAMMAR_CATALOG, realGrammarPointsByLevel } from "./grammar-catalog.js";
 import { functionsByLevel } from "./functions-catalog.js";
+import { TEACH_ORDER } from "./grammar-order.js";
+import { TOPIC_FUNCTIONS } from "./topic-function-map.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,29 +53,50 @@ const REVIEW_GAP = 12;
 const TEACH_INTERVAL = 4; // khoảng cách giữa 2 sự kiện dạy MỚI liên tiếp
 const MAX_SLOTS = 90;
 const MIN_SLOTS_EXPECTED = 70;
+// Tổng slot/level đã ĐÓNG BĂNG ở commit d327414 (đối chiếu bắt buộc — lệch là fail, xem
+// "BÀI HỌC ĐẮT NHẤT" trong chỉ thị: quyết định đã duyệt không được để script mới âm thầm
+// ghi đè). C1=61 là quyết định có chủ đích (không đệm slot rỗng), không phải lỗi.
+const FROZEN_TOTALS = { A1: 89, A2: 81, B1: 85, B2: 85, C1: 61 };
 const VOCAB_STRETCH_NOTE =
   "Phần lớn từ vựng đúng cấp độ hiện tại; xen một vài từ tự nhiên nhô lên cấp kế tiếp (nguyên lý i+1) — không ép tỷ lệ %, chỉ là hướng dẫn định tính.";
 
 function buildLevelSpine(level) {
   const allPoints = realGrammarPointsByLevel(level); // loại type:"vocab"
   const groupPairs = GROUP_TEACH_PAIRS[level] || [];
-  const grouped = new Set(groupPairs.flat());
 
   // "teachEvents": mỗi phần tử là 1 SỰ KIỆN dạy mới, có thể mang 1 điểm hoặc 1 CẶP điểm gộp.
-  const teachEvents = [];
-  const seen = new Set();
-  groupPairs.forEach(([a, b]) => {
-    teachEvents.push([a, b]);
-    seen.add(a);
-    seen.add(b);
-  });
-  allPoints.forEach((g) => {
-    if (!seen.has(g.key)) teachEvents.push([g.key]);
-  });
+  // Thứ tự lấy từ TEACH_ORDER (soạn tay, tôn trọng phụ thuộc ngữ pháp) — KHÔNG dùng thứ tự
+  // khai báo tình cờ trong catalog.
+  const order = TEACH_ORDER[level];
+  if (!order) throw new Error(`Thiếu TEACH_ORDER cho level ${level}`);
+  const teachEvents = order.map((entry) => entry.split("+"));
+
+  // Tự kiểm: TEACH_ORDER phải phủ đúng — không thiếu, không thừa, không trùng — so với
+  // catalog (đối chiếu cả cặp gộp khai báo trong GROUP_TEACH_PAIRS).
+  const orderKeys = teachEvents.flat();
+  const catalogKeys = allPoints.map((p) => p.key);
+  const orderSet = new Set(orderKeys);
+  const catalogSet = new Set(catalogKeys);
+  const missing = catalogKeys.filter((k) => !orderSet.has(k));
+  const extra = orderKeys.filter((k) => !catalogSet.has(k));
+  const dup = orderKeys.filter((k, i) => orderKeys.indexOf(k) !== i);
+  if (missing.length || extra.length || dup.length) {
+    throw new Error(
+      `TEACH_ORDER[${level}] không khớp catalog — thiếu: [${missing}] thừa: [${extra}] trùng: [${dup}]`
+    );
+  }
+  const expectedGrouped = new Set(groupPairs.map((p) => p.join("+")));
+  const actualGrouped = new Set(order.filter((e) => e.includes("+")));
+  if (expectedGrouped.size !== actualGrouped.size || [...expectedGrouped].some((g) => !actualGrouped.has(g))) {
+    throw new Error(`TEACH_ORDER[${level}] không khớp GROUP_TEACH_PAIRS đã khai báo`);
+  }
 
   const themes = THEMES[level];
-  const words = WORD_CYCLE[level];
-  const density = DENSITY_CYCLE[level];
+  const topicFnMap = TOPIC_FUNCTIONS[level] || {};
+  const wordBounds = WORD_CYCLE[level];
+  const densityBounds = DENSITY_CYCLE[level];
+  const wordMin = Math.min(...wordBounds), wordMax = Math.max(...wordBounds);
+  const densityMin = Math.min(...densityBounds), densityMax = Math.max(...densityBounds);
 
   const teachSlotOfEvent = teachEvents.map((_, i) => 1 + i * TEACH_INTERVAL);
   const assignments = {};
@@ -93,31 +116,78 @@ function buildLevelSpine(level) {
   });
 
   const totalSlots = maxSlotUsed;
+
+  // Rotation counter cho từng topic — chọn function TRONG danh sách hợp nghĩa của topic đó,
+  // xoay vòng để cân bằng tần suất (cấm ghép ngoài bảng TOPIC_FUNCTIONS).
+  const fnRotationByTopic = {};
+  function pickFunctionForTopic(topic) {
+    const allowed = topicFnMap[topic] || [];
+    if (!allowed.length) return null;
+    const i = fnRotationByTopic[topic] || 0;
+    fnRotationByTopic[topic] = i + 1;
+    const key = allowed[i % allowed.length];
+    const fn = functionsByLevel(level).find((f) => f.key === key);
+    return fn || null;
+  }
+
   const slots = [];
   for (let slot = 1; slot <= totalSlots; slot++) {
     const themeIdx = Math.floor((slot - 1) / 4) % themes.length;
+    const topic = themes[themeIdx];
     const content_type = slot % 2 === 1 ? "reading" : "dialogue";
     const grammar = (assignments[slot] || []).map((a) => ({
       key: a.key,
       name_vi: GRAMMAR_CATALOG[a.key].name_vi,
       status: a.status,
     }));
-    const fn = functionsByLevel(level);
-    const fnPoint = fn.length ? fn[(slot - 1) % fn.length] : null;
+    const fnPoint = pickFunctionForTopic(topic);
+    // Leo dốc đơn điệu theo VỊ TRÍ trong level (đầu level = cận dưới, cuối level = cận trên),
+    // thay cho kiểu lặp chu kỳ cũ.
+    const progress = totalSlots > 1 ? (slot - 1) / (totalSlots - 1) : 0;
+    const new_words_target = Math.round(wordMin + (wordMax - wordMin) * progress);
+    const specialized_density_target_percent = Math.round(densityMin + (densityMax - densityMin) * progress);
     slots.push({
       level,
       slot,
-      topic: themes[themeIdx],
+      topic,
       content_type,
       grammar,
       function_key: fnPoint ? fnPoint.key : null,
       function_name_vi: fnPoint ? fnPoint.name : null,
-      new_words_target: words[(slot - 1) % words.length],
-      specialized_density_target_percent: density[(slot - 1) % density.length],
+      new_words_target,
+      specialized_density_target_percent,
       vocab_stretch: VOCAB_STRETCH_NOTE,
     });
   }
   return { slots, totalSlots, teachEventCount: teachEvents.length, pointCount: allPoints.length };
+}
+
+// Tự kiểm sau khi sinh: (1) tổng khớp số đã chốt; (2) không có function ngoài bảng ghép cho
+// topic của nó; (3) mật độ CN & từ mới không giảm dọc theo level (đơn điệu tăng).
+function selfCheck(spine) {
+  const problems = [];
+  for (const level of Object.keys(spine.levels)) {
+    const slots = spine.levels[level];
+    const total = slots.length;
+    if (FROZEN_TOTALS[level] !== undefined && total !== FROZEN_TOTALS[level]) {
+      problems.push(`[${level}] tổng slot=${total} lệch số đã chốt=${FROZEN_TOTALS[level]}`);
+    }
+    const topicFnMap = TOPIC_FUNCTIONS[level] || {};
+    let prevWords = -Infinity, prevDensity = -Infinity;
+    for (const s of slots) {
+      if (s.function_key) {
+        const allowed = topicFnMap[s.topic] || [];
+        if (!allowed.includes(s.function_key)) {
+          problems.push(`[${level}] slot ${s.slot}: function "${s.function_key}" không có trong bảng ghép của topic "${s.topic}"`);
+        }
+      }
+      if (s.new_words_target < prevWords) problems.push(`[${level}] slot ${s.slot}: new_words_target giảm (${prevWords} -> ${s.new_words_target})`);
+      if (s.specialized_density_target_percent < prevDensity) problems.push(`[${level}] slot ${s.slot}: density giảm (${prevDensity} -> ${s.specialized_density_target_percent})`);
+      prevWords = s.new_words_target;
+      prevDensity = s.specialized_density_target_percent;
+    }
+  }
+  return problems;
 }
 
 const spine = {
@@ -135,8 +205,16 @@ for (const level of ["A1", "A2", "B1", "B2", "C1"]) {
   report.push({ level, totalSlots, teachEventCount, pointCount, merged: pointCount - teachEventCount, flag });
 }
 
+const problems = selfCheck(spine);
+if (problems.length) {
+  console.error("TỰ KIỂM THẤT BẠI — spine_draft.json KHÔNG được ghi:");
+  problems.forEach((p) => console.error("  - " + p));
+  process.exit(1);
+}
+
 fs.writeFileSync(path.join(__dirname, "spine_draft.json"), JSON.stringify(spine, null, 2));
 
+console.log("Tự kiểm OK (tổng khớp số đã chốt; đúng thứ tự phụ thuộc; đúng bảng ghép chủ đề-chức năng; mật độ đơn điệu tăng).");
 console.log("Đã ghi spine_draft.json — " + Object.values(spine.levels).flat().length + " slot tổng.\n");
 console.log("level | tổng slot | số điểm ngữ pháp | số sự kiện dạy (sau gộp) | trạng thái");
 report.forEach((r) =>
