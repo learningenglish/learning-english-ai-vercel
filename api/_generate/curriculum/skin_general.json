@@ -1,0 +1,82 @@
+{
+  "note_vi": "Da mặc định 'Tổng quát' — ánh xạ situation_frame -> danh sách chủ đề cụ thể (chính là các chủ đề gốc trước khi tách lớp da/xương, KHÔNG xoá). Dùng làm mẫu chuẩn cho các da lĩnh vực khác (Logistics, Nhà hàng, Y tế...) sau này: mỗi da mới là 1 file cùng khuôn, ánh xạ cùng bộ frame key sang chủ đề của lĩnh vực đó.",
+  "levels": {
+    "A1": {
+      "meeting_intro": ["Giới thiệu bản thân", "Bạn bè", "Giờ giải lao & trò chuyện nhỏ"],
+      "close_ones": ["Gia đình", "Con vật nuôi"],
+      "numeric_info": ["Số đếm & tuổi"],
+      "time_schedule": ["Ngày tháng & giờ giấc", "Công việc hàng ngày"],
+      "current_state": ["Thời tiết", "Ngày lễ & dịp đặc biệt"],
+      "space_objects": ["Màu sắc & đồ vật", "Phòng ốc trong nhà", "Đồ dùng học tập"],
+      "service_ordering": ["Đồ ăn thức uống cơ bản", "Tại quán cà phê", "Tại nhà hàng (gọi món)"],
+      "simple_request_booking": ["Mua sắm đơn giản", "Đặt phòng khách sạn đơn giản"],
+      "directions_movement": ["Phương tiện đi lại", "Chỉ đường cơ bản"],
+      "institutional_info": ["Trường học & lớp học"],
+      "preferences_activities": ["Sở thích", "Thể thao cơ bản"],
+      "minor_health": ["Sức khoẻ cơ bản (đau ốm nhẹ)"]
+    },
+    "A2": {
+      "narrating_past_experience": ["Kỳ nghỉ đã qua", "Kể lại một ngày"],
+      "planning_future": ["Lên kế hoạch cuối tuần", "Kể về kỳ nghỉ lý tưởng"],
+      "shopping_choosing": ["Mua sắm quần áo", "Tại siêu thị"],
+      "directions_complex": ["Hỏi đường phức tạp hơn", "Phương tiện công cộng"],
+      "booking_travel": ["Đặt vé (xe/máy bay)", "Tại sân bay", "Khách sạn (check-in/check-out)"],
+      "service_ordering_payment": ["Nhà hàng (gọi món & thanh toán)"],
+      "health_appointment": ["Sức khoẻ (khám bệnh)", "Gọi điện đặt lịch"],
+      "outdoor_weather_activity": ["Thời tiết & hoạt động ngoài trời"],
+      "workplace_school": ["Công việc & đồng nghiệp", "Trường học & bài tập"],
+      "family_social": ["Gia đình mở rộng", "Lễ hội & ngày lễ"],
+      "hobbies_free_time": ["Sở thích & thời gian rảnh", "Công nghệ cơ bản (điện thoại/máy tính)"],
+      "comparing_places": ["So sánh nơi chốn (thành phố/quê)"],
+      "household_routine": ["Giặt là & việc nhà", "Thuê nhà đơn giản"]
+    },
+    "B1": {
+      "detailed_past_narrative": ["Kể chuyện quá khứ chi tiết", "Trải nghiệm du lịch"],
+      "future_plans_career": ["Dự định tương lai", "Kế hoạch nghề nghiệp"],
+      "complaint_resolution": ["Phàn nàn dịch vụ", "Đổi trả hàng", "Mua sắm trực tuyến"],
+      "seeking_advice": ["Xin lời khuyên", "Đặt lịch hẹn (nha sĩ/bác sĩ)"],
+      "job_application": ["Phỏng vấn xin việc cơ bản", "Email công việc đơn giản"],
+      "teamwork_discussion": ["Thảo luận công việc nhóm", "Kỹ năng mềm nơi làm việc"],
+      "habit_change": ["Thói quen đã thay đổi"],
+      "social_issue_opinion": ["Vấn đề môi trường cơ bản", "Tin tức thời sự đơn giản"],
+      "major_purchase_decision": ["Mua nhà / thuê nhà"],
+      "personal_finance": ["Ngân hàng & tài chính cá nhân", "Lập kế hoạch tài chính cơ bản"],
+      "entertainment_review": ["Giải trí (phim/nhạc) & đánh giá"],
+      "education_learning": ["Giáo dục & học tập"],
+      "technology_daily_life": ["Công nghệ trong đời sống"],
+      "health_lifestyle": ["Sức khoẻ & lối sống"],
+      "community_volunteering": ["Tình nguyện & hoạt động cộng đồng"]
+    },
+    "B2": {
+      "persuasion_workplace": ["Thuyết phục đồng nghiệp", "Thuyết trình ý tưởng"],
+      "negotiation_contract": ["Đàm phán hợp đồng", "Quản lý rủi ro dự án"],
+      "conflict_resolution": ["Giải quyết xung đột nơi làm việc", "Đa dạng văn hoá nơi làm việc"],
+      "constructive_feedback": ["Phản hồi & phê bình xây dựng"],
+      "tech_trend_discussion": ["Xu hướng công nghệ", "Trí tuệ nhân tạo trong đời sống"],
+      "sustainability_debate": ["Môi trường & phát triển bền vững", "Biến đổi khí hậu"],
+      "media_influence": ["Truyền thông xã hội & ảnh hưởng", "Tin giả & báo chí"],
+      "online_education": ["Giáo dục trực tuyến"],
+      "mental_health": ["Sức khoẻ tâm lý"],
+      "entrepreneurship": ["Khởi nghiệp & kinh doanh nhỏ"],
+      "time_remote_work": ["Quản lý thời gian", "Làm việc từ xa", "Cân bằng công việc-cuộc sống"],
+      "business_ethics": ["Đạo đức trong kinh doanh", "Đạo đức nghề nghiệp"],
+      "globalization": ["Toàn cầu hoá"],
+      "corporate_culture": ["Văn hoá doanh nghiệp", "Phát triển bản thân"]
+    },
+    "C1": {
+      "public_policy_debate": ["Tranh luận chính sách công", "Khủng hoảng khí hậu & chính sách"],
+      "ethics_debate": ["Đạo đức AI", "Đạo đức y sinh"],
+      "economic_inequality": ["Bất bình đẳng kinh tế", "Tự động hoá & thị trường lao động"],
+      "free_speech_censorship": ["Tự do ngôn luận vs kiểm duyệt", "Truyền thông & thao túng dư luận"],
+      "future_education": ["Tương lai giáo dục"],
+      "globalization_identity": ["Toàn cầu hoá & bản sắc văn hoá", "Đô thị hoá & phát triển bền vững"],
+      "innovation_risk": ["Đổi mới sáng tạo & rủi ro"],
+      "crisis_leadership": ["Lãnh đạo trong khủng hoảng"],
+      "constructive_disagreement": ["Bất đồng quan điểm mang tính xây dựng", "Ngoại giao & đàm phán quốc tế"],
+      "philosophy_modern_life": ["Triết học đời sống hiện đại", "Nghệ thuật & xã hội"],
+      "science_public_trust": ["Khoa học & niềm tin công chúng"],
+      "digital_privacy": ["Quyền riêng tư trong kỷ nguyên số"],
+      "career_meaning": ["Ý nghĩa thành công trong sự nghiệp"]
+    }
+  }
+}

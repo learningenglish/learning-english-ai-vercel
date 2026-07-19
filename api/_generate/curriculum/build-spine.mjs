@@ -22,22 +22,22 @@
 import { GRAMMAR_CATALOG, realGrammarPointsByLevel } from "./grammar-catalog.js";
 import { functionsByLevel } from "./functions-catalog.js";
 import { TEACH_ORDER } from "./grammar-order.js";
-import { TOPIC_FUNCTIONS } from "./topic-function-map.js";
+import { SITUATION_FRAMES } from "./situation-frames.js";
+import { FRAME_FUNCTIONS } from "./frame-function-map.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Thêm 4 theme/level so với bản đầu (danh sách cũ chỉ đủ cho đúng 80 slot = 20 theme x 4) —
-// tổng slot giờ có thể vượt 80 (vd A1 sau gộp vẫn ~89), cần dư theme để không lặp quá sớm.
-const THEMES = {
-  A1: ["Giới thiệu bản thân","Gia đình","Bạn bè","Số đếm & tuổi","Ngày tháng & giờ giấc","Thời tiết","Màu sắc & đồ vật","Phòng ốc trong nhà","Đồ ăn thức uống cơ bản","Tại quán cà phê","Mua sắm đơn giản","Phương tiện đi lại","Chỉ đường cơ bản","Trường học & lớp học","Công việc hàng ngày","Sở thích","Thể thao cơ bản","Sức khoẻ cơ bản (đau ốm nhẹ)","Tại nhà hàng (gọi món)","Đặt phòng khách sạn đơn giản","Ngày lễ & dịp đặc biệt","Đồ dùng học tập","Con vật nuôi","Giờ giải lao & trò chuyện nhỏ"],
-  A2: ["Kỳ nghỉ đã qua","Kể lại một ngày","Lên kế hoạch cuối tuần","Mua sắm quần áo","Tại siêu thị","Hỏi đường phức tạp hơn","Phương tiện công cộng","Đặt vé (xe/máy bay)","Tại sân bay","Khách sạn (check-in/check-out)","Nhà hàng (gọi món & thanh toán)","Sức khoẻ (khám bệnh)","Thời tiết & hoạt động ngoài trời","Công việc & đồng nghiệp","Trường học & bài tập","Gia đình mở rộng","Lễ hội & ngày lễ","Sở thích & thời gian rảnh","Công nghệ cơ bản (điện thoại/máy tính)","So sánh nơi chốn (thành phố/quê)","Giặt là & việc nhà","Thuê nhà đơn giản","Gọi điện đặt lịch","Kể về kỳ nghỉ lý tưởng"],
-  B1: ["Kể chuyện quá khứ chi tiết","Trải nghiệm du lịch","Dự định tương lai","Phàn nàn dịch vụ","Đổi trả hàng","Xin lời khuyên","Đặt lịch hẹn (nha sĩ/bác sĩ)","Phỏng vấn xin việc cơ bản","Thảo luận công việc nhóm","Email công việc đơn giản","Thói quen đã thay đổi","Kế hoạch nghề nghiệp","Vấn đề môi trường cơ bản","Mua nhà / thuê nhà","Ngân hàng & tài chính cá nhân","Giải trí (phim/nhạc) & đánh giá","Tin tức thời sự đơn giản","Giáo dục & học tập","Công nghệ trong đời sống","Sức khoẻ & lối sống","Tình nguyện & hoạt động cộng đồng","Mua sắm trực tuyến","Kỹ năng mềm nơi làm việc","Lập kế hoạch tài chính cơ bản"],
-  B2: ["Thuyết phục đồng nghiệp","Đàm phán hợp đồng","Giải quyết xung đột nơi làm việc","Thuyết trình ý tưởng","Phản hồi & phê bình xây dựng","Xu hướng công nghệ","Môi trường & phát triển bền vững","Truyền thông xã hội & ảnh hưởng","Giáo dục trực tuyến","Sức khoẻ tâm lý","Đa dạng văn hoá nơi làm việc","Khởi nghiệp & kinh doanh nhỏ","Quản lý thời gian","Làm việc từ xa","Đạo đức trong kinh doanh","Tin giả & báo chí","Toàn cầu hoá","Biến đổi khí hậu","Trí tuệ nhân tạo trong đời sống","Cân bằng công việc-cuộc sống","Đạo đức nghề nghiệp","Quản lý rủi ro dự án","Văn hoá doanh nghiệp","Phát triển bản thân"],
-  C1: ["Tranh luận chính sách công","Đạo đức AI","Bất bình đẳng kinh tế","Tự do ngôn luận vs kiểm duyệt","Khủng hoảng khí hậu & chính sách","Tương lai giáo dục","Toàn cầu hoá & bản sắc văn hoá","Đổi mới sáng tạo & rủi ro","Lãnh đạo trong khủng hoảng","Truyền thông & thao túng dư luận","Đạo đức y sinh","Tự động hoá & thị trường lao động","Bất đồng quan điểm mang tính xây dựng","Ngoại giao & đàm phán quốc tế","Triết học đời sống hiện đại","Nghệ thuật & xã hội","Khoa học & niềm tin công chúng","Đô thị hoá & phát triển bền vững","Quyền riêng tư trong kỷ nguyên số","Ý nghĩa thành công trong sự nghiệp"],
-};
+// Danh từ chỉ địa điểm/ngành CỤ THỂ — không được xuất hiện trong tên khung tình huống
+// (situation_frame). Nếu có, đó là dấu hiệu lớp "da" (chủ đề/lĩnh vực) đã lọt vào "xương"
+// (spine phải trung tính lĩnh vực — xem chỉ thị kiến trúc 2026-07-19 lần 2).
+const BANNED_SUBSTRINGS = [
+  "cà phê", "sân bay", "siêu thị", "nhà hàng", "khách sạn", "bệnh viện", "ngân hàng",
+  "trường học", "công ty", "văn phòng", "cửa hàng", "quán ăn", "quán cà", "tiệm",
+  "hiệu thuốc", "phòng khám", "nhà ga", "bến xe", "phi trường",
+];
 
 // Cặp điểm ngữ pháp NHỎ/LIÊN QUAN được DẠY CHUNG 1 sự kiện (giảm số sự kiện dạy độc lập) —
 // CHỈ áp dụng cho level thật sự vượt MAX_SLOTS sau khi tính tự nhiên (xem console log cuối
@@ -91,8 +91,8 @@ function buildLevelSpine(level) {
     throw new Error(`TEACH_ORDER[${level}] không khớp GROUP_TEACH_PAIRS đã khai báo`);
   }
 
-  const themes = THEMES[level];
-  const topicFnMap = TOPIC_FUNCTIONS[level] || {};
+  const frames = SITUATION_FRAMES[level];
+  const frameFnMap = FRAME_FUNCTIONS[level] || {};
   const wordBounds = WORD_CYCLE[level];
   const densityBounds = DENSITY_CYCLE[level];
   const wordMin = Math.min(...wordBounds), wordMax = Math.max(...wordBounds);
@@ -117,14 +117,14 @@ function buildLevelSpine(level) {
 
   const totalSlots = maxSlotUsed;
 
-  // Rotation counter cho từng topic — chọn function TRONG danh sách hợp nghĩa của topic đó,
-  // xoay vòng để cân bằng tần suất (cấm ghép ngoài bảng TOPIC_FUNCTIONS).
-  const fnRotationByTopic = {};
-  function pickFunctionForTopic(topic) {
-    const allowed = topicFnMap[topic] || [];
+  // Rotation counter cho từng frame — chọn function TRONG danh sách hợp nghĩa của frame đó,
+  // xoay vòng để cân bằng tần suất (cấm ghép ngoài bảng FRAME_FUNCTIONS).
+  const fnRotationByFrame = {};
+  function pickFunctionForFrame(frameKey) {
+    const allowed = frameFnMap[frameKey] || [];
     if (!allowed.length) return null;
-    const i = fnRotationByTopic[topic] || 0;
-    fnRotationByTopic[topic] = i + 1;
+    const i = fnRotationByFrame[frameKey] || 0;
+    fnRotationByFrame[frameKey] = i + 1;
     const key = allowed[i % allowed.length];
     const fn = functionsByLevel(level).find((f) => f.key === key);
     return fn || null;
@@ -132,15 +132,15 @@ function buildLevelSpine(level) {
 
   const slots = [];
   for (let slot = 1; slot <= totalSlots; slot++) {
-    const themeIdx = Math.floor((slot - 1) / 4) % themes.length;
-    const topic = themes[themeIdx];
+    const frameIdx = Math.floor((slot - 1) / 4) % frames.length;
+    const frame = frames[frameIdx];
     const content_type = slot % 2 === 1 ? "reading" : "dialogue";
     const grammar = (assignments[slot] || []).map((a) => ({
       key: a.key,
       name_vi: GRAMMAR_CATALOG[a.key].name_vi,
       status: a.status,
     }));
-    const fnPoint = pickFunctionForTopic(topic);
+    const fnPoint = pickFunctionForFrame(frame.key);
     // Leo dốc đơn điệu theo VỊ TRÍ trong level (đầu level = cận dưới, cuối level = cận trên),
     // thay cho kiểu lặp chu kỳ cũ.
     const progress = totalSlots > 1 ? (slot - 1) / (totalSlots - 1) : 0;
@@ -149,7 +149,8 @@ function buildLevelSpine(level) {
     slots.push({
       level,
       slot,
-      topic,
+      situation_frame_key: frame.key,
+      situation_frame: frame.name_vi,
       content_type,
       grammar,
       function_key: fnPoint ? fnPoint.key : null,
@@ -163,7 +164,8 @@ function buildLevelSpine(level) {
 }
 
 // Tự kiểm sau khi sinh: (1) tổng khớp số đã chốt; (2) không có function ngoài bảng ghép cho
-// topic của nó; (3) mật độ CN & từ mới không giảm dọc theo level (đơn điệu tăng).
+// frame của nó; (3) mật độ CN & từ mới không giảm dọc theo level (đơn điệu tăng); (4) không
+// frame nào chứa danh từ chỉ địa điểm/ngành cụ thể (da lọt vào xương).
 function selfCheck(spine) {
   const problems = [];
   for (const level of Object.keys(spine.levels)) {
@@ -172,13 +174,18 @@ function selfCheck(spine) {
     if (FROZEN_TOTALS[level] !== undefined && total !== FROZEN_TOTALS[level]) {
       problems.push(`[${level}] tổng slot=${total} lệch số đã chốt=${FROZEN_TOTALS[level]}`);
     }
-    const topicFnMap = TOPIC_FUNCTIONS[level] || {};
+    const frameFnMap = FRAME_FUNCTIONS[level] || {};
+    for (const frame of SITUATION_FRAMES[level]) {
+      const lower = frame.name_vi.toLowerCase();
+      const hit = BANNED_SUBSTRINGS.find((b) => lower.includes(b));
+      if (hit) problems.push(`[${level}] frame "${frame.key}" ("${frame.name_vi}") chứa từ chỉ ngành/địa điểm cụ thể: "${hit}"`);
+    }
     let prevWords = -Infinity, prevDensity = -Infinity;
     for (const s of slots) {
       if (s.function_key) {
-        const allowed = topicFnMap[s.topic] || [];
+        const allowed = frameFnMap[s.situation_frame_key] || [];
         if (!allowed.includes(s.function_key)) {
-          problems.push(`[${level}] slot ${s.slot}: function "${s.function_key}" không có trong bảng ghép của topic "${s.topic}"`);
+          problems.push(`[${level}] slot ${s.slot}: function "${s.function_key}" không có trong bảng ghép của frame "${s.situation_frame_key}"`);
         }
       }
       if (s.new_words_target < prevWords) problems.push(`[${level}] slot ${s.slot}: new_words_target giảm (${prevWords} -> ${s.new_words_target})`);
