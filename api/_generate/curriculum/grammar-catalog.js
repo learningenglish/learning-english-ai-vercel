@@ -5,13 +5,15 @@
 // CEFR phổ biến (English Grammar Profile / giáo trình ESL chuẩn quốc tế), không copy từ đâu.
 //
 // Format: {level, name (tiếng Anh, canonical — dễ đối chiếu tài liệu CEFR quốc tế), name_vi
-// (tiếng Việt, hiển thị cho Mentor/học viên), formula}. Số lượng theo đúng khung đã chốt:
-// A1/A2/B1/B2 ~15-18 điểm, C1 ~10-12 điểm, BỎ C2.
+// (tiếng Việt, hiển thị cho Mentor/học viên), formula, type? ("vocab" nếu là collocation/
+// thành ngữ chứ không phải điểm ngữ pháp thật — chỉ 1 mục duy nhất, xem cuối file). ĐÃ ĐÓNG
+// BĂNG 2026-07-19 sau 1 vòng duyệt (thêm would_like + chuyển adverbs_frequency về A1, đánh
+// dấu type:"vocab" cho idiomatic_collocations): A1:18, A2:15, B1:16, B2:16, C1:11 = 76 tổng.
 //
 // "level" 1 giá trị duy nhất/điểm (khác catalog cũ có vài mục level dạng mảng) — xương sống
 // cần đúng 1 level rõ ràng cho từng điểm để xếp vào ĐÚNG slot của ĐÚNG level.
 export const GRAMMAR_CATALOG = {
-  // ====== A1 (16) ======
+  // ====== A1 (18) ======
   present_simple:        { level: "A1", name: "Present Simple",              name_vi: "Thì hiện tại đơn",                 formula: "S + V(s/es)" },
   present_simple_neg_q:   { level: "A1", name: "Present Simple Negative/Questions", name_vi: "Phủ định & câu hỏi thì hiện tại đơn", formula: "S + do/does not + V | Do/Does + S + V?" },
   present_continuous:    { level: "A1", name: "Present Continuous",          name_vi: "Thì hiện tại tiếp diễn",           formula: "S + am/is/are + V-ing" },
@@ -28,8 +30,13 @@ export const GRAMMAR_CATALOG = {
   wh_questions_basic:     { level: "A1", name: "Basic Wh-Questions",          name_vi: "Câu hỏi Wh cơ bản",                formula: "What/Where/Who/When + is/are + S?" },
   have_got:               { level: "A1", name: "Have/Has got",               name_vi: 'Cấu trúc "have/has got"',          formula: "S + have/has got + N" },
   object_pronouns_basic:  { level: "A1", name: "Object Pronouns",             name_vi: "Đại từ tân ngữ",                   formula: "V + me/you/him/her/it/us/them" },
+  // 2 điểm thêm theo yêu cầu duyệt (2026-07-19): would_like chuyển từ chưa-có -> A1 mới (cốt
+  // lõi hội thoại dịch vụ: gọi món/đặt phòng/mua hàng); adverbs_frequency CHUYỂN từ A2 về A1
+  // (đi liền hiện tại đơn — 2 điểm luôn dạy cùng nhau trong hầu hết giáo trình ESL chuẩn).
+  would_like:              { level: "A1", name: "Would like",                 name_vi: "Cấu trúc would like",              formula: "S + would like + N/to V" },
+  adverbs_frequency:       { level: "A1", name: "Adverbs of Frequency",       name_vi: "Trạng từ chỉ tần suất",            formula: "S + always/usually/often + V" },
 
-  // ====== A2 (16) ======
+  // ====== A2 (15) ======
   past_simple:            { level: "A2", name: "Past Simple",                 name_vi: "Thì quá khứ đơn",                  formula: "S + V2/-ed" },
   past_simple_neg_q:      { level: "A2", name: "Past Simple Negative/Questions", name_vi: "Phủ định & câu hỏi quá khứ đơn", formula: "S + did not + V | Did + S + V?" },
   past_continuous:        { level: "A2", name: "Past Continuous",             name_vi: "Thì quá khứ tiếp diễn",            formula: "S + was/were + V-ing" },
@@ -41,7 +48,6 @@ export const GRAMMAR_CATALOG = {
   quantifiers:             { level: "A2", name: "Quantifiers",                name_vi: "Từ chỉ số lượng",                  formula: "much/many/a lot of + N" },
   modal_should:            { level: "A2", name: 'Modal "should"',            name_vi: 'Động từ khuyết thiếu "should"',    formula: "S + should + V" },
   modal_have_to:           { level: "A2", name: '"Have to" (obligation)',    name_vi: '"Have to" chỉ sự bắt buộc',        formula: "S + have/has to + V" },
-  adverbs_frequency:       { level: "A2", name: "Adverbs of Frequency",       name_vi: "Trạng từ chỉ tần suất",            formula: "S + always/usually/often + V" },
   prepositions_movement:   { level: "A2", name: "Prepositions of Movement",   name_vi: "Giới từ chỉ chuyển động",          formula: "to/into/onto/through + N" },
   verb_ing_like:           { level: "A2", name: "Verb + -ing (like/love/hate)", name_vi: "Động từ + V-ing (like/love/hate)", formula: "like/love/hate + V-ing" },
   going_to_vs_will:        { level: "A2", name: '"Going to" vs "Will"',      name_vi: 'Phân biệt "going to" và "will"',   formula: "(so sánh 2 cấu trúc dự định vs quyết định tức thời)" },
@@ -94,11 +100,20 @@ export const GRAMMAR_CATALOG = {
   advanced_modality:            { level: "C1", name: "Advanced Modality",       name_vi: "Sắc thái động từ khuyết thiếu nâng cao", formula: "modal + adv + V (nuance chắc chắn/nghi ngờ)" },
   fronting:                      { level: "C1", name: "Fronting for Emphasis",   name_vi: "Đảo trật tự nhấn mạnh",            formula: "(đưa thành phần cần nhấn mạnh lên đầu câu)" },
   complex_discourse_markers:    { level: "C1", name: "Complex Discourse Markers", name_vi: "Từ nối học thuật phức tạp",       formula: "nevertheless/whereas/notwithstanding" },
-  idiomatic_collocations:       { level: "C1", name: "Idiomatic Collocations",   name_vi: "Collocation & thành ngữ",          formula: "cụm cố định tự nhiên (make a decision, break the ice...)" },
+  // type:"vocab" — KHÔNG phải 1 điểm ngữ pháp thật (là collocation/thành ngữ, thuộc phạm vi
+  // từ vựng) — hàm grammarPointsByLevel() bên dưới lọc field này ra khi đếm/cân bằng slot
+  // ngữ pháp cho spine, tránh lẫn 1 mục "vocab" vào chỗ cần đúng N điểm NGỮ PHÁP.
+  idiomatic_collocations:       { level: "C1", name: "Idiomatic Collocations",   name_vi: "Collocation & thành ngữ",          formula: "cụm cố định tự nhiên (make a decision, break the ice...)", type: "vocab" },
 };
 
 export function grammarPointsByLevel(level) {
   return Object.entries(GRAMMAR_CATALOG)
     .filter(([, v]) => v.level === level)
     .map(([key, v]) => ({ key, ...v }));
+}
+
+// Chỉ trả các điểm NGỮ PHÁP THẬT (loại type:"vocab") — dùng để phân bổ spiral repetition
+// trong spine, không lẫn collocation/thành ngữ vào chỗ cần đếm đúng số điểm ngữ pháp.
+export function realGrammarPointsByLevel(level) {
+  return grammarPointsByLevel(level).filter((p) => p.type !== "vocab");
 }
