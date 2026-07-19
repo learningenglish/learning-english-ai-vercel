@@ -1,0 +1,5715 @@
+{
+  "status": "draft_pending_review",
+  "generated_at": "2026-07-19T09:48:10.779Z",
+  "note_vi": "Bản nháp tự soạn bằng thuật toán tất định (không gọi AI, xem build-spine.mjs) — CHƯA đóng băng, chờ Minh duyệt A1+A2 đầy đủ + mẫu B1-C1 trước khi dùng chính thức.",
+  "levels": {
+    "A1": [
+      {
+        "level": "A1",
+        "slot": 1,
+        "topic": "Giới thiệu bản thân",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_simple",
+            "name_vi": "Thì hiện tại đơn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 2,
+        "topic": "Giới thiệu bản thân",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 3,
+        "topic": "Giới thiệu bản thân",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 4,
+        "topic": "Giới thiệu bản thân",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "present_simple_neg_q",
+            "name_vi": "Phủ định & câu hỏi thì hiện tại đơn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 5,
+        "topic": "Gia đình",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 6,
+        "topic": "Gia đình",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 7,
+        "topic": "Gia đình",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 8,
+        "topic": "Gia đình",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "present_continuous",
+            "name_vi": "Thì hiện tại tiếp diễn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 9,
+        "topic": "Bạn bè",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 10,
+        "topic": "Bạn bè",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 11,
+        "topic": "Bạn bè",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "to_be",
+            "name_vi": "Động từ \"to be\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 12,
+        "topic": "Bạn bè",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 13,
+        "topic": "Số đếm & tuổi",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_simple",
+            "name_vi": "Thì hiện tại đơn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 14,
+        "topic": "Số đếm & tuổi",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 15,
+        "topic": "Số đếm & tuổi",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "there_is_are",
+            "name_vi": "Cấu trúc \"there is/are\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 16,
+        "topic": "Số đếm & tuổi",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "present_simple_neg_q",
+            "name_vi": "Phủ định & câu hỏi thì hiện tại đơn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 17,
+        "topic": "Ngày tháng & giờ giấc",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 18,
+        "topic": "Ngày tháng & giờ giấc",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "articles",
+            "name_vi": "Mạo từ (a/an/the)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 19,
+        "topic": "Ngày tháng & giờ giấc",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 20,
+        "topic": "Ngày tháng & giờ giấc",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "present_continuous",
+            "name_vi": "Thì hiện tại tiếp diễn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 21,
+        "topic": "Thời tiết",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "plural_nouns",
+            "name_vi": "Danh từ số nhiều",
+            "status": "moi"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 22,
+        "topic": "Thời tiết",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 23,
+        "topic": "Thời tiết",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "to_be",
+            "name_vi": "Động từ \"to be\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 24,
+        "topic": "Thời tiết",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 25,
+        "topic": "Màu sắc & đồ vật",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_simple",
+            "name_vi": "Thì hiện tại đơn",
+            "status": "on_tap"
+          },
+          {
+            "key": "possessive_adjectives",
+            "name_vi": "Tính từ sở hữu",
+            "status": "moi"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 26,
+        "topic": "Màu sắc & đồ vật",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 27,
+        "topic": "Màu sắc & đồ vật",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "there_is_are",
+            "name_vi": "Cấu trúc \"there is/are\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 28,
+        "topic": "Màu sắc & đồ vật",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "present_simple_neg_q",
+            "name_vi": "Phủ định & câu hỏi thì hiện tại đơn",
+            "status": "on_tap"
+          },
+          {
+            "key": "demonstratives",
+            "name_vi": "Đại từ chỉ định",
+            "status": "moi"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 29,
+        "topic": "Phòng ốc trong nhà",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 30,
+        "topic": "Phòng ốc trong nhà",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "articles",
+            "name_vi": "Mạo từ (a/an/the)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 31,
+        "topic": "Phòng ốc trong nhà",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 32,
+        "topic": "Phòng ốc trong nhà",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "present_continuous",
+            "name_vi": "Thì hiện tại tiếp diễn",
+            "status": "on_tap"
+          },
+          {
+            "key": "can_ability",
+            "name_vi": "\"Can\" chỉ khả năng/xin phép",
+            "status": "moi"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 33,
+        "topic": "Đồ ăn thức uống cơ bản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "plural_nouns",
+            "name_vi": "Danh từ số nhiều",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 34,
+        "topic": "Đồ ăn thức uống cơ bản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 35,
+        "topic": "Đồ ăn thức uống cơ bản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "to_be",
+            "name_vi": "Động từ \"to be\"",
+            "status": "on_tap"
+          },
+          {
+            "key": "imperatives",
+            "name_vi": "Câu mệnh lệnh",
+            "status": "moi"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 36,
+        "topic": "Đồ ăn thức uống cơ bản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 37,
+        "topic": "Tại quán cà phê",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "possessive_adjectives",
+            "name_vi": "Tính từ sở hữu",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 38,
+        "topic": "Tại quán cà phê",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 39,
+        "topic": "Tại quán cà phê",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "there_is_are",
+            "name_vi": "Cấu trúc \"there is/are\"",
+            "status": "on_tap"
+          },
+          {
+            "key": "prepositions_place",
+            "name_vi": "Giới từ chỉ nơi chốn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 40,
+        "topic": "Tại quán cà phê",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "demonstratives",
+            "name_vi": "Đại từ chỉ định",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 41,
+        "topic": "Mua sắm đơn giản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 42,
+        "topic": "Mua sắm đơn giản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "articles",
+            "name_vi": "Mạo từ (a/an/the)",
+            "status": "on_tap"
+          },
+          {
+            "key": "prepositions_time",
+            "name_vi": "Giới từ chỉ thời gian (cơ bản)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 43,
+        "topic": "Mua sắm đơn giản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 44,
+        "topic": "Mua sắm đơn giản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "can_ability",
+            "name_vi": "\"Can\" chỉ khả năng/xin phép",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 45,
+        "topic": "Phương tiện đi lại",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "plural_nouns",
+            "name_vi": "Danh từ số nhiều",
+            "status": "on_tap"
+          },
+          {
+            "key": "wh_questions_basic",
+            "name_vi": "Câu hỏi Wh cơ bản",
+            "status": "moi"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 46,
+        "topic": "Phương tiện đi lại",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 47,
+        "topic": "Phương tiện đi lại",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "imperatives",
+            "name_vi": "Câu mệnh lệnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 48,
+        "topic": "Phương tiện đi lại",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 49,
+        "topic": "Chỉ đường cơ bản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "possessive_adjectives",
+            "name_vi": "Tính từ sở hữu",
+            "status": "on_tap"
+          },
+          {
+            "key": "have_got",
+            "name_vi": "Cấu trúc \"have/has got\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 50,
+        "topic": "Chỉ đường cơ bản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 51,
+        "topic": "Chỉ đường cơ bản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "prepositions_place",
+            "name_vi": "Giới từ chỉ nơi chốn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 52,
+        "topic": "Chỉ đường cơ bản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "demonstratives",
+            "name_vi": "Đại từ chỉ định",
+            "status": "on_tap"
+          },
+          {
+            "key": "object_pronouns_basic",
+            "name_vi": "Đại từ tân ngữ",
+            "status": "moi"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 53,
+        "topic": "Trường học & lớp học",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 54,
+        "topic": "Trường học & lớp học",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "prepositions_time",
+            "name_vi": "Giới từ chỉ thời gian (cơ bản)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 55,
+        "topic": "Trường học & lớp học",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 56,
+        "topic": "Trường học & lớp học",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "can_ability",
+            "name_vi": "\"Can\" chỉ khả năng/xin phép",
+            "status": "on_tap"
+          },
+          {
+            "key": "would_like",
+            "name_vi": "Cấu trúc would like",
+            "status": "moi"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 57,
+        "topic": "Công việc hàng ngày",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "wh_questions_basic",
+            "name_vi": "Câu hỏi Wh cơ bản",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 58,
+        "topic": "Công việc hàng ngày",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 59,
+        "topic": "Công việc hàng ngày",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "imperatives",
+            "name_vi": "Câu mệnh lệnh",
+            "status": "on_tap"
+          },
+          {
+            "key": "adverbs_frequency",
+            "name_vi": "Trạng từ chỉ tần suất",
+            "status": "moi"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 60,
+        "topic": "Công việc hàng ngày",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 61,
+        "topic": "Sở thích",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "have_got",
+            "name_vi": "Cấu trúc \"have/has got\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 62,
+        "topic": "Sở thích",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 63,
+        "topic": "Sở thích",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "prepositions_place",
+            "name_vi": "Giới từ chỉ nơi chốn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 64,
+        "topic": "Sở thích",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "object_pronouns_basic",
+            "name_vi": "Đại từ tân ngữ",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 65,
+        "topic": "Thể thao cơ bản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 66,
+        "topic": "Thể thao cơ bản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "prepositions_time",
+            "name_vi": "Giới từ chỉ thời gian (cơ bản)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 67,
+        "topic": "Thể thao cơ bản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 68,
+        "topic": "Thể thao cơ bản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "would_like",
+            "name_vi": "Cấu trúc would like",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 69,
+        "topic": "Sức khoẻ cơ bản (đau ốm nhẹ)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "wh_questions_basic",
+            "name_vi": "Câu hỏi Wh cơ bản",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 70,
+        "topic": "Sức khoẻ cơ bản (đau ốm nhẹ)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 71,
+        "topic": "Sức khoẻ cơ bản (đau ốm nhẹ)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "adverbs_frequency",
+            "name_vi": "Trạng từ chỉ tần suất",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 72,
+        "topic": "Sức khoẻ cơ bản (đau ốm nhẹ)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 73,
+        "topic": "Tại nhà hàng (gọi món)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "have_got",
+            "name_vi": "Cấu trúc \"have/has got\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 74,
+        "topic": "Tại nhà hàng (gọi món)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 75,
+        "topic": "Tại nhà hàng (gọi món)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 76,
+        "topic": "Tại nhà hàng (gọi món)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "object_pronouns_basic",
+            "name_vi": "Đại từ tân ngữ",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "greeting_self_intro",
+        "function_name_vi": "Chào hỏi & giới thiệu bản thân",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 77,
+        "topic": "Đặt phòng khách sạn đơn giản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_personal_info",
+        "function_name_vi": "Hỏi thông tin cá nhân",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      },
+      {
+        "level": "A1",
+        "slot": 78,
+        "topic": "Đặt phòng khách sạn đơn giản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "simple_request",
+        "function_name_vi": "Yêu cầu đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A1",
+        "slot": 79,
+        "topic": "Đặt phòng khách sạn đơn giản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "likes_dislikes",
+        "function_name_vi": "Nói về sở thích",
+        "new_words_target": 6,
+        "specialized_density_target_percent": 5
+      },
+      {
+        "level": "A1",
+        "slot": 80,
+        "topic": "Đặt phòng khách sạn đơn giản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "would_like",
+            "name_vi": "Cấu trúc would like",
+            "status": "on_tap"
+          },
+          {
+            "key": "adverbs_frequency",
+            "name_vi": "Trạng từ chỉ tần suất",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "telling_time_schedule",
+        "function_name_vi": "Nói giờ giấc, lịch trình",
+        "new_words_target": 7,
+        "specialized_density_target_percent": 7
+      }
+    ],
+    "A2": [
+      {
+        "level": "A2",
+        "slot": 1,
+        "topic": "Kỳ nghỉ đã qua",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_simple",
+            "name_vi": "Thì quá khứ đơn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 2,
+        "topic": "Kỳ nghỉ đã qua",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 3,
+        "topic": "Kỳ nghỉ đã qua",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 4,
+        "topic": "Kỳ nghỉ đã qua",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 5,
+        "topic": "Kể lại một ngày",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_simple_neg_q",
+            "name_vi": "Phủ định & câu hỏi quá khứ đơn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 6,
+        "topic": "Kể lại một ngày",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 7,
+        "topic": "Kể lại một ngày",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 8,
+        "topic": "Kể lại một ngày",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 9,
+        "topic": "Lên kế hoạch cuối tuần",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_continuous",
+            "name_vi": "Thì quá khứ tiếp diễn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 10,
+        "topic": "Lên kế hoạch cuối tuần",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 11,
+        "topic": "Lên kế hoạch cuối tuần",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 12,
+        "topic": "Lên kế hoạch cuối tuần",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 13,
+        "topic": "Mua sắm quần áo",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_simple",
+            "name_vi": "Thì quá khứ đơn",
+            "status": "on_tap"
+          },
+          {
+            "key": "be_going_to",
+            "name_vi": "Tương lai \"be going to\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 14,
+        "topic": "Mua sắm quần áo",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 15,
+        "topic": "Mua sắm quần áo",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 16,
+        "topic": "Mua sắm quần áo",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 17,
+        "topic": "Tại siêu thị",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_simple_neg_q",
+            "name_vi": "Phủ định & câu hỏi quá khứ đơn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 18,
+        "topic": "Tại siêu thị",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "future_will",
+            "name_vi": "Thì tương lai đơn (will)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 19,
+        "topic": "Tại siêu thị",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 20,
+        "topic": "Tại siêu thị",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 21,
+        "topic": "Hỏi đường phức tạp hơn",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_continuous",
+            "name_vi": "Thì quá khứ tiếp diễn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 22,
+        "topic": "Hỏi đường phức tạp hơn",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "comparative_adjectives",
+            "name_vi": "Tính từ so sánh hơn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 23,
+        "topic": "Hỏi đường phức tạp hơn",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 24,
+        "topic": "Hỏi đường phức tạp hơn",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 25,
+        "topic": "Phương tiện công cộng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_simple",
+            "name_vi": "Thì quá khứ đơn",
+            "status": "on_tap"
+          },
+          {
+            "key": "be_going_to",
+            "name_vi": "Tương lai \"be going to\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 26,
+        "topic": "Phương tiện công cộng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "superlative_adjectives",
+            "name_vi": "Tính từ so sánh nhất",
+            "status": "moi"
+          }
+        ],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 27,
+        "topic": "Phương tiện công cộng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 28,
+        "topic": "Phương tiện công cộng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 29,
+        "topic": "Đặt vé (xe/máy bay)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_simple_neg_q",
+            "name_vi": "Phủ định & câu hỏi quá khứ đơn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 30,
+        "topic": "Đặt vé (xe/máy bay)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "future_will",
+            "name_vi": "Thì tương lai đơn (will)",
+            "status": "on_tap"
+          },
+          {
+            "key": "countable_uncountable",
+            "name_vi": "Danh từ đếm được/không đếm được",
+            "status": "moi"
+          }
+        ],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 31,
+        "topic": "Đặt vé (xe/máy bay)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 32,
+        "topic": "Đặt vé (xe/máy bay)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 33,
+        "topic": "Tại sân bay",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_continuous",
+            "name_vi": "Thì quá khứ tiếp diễn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 34,
+        "topic": "Tại sân bay",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "comparative_adjectives",
+            "name_vi": "Tính từ so sánh hơn",
+            "status": "on_tap"
+          },
+          {
+            "key": "quantifiers",
+            "name_vi": "Từ chỉ số lượng",
+            "status": "moi"
+          }
+        ],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 35,
+        "topic": "Tại sân bay",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 36,
+        "topic": "Tại sân bay",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 37,
+        "topic": "Khách sạn (check-in/check-out)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "be_going_to",
+            "name_vi": "Tương lai \"be going to\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 38,
+        "topic": "Khách sạn (check-in/check-out)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "superlative_adjectives",
+            "name_vi": "Tính từ so sánh nhất",
+            "status": "on_tap"
+          },
+          {
+            "key": "modal_should",
+            "name_vi": "Động từ khuyết thiếu \"should\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 39,
+        "topic": "Khách sạn (check-in/check-out)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 40,
+        "topic": "Khách sạn (check-in/check-out)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 41,
+        "topic": "Nhà hàng (gọi món & thanh toán)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 42,
+        "topic": "Nhà hàng (gọi món & thanh toán)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "future_will",
+            "name_vi": "Thì tương lai đơn (will)",
+            "status": "on_tap"
+          },
+          {
+            "key": "countable_uncountable",
+            "name_vi": "Danh từ đếm được/không đếm được",
+            "status": "on_tap"
+          },
+          {
+            "key": "modal_have_to",
+            "name_vi": "\"Have to\" chỉ sự bắt buộc",
+            "status": "moi"
+          }
+        ],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 43,
+        "topic": "Nhà hàng (gọi món & thanh toán)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 44,
+        "topic": "Nhà hàng (gọi món & thanh toán)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 45,
+        "topic": "Sức khoẻ (khám bệnh)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 46,
+        "topic": "Sức khoẻ (khám bệnh)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "comparative_adjectives",
+            "name_vi": "Tính từ so sánh hơn",
+            "status": "on_tap"
+          },
+          {
+            "key": "quantifiers",
+            "name_vi": "Từ chỉ số lượng",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 47,
+        "topic": "Sức khoẻ (khám bệnh)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "prepositions_movement",
+            "name_vi": "Giới từ chỉ chuyển động",
+            "status": "moi"
+          }
+        ],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 48,
+        "topic": "Sức khoẻ (khám bệnh)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 49,
+        "topic": "Thời tiết & hoạt động ngoài trời",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 50,
+        "topic": "Thời tiết & hoạt động ngoài trời",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "superlative_adjectives",
+            "name_vi": "Tính từ so sánh nhất",
+            "status": "on_tap"
+          },
+          {
+            "key": "modal_should",
+            "name_vi": "Động từ khuyết thiếu \"should\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 51,
+        "topic": "Thời tiết & hoạt động ngoài trời",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "verb_ing_like",
+            "name_vi": "Động từ + V-ing (like/love/hate)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 52,
+        "topic": "Thời tiết & hoạt động ngoài trời",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 53,
+        "topic": "Công việc & đồng nghiệp",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 54,
+        "topic": "Công việc & đồng nghiệp",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "countable_uncountable",
+            "name_vi": "Danh từ đếm được/không đếm được",
+            "status": "on_tap"
+          },
+          {
+            "key": "modal_have_to",
+            "name_vi": "\"Have to\" chỉ sự bắt buộc",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 55,
+        "topic": "Công việc & đồng nghiệp",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "going_to_vs_will",
+            "name_vi": "Phân biệt \"going to\" và \"will\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 56,
+        "topic": "Công việc & đồng nghiệp",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 57,
+        "topic": "Trường học & bài tập",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 58,
+        "topic": "Trường học & bài tập",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "quantifiers",
+            "name_vi": "Từ chỉ số lượng",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 59,
+        "topic": "Trường học & bài tập",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "prepositions_movement",
+            "name_vi": "Giới từ chỉ chuyển động",
+            "status": "on_tap"
+          },
+          {
+            "key": "question_words_review",
+            "name_vi": "Từ để hỏi (ôn tập + how)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 60,
+        "topic": "Trường học & bài tập",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 61,
+        "topic": "Gia đình mở rộng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 62,
+        "topic": "Gia đình mở rộng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "modal_should",
+            "name_vi": "Động từ khuyết thiếu \"should\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 63,
+        "topic": "Gia đình mở rộng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "verb_ing_like",
+            "name_vi": "Động từ + V-ing (like/love/hate)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 64,
+        "topic": "Gia đình mở rộng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 65,
+        "topic": "Lễ hội & ngày lễ",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 66,
+        "topic": "Lễ hội & ngày lễ",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "modal_have_to",
+            "name_vi": "\"Have to\" chỉ sự bắt buộc",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 67,
+        "topic": "Lễ hội & ngày lễ",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "going_to_vs_will",
+            "name_vi": "Phân biệt \"going to\" và \"will\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 68,
+        "topic": "Lễ hội & ngày lễ",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 69,
+        "topic": "Sở thích & thời gian rảnh",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 70,
+        "topic": "Sở thích & thời gian rảnh",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 71,
+        "topic": "Sở thích & thời gian rảnh",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "prepositions_movement",
+            "name_vi": "Giới từ chỉ chuyển động",
+            "status": "on_tap"
+          },
+          {
+            "key": "question_words_review",
+            "name_vi": "Từ để hỏi (ôn tập + how)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "suggesting",
+        "function_name_vi": "Đề xuất (Suggesting)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 72,
+        "topic": "Sở thích & thời gian rảnh",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "making_arrangements",
+        "function_name_vi": "Sắp xếp cuộc hẹn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 73,
+        "topic": "Công nghệ cơ bản (điện thoại/máy tính)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "asking_giving_directions",
+        "function_name_vi": "Hỏi & chỉ đường",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 74,
+        "topic": "Công nghệ cơ bản (điện thoại/máy tính)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing_simple",
+        "function_name_vi": "Đồng ý / Không đồng ý (cơ bản)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 75,
+        "topic": "Công nghệ cơ bản (điện thoại/máy tính)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "verb_ing_like",
+            "name_vi": "Động từ + V-ing (like/love/hate)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "asking_permission",
+        "function_name_vi": "Xin phép",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 76,
+        "topic": "Công nghệ cơ bản (điện thoại/máy tính)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_opinion_simple",
+        "function_name_vi": "Nêu ý kiến đơn giản",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 77,
+        "topic": "So sánh nơi chốn (thành phố/quê)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "agreeing_disagreeing",
+        "function_name_vi": "Đồng ý / Không đồng ý (thảo luận)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      },
+      {
+        "level": "A2",
+        "slot": 78,
+        "topic": "So sánh nơi chốn (thành phố/quê)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "polite_requests",
+        "function_name_vi": "Yêu cầu lịch sự (Polite requests)",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "A2",
+        "slot": 79,
+        "topic": "So sánh nơi chốn (thành phố/quê)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "going_to_vs_will",
+            "name_vi": "Phân biệt \"going to\" và \"will\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "interrupting_politely",
+        "function_name_vi": "Ngắt lời lịch sự (Interrupting politely)",
+        "new_words_target": 8,
+        "specialized_density_target_percent": 10
+      },
+      {
+        "level": "A2",
+        "slot": 80,
+        "topic": "So sánh nơi chốn (thành phố/quê)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "question_words_review",
+            "name_vi": "Từ để hỏi (ôn tập + how)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "summarizing",
+        "function_name_vi": "Tóm tắt / Chốt lại ý (Summarizing)",
+        "new_words_target": 9,
+        "specialized_density_target_percent": 12
+      }
+    ],
+    "B1": [
+      {
+        "level": "B1",
+        "slot": 1,
+        "topic": "Kể chuyện quá khứ chi tiết",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect",
+            "name_vi": "Thì hiện tại hoàn thành",
+            "status": "moi"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 2,
+        "topic": "Kể chuyện quá khứ chi tiết",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 3,
+        "topic": "Kể chuyện quá khứ chi tiết",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 4,
+        "topic": "Kể chuyện quá khứ chi tiết",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 5,
+        "topic": "Trải nghiệm du lịch",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect_vs_past",
+            "name_vi": "So sánh HT hoàn thành và QK đơn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 6,
+        "topic": "Trải nghiệm du lịch",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 7,
+        "topic": "Trải nghiệm du lịch",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 8,
+        "topic": "Trải nghiệm du lịch",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 9,
+        "topic": "Dự định tương lai",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect_continuous",
+            "name_vi": "Hiện tại hoàn thành tiếp diễn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 10,
+        "topic": "Dự định tương lai",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 11,
+        "topic": "Dự định tương lai",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 12,
+        "topic": "Dự định tương lai",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 13,
+        "topic": "Phàn nàn dịch vụ",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect",
+            "name_vi": "Thì hiện tại hoàn thành",
+            "status": "on_tap"
+          },
+          {
+            "key": "past_perfect",
+            "name_vi": "Thì quá khứ hoàn thành",
+            "status": "moi"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 14,
+        "topic": "Phàn nàn dịch vụ",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 15,
+        "topic": "Phàn nàn dịch vụ",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 16,
+        "topic": "Phàn nàn dịch vụ",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "first_conditional",
+            "name_vi": "Câu điều kiện loại 1",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 17,
+        "topic": "Đổi trả hàng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect_vs_past",
+            "name_vi": "So sánh HT hoàn thành và QK đơn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 18,
+        "topic": "Đổi trả hàng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 19,
+        "topic": "Đổi trả hàng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 20,
+        "topic": "Đổi trả hàng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "second_conditional",
+            "name_vi": "Câu điều kiện loại 2",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 21,
+        "topic": "Xin lời khuyên",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect_continuous",
+            "name_vi": "Hiện tại hoàn thành tiếp diễn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 22,
+        "topic": "Xin lời khuyên",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 23,
+        "topic": "Xin lời khuyên",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 24,
+        "topic": "Xin lời khuyên",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "passive_voice_basic",
+            "name_vi": "Câu bị động (hiện tại/quá khứ)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 25,
+        "topic": "Đặt lịch hẹn (nha sĩ/bác sĩ)",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect",
+            "name_vi": "Thì hiện tại hoàn thành",
+            "status": "on_tap"
+          },
+          {
+            "key": "past_perfect",
+            "name_vi": "Thì quá khứ hoàn thành",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 26,
+        "topic": "Đặt lịch hẹn (nha sĩ/bác sĩ)",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 27,
+        "topic": "Đặt lịch hẹn (nha sĩ/bác sĩ)",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 28,
+        "topic": "Đặt lịch hẹn (nha sĩ/bác sĩ)",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "first_conditional",
+            "name_vi": "Câu điều kiện loại 1",
+            "status": "on_tap"
+          },
+          {
+            "key": "relative_clauses_defining",
+            "name_vi": "Mệnh đề quan hệ xác định",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 29,
+        "topic": "Phỏng vấn xin việc cơ bản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect_vs_past",
+            "name_vi": "So sánh HT hoàn thành và QK đơn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 30,
+        "topic": "Phỏng vấn xin việc cơ bản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 31,
+        "topic": "Phỏng vấn xin việc cơ bản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 32,
+        "topic": "Phỏng vấn xin việc cơ bản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "second_conditional",
+            "name_vi": "Câu điều kiện loại 2",
+            "status": "on_tap"
+          },
+          {
+            "key": "modal_deduction",
+            "name_vi": "Động từ khuyết thiếu suy đoán",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 33,
+        "topic": "Thảo luận công việc nhóm",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "present_perfect_continuous",
+            "name_vi": "Hiện tại hoàn thành tiếp diễn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 34,
+        "topic": "Thảo luận công việc nhóm",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 35,
+        "topic": "Thảo luận công việc nhóm",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 36,
+        "topic": "Thảo luận công việc nhóm",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "passive_voice_basic",
+            "name_vi": "Câu bị động (hiện tại/quá khứ)",
+            "status": "on_tap"
+          },
+          {
+            "key": "reported_speech_statements",
+            "name_vi": "Câu tường thuật (câu kể)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 37,
+        "topic": "Email công việc đơn giản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "past_perfect",
+            "name_vi": "Thì quá khứ hoàn thành",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 38,
+        "topic": "Email công việc đơn giản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 39,
+        "topic": "Email công việc đơn giản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 40,
+        "topic": "Email công việc đơn giản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "first_conditional",
+            "name_vi": "Câu điều kiện loại 1",
+            "status": "on_tap"
+          },
+          {
+            "key": "relative_clauses_defining",
+            "name_vi": "Mệnh đề quan hệ xác định",
+            "status": "on_tap"
+          },
+          {
+            "key": "gerunds_infinitives",
+            "name_vi": "Danh động từ & động từ nguyên mẫu",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 41,
+        "topic": "Thói quen đã thay đổi",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 42,
+        "topic": "Thói quen đã thay đổi",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 43,
+        "topic": "Thói quen đã thay đổi",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 44,
+        "topic": "Thói quen đã thay đổi",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "second_conditional",
+            "name_vi": "Câu điều kiện loại 2",
+            "status": "on_tap"
+          },
+          {
+            "key": "modal_deduction",
+            "name_vi": "Động từ khuyết thiếu suy đoán",
+            "status": "on_tap"
+          },
+          {
+            "key": "used_to",
+            "name_vi": "Cấu trúc \"used to\"",
+            "status": "moi"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 45,
+        "topic": "Kế hoạch nghề nghiệp",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 46,
+        "topic": "Kế hoạch nghề nghiệp",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 47,
+        "topic": "Kế hoạch nghề nghiệp",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "phrasal_verbs_common",
+            "name_vi": "Cụm động từ thông dụng",
+            "status": "moi"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 48,
+        "topic": "Kế hoạch nghề nghiệp",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "passive_voice_basic",
+            "name_vi": "Câu bị động (hiện tại/quá khứ)",
+            "status": "on_tap"
+          },
+          {
+            "key": "reported_speech_statements",
+            "name_vi": "Câu tường thuật (câu kể)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 49,
+        "topic": "Vấn đề môi trường cơ bản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 50,
+        "topic": "Vấn đề môi trường cơ bản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 51,
+        "topic": "Vấn đề môi trường cơ bản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "question_tags",
+            "name_vi": "Câu hỏi đuôi",
+            "status": "moi"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 52,
+        "topic": "Vấn đề môi trường cơ bản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "relative_clauses_defining",
+            "name_vi": "Mệnh đề quan hệ xác định",
+            "status": "on_tap"
+          },
+          {
+            "key": "gerunds_infinitives",
+            "name_vi": "Danh động từ & động từ nguyên mẫu",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 53,
+        "topic": "Mua nhà / thuê nhà",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 54,
+        "topic": "Mua nhà / thuê nhà",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 55,
+        "topic": "Mua nhà / thuê nhà",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "so_neither",
+            "name_vi": "Đồng tình rút gọn (so/neither)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 56,
+        "topic": "Mua nhà / thuê nhà",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "modal_deduction",
+            "name_vi": "Động từ khuyết thiếu suy đoán",
+            "status": "on_tap"
+          },
+          {
+            "key": "used_to",
+            "name_vi": "Cấu trúc \"used to\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 57,
+        "topic": "Ngân hàng & tài chính cá nhân",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 58,
+        "topic": "Ngân hàng & tài chính cá nhân",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 59,
+        "topic": "Ngân hàng & tài chính cá nhân",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "phrasal_verbs_common",
+            "name_vi": "Cụm động từ thông dụng",
+            "status": "on_tap"
+          },
+          {
+            "key": "comparatives_advanced",
+            "name_vi": "So sánh nâng cao (as...as, less)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 60,
+        "topic": "Ngân hàng & tài chính cá nhân",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "reported_speech_statements",
+            "name_vi": "Câu tường thuật (câu kể)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 61,
+        "topic": "Giải trí (phim/nhạc) & đánh giá",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 62,
+        "topic": "Giải trí (phim/nhạc) & đánh giá",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 63,
+        "topic": "Giải trí (phim/nhạc) & đánh giá",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "question_tags",
+            "name_vi": "Câu hỏi đuôi",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 64,
+        "topic": "Giải trí (phim/nhạc) & đánh giá",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "gerunds_infinitives",
+            "name_vi": "Danh động từ & động từ nguyên mẫu",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 65,
+        "topic": "Tin tức thời sự đơn giản",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 66,
+        "topic": "Tin tức thời sự đơn giản",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 67,
+        "topic": "Tin tức thời sự đơn giản",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "so_neither",
+            "name_vi": "Đồng tình rút gọn (so/neither)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 68,
+        "topic": "Tin tức thời sự đơn giản",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "used_to",
+            "name_vi": "Cấu trúc \"used to\"",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 69,
+        "topic": "Giáo dục & học tập",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 70,
+        "topic": "Giáo dục & học tập",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 71,
+        "topic": "Giáo dục & học tập",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "phrasal_verbs_common",
+            "name_vi": "Cụm động từ thông dụng",
+            "status": "on_tap"
+          },
+          {
+            "key": "comparatives_advanced",
+            "name_vi": "So sánh nâng cao (as...as, less)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 72,
+        "topic": "Giáo dục & học tập",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 73,
+        "topic": "Công nghệ trong đời sống",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 74,
+        "topic": "Công nghệ trong đời sống",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 75,
+        "topic": "Công nghệ trong đời sống",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "question_tags",
+            "name_vi": "Câu hỏi đuôi",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 76,
+        "topic": "Công nghệ trong đời sống",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 77,
+        "topic": "Sức khoẻ & lối sống",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "giving_reasons",
+        "function_name_vi": "Giải thích lý do",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      },
+      {
+        "level": "B1",
+        "slot": 78,
+        "topic": "Sức khoẻ & lối sống",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_preference",
+        "function_name_vi": "Nêu sự ưu tiên/lựa chọn",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B1",
+        "slot": 79,
+        "topic": "Sức khoẻ & lối sống",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "so_neither",
+            "name_vi": "Đồng tình rút gọn (so/neither)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "making_complaints",
+        "function_name_vi": "Phàn nàn",
+        "new_words_target": 10,
+        "specialized_density_target_percent": 15
+      },
+      {
+        "level": "B1",
+        "slot": 80,
+        "topic": "Sức khoẻ & lối sống",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "comparatives_advanced",
+            "name_vi": "So sánh nâng cao (as...as, less)",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "offering_help",
+        "function_name_vi": "Đề nghị giúp đỡ",
+        "new_words_target": 11,
+        "specialized_density_target_percent": 17
+      }
+    ],
+    "B2": [
+      {
+        "level": "B2",
+        "slot": 1,
+        "topic": "Thuyết phục đồng nghiệp",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "third_conditional",
+            "name_vi": "Câu điều kiện loại 3",
+            "status": "moi"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 2,
+        "topic": "Thuyết phục đồng nghiệp",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 3,
+        "topic": "Thuyết phục đồng nghiệp",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 4,
+        "topic": "Thuyết phục đồng nghiệp",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 5,
+        "topic": "Đàm phán hợp đồng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "mixed_conditionals",
+            "name_vi": "Câu điều kiện hỗn hợp",
+            "status": "moi"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 6,
+        "topic": "Đàm phán hợp đồng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 7,
+        "topic": "Đàm phán hợp đồng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 8,
+        "topic": "Đàm phán hợp đồng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 9,
+        "topic": "Giải quyết xung đột nơi làm việc",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "passive_voice_advanced",
+            "name_vi": "Câu bị động nâng cao",
+            "status": "moi"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 10,
+        "topic": "Giải quyết xung đột nơi làm việc",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 11,
+        "topic": "Giải quyết xung đột nơi làm việc",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 12,
+        "topic": "Giải quyết xung đột nơi làm việc",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 13,
+        "topic": "Thuyết trình ý tưởng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "third_conditional",
+            "name_vi": "Câu điều kiện loại 3",
+            "status": "on_tap"
+          },
+          {
+            "key": "reported_speech_advanced",
+            "name_vi": "Tường thuật câu hỏi & mệnh lệnh",
+            "status": "moi"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 14,
+        "topic": "Thuyết trình ý tưởng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 15,
+        "topic": "Thuyết trình ý tưởng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 16,
+        "topic": "Thuyết trình ý tưởng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "relative_clauses_non_defining",
+            "name_vi": "Mệnh đề quan hệ không xác định",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 17,
+        "topic": "Phản hồi & phê bình xây dựng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "mixed_conditionals",
+            "name_vi": "Câu điều kiện hỗn hợp",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 18,
+        "topic": "Phản hồi & phê bình xây dựng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 19,
+        "topic": "Phản hồi & phê bình xây dựng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 20,
+        "topic": "Phản hồi & phê bình xây dựng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "participle_clauses",
+            "name_vi": "Mệnh đề rút gọn bằng phân từ",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 21,
+        "topic": "Xu hướng công nghệ",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "passive_voice_advanced",
+            "name_vi": "Câu bị động nâng cao",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 22,
+        "topic": "Xu hướng công nghệ",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 23,
+        "topic": "Xu hướng công nghệ",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 24,
+        "topic": "Xu hướng công nghệ",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "gerund_infinitive_object",
+            "name_vi": "Danh động từ/nguyên mẫu làm CN/TN",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 25,
+        "topic": "Môi trường & phát triển bền vững",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "third_conditional",
+            "name_vi": "Câu điều kiện loại 3",
+            "status": "on_tap"
+          },
+          {
+            "key": "reported_speech_advanced",
+            "name_vi": "Tường thuật câu hỏi & mệnh lệnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 26,
+        "topic": "Môi trường & phát triển bền vững",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 27,
+        "topic": "Môi trường & phát triển bền vững",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 28,
+        "topic": "Môi trường & phát triển bền vững",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "relative_clauses_non_defining",
+            "name_vi": "Mệnh đề quan hệ không xác định",
+            "status": "on_tap"
+          },
+          {
+            "key": "future_perfect_continuous",
+            "name_vi": "Tương lai hoàn thành & tiếp diễn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 29,
+        "topic": "Truyền thông xã hội & ảnh hưởng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "mixed_conditionals",
+            "name_vi": "Câu điều kiện hỗn hợp",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 30,
+        "topic": "Truyền thông xã hội & ảnh hưởng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 31,
+        "topic": "Truyền thông xã hội & ảnh hưởng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 32,
+        "topic": "Truyền thông xã hội & ảnh hưởng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "participle_clauses",
+            "name_vi": "Mệnh đề rút gọn bằng phân từ",
+            "status": "on_tap"
+          },
+          {
+            "key": "modals_past",
+            "name_vi": "Động từ khuyết thiếu + hoàn thành (should have)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 33,
+        "topic": "Giáo dục trực tuyến",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "passive_voice_advanced",
+            "name_vi": "Câu bị động nâng cao",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 34,
+        "topic": "Giáo dục trực tuyến",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 35,
+        "topic": "Giáo dục trực tuyến",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 36,
+        "topic": "Giáo dục trực tuyến",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "gerund_infinitive_object",
+            "name_vi": "Danh động từ/nguyên mẫu làm CN/TN",
+            "status": "on_tap"
+          },
+          {
+            "key": "wish_regret",
+            "name_vi": "Cấu trúc \"wish\" & tiếc nuối",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 37,
+        "topic": "Sức khoẻ tâm lý",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "reported_speech_advanced",
+            "name_vi": "Tường thuật câu hỏi & mệnh lệnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 38,
+        "topic": "Sức khoẻ tâm lý",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 39,
+        "topic": "Sức khoẻ tâm lý",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 40,
+        "topic": "Sức khoẻ tâm lý",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "relative_clauses_non_defining",
+            "name_vi": "Mệnh đề quan hệ không xác định",
+            "status": "on_tap"
+          },
+          {
+            "key": "future_perfect_continuous",
+            "name_vi": "Tương lai hoàn thành & tiếp diễn",
+            "status": "on_tap"
+          },
+          {
+            "key": "cleft_sentences",
+            "name_vi": "Câu chẻ nhấn mạnh",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 41,
+        "topic": "Đa dạng văn hoá nơi làm việc",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 42,
+        "topic": "Đa dạng văn hoá nơi làm việc",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 43,
+        "topic": "Đa dạng văn hoá nơi làm việc",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 44,
+        "topic": "Đa dạng văn hoá nơi làm việc",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "participle_clauses",
+            "name_vi": "Mệnh đề rút gọn bằng phân từ",
+            "status": "on_tap"
+          },
+          {
+            "key": "modals_past",
+            "name_vi": "Động từ khuyết thiếu + hoàn thành (should have)",
+            "status": "on_tap"
+          },
+          {
+            "key": "inversion_basic",
+            "name_vi": "Đảo ngữ cơ bản",
+            "status": "moi"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 45,
+        "topic": "Khởi nghiệp & kinh doanh nhỏ",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 46,
+        "topic": "Khởi nghiệp & kinh doanh nhỏ",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 47,
+        "topic": "Khởi nghiệp & kinh doanh nhỏ",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "causative_have_get",
+            "name_vi": "Cấu trúc nhờ vả (causative)",
+            "status": "moi"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 48,
+        "topic": "Khởi nghiệp & kinh doanh nhỏ",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "gerund_infinitive_object",
+            "name_vi": "Danh động từ/nguyên mẫu làm CN/TN",
+            "status": "on_tap"
+          },
+          {
+            "key": "wish_regret",
+            "name_vi": "Cấu trúc \"wish\" & tiếc nuối",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 49,
+        "topic": "Quản lý thời gian",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 50,
+        "topic": "Quản lý thời gian",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 51,
+        "topic": "Quản lý thời gian",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "verb_object_ving",
+            "name_vi": "Động từ + tân ngữ + V-ing",
+            "status": "moi"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 52,
+        "topic": "Quản lý thời gian",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "future_perfect_continuous",
+            "name_vi": "Tương lai hoàn thành & tiếp diễn",
+            "status": "on_tap"
+          },
+          {
+            "key": "cleft_sentences",
+            "name_vi": "Câu chẻ nhấn mạnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 53,
+        "topic": "Làm việc từ xa",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 54,
+        "topic": "Làm việc từ xa",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 55,
+        "topic": "Làm việc từ xa",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "noun_clauses",
+            "name_vi": "Mệnh đề danh từ",
+            "status": "moi"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 56,
+        "topic": "Làm việc từ xa",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "modals_past",
+            "name_vi": "Động từ khuyết thiếu + hoàn thành (should have)",
+            "status": "on_tap"
+          },
+          {
+            "key": "inversion_basic",
+            "name_vi": "Đảo ngữ cơ bản",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 57,
+        "topic": "Đạo đức trong kinh doanh",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 58,
+        "topic": "Đạo đức trong kinh doanh",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 59,
+        "topic": "Đạo đức trong kinh doanh",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "causative_have_get",
+            "name_vi": "Cấu trúc nhờ vả (causative)",
+            "status": "on_tap"
+          },
+          {
+            "key": "discourse_connectors",
+            "name_vi": "Từ nối liên kết ý",
+            "status": "moi"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 60,
+        "topic": "Đạo đức trong kinh doanh",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "wish_regret",
+            "name_vi": "Cấu trúc \"wish\" & tiếc nuối",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 61,
+        "topic": "Tin giả & báo chí",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 62,
+        "topic": "Tin giả & báo chí",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 63,
+        "topic": "Tin giả & báo chí",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "verb_object_ving",
+            "name_vi": "Động từ + tân ngữ + V-ing",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 64,
+        "topic": "Tin giả & báo chí",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "cleft_sentences",
+            "name_vi": "Câu chẻ nhấn mạnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 65,
+        "topic": "Toàn cầu hoá",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 66,
+        "topic": "Toàn cầu hoá",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 67,
+        "topic": "Toàn cầu hoá",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "noun_clauses",
+            "name_vi": "Mệnh đề danh từ",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 68,
+        "topic": "Toàn cầu hoá",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "inversion_basic",
+            "name_vi": "Đảo ngữ cơ bản",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 69,
+        "topic": "Biến đổi khí hậu",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 70,
+        "topic": "Biến đổi khí hậu",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 71,
+        "topic": "Biến đổi khí hậu",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "causative_have_get",
+            "name_vi": "Cấu trúc nhờ vả (causative)",
+            "status": "on_tap"
+          },
+          {
+            "key": "discourse_connectors",
+            "name_vi": "Từ nối liên kết ý",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 72,
+        "topic": "Biến đổi khí hậu",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 73,
+        "topic": "Trí tuệ nhân tạo trong đời sống",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 74,
+        "topic": "Trí tuệ nhân tạo trong đời sống",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 75,
+        "topic": "Trí tuệ nhân tạo trong đời sống",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "verb_object_ving",
+            "name_vi": "Động từ + tân ngữ + V-ing",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 76,
+        "topic": "Trí tuệ nhân tạo trong đời sống",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 77,
+        "topic": "Cân bằng công việc-cuộc sống",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "persuading",
+        "function_name_vi": "Thuyết phục",
+        "new_words_target": 12,
+        "specialized_density_target_percent": 22
+      },
+      {
+        "level": "B2",
+        "slot": 78,
+        "topic": "Cân bằng công việc-cuộc sống",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "negotiating",
+        "function_name_vi": "Đàm phán",
+        "new_words_target": 13,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "B2",
+        "slot": 79,
+        "topic": "Cân bằng công việc-cuộc sống",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "noun_clauses",
+            "name_vi": "Mệnh đề danh từ",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "clarifying",
+        "function_name_vi": "Làm rõ ý",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 20
+      },
+      {
+        "level": "B2",
+        "slot": 80,
+        "topic": "Cân bằng công việc-cuộc sống",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "discourse_connectors",
+            "name_vi": "Từ nối liên kết ý",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "hedging_opinion",
+        "function_name_vi": "Giảm nhẹ mức độ chắc chắn khi nêu ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 22
+      }
+    ],
+    "C1": [
+      {
+        "level": "C1",
+        "slot": 1,
+        "topic": "Tranh luận chính sách công",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "advanced_inversion",
+            "name_vi": "Đảo ngữ nâng cao",
+            "status": "moi"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 2,
+        "topic": "Tranh luận chính sách công",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 3,
+        "topic": "Tranh luận chính sách công",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 4,
+        "topic": "Tranh luận chính sách công",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 5,
+        "topic": "Đạo đức AI",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 6,
+        "topic": "Đạo đức AI",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 7,
+        "topic": "Đạo đức AI",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "subjunctive_mood",
+            "name_vi": "Thức giả định",
+            "status": "moi"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 8,
+        "topic": "Đạo đức AI",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 9,
+        "topic": "Bất bình đẳng kinh tế",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 10,
+        "topic": "Bất bình đẳng kinh tế",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 11,
+        "topic": "Bất bình đẳng kinh tế",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 12,
+        "topic": "Bất bình đẳng kinh tế",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 13,
+        "topic": "Tự do ngôn luận vs kiểm duyệt",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "advanced_inversion",
+            "name_vi": "Đảo ngữ nâng cao",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 14,
+        "topic": "Tự do ngôn luận vs kiểm duyệt",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "absolute_phrases",
+            "name_vi": "Cụm tuyệt đối",
+            "status": "moi"
+          }
+        ],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 15,
+        "topic": "Tự do ngôn luận vs kiểm duyệt",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 16,
+        "topic": "Tự do ngôn luận vs kiểm duyệt",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 17,
+        "topic": "Khủng hoảng khí hậu & chính sách",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 18,
+        "topic": "Khủng hoảng khí hậu & chính sách",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 19,
+        "topic": "Khủng hoảng khí hậu & chính sách",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "subjunctive_mood",
+            "name_vi": "Thức giả định",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 20,
+        "topic": "Khủng hoảng khí hậu & chính sách",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "nominalisation",
+            "name_vi": "Danh từ hoá",
+            "status": "moi"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 21,
+        "topic": "Tương lai giáo dục",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 22,
+        "topic": "Tương lai giáo dục",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 23,
+        "topic": "Tương lai giáo dục",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 24,
+        "topic": "Tương lai giáo dục",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 25,
+        "topic": "Toàn cầu hoá & bản sắc văn hoá",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "advanced_inversion",
+            "name_vi": "Đảo ngữ nâng cao",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 26,
+        "topic": "Toàn cầu hoá & bản sắc văn hoá",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "absolute_phrases",
+            "name_vi": "Cụm tuyệt đối",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 27,
+        "topic": "Toàn cầu hoá & bản sắc văn hoá",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "ellipsis",
+            "name_vi": "Tỉnh lược",
+            "status": "moi"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 28,
+        "topic": "Toàn cầu hoá & bản sắc văn hoá",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 29,
+        "topic": "Đổi mới sáng tạo & rủi ro",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 30,
+        "topic": "Đổi mới sáng tạo & rủi ro",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 31,
+        "topic": "Đổi mới sáng tạo & rủi ro",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "subjunctive_mood",
+            "name_vi": "Thức giả định",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 32,
+        "topic": "Đổi mới sáng tạo & rủi ro",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "nominalisation",
+            "name_vi": "Danh từ hoá",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 33,
+        "topic": "Lãnh đạo trong khủng hoảng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "reduced_relative_clauses",
+            "name_vi": "Mệnh đề quan hệ rút gọn",
+            "status": "moi"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 34,
+        "topic": "Lãnh đạo trong khủng hoảng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 35,
+        "topic": "Lãnh đạo trong khủng hoảng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 36,
+        "topic": "Lãnh đạo trong khủng hoảng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 37,
+        "topic": "Truyền thông & thao túng dư luận",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 38,
+        "topic": "Truyền thông & thao túng dư luận",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "absolute_phrases",
+            "name_vi": "Cụm tuyệt đối",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 39,
+        "topic": "Truyền thông & thao túng dư luận",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "ellipsis",
+            "name_vi": "Tỉnh lược",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 40,
+        "topic": "Truyền thông & thao túng dư luận",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "perfect_passive_infinitive",
+            "name_vi": "Nguyên mẫu hoàn thành/bị động",
+            "status": "moi"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 41,
+        "topic": "Đạo đức y sinh",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 42,
+        "topic": "Đạo đức y sinh",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 43,
+        "topic": "Đạo đức y sinh",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 44,
+        "topic": "Đạo đức y sinh",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "nominalisation",
+            "name_vi": "Danh từ hoá",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 45,
+        "topic": "Tự động hoá & thị trường lao động",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "reduced_relative_clauses",
+            "name_vi": "Mệnh đề quan hệ rút gọn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 46,
+        "topic": "Tự động hoá & thị trường lao động",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "advanced_modality",
+            "name_vi": "Sắc thái động từ khuyết thiếu nâng cao",
+            "status": "moi"
+          }
+        ],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 47,
+        "topic": "Tự động hoá & thị trường lao động",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 48,
+        "topic": "Tự động hoá & thị trường lao động",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 49,
+        "topic": "Bất đồng quan điểm mang tính xây dựng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 50,
+        "topic": "Bất đồng quan điểm mang tính xây dựng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 51,
+        "topic": "Bất đồng quan điểm mang tính xây dựng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "ellipsis",
+            "name_vi": "Tỉnh lược",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 52,
+        "topic": "Bất đồng quan điểm mang tính xây dựng",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "perfect_passive_infinitive",
+            "name_vi": "Nguyên mẫu hoàn thành/bị động",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 53,
+        "topic": "Ngoại giao & đàm phán quốc tế",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "fronting",
+            "name_vi": "Đảo trật tự nhấn mạnh",
+            "status": "moi"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 54,
+        "topic": "Ngoại giao & đàm phán quốc tế",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 55,
+        "topic": "Ngoại giao & đàm phán quốc tế",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 56,
+        "topic": "Ngoại giao & đàm phán quốc tế",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 57,
+        "topic": "Triết học đời sống hiện đại",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "reduced_relative_clauses",
+            "name_vi": "Mệnh đề quan hệ rút gọn",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 58,
+        "topic": "Triết học đời sống hiện đại",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "advanced_modality",
+            "name_vi": "Sắc thái động từ khuyết thiếu nâng cao",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 59,
+        "topic": "Triết học đời sống hiện đại",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "complex_discourse_markers",
+            "name_vi": "Từ nối học thuật phức tạp",
+            "status": "moi"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 60,
+        "topic": "Triết học đời sống hiện đại",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 61,
+        "topic": "Nghệ thuật & xã hội",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 62,
+        "topic": "Nghệ thuật & xã hội",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 63,
+        "topic": "Nghệ thuật & xã hội",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 64,
+        "topic": "Nghệ thuật & xã hội",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "perfect_passive_infinitive",
+            "name_vi": "Nguyên mẫu hoàn thành/bị động",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 65,
+        "topic": "Khoa học & niềm tin công chúng",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "fronting",
+            "name_vi": "Đảo trật tự nhấn mạnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 66,
+        "topic": "Khoa học & niềm tin công chúng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 67,
+        "topic": "Khoa học & niềm tin công chúng",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 68,
+        "topic": "Khoa học & niềm tin công chúng",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 69,
+        "topic": "Đô thị hoá & phát triển bền vững",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 70,
+        "topic": "Đô thị hoá & phát triển bền vững",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "advanced_modality",
+            "name_vi": "Sắc thái động từ khuyết thiếu nâng cao",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 71,
+        "topic": "Đô thị hoá & phát triển bền vững",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "complex_discourse_markers",
+            "name_vi": "Từ nối học thuật phức tạp",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 72,
+        "topic": "Đô thị hoá & phát triển bền vững",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 73,
+        "topic": "Quyền riêng tư trong kỷ nguyên số",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 74,
+        "topic": "Quyền riêng tư trong kỷ nguyên số",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 75,
+        "topic": "Quyền riêng tư trong kỷ nguyên số",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 76,
+        "topic": "Quyền riêng tư trong kỷ nguyên số",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 14,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 77,
+        "topic": "Ý nghĩa thành công trong sự nghiệp",
+        "content_type": "reading",
+        "grammar": [
+          {
+            "key": "fronting",
+            "name_vi": "Đảo trật tự nhấn mạnh",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "diplomatic_disagreement",
+        "function_name_vi": "Bất đồng quan điểm khéo léo",
+        "new_words_target": 15,
+        "specialized_density_target_percent": 27
+      },
+      {
+        "level": "C1",
+        "slot": 78,
+        "topic": "Ý nghĩa thành công trong sự nghiệp",
+        "content_type": "dialogue",
+        "grammar": [],
+        "function_key": "softening_criticism",
+        "function_name_vi": "Giảm nhẹ lời phê bình",
+        "new_words_target": 16,
+        "specialized_density_target_percent": 30
+      },
+      {
+        "level": "C1",
+        "slot": 79,
+        "topic": "Ý nghĩa thành công trong sự nghiệp",
+        "content_type": "reading",
+        "grammar": [],
+        "function_key": "structuring_argument",
+        "function_name_vi": "Cấu trúc lập luận trang trọng",
+        "new_words_target": 17,
+        "specialized_density_target_percent": 25
+      },
+      {
+        "level": "C1",
+        "slot": 80,
+        "topic": "Ý nghĩa thành công trong sự nghiệp",
+        "content_type": "dialogue",
+        "grammar": [
+          {
+            "key": "complex_discourse_markers",
+            "name_vi": "Từ nối học thuật phức tạp",
+            "status": "on_tap"
+          }
+        ],
+        "function_key": "expressing_nuance",
+        "function_name_vi": "Diễn đạt sắc thái ý kiến",
+        "new_words_target": 18,
+        "specialized_density_target_percent": 27
+      }
+    ]
+  }
+}
