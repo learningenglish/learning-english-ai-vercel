@@ -37,6 +37,13 @@ const BANNED_SUBSTRINGS = [
   "cà phê", "sân bay", "siêu thị", "nhà hàng", "khách sạn", "bệnh viện", "ngân hàng",
   "trường học", "công ty", "văn phòng", "cửa hàng", "quán ăn", "quán cà", "tiệm",
   "hiệu thuốc", "phòng khám", "nhà ga", "bến xe", "phi trường",
+  // Bổ sung 2026-07-19 (lần 4) — máy quét từ khoá vòng trước bỏ sót 3 khung vẫn dính da cụ
+  // thể: "món" (chỉ ngành ăn uống cụ thể) và "thời tiết" (1 chủ đề cụ thể của da Tổng quát,
+  // không phải loại tình huống trừu tượng). LƯU Ý: "thanh toán" (trả tiền/thanh toán) KHÔNG
+  // cấm đơn lẻ — đây là hành vi giao tiếp chung cho mọi ngành (dịch vụ, y tế, logistics đều
+  // có bước thanh toán); chỉ cấm khi đi kèm danh từ ngành cụ thể (đã có trong danh sách trên,
+  // vd "thanh toán ở quán cà phê" sẽ bị bắt bởi từ khoá "cà phê", không cần thêm "thanh toán".
+  "món", "thời tiết",
 ];
 
 // Cặp điểm ngữ pháp NHỎ/LIÊN QUAN được DẠY CHUNG 1 sự kiện (giảm số sự kiện dạy độc lập) —
@@ -130,10 +137,25 @@ function buildLevelSpine(level) {
     return fn || null;
   }
 
+  // Phân bổ khung tình huống: khối 2 slot/lần xuất hiện (1 cặp đọc+thoại — đủ để không lặp
+  // câu chuyện ngay, không dài tới mức ngán). Chu kỳ ĐẦU TIÊN đi đúng thứ tự khai báo trong
+  // SITUATION_FRAMES (giữ nguyên ràng buộc phụ thuộc ngữ pháp/chức năng của thứ tự đó — lần
+  // xuất hiện ĐẦU TIÊN của mỗi khung không đổi so với bản duyệt trước). Từ chu kỳ thứ 2 trở
+  // đi, xoay (rotate) thứ tự thêm 1 vị trí mỗi chu kỳ — không lặp lại y nguyên trật tự nửa
+  // đầu (kiểu "chiếu lại"), tương tự cách ôn tập ngữ pháp cách quãng. Với F khung, hiệu số vị
+  // trí giữa khối cuối chu kỳ n và khối đầu chu kỳ n+1 là F-2 (mod F) — luôn khác 0 khi F>2,
+  // nên không bao giờ 2 khối liền kề trùng khung (đảm bảo 1 khung tối đa 2 slot liên tiếp).
+  const F = frames.length;
+  function frameForBlock(blockIndex) {
+    const cycle = Math.floor(blockIndex / F);
+    const pos = blockIndex % F;
+    return frames[(pos + cycle) % F];
+  }
+
   const slots = [];
   for (let slot = 1; slot <= totalSlots; slot++) {
-    const frameIdx = Math.floor((slot - 1) / 4) % frames.length;
-    const frame = frames[frameIdx];
+    const blockIdx = Math.floor((slot - 1) / 2);
+    const frame = frameForBlock(blockIdx);
     const content_type = slot % 2 === 1 ? "reading" : "dialogue";
     const grammar = (assignments[slot] || []).map((a) => ({
       key: a.key,
@@ -165,7 +187,9 @@ function buildLevelSpine(level) {
 
 // Tự kiểm sau khi sinh: (1) tổng khớp số đã chốt; (2) không có function ngoài bảng ghép cho
 // frame của nó; (3) mật độ CN & từ mới không giảm dọc theo level (đơn điệu tăng); (4) không
-// frame nào chứa danh từ chỉ địa điểm/ngành cụ thể (da lọt vào xương).
+// frame nào chứa danh từ chỉ địa điểm/ngành cụ thể (da lọt vào xương); (5) không khung nào
+// chiếm quá 2 slot liên tiếp; (6) thứ tự lần-đầu-xuất-hiện của khung khớp đúng thứ tự khai
+// báo trong SITUATION_FRAMES (không bị thuật toán phân bổ mới làm xáo trộn phụ thuộc).
 function selfCheck(spine) {
   const problems = [];
   for (const level of Object.keys(spine.levels)) {
@@ -180,7 +204,11 @@ function selfCheck(spine) {
       const hit = BANNED_SUBSTRINGS.find((b) => lower.includes(b));
       if (hit) problems.push(`[${level}] frame "${frame.key}" ("${frame.name_vi}") chứa từ chỉ ngành/địa điểm cụ thể: "${hit}"`);
     }
+
     let prevWords = -Infinity, prevDensity = -Infinity;
+    let streakFrame = null, streakLen = 0;
+    const firstSeenOrder = [];
+    const firstSeen = new Set();
     for (const s of slots) {
       if (s.function_key) {
         const allowed = frameFnMap[s.situation_frame_key] || [];
@@ -192,6 +220,23 @@ function selfCheck(spine) {
       if (s.specialized_density_target_percent < prevDensity) problems.push(`[${level}] slot ${s.slot}: density giảm (${prevDensity} -> ${s.specialized_density_target_percent})`);
       prevWords = s.new_words_target;
       prevDensity = s.specialized_density_target_percent;
+
+      if (s.situation_frame_key === streakFrame) {
+        streakLen++;
+      } else {
+        streakFrame = s.situation_frame_key;
+        streakLen = 1;
+      }
+      if (streakLen > 2) problems.push(`[${level}] slot ${s.slot}: khung "${s.situation_frame_key}" chiếm quá 2 slot liên tiếp`);
+
+      if (!firstSeen.has(s.situation_frame_key)) {
+        firstSeen.add(s.situation_frame_key);
+        firstSeenOrder.push(s.situation_frame_key);
+      }
+    }
+    const declaredOrder = SITUATION_FRAMES[level].map((f) => f.key);
+    if (JSON.stringify(firstSeenOrder) !== JSON.stringify(declaredOrder)) {
+      problems.push(`[${level}] thứ tự lần-đầu-xuất-hiện của khung không khớp SITUATION_FRAMES: [${firstSeenOrder}] != [${declaredOrder}]`);
     }
   }
   return problems;
