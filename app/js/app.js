@@ -91,6 +91,19 @@ function renderBottomNav(activePath) {
 startRouter({ beforeRender, afterRender });
 
 if ("serviceWorker" in navigator) {
+  // TỰ ĐỘNG reload đúng 1 lần khi service worker MỚI giành quyền điều khiển trang
+  // ("controllerchange" — tín hiệu chuẩn, đáng tin hơn theo dõi state "activated" của riêng
+  // worker) — bug thật đã gặp: sw.js cache-first, skipWaiting()+clients.claim() có chạy
+  // đúng nhưng KHÔNG tự làm những request ĐANG MỞ của trang hiện tại đổi qua SW mới; người
+  // dùng thấy hiện tượng "tải lại 2-3 lần vẫn còn giao diện/CSS cũ" dù server đã có bản mới
+  // (đã tự xác nhận qua curl: bytes trên Vercel đúng, chỉ trình duyệt người dùng chưa nhận).
+  // "refreshing" chặn vòng lặp reload vô hạn nếu "controllerchange" bắn nhiều lần liên tiếp.
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {
       // Cài PWA vẫn hoạt động được không cần service worker (chỉ mất phần cache offline
