@@ -1,7 +1,9 @@
 {
-  "status": "draft_pending_review",
-  "generated_at": "2026-07-19T11:00:54.881Z",
-  "note_vi": "Bản nháp tự soạn bằng thuật toán tất định (không gọi AI) — tổng slot/level RƠI TỰ NHIÊN theo lịch dạy+ôn (không còn số cứng 80). CHƯA đóng băng, chờ Minh duyệt.",
+  "status": "frozen",
+  "generated_at": "2026-07-19T11:14:43.928Z",
+  "approved_at": "2026-07-19",
+  "approved_commit": "0c47c9d",
+  "note_vi": "ĐÃ ĐÓNG BĂNG (duyệt 2026-07-19, chốt tại commit 0c47c9d) — sinh bằng thuật toán tất định (không gọi AI), tổng slot/level RƠI TỰ NHIÊN theo lịch dạy+ôn (89/81/85/85/61). Đổi tên từ spine_draft.json -> curriculum_spine.json khi đóng băng. KHÔNG tự ý chạy lại build-spine.mjs đè lên file này — script đã có tự kiểm chặn ghi đè file frozen, muốn sửa phải qua quy trình duyệt lại (bump version + xin duyệt lại từ Minh).",
   "levels": {
     "A1": [
       {

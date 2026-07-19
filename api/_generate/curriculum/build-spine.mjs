@@ -64,6 +64,9 @@ const MIN_SLOTS_EXPECTED = 70;
 // "BÀI HỌC ĐẮT NHẤT" trong chỉ thị: quyết định đã duyệt không được để script mới âm thầm
 // ghi đè). C1=61 là quyết định có chủ đích (không đệm slot rỗng), không phải lỗi.
 const FROZEN_TOTALS = { A1: 89, A2: 81, B1: 85, B2: 85, C1: 61 };
+// Đổi tên từ "spine_draft.json" -> "curriculum_spine.json" khi đóng băng (2026-07-19,
+// commit 0c47c9d) — cùng 1 file trong suốt vòng đời draft->frozen, không có file draft rời.
+const OUTPUT_FILE = "curriculum_spine.json";
 const VOCAB_STRETCH_NOTE =
   "Phần lớn từ vựng đúng cấp độ hiện tại; xen một vài từ tự nhiên nhô lên cấp kế tiếp (nguyên lý i+1) — không ép tỷ lệ %, chỉ là hướng dẫn định tính.";
 
@@ -259,15 +262,33 @@ for (const level of ["A1", "A2", "B1", "B2", "C1"]) {
 
 const problems = selfCheck(spine);
 if (problems.length) {
-  console.error("TỰ KIỂM THẤT BẠI — spine_draft.json KHÔNG được ghi:");
+  console.error("TỰ KIỂM THẤT BẠI — " + OUTPUT_FILE + " KHÔNG được ghi:");
   problems.forEach((p) => console.error("  - " + p));
   process.exit(1);
 }
 
-fs.writeFileSync(path.join(__dirname, "spine_draft.json"), JSON.stringify(spine, null, 2));
+// Spine đã ĐÓNG BĂNG (duyệt 2026-07-19, commit 0c47c9d) — chặn ghi đè im lặng. Chạy lại script
+// này (vd để thử quy tắc phân bổ mới) sẽ LUÔN dừng ở đây nếu file đích đang ở trạng thái
+// "frozen", trừ khi set ALLOW_OVERWRITE_FROZEN_SPINE=1 — và ngay cả khi đó, file ghi ra vẫn ở
+// status "draft_pending_review" (script không tự phong "frozen"), phải xin duyệt lại thủ công
+// như lần đầu (xem "BÀI HỌC ĐẮT NHẤT" đầu file: quyết định đã duyệt không được để script mới
+// âm thầm ghi đè).
+const outputPath = path.join(__dirname, OUTPUT_FILE);
+if (fs.existsSync(outputPath)) {
+  const existing = JSON.parse(fs.readFileSync(outputPath, "utf8"));
+  if (existing.status === "frozen" && process.env.ALLOW_OVERWRITE_FROZEN_SPINE !== "1") {
+    console.error(
+      `${OUTPUT_FILE} đã ĐÓNG BĂNG (duyệt ${existing.approved_at}, commit ${existing.approved_commit}) — KHÔNG ghi đè.`
+    );
+    console.error("Cần sửa thật sự thì set ALLOW_OVERWRITE_FROZEN_SPINE=1 rồi chạy lại, và xin Minh duyệt lại trước khi đóng băng bản mới.");
+    process.exit(1);
+  }
+}
+
+fs.writeFileSync(outputPath, JSON.stringify(spine, null, 2));
 
 console.log("Tự kiểm OK (tổng khớp số đã chốt; đúng thứ tự phụ thuộc; đúng bảng ghép chủ đề-chức năng; mật độ đơn điệu tăng).");
-console.log("Đã ghi spine_draft.json — " + Object.values(spine.levels).flat().length + " slot tổng.\n");
+console.log("Đã ghi " + OUTPUT_FILE + " — " + Object.values(spine.levels).flat().length + " slot tổng.\n");
 console.log("level | tổng slot | số điểm ngữ pháp | số sự kiện dạy (sau gộp) | trạng thái");
 report.forEach((r) =>
   console.log(`${r.level}    | ${r.totalSlots}        | ${r.pointCount}                | ${r.teachEventCount} (gộp ${r.merged} điểm)          | ${r.flag}`)

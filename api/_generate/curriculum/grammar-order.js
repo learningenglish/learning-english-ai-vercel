@@ -10,6 +10,14 @@
 // trúc so sánh/nâng cao đều đứng sau cấu trúc gốc nó dựa vào, vd going_to_vs_will sau cả
 // be_going_to và future_will), nên GIỮ NGUYÊN thứ tự catalog, chỉ chép tường minh ra đây để
 // build-spine.mjs tự kiểm đối chiếu thay vì ngầm định.
+//
+// SPEC ghi sổ cho prompt sinh bài CHẾ ĐỘ KHOÁ HỌC (CHƯA xây — hàng đợi mục 2, xem
+// project_curriculum_spine_status trong memory, chốt 2026-07-19 khi duyệt spine): nếu chức
+// năng giao tiếp của 1 slot cần một cấu trúc CHƯA tới lượt dạy theo TEACH_ORDER này, prompt
+// PHẢI cho phép dùng cấu trúc đó như CỤM CỐ ĐỊNH thông dụng (vd "What's your name?", "I
+// like...", "I'd like...") — không né tránh chức năng, không giải thích ngữ pháp của cụm đó.
+// Tab Ngữ pháp của bài vẫn CHỈ chứa đúng điểm ngữ pháp của slot (lấy từ `grammar` trong
+// curriculum_spine.json), không thêm cấu trúc của cụm cố định vào đó.
 export const TEACH_ORDER = {
   A1: [
     "to_be",
