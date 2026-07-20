@@ -165,6 +165,7 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 
 QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý):
 - Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. Hệ thống sẽ TỰ ĐỘNG TỪ CHỐI và bắt sinh lại nếu lệch quá 25% — bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
+- LỖI THẬT HAY GẶP Ở A1/A2 (câu bị giới hạn tối đa 8-12 từ): model dừng lại sau 6-8 lượt thoại ngắn, tổng chưa tới 50 từ, TRONG KHI length_words yêu cầu 300 — SAI, vì trần độ dài câu áp cho TỪNG CÂU, không áp cho TỔNG BÀI. Khi câu bị giới hạn ngắn, cách DUY NHẤT để đạt đủ length_words là TĂNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — ước lượng trước: length_words ÷ độ dài trung bình 1 lượt (~5-7 từ ở A1) = số lượt thoại cần có (vd 300 từ ở A1 cần khoảng 40-50 lượt thoại, không phải 8 lượt). Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó — không lặp ý, không rề rà giả tạo.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.
@@ -468,7 +469,9 @@ export async function generate_lesson(data, ctx) {
 
   // (b) Gọi AI + parse + validate.
   const r = await timedCallOpenAI({
-    max_tokens: 3500,
+    max_tokens: 4000, // trần chung MAX_TOKENS_CAP (_shared.js) — nâng từ 3500 vì A1/A2 giờ cần
+    // nhiều lượt thoại hơn hẳn để đạt đủ length_words khi câu bị giới hạn ngắn (xem "LỖI THẬT
+    // HAY GẶP Ở A1/A2" trong prompt), JSON output theo đó cũng dài hơn trước.
     temperature: 0.7,
     messages: [
       { role: "system", content: GENERATE_LESSON_SYSTEM_PROMPT },
@@ -510,7 +513,9 @@ export async function analyze_user_text(data, ctx) {
 
   // (b) Gọi AI + parse + validate.
   const r = await timedCallOpenAI({
-    max_tokens: 3500,
+    max_tokens: 4000, // trần chung MAX_TOKENS_CAP (_shared.js) — nâng từ 3500 vì A1/A2 giờ cần
+    // nhiều lượt thoại hơn hẳn để đạt đủ length_words khi câu bị giới hạn ngắn (xem "LỖI THẬT
+    // HAY GẶP Ở A1/A2" trong prompt), JSON output theo đó cũng dài hơn trước.
     temperature: 0.7,
     messages: [
       { role: "system", content: ANALYZE_TEXT_SYSTEM_PROMPT },
