@@ -29,79 +29,72 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 
-// ====== Credit — luồng 3 bước cho cả generate_lesson và analyze_user_text (tạo bài học
-// = thao tác AI đắt nhất, dùng chung mức giá 10 credit/hạn mức 300/tháng với đề thi,
-// không tinh chỉnh riêng ở MVP):
-//   (a) checkStudentExamCreditBalance() — ĐỌC số dư, KHÔNG trừ. Hết credit thì chặn NGAY,
-//       trước khi tốn 1 lượt gọi OpenAI thật (tiền OpenAI do chủ app trả, không phải user
-//       — không thể coi "tốn lượt gọi AI rồi mới báo hết credit" là nợ chấp nhận được).
-//   (b) gọi AI + parse + validate.
-//   (c) consumeStudentExamCredit() — RPC atomic, trừ THẬT ngay trước khi insert.
-// Cố ý KHÔNG khoá race giữa (a) và (c): 2 request bắn gần như đồng thời có thể cùng lọt
-// qua bước (a) (đọc thấy còn credit) rồi cùng vào bước (b) — CHẤP NHẬN, vì bước (c) vẫn
-// là cổng chặn atomic thật sự (RPC có "for update"), nhiều nhất 1 trong 2 request bị
-// chặn ở (c) chứ không lọt được vào insert. (a) chỉ là tối ưu chi phí (đỡ tốn lượt AI),
-// không phải lớp bảo vệ credit duy nhất.
+// ====== Hạn mức 10 bài/ngày (thay credit engine, chốt 2026-07-19) — generate_lesson và
+// analyze_user_text dùng CHUNG 1 hạn mức: đếm số bản ghi "lessons" (cả 2 source cộng lại)
+// user đã tạo trong ngày hiện tại theo giờ Asia/Ho_Chi_Minh (UTC+7, không DST). Không còn
+// bảng "students.monthly_exam_credit_*"/RPC consume_student_exam_credit — đó là hệ thống
+// credit CHO ĐỀ THI tự tạo (action "consume_exam_credit" riêng trong chat.js, KHÔNG đụng
+// tới ở đây, 2 tính năng độc lập dùng chung RPC trước đây chỉ vì tiện, không phải vì cùng
+// 1 hạn mức nghiệp vụ).
 //
-// EXAM_CREDIT_COST/EXAM_CREDIT_MONTHLY_LIMIT PHẢI khớp v_cost/v_limit trong RPC
-// consume_student_exam_credit (supabase/015_student_pro_exams.sql) — đổi 1 bên mà quên
-// bên kia sẽ làm (a) và (c) lệch nhau (vd (a) cho qua nhưng (c) vẫn chặn, gây tốn 1 lượt
-// AI oan uổng dù đã có bước đọc trước).
-const EXAM_CREDIT_COST = 10;
-const EXAM_CREDIT_MONTHLY_LIMIT = 300;
+// Chỉ có bước ĐỌC-trước-khi-gọi-AI (đỡ tốn 1 lượt AI khi đã hết hạn mức) — KHÔNG có bước
+// "consume" atomic riêng như credit cũ: hạn mức đơn giản là ĐẾM bản ghi đã có, và bản ghi
+// insertLesson() ngay sau đó tự nhiên làm tăng số đếm cho lần kiểm tiếp theo. Race hiếm gặp
+// (2 request gần như đồng thời cùng đọc thấy còn 1 suất) có thể khiến 1 ngày có 11 bài thay
+// vì tối đa 10 — CHẤP NHẬN được cho MVP (không phải hệ thống thanh toán, không cần RPC
+// "for update" như credit cũ).
+const DAILY_LESSON_LIMIT = 10;
+const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè
 
-async function checkStudentExamCreditBalance(studentId) {
-  try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=plan,monthly_exam_credit_used,monthly_exam_credit_reset_date`,
-      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
-    );
-    if (!r.ok) {
-      console.error("checkStudentExamCreditBalance error:", r.status, await r.text());
-      return { allowed: false, message: "Không kiểm tra được credit tạo bài, thử lại sau." };
-    }
-    const rows = await r.json();
-    const row = rows?.[0];
-    if (!row) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
-    if (row.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo đề chỉ dành cho gói Pro." };
-
-    // date_trunc('month', current_date) phía RPC ~ ngày 1 đầu tháng hiện tại (UTC) ở đây —
-    // so sánh chuỗi ISO "YYYY-MM-DD" là đủ chính xác vì cùng định dạng.
-    const monthStart = new Date();
-    monthStart.setUTCDate(1);
-    const monthStartStr = monthStart.toISOString().slice(0, 10);
-    const used = row.monthly_exam_credit_reset_date < monthStartStr ? 0 : row.monthly_exam_credit_used;
-    if (used + EXAM_CREDIT_COST > EXAM_CREDIT_MONTHLY_LIMIT) {
-      return { allowed: false, message: "Đã dùng hết 300 credit tạo đề tháng này, quay lại tháng sau." };
-    }
-    return { allowed: true };
-  } catch (e) {
-    console.error("checkStudentExamCreditBalance error:", e);
-    return { allowed: false, message: "Không kiểm tra được credit tạo bài, thử lại sau." };
-  }
+// Trả về thời điểm UTC tương ứng với 00:00:00 hôm nay theo giờ VN (dùng làm mốc "gte" khi
+// đếm bản ghi lessons trong ngày).
+function startOfTodayVN() {
+  const nowVN = new Date(Date.now() + VN_TZ_OFFSET_MS);
+  const midnightVN = Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate());
+  return new Date(midnightVN - VN_TZ_OFFSET_MS);
 }
 
-// Copy nguyên văn consumeStudentExamCredit() từ chat.js (RPC atomic, trừ credit THẬT).
-async function consumeStudentExamCredit(studentId) {
+// Tính năng tự tạo bài (generate_lesson/analyze_user_text) là đặc quyền gói Student PRO
+// (499.000đ/tháng, "tự học độc lập, không cần Mentor" — xem project_business_model_pricing
+// trong memory) — Student Basic gắn với 1 Mentor, không có quyền này. Credit engine cũ đã
+// gate đúng qua cột students.plan; giữ nguyên cổng đó, chỉ đổi phần "còn bao nhiêu suất".
+async function checkDailyLessonLimit(studentId) {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_student_exam_credit`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ p_student_id: studentId }),
+    const studentRes = await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=plan`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
     });
-    if (!r.ok) {
-      console.error("consume_student_exam_credit RPC error:", r.status, await r.text());
-      return { allowed: false, message: "Không kiểm tra được credit tạo bài, thử lại sau." };
+    if (!studentRes.ok) {
+      console.error("checkDailyLessonLimit (plan lookup) error:", studentRes.status);
+      return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
     }
-    const rows = await r.json();
-    return rows?.[0] || { allowed: false, message: "Không tìm thấy dữ liệu học viên." };
+    const student = (await studentRes.json())?.[0];
+    if (!student) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
+    if (student.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo bài chỉ dành cho gói Pro." };
+
+    const sinceISO = startOfTodayVN().toISOString();
+    const countRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/lessons?user_id=eq.${studentId}&created_at=gte.${sinceISO}&select=id`,
+      {
+        method: "HEAD",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          Prefer: "count=exact",
+        },
+      }
+    );
+    if (!countRes.ok) {
+      console.error("checkDailyLessonLimit (count) error:", countRes.status);
+      return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
+    }
+    const used = Number((countRes.headers.get("content-range") || "").split("/")[1] || 0);
+    if (used >= DAILY_LESSON_LIMIT) {
+      return { allowed: false, message: `Đã dùng hết ${DAILY_LESSON_LIMIT} bài hôm nay, quay lại vào ngày mai.`, used };
+    }
+    return { allowed: true, used };
   } catch (e) {
-    console.error("consumeStudentExamCredit error:", e);
-    return { allowed: false, message: "Không kiểm tra được credit tạo bài, thử lại sau." };
+    console.error("checkDailyLessonLimit error:", e);
+    return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
   }
 }
 
@@ -429,17 +422,16 @@ async function insertLesson(row) {
 }
 
 // ====== ACTIONS xuất ra cho chat.js đăng ký vào ACTIONS map ======
-// Chỉ Student mới được dùng — cùng phạm vi với consumeStudentExamCredit() (credit tạo
-// đề/bài học của Student Pro), Mentor có mô hình credit khác (cột "credits" riêng ở
-// bảng mentors, không đi qua RPC này) nên không mở action này cho Mentor ở MVP.
+// Chỉ Student mới được dùng — Mentor có mô hình credit khác (cột "credits" riêng ở bảng
+// mentors) nên không mở action này cho Mentor ở MVP.
 export async function generate_lesson(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
   if (!VALID_CONTENT_TYPES.includes(data.content_type)) return { error: "Thiếu hoặc sai 'content_type'.", status: 400 };
 
-  // (a) Đọc số dư TRƯỚC — hết credit thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
-  const balanceCheck = await checkStudentExamCreditBalance(ctx.studentId);
-  if (!balanceCheck.allowed) return { error: balanceCheck.message, status: 403 };
+  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
+  const limitCheck = await checkDailyLessonLimit(ctx.studentId);
+  if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
   const r = await timedCallOpenAI({
@@ -466,11 +458,6 @@ export async function generate_lesson(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
-  // (c) Trừ credit THẬT (atomic) ngay trước khi insert — vẫn là cổng chặn cuối cùng
-  // ngay cả khi 2 request cùng lọt qua bước (a) (xem ghi chú ở checkStudentExamCreditBalance()).
-  const creditCheck = await consumeStudentExamCredit(ctx.studentId);
-  if (!creditCheck.allowed) return { error: creditCheck.message, status: 403 };
-
   const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated" }));
   if (!saved) return { error: "Tạo bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
@@ -484,9 +471,9 @@ export async function analyze_user_text(data, ctx) {
   if (wc < 20) return { error: "Văn bản quá ngắn (tối thiểu 20 từ).", status: 400 };
   if (wc > 3000) return { error: "Văn bản quá dài (tối đa 3000 từ), vui lòng chia nhỏ.", status: 400 };
 
-  // (a) Đọc số dư TRƯỚC — hết credit thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
-  const balanceCheck = await checkStudentExamCreditBalance(ctx.studentId);
-  if (!balanceCheck.allowed) return { error: balanceCheck.message, status: 403 };
+  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
+  const limitCheck = await checkDailyLessonLimit(ctx.studentId);
+  if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
   const r = await timedCallOpenAI({
@@ -513,10 +500,6 @@ export async function analyze_user_text(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
-  // (c) Trừ credit THẬT (atomic) ngay trước khi insert.
-  const creditCheck = await consumeStudentExamCredit(ctx.studentId);
-  if (!creditCheck.allowed) return { error: creditCheck.message, status: 403 };
-
   const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "user_text" }));
   if (!saved) return { error: "Phân tích thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
@@ -531,13 +514,7 @@ function buildMeta(r) {
 
 // ============================================================
 // NỢ KỸ THUẬT:
-// 1. Không có refund RPC — nếu lỗi xảy ra SAU khi credit đã trừ (vd insertLesson thất
-//    bại vì Supabase tạm gián đoạn ngay sau bước consumeStudentExamCredit thành công),
-//    user mất 1 credit mà không có bài học nào được lưu. Xác suất thấp (khoảng hở rất
-//    ngắn giữa 2 lệnh gọi) nhưng vẫn có thể xảy ra — nếu cần chặt chẽ tuyệt đối, cần
-//    thêm RPC "refund_student_exam_credit" (migration mới) gọi trong nhánh insertLesson
-//    trả về null.
-// 2. Không tự động sinh ảnh bìa (cover_image_url luôn null khi tạo) — logic
+// 1. Không tự động sinh ảnh bìa (cover_image_url luôn null khi tạo) — logic
 //    generateLessonCoverImage() có sẵn nhưng nằm private trong chat.js (không export
 //    được vì luật "chat.js đóng băng"), và action get_lesson_cover_image đã có sẵn cho
 //    phép frontend tự gọi rời sau khi lesson được lưu. Không nhân bản pipeline
