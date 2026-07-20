@@ -17,25 +17,41 @@ form/câu hỏi làm rõ trừ khi máy đã thử hết cách mà từ khóa v�
 
 ## 0. Luồng tổng quan
 
+**Cập nhật (chẻ lượt gọi, duyệt 2026-07-19 lần 3):** trước đây dự định 1 lượt gọi sinh hết cả
+chân dung lẫn 5 level cùng lúc — giờ CHẺ thành 6 lượt gọi API riêng: 1 lượt chân dung + 5 lượt
+sinh chủ đề (mỗi level 1 lượt). Lý do: (a) hiện được màn "Mời bạn học" NGAY sau lượt 1, không
+phải chờ hết cả 5 level mới có gì hiển thị; (b) lượt nào gãy parse chỉ gọi lại đúng lượt đó,
+không phải làm lại từ đầu; (c) mỗi lượt payload nhỏ hơn, ít rủi ro model quên giữa chừng.
+
 1. Người dùng nhập 3 từ khóa (Lĩnh vực / Ngành nghề / Sản phẩm-dịch vụ — cùng 3 trường "nâng
    cao" đã có sẵn ở form tạo bài tự do, xem `docs/prompt-ai-tao-bai-hoc.md` mục 1: `{FIELD}` /
    `{INDUSTRY}` / `{PRODUCT}`).
-2. Model chạy **BƯỚC SUY LUẬN BẮT BUỘC** (mục 3) — dựng "chân dung nghề" từ 3 từ khóa, không
-   hỏi lại.
+2. **Lượt gọi A (1 lượt):** model chạy **BƯỚC SUY LUẬN BẮT BUỘC** (mục 3) — dựng "chân dung
+   nghề" từ 3 từ khóa, không hỏi lại. CHỈ trả `occupation_profile`, chưa sinh chủ đề gì.
 3. Nếu độ tự tin thấp ở bước suy luận: **leo thang MÁY** trước (mục 4) — không hỏi người ngay.
-4. Sau suy luận (dù tự tin cao hay vừa), UI hiện **màn xác nhận 3 dòng** (mục 5) — không phải
-   form, không chặn, người dùng không sửa.
-5. **CHỈ hỏi người dùng** khi cả 2 nấc leo thang máy đều thất bại VÀ nguyên nhân là từ khóa vô
-   nghĩa/gõ nhầm (mục 6) — đúng 1 câu.
-6. Sinh bộ chủ đề theo khung (mục 8-9), kiểm đầu ra (mục 10), bài kiểm nghiệm thu (mục 11).
+   Đây là lượt gọi LẠI của Lượt A (không phải lượt mới).
+4. Chân dung chốt xong (dù tự tin cao hay vừa), UI hiện NGAY **màn xác nhận 3 dòng** (mục 5) —
+   không phải form, không chặn, người dùng không sửa trực tiếp. Người dùng bấm "Bắt đầu học"
+   MỚI kích hoạt Lượt gọi B.
+5. **CHỈ hỏi người dùng** khi cả 2 nấc leo thang máy ở Lượt A đều thất bại VÀ nguyên nhân là từ
+   khóa vô nghĩa/gõ nhầm (mục 6) — đúng 1 câu.
+6. **Lượt gọi B (5 lượt, mỗi level 1 lượt):** sau khi người dùng bấm "Bắt đầu học", gọi lần
+   lượt (hoặc song song) 5 lượt sinh chủ đề — mỗi lượt nhận `occupation_profile` đã chốt +
+   frame_key + required_count của ĐÚNG 1 level, trả về chủ đề cho level đó (mục 8b-9b). Lượt
+   nào gãy parse thì gọi lại RIÊNG lượt đó.
+7. Code kiểm đầu ra từng lát (mục 10), gộp 6 lượt thành 1 file da hoàn chỉnh, ghi thêm
+   `generation_meta` (nguồn: có dùng web search không, số lần gọi lại mỗi lượt). Bài kiểm
+   nghiệm thu 3 ngành (mục 11).
 
-## 1. Việc gọi 1 LẦN/NGÀNH, không phải mỗi bài
+## 1. Việc gọi 1 LẦN/NGÀNH, không phải mỗi bài — nhưng CHẺ thành 6 lượt gọi API
 
-Mỗi lần người vận hành (hoặc người dùng doanh nghiệp) khai báo 1 ngành mới, gọi prompt này
-**1 LẦN CHO TOÀN BỘ 5 LEVEL** (không phải 1 lần/level, không phải 1 lần/slot) — kết quả là 1
-file da lĩnh vực dùng vĩnh viễn cho mọi user cùng ngành đó, giống khuôn `skin_general.json`.
-Vì vậy dùng model MẠNH (bậc giữa qua env `MODEL_SKIN`, xem `project_ai_model_routing_spec`
-trong memory) — chi phí 1 lần, chấp nhận chậm hơn `gpt-4o-mini`.
+Mỗi lần người vận hành (hoặc người dùng doanh nghiệp) khai báo 1 ngành mới, toàn bộ quy trình
+này chạy **1 LẦN CHO TOÀN BỘ 5 LEVEL** (không phải mỗi bài, không phải mỗi user) — kết quả là 1
+file da lĩnh vực dùng vĩnh viễn cho mọi user cùng ngành đó, giống khuôn `skin_general.json`. "1
+lần" ở đây là Ý NGHĨA NGHIỆP VỤ (1 lần/ngành), KHÔNG phải 1 request API duy nhất — về mặt kỹ
+thuật quy trình này gồm 6 lượt gọi (xem mục 0). Cả 6 lượt đều dùng model MẠNH (bậc giữa qua env
+`MODEL_SKIN`, xem `project_ai_model_routing_spec` trong memory) — chi phí vẫn 1 lần/ngành,
+chấp nhận chậm hơn `gpt-4o-mini`.
 
 ## 2. Đầu vào cho prompt
 
@@ -67,15 +83,27 @@ Trước khi sinh bất kỳ chủ đề nào, model PHẢI tự dựng 1 "chân
    điển hình của nghề này (vd khách hàng-thợ sửa xe, nhân viên-nhà cung cấp, kế toán-khách hàng
    doanh nghiệp) kèm văn phong/mức trang trọng của TỪNG vai (thân thiện, trang trọng, kỹ
    thuật...).
-3. **Thuật ngữ lõi** (`core_terms`): liệt kê 10-20 thuật ngữ/cụm từ tiếng Anh chuyên ngành THẬT
-   của nghề này, dùng làm nguồn từ vựng khi sinh chủ đề.
-4. **Chấm độ tự tin từng mục** (`confidence`): với MỖI mục ở trên (`merged_occupation`,
-   `interlocutors`, `core_terms`), tự chấm 1 trong 3 mức: `"cao"` / `"vừa"` / `"thấp"` — dựa
-   trên việc model có đủ kiến thức chắc chắn về nghề này hay đang phải đoán mò (nghề hiếm, từ
-   khóa mơ hồ, thuật ngữ không phổ biến...).
+3. **Thuật ngữ lõi** (`core_terms`) — CHỐNG BỊA, THÀ ÍT MÀ THẬT: liệt kê TỐI ĐA 20 thuật ngữ/cụm
+   từ tiếng Anh chuyên ngành. KHÔNG có sàn tối thiểu — nếu không chắc chắn 1 thuật ngữ có thật
+   sự tồn tại/đúng dùng trong ngành này, KHÔNG đưa vào danh sách, thà liệt kê ít còn hơn bịa ra
+   thuật ngữ nghe có vẻ đúng nhưng sai hoặc không ai dùng. Danh sách ngắn (dưới 8 thuật ngữ chắc
+   chắn) là TÍN HIỆU TRUNG THỰC hợp lệ để kích hoạt leo thang web search (mục 4), KHÔNG phải lỗi
+   của model — không được cố kéo dài danh sách cho đủ số bằng cách bịa thêm.
+4. **Chấm độ tự tin từng mục** (`confidence`): với MỖI mục ở trên, tự chấm 1 trong 3 mức `"cao"`
+   / `"vừa"` / `"thấp"` theo TIÊU CHÍ ĐO ĐƯỢC sau (không tự đánh giá cảm tính "đoán mò hay
+   không"):
+   - `merged_occupation` = `"thấp"` khi KHÔNG gọi được tên nghề CỤ THỂ HƠN 3 từ khóa gốc (vd chỉ
+     lặp lại nguyên văn `{INDUSTRY}` mà không thu hẹp/làm rõ thêm được gì).
+   - `interlocutors` = `"thấp"` khi KHÔNG nêu được ÍT NHẤT 2 cặp vai giao tiếp điển hình khác
+     nhau của nghề này.
+   - `core_terms` = `"thấp"` khi danh sách có DƯỚI 8 thuật ngữ mà model thật sự chắc chắn (áp
+     dụng đúng luật ở mục 3 — không đếm thuật ngữ chưa chắc).
+   Các mức "cao"/"vừa" là phần còn lại theo thang: đạt rõ ràng hơn ngưỡng "thấp" = tối thiểu
+   "vừa"; đạt đầy đủ + chi tiết + chắc chắn = "cao" (không cần ngưỡng số cứng cho 2 mức này,
+   chỉ ngưỡng "thấp" cần đo được để kích hoạt leo thang).
 
 Chân dung này đi vào metadata của gói da (field `occupation_profile` trong JSON đầu ra, xem
-mục 9) — được lưu lại, không chỉ dùng tạm rồi bỏ.
+mục 8a-9a) — được lưu lại, không chỉ dùng tạm rồi bỏ.
 
 ## 4. Leo thang khi khựng — MÁY THỬ TRƯỚC, KHÔNG HỎI NGƯỜI NGAY
 
@@ -164,37 +192,86 @@ Thích nghi khung (khung = chức năng giao tiếp, không phải bối cảnh 
 cảnh khi ngành không khớp nghĩa đen), fallback da Tổng quát có đánh dấu khi không thích nghi
 được (cấm bỏ khung), số biến thể tối thiểu/khung = số lần khung xuất hiện trong spine, các biến
 thể cùng khung không trùng lặp, model bậc giữa qua `MODEL_SKIN`. Xem chi tiết đầy đủ trong mục
-8-9 (đã gộp lại các quy tắc này vào system/user prompt cập nhật).
+8b-9b (đã gộp lại các quy tắc này vào system/user prompt của Lượt B).
 
-## 8. SYSTEM PROMPT (bản nháp, đã gộp bước suy luận)
+## 8a. SYSTEM PROMPT — Lượt gọi A: dựng chân dung nghề (CHỈ 1 lượt/ngành)
 
 ```
-Bạn là chuyên gia thiết kế giáo trình tiếng Anh chuyên ngành. Nhiệm vụ: nhận 3 từ khóa (Lĩnh
-vực / Ngành nghề / Sản phẩm-dịch vụ) do người dùng khai báo và một danh sách KHUNG TÌNH HUỐNG
-GIAO TIẾP trừu tượng (mỗi khung thuộc 1 cấp CEFR A1-C1), sinh ra bộ CHỦ ĐỀ CỤ THỂ đúng ngành cho
-từng khung — để dùng làm "da" phủ lên 1 xương giáo trình chung, KHÔNG đổi ngữ pháp/chức năng
-giao tiếp của khung. KHÔNG hỏi lại người dùng dưới bất kỳ hình thức nào — nếu thiếu thông tin,
-TỰ SUY LUẬN hợp lý nhất theo bước dưới đây.
+Bạn là chuyên gia thiết kế giáo trình tiếng Anh chuyên ngành. Nhiệm vụ CỦA LƯỢT NÀY: nhận 3 từ
+khóa (Lĩnh vực / Ngành nghề / Sản phẩm-dịch vụ) do người dùng khai báo, dựng "chân dung nghề"
+để dùng làm nền tảng sinh nội dung tiếng Anh chuyên ngành sau này. LƯỢT NÀY CHƯA sinh chủ đề bài
+học — chỉ dựng chân dung. KHÔNG hỏi lại người dùng dưới bất kỳ hình thức nào — nếu thiếu thông
+tin, TỰ SUY LUẬN hợp lý nhất theo hướng dẫn dưới đây.
 
-BƯỚC 1 — DỰNG CHÂN DUNG NGHỀ (bắt buộc, luôn làm trước, không hỏi lại):
 Gộp 3 từ khóa thành 1 nghề/ngành cụ thể (`merged_occupation`) — nếu từ khóa quá hẹp (một sản
 phẩm/dịch vụ/thương hiệu/công việc đơn lẻ), tự nâng lên NGÀNH MẸ gần nhất đủ rộng để có nhiều
 chủ đề giao tiếp tự nhiên khác nhau (vd "sửa chuột không dây Logitech" -> "Sửa chữa & bảo trì
-thiết bị điện tử"; "trà sữa trân châu đường đen" -> "Nhà hàng - Đồ uống"). Liệt kê các cặp
-người đối thoại điển hình + văn phong từng vai (`interlocutors`). Liệt kê 10-20 thuật ngữ tiếng
-Anh chuyên ngành thật (`core_terms`). Viết 1 cụm ngắn mô tả phạm vi giao tiếp chính
-(`primary_communication_scope`, dùng hiển thị cho người dùng, vd "Giao tiếp với khách nước
-ngoài tại cửa hàng"). Tự chấm độ tự tin `"cao"`/`"vừa"`/`"thấp"` cho TỪNG mục
-(`merged_occupation`, `interlocutors`, `core_terms`) trong field `confidence`. Nếu THỰC SỰ
-không thể dựng `merged_occupation` (từ khóa vô nghĩa/gõ nhầm), trả `"merged_occupation": null`
-và `"khong_xac_dinh": true` — đây là tín hiệu DUY NHẤT hệ thống dùng để quay lại hỏi người dùng,
-không tự bịa một nghề không liên quan gì đến từ khóa.
+thiết bị điện tử"; "trà sữa trân châu đường đen" -> "Nhà hàng - Đồ uống").
 
-BƯỚC 2 — SINH CHỦ ĐỀ CHO TỪNG KHUNG:
-Với MỖI khung tình huống ở MỖI cấp độ, khung mô tả một CHỨC NĂNG GIAO TIẾP trừu tượng (vd "yêu
+Liệt kê các cặp người đối thoại điển hình + văn phong từng vai (`interlocutors`).
+
+Liệt kê thuật ngữ tiếng Anh chuyên ngành THẬT (`core_terms`) — TỐI ĐA 20, KHÔNG có sàn tối
+thiểu. Nếu không chắc chắn 1 thuật ngữ có thật sự tồn tại/đúng dùng trong ngành này, KHÔNG đưa
+vào — thà liệt kê ít còn hơn bịa ra thuật ngữ nghe có vẻ đúng nhưng sai. Danh sách ngắn là tín
+hiệu trung thực hợp lệ, không phải lỗi.
+
+Viết 1 cụm ngắn mô tả phạm vi giao tiếp chính (`primary_communication_scope`, dùng hiển thị cho
+người dùng, vd "Giao tiếp với khách nước ngoài tại cửa hàng").
+
+Tự chấm độ tự tin `"cao"`/`"vừa"`/`"thấp"` cho TỪNG mục trong field `confidence`, theo đúng
+ngưỡng sau (không tự đánh giá cảm tính):
+- `merged_occupation` = `"thấp"` khi KHÔNG gọi được tên nghề cụ thể hơn 3 từ khóa gốc.
+- `interlocutors` = `"thấp"` khi KHÔNG nêu được ít nhất 2 cặp vai giao tiếp điển hình khác nhau.
+- `core_terms` = `"thấp"` khi danh sách có dưới 8 thuật ngữ thật sự chắc chắn.
+Đạt rõ hơn ngưỡng "thấp" = tối thiểu "vừa"; đầy đủ + chi tiết + chắc chắn = "cao".
+
+Nếu THỰC SỰ không thể dựng `merged_occupation` (từ khóa vô nghĩa/gõ nhầm), trả
+`"merged_occupation": null` và `"khong_xac_dinh": true` — đây là tín hiệu DUY NHẤT hệ thống
+dùng để quay lại hỏi người dùng, không tự bịa một nghề không liên quan gì đến từ khóa.
+
+ĐẦU RA: CHỈ trả JSON hợp lệ theo đúng khuôn dưới đây, không thêm chữ nào ngoài JSON, không bọc
+```json:
+
+{
+  "industry_keywords": { "field": "<{FIELD} nguyên văn>", "industry": "<{INDUSTRY} nguyên văn>", "product": "<{PRODUCT} nguyên văn>" },
+  "occupation_profile": {
+    "merged_occupation": "<nghề/ngành cụ thể đã suy luận, hoặc null nếu không xác định được>",
+    "khong_xac_dinh": false,
+    "primary_communication_scope": "<cụm ngắn mô tả phạm vi giao tiếp chính>",
+    "interlocutors": [ { "role": "<vai>", "register": "<văn phong>" }, ... ],
+    "core_terms": ["<thuật ngữ 1>", "..."],
+    "confidence": { "merged_occupation": "cao|vừa|thấp", "interlocutors": "cao|vừa|thấp", "core_terms": "cao|vừa|thấp" }
+  }
+}
+```
+
+## 9a. USER PROMPT — Lượt gọi A
+
+```
+Lĩnh vực: {FIELD}
+Ngành nghề: {INDUSTRY}
+Sản phẩm / Dịch vụ: {PRODUCT}
+
+Dựng chân dung nghề theo đúng hướng dẫn trong system prompt, trả đúng khuôn JSON đã mô tả.
+```
+
+Khi gọi ở Nấc 2 (mục 4, retry của CHÍNH Lượt A — không phải lượt mới), user prompt thêm 1 dòng:
+`(Đã bật tra cứu web — dùng thông tin thật về ngành này nếu cần, đặc biệt cho core_terms và
+interlocutors.)` và bật công cụ web search phía API tương ứng biến `SKIN_WEB_SEARCH=1`.
+
+## 8b. SYSTEM PROMPT — Lượt gọi B: sinh chủ đề theo level (gọi 5 lần, mỗi level 1 lần)
+
+```
+Bạn là chuyên gia thiết kế giáo trình tiếng Anh chuyên ngành. Nhiệm vụ CỦA LƯỢT NÀY: nhận 1
+CHÂN DUNG NGHỀ đã chốt sẵn (không tự suy luận lại, dùng nguyên) và danh sách KHUNG TÌNH HUỐNG
+GIAO TIẾP trừu tượng CỦA ĐÚNG 1 CẤP ĐỘ CEFR, sinh bộ CHỦ ĐỀ CỤ THỂ đúng ngành cho từng khung ở
+cấp độ đó — để dùng làm "da" phủ lên 1 xương giáo trình chung, KHÔNG đổi ngữ pháp/chức năng
+giao tiếp của khung.
+
+Với MỖI khung tình huống được cung cấp, khung mô tả một CHỨC NĂNG GIAO TIẾP trừu tượng (vd "yêu
 cầu sản phẩm/dịch vụ tại quầy", "phàn nàn & xử lý sự cố dịch vụ/sản phẩm"), KHÔNG phải một bối
-cảnh cố định. Dùng `merged_occupation` + `interlocutors` + `core_terms` từ Bước 1 làm nguồn.
-Quy tắc thích nghi:
+cảnh cố định. Dùng `merged_occupation` + `interlocutors` + `core_terms` của chân dung nghề được
+cung cấp làm nguồn. Quy tắc thích nghi:
 - Nếu ngành khớp nghĩa đen với khung (vd ngành "Nhà hàng" + khung "yêu cầu sản phẩm/dịch vụ tại
   quầy"): sinh chủ đề đúng ngành, càng cụ thể càng tốt.
 - Nếu ngành KHÔNG khớp nghĩa đen (vd ngành "Kế toán" + khung "yêu cầu sản phẩm/dịch vụ tại
@@ -214,76 +291,89 @@ Quy tắc thích nghi:
 ```json:
 
 {
-  "industry_keywords": { "field": "<{FIELD} nguyên văn>", "industry": "<{INDUSTRY} nguyên văn>", "product": "<{PRODUCT} nguyên văn>" },
-  "occupation_profile": {
-    "merged_occupation": "<nghề/ngành cụ thể đã suy luận, hoặc null nếu không xác định được>",
-    "khong_xac_dinh": false,
-    "primary_communication_scope": "<cụm ngắn mô tả phạm vi giao tiếp chính>",
-    "interlocutors": [ { "role": "<vai>", "register": "<văn phong>" }, ... ],
-    "core_terms": ["<thuật ngữ 1>", "..."],
-    "confidence": { "merged_occupation": "cao|vừa|thấp", "interlocutors": "cao|vừa|thấp", "core_terms": "cao|vừa|thấp" }
-  },
-  "levels": {
-    "A1": {
-      "<frame_key>": [
-        { "topic": "<chủ đề cụ thể đúng ngành, tiếng Việt, ngắn gọn kiểu tên chủ đề bài học>", "fallback": false },
-        ...
-      ],
+  "level": "<mã level của lượt này, vd A1>",
+  "frames": {
+    "<frame_key>": [
+      { "topic": "<chủ đề cụ thể đúng ngành, tiếng Việt, ngắn gọn kiểu tên chủ đề bài học>", "fallback": false },
       ...
-    },
-    "A2": { ... }, "B1": { ... }, "B2": { ... }, "C1": { ... }
+    ],
+    ...
   }
 }
 
-Nếu "khong_xac_dinh": true, có thể để "levels" là object rỗng {} — hệ thống sẽ không sinh chủ đề
-ở lượt này, sẽ hỏi lại người dùng rồi gọi lại.
-
-"<frame_key>" phải khớp CHÍNH XÁC danh sách frame key được cung cấp cho từng level trong user
-prompt — không tự thêm/bớt/đổi tên key.
+"<frame_key>" phải khớp CHÍNH XÁC danh sách frame key được cung cấp trong user prompt cho level
+này — không tự thêm/bớt/đổi tên key, không lẫn frame_key của level khác.
 ```
 
-## 9. USER PROMPT (dựng từ dữ liệu spine + skin_general lúc gọi)
+## 9b. USER PROMPT — Lượt gọi B (dựng riêng cho từng level, gọi 5 lần)
 
 ```
-Lĩnh vực: {FIELD}
-Ngành nghề: {INDUSTRY}
-Sản phẩm / Dịch vụ: {PRODUCT}
+Chân dung nghề đã chốt (dùng nguyên, không suy luận lại):
+- Nghề/ngành: {occupation_profile.merged_occupation}
+- Phạm vi giao tiếp chính: {occupation_profile.primary_communication_scope}
+- Người đối thoại: {occupation_profile.interlocutors, liệt kê "vai (văn phong)"}
+- Thuật ngữ lõi: {occupation_profile.core_terms, nối bằng dấu phẩy}
 
-Với mỗi cấp độ, đây là danh sách khung tình huống cần sinh chủ đề (frame_key | tên khung tiếng
-Việt | số biến thể tối thiểu | chủ đề da Tổng quát tham khảo/fallback):
+Cấp độ cần sinh chủ đề: {LEVEL}
 
---- A1 ---
-{FOR EACH FRAME IN SITUATION_FRAMES.A1}
-{frame.key} | {frame.name_vi} | tối thiểu {required_count[frame.key]} | {skin_general.A1[frame.key].join(" / ")}
+Danh sách khung tình huống của cấp độ {LEVEL} (frame_key | tên khung tiếng Việt | số biến thể
+tối thiểu | chủ đề da Tổng quát tham khảo/fallback):
+
+{FOR EACH FRAME IN SITUATION_FRAMES[LEVEL]}
+{frame.key} | {frame.name_vi} | tối thiểu {required_count[frame.key]} | {skin_general[LEVEL][frame.key].join(" / ")}
 {END FOR}
 
---- A2 ---
-... (lặp lại cấu trúc trên cho A2, B1, B2, C1) ...
-
-Trước tiên dựng chân dung nghề (Bước 1). Nếu dựng được, sinh tiếp chủ đề cho TẤT CẢ frame_key
-liệt kê ở trên cho cả 5 level (Bước 2), đúng khuôn JSON đã mô tả trong system prompt.
+Sinh chủ đề cho TẤT CẢ frame_key liệt kê ở trên, đúng khuôn JSON đã mô tả trong system prompt.
 ```
 
-Khi gọi ở Nấc 2 (mục 4), user prompt thêm 1 dòng: `(Đã bật tra cứu web — dùng thông tin thật về
-ngành này nếu cần, đặc biệt cho core_terms và interlocutors.)` và bật công cụ web search phía
-API tương ứng biến `SKIN_WEB_SEARCH=1`.
+Gọi hàm này 5 lần với `{LEVEL}` lần lượt là A1, A2, B1, B2, C1 (song song hoặc tuần tự tuỳ hạ
+tầng lúc viết module — không ảnh hưởng nội dung prompt).
 
-## 10. Kiểm đầu ra (chạy code, KHÔNG tin model tự đúng)
+## 10. Kiểm đầu ra (chạy code, KHÔNG tin model tự đúng) — chạy theo từng lát
 
-Sau khi parse JSON, trước khi lưu thành file da mới:
+**Sau Lượt A** (trước khi cho phép hiện màn xác nhận / gọi Lượt B):
 
 1. **Chân dung hợp lệ:** `occupation_profile.merged_occupation` khác null VÀ
    `khong_xac_dinh !== true` — nếu không, đây là tín hiệu quay lại mục 6 (hỏi người dùng), không
    phải lỗi hệ thống.
-2. **Đủ khung:** với mỗi level, tập hợp `frame_key` trong kết quả phải khớp CHÍNH XÁC (không
-   thiếu/thừa) với `SITUATION_FRAMES[level]`.
-3. **Đủ số lượng tối thiểu:** mỗi khung phải có `topics.length >= required_count[frame_key]`.
-4. **Không trùng lặp:** trong cùng 1 khung, không có 2 phần tử `topic` giống hệt nhau (so khớp
+2. Nếu Lượt A gãy parse JSON: gọi lại theo đúng bậc thang mục 4 (vẫn tính vào trần cứng
+   `MAX_SKIN_PROFILE_ATTEMPTS = 2` — gãy parse KHÔNG được cộng thêm lượt ngoài trần này).
+
+**Sau MỖI lượt B** (chạy riêng cho từng level, không đợi đủ 5 lượt mới kiểm):
+
+3. **Đủ khung:** `frames` trả về phải khớp CHÍNH XÁC (không thiếu/thừa) với
+   `SITUATION_FRAMES[level]` của ĐÚNG level đó.
+4. **Đủ số lượng tối thiểu:** mỗi khung phải có `topics.length >= required_count[frame_key]`
+   (số `required_count` tính từ `curriculum_spine.json`, xem mục 2).
+5. **Không trùng lặp:** trong cùng 1 khung, không có 2 phần tử `topic` giống hệt nhau (so khớp
    không phân biệt hoa/thường, bỏ khoảng trắng thừa) — trùng thì coi là lỗi, không tự động lọc
    bớt rồi cho qua (số lượng còn lại có thể tụt dưới tối thiểu).
-5. Nếu điều 2-4 fail (chân dung hợp lệ nhưng phần sinh chủ đề lỗi): coi là lỗi sinh da, KHÔNG
-   lưu file, báo lỗi rõ (in ra khung nào thiếu/thiếu bao nhiêu biến thể/trùng ở đâu) để thử lại
-   hoặc sửa tay.
+6. Nếu điều 3-5 fail HOẶC lượt B đó gãy parse JSON: gọi lại RIÊNG lượt B của level đó — cap
+   `MAX_SKIN_LEVEL_RETRIES = 2`/level (đặt cứng, chống lồng đệ quy giống mục 4). Hết cap mà vẫn
+   fail: báo lỗi rõ level nào + khung nào thiếu/thiếu bao nhiêu biến thể/trùng ở đâu, KHÔNG lưu
+   file da (dở dang không được coi là thành phẩm).
+
+**Sau khi đủ 6 lượt (1 A + 5 B) đều pass:** code GHÉP thành 1 file da hoàn chỉnh theo khuôn:
+
+```
+{
+  "industry_keywords": { ... từ Lượt A ... },
+  "occupation_profile": { ... từ Lượt A ... },
+  "generation_meta": {
+    "web_search_used": <true nếu Lượt A phải chạy tới Nấc 2>,
+    "profile_call_attempts": <1 hoặc 2>,
+    "level_call_retries": { "A1": 0, "A2": 0, "B1": 1, "B2": 0, "C1": 0 }
+  },
+  "levels": {
+    "A1": { ... "frames" của lượt B level A1 ... },
+    "A2": { ... }, "B1": { ... }, "B2": { ... }, "C1": { ... }
+  }
+}
+```
+
+`generation_meta` do CODE tự ghi (không phải model trả về) — dùng để người vận hành biết gói da
+này có phải "vật lộn" mới ra được không (nhiều lần gọi lại/dùng web search) khi rà soát chất
+lượng sau này.
 
 ## 11. BÀI KIỂM NGHIỆM THU DA (bắt buộc chạy 1 lần trước khi tích hợp bất kỳ da nào vào app)
 
@@ -302,5 +392,5 @@ rõ những chỗ chưa đạt).
 ---
 
 **Việc kế tiếp:** Minh duyệt bản nháp prompt này (đặc biệt: bước suy luận chân dung nghề mục 3,
-ngưỡng leo thang mục 4, khuôn màn xác nhận mục 5, và cấu trúc JSON đầu ra mục 8). Sau khi duyệt
-mới viết module gọi thật + chạy bài kiểm nghiệm thu 3 ngành.
+ngưỡng leo thang mục 4, khuôn màn xác nhận mục 5, và cấu trúc JSON đầu ra mục 8a/8b). Sau khi
+duyệt mới viết module gọi thật + chạy bài kiểm nghiệm thu 3 ngành.
