@@ -430,8 +430,13 @@ Trả lời bằng tiếng Việt theo format (mỗi mục xuống hàng):
 💡 Lưu ý: [điều quan trọng cần nhớ]`;
 }
 
+// Sửa 2026-07-20 (Phase A4, Student App): bản cũ "Focus on: grammar structure, tense used"
+// tạo ra khuôn sáo rỗng kiểu "Thì X trong câu này diễn tả..." lặp lại máy móc mọi câu — đổi
+// sang bắt phân tích ĐÚNG câu cụ thể (cấu trúc đáng chú ý CỦA CÂU NÀY + từ/cụm cần lưu ý + vì
+// sao dùng dạng đó ở đây), khớp đúng yêu cầu đã áp cho trường content[].explanation sinh sẵn
+// lúc tạo bài (lesson.js) — đây CHỈ là lưới đỡ cho bài học cũ chưa có trường đó.
 function buildSentenceTipPrompt(sentence) {
-  return `Explain this English sentence for a Vietnamese B1-B2 learner in Vietnamese. Be concise (3-5 lines max). Focus on: grammar structure, tense used, any special patterns. Sentence: "${sentence}"`;
+  return `Phân tích câu tiếng Anh này cho người học Việt Nam trình độ B1-B2, viết bằng tiếng Việt, ngắn gọn (tối đa 3-5 dòng). Phân tích ĐÚNG câu này: cấu trúc đáng chú ý của chính câu (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, vì sao câu dùng dạng đó trong ngữ cảnh này. CẤM khuôn sáo rỗng kiểu "Thì X trong câu này diễn tả..." lặp lại máy móc. Câu: "${sentence}"`;
 }
 
 const EXAM_SYSTEM = "You are an expert English exam creator. Return ONLY valid JSON. Never truncate output.";

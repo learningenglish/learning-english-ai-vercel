@@ -161,6 +161,10 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 - Dùng phản hồi ngắn tự nhiên đúng cấp độ: A1-A2 (Yes, sure / Oh no / Thank you so much), B1+ thêm (Actually... / I see what you mean / Well, the thing is...). Không nhồi vào mọi lượt — rải tự nhiên.
 - Ít nhất 1 lần trong bài: một nhân vật hỏi lại để làm rõ hoặc xác nhận thông tin (Sorry, did you say 3 PM? / So that's two boxes, right?) — đây là kỹ năng giao tiếp thật cần dạy.
 - Tổng số từ toàn bài vẫn theo length_words; biến thiên nằm ở phân bổ giữa các lượt, không phải kéo dài bài.
+- BẮT BUỘC hội thoại TRỌN VẸN: có mở đầu — diễn biến — chốt lại tự nhiên (vd cảm ơn/tạm biệt/xác nhận đã xong việc). LƯỢT THOẠI CUỐI CÙNG TUYỆT ĐỐI KHÔNG ĐƯỢC LÀ CÂU HỎI CHƯA CÓ LỜI ĐÁP (lỗi thật đã gặp: bài kết ở "Will I get paid for this delivery?" rồi hết, không nhân vật nào trả lời) — nếu gần hết length_words mà diễn biến chưa xong, RÚT NGẮN phần giữa để dành chỗ chốt lại cho trọn, KHÔNG được cắt ngang khi câu chuyện còn dở.
+
+QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý):
+- Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. Hệ thống sẽ TỰ ĐỘNG TỪ CHỐI và bắt sinh lại nếu lệch quá 25% — bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.
@@ -179,14 +183,14 @@ SCHEMA JSON:
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
       "text": "câu/đoạn tiếng Anh",
       "translation": "bản dịch tiếng Việt của câu/đoạn này",
-      "explanation": "giải thích ngắn gọn (2-3 dòng, tiếng Việt) về cấu trúc ngữ pháp/thì đang dùng trong ĐÚNG câu/đoạn này — để hiển thị ngay khi người học bấm xem giải thích, không phân tích chung chung"
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): cấu trúc đáng chú ý CỦA CHÍNH CÂU NÀY (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, VÌ SAO câu này dùng dạng đó trong tình huống này. CẤM khuôn sáo rỗng kiểu 'Thì X trong câu này diễn tả...' lặp lại máy móc — mỗi câu phải đọc như đang phân tích riêng câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man."
     }
   ],
   "vocabulary": [
     {
       "word": "từ hoặc cụm từ",
       "ipa": "phiên âm IPA",
-      "type": "loại từ (noun, verb, adj...)",
+      "type": "với TỪ ĐƠN: loại từ (noun, verb, adj...). Với CỤM TỪ (word có khoảng trắng): PHẢI chọn ĐÚNG 1 trong 3 nhãn sau theo cấu trúc thật của cụm — 'Cụm danh từ', 'Cụm động từ + giới từ (phrasal verb)', hoặc 'N + giới từ + N' — không dùng nhãn khác, không để trống",
       "meaning": "nghĩa tiếng Việt",
       "example": "một câu ví dụ khác với câu trong bài, đúng cấp độ",
       "is_specialized": true nếu là từ chuyên ngành, false nếu là từ thường
@@ -219,7 +223,7 @@ SCHEMA JSON:
 }
 
 SỐ LƯỢNG:
-- vocabulary: 6-10 từ với bài ngắn, 10-14 với bài vừa, 14-18 với bài dài. Toàn bộ từ chuyên ngành trong bài phải nằm ở đây trước, còn lại lấy từ thường đáng học nhất trong bài.
+- vocabulary: 6-10 từ với bài ngắn, 10-14 với bài vừa, 14-18 với bài dài. Toàn bộ từ chuyên ngành trong bài phải nằm ở đây trước, còn lại lấy từ thường đáng học nhất trong bài. MỌI cụm từ (word có khoảng trắng) PHẢI trích XUẤT HIỆN NGUYÊN VĂN trong câu/đoạn nào đó của "content" — không tự bịa cụm hay/đúng ngữ pháp nhưng không thật sự có trong bài.
 - grammar: CHỈ chọn điểm ngữ pháp ĐÚNG CẤP ĐỘ của bài (bài B1 → chỉ điểm B1), là trọng tâm bài này dạy. KHÔNG liệt kê cấu trúc thuộc cấp thấp hơn dù chúng xuất hiện trong bài. Nếu bài không có điểm ngữ pháp nào đúng cấp, trả mảng rỗng.
 - exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài.`;
 
@@ -295,14 +299,14 @@ SCHEMA JSON:
       "speaker": "chỉ có với dialogue",
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
       "translation": "bản dịch tiếng Việt",
-      "explanation": "giải thích ngắn gọn (2-3 dòng, tiếng Việt) về cấu trúc ngữ pháp/thì đang dùng trong ĐÚNG câu/đoạn này, vừa sức cấp độ người học — để hiển thị ngay khi bấm xem giải thích, không phân tích chung chung"
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ người học: cấu trúc đáng chú ý CỦA CHÍNH CÂU NÀY (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, VÌ SAO câu này dùng dạng đó. CẤM khuôn sáo rỗng kiểu 'Thì X trong câu này diễn tả...' lặp lại máy móc — mỗi câu đọc như đang phân tích riêng câu đó. Ngắn gọn, đúng trọng tâm."
     }
   ],
   "vocabulary": [
     {
       "word": "từ hoặc cụm từ CÓ MẶT trong văn bản",
       "ipa": "phiên âm IPA",
-      "type": "loại từ",
+      "type": "với TỪ ĐƠN: loại từ (noun, verb, adj...). Với CỤM TỪ (word có khoảng trắng): PHẢI chọn ĐÚNG 1 trong 3 nhãn — 'Cụm danh từ', 'Cụm động từ + giới từ (phrasal verb)', hoặc 'N + giới từ + N' — theo đúng cấu trúc thật của cụm, không dùng nhãn khác",
       "meaning": "nghĩa tiếng Việt ĐÚNG THEO NGỮ CẢNH trong bài (không phải nghĩa phổ biến nhất)",
       "example": "một câu ví dụ mới, đơn giản, vừa cấp độ người học",
       "is_specialized": true nếu là thuật ngữ chuyên ngành, false nếu là từ thường
@@ -360,7 +364,25 @@ function capLessonArrays(parsed) {
   return parsed;
 }
 
-function validateLessonShape(parsed) {
+// Ngưỡng lệch độ dài cho phép — bài thật đã gặp yêu cầu ~100 từ mà AI chỉ trả 40-50 từ vẫn
+// qua được validator cũ (không hề đếm từ) — đây là con số hằng số DUY NHẤT chỗ này, đổi ở
+// đây là đổi cho cả generate_lesson lẫn analyze_user_text.
+const WORD_COUNT_DEVIATION_LIMIT = 0.25;
+
+function totalContentWords(content) {
+  return (content || []).reduce((sum, item) => sum + wordCount(item?.text), 0);
+}
+
+// endsOnDanglingQuestion: lượt thoại CUỐI CÙNG của 1 bài hội thoại không được là câu hỏi
+// chưa có lời đáp — theo định nghĩa đây luôn là lượt cuối, nên "kết thúc bằng dấu ?" ĐÃ ĐỦ
+// để coi là treo (không có lượt nào sau nó để trả lời). Lỗi thật đã gặp: bài kết ở "Will I
+// get paid for this delivery?" rồi hết.
+function endsOnDanglingQuestion(content) {
+  const last = (content || [])[content.length - 1];
+  return !!last && typeof last.text === "string" && last.text.trim().endsWith("?");
+}
+
+function validateLessonShape(parsed, { expectedWords, checkDialogueEnding } = {}) {
   if (!parsed || typeof parsed !== "object") return { valid: false, reason: "not_object" };
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return { valid: false, reason: "missing_title" };
   if (typeof parsed.title_vi !== "string" || !parsed.title_vi.trim()) return { valid: false, reason: "missing_title_vi" };
@@ -375,6 +397,17 @@ function validateLessonShape(parsed) {
   // AI hỏng) — đây là nguyên nhân trực tiếp của báo cáo "không tạo được bài học".
   if (!Array.isArray(parsed.grammar)) return { valid: false, reason: "grammar_not_array" };
   if (!Array.isArray(parsed.exercises) || !parsed.exercises.length) return { valid: false, reason: "empty_exercises" };
+
+  if (typeof expectedWords === "number" && expectedWords > 0) {
+    const actualWords = totalContentWords(parsed.content);
+    const deviation = Math.abs(actualWords - expectedWords) / expectedWords;
+    if (deviation > WORD_COUNT_DEVIATION_LIMIT) {
+      return { valid: false, reason: "word_count_deviation", actualWords, expectedWords };
+    }
+  }
+  if (checkDialogueEnding && parsed.content_type === "dialogue" && endsOnDanglingQuestion(parsed.content)) {
+    return { valid: false, reason: "dangling_question_ending" };
+  }
   return { valid: true };
 }
 
@@ -452,9 +485,9 @@ export async function generate_lesson(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
   capLessonArrays(parsed);
-  const validation = validateLessonShape(parsed);
+  const validation = validateLessonShape(parsed, { expectedWords: data.length_words, checkDialogueEnding: true });
   if (!validation.valid) {
-    console.error("[generate_lesson] validate FAIL:", validation.reason);
+    console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
@@ -494,9 +527,14 @@ export async function analyze_user_text(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
   capLessonArrays(parsed);
-  const validation = validateLessonShape(parsed);
+  // Không check checkDialogueEnding: content ở đây là VĂN BẢN THẬT của người dùng (giữ
+  // nguyên 100%, xem QUY TẮC TỐI THƯỢNG trong prompt) — nếu văn bản gốc thật sự kết thúc
+  // bằng câu hỏi, đó là thực tế của văn bản, không phải lỗi AI, không có gì để "sửa" bằng
+  // cách bắt sinh lại. expectedWords vẫn áp dụng: content phải PHẢN ÁNH ĐỦ văn bản gốc,
+  // không được cắt bớt đuôi văn bản dài (lệch quá 25% so với số từ user_text = nghi ngờ bị cắt).
+  const validation = validateLessonShape(parsed, { expectedWords: wc });
   if (!validation.valid) {
-    console.error("[analyze_user_text] validate FAIL:", validation.reason);
+    console.error("[analyze_user_text] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 

@@ -1040,6 +1040,10 @@ textarea:focus {
   font-size: 1.05rem;
 }
 
+.vocab-type-badge {
+  margin: 6px 0;
+}
+
 .vocab-word-clickable {
   cursor: pointer;
   border-bottom: 1px dotted var(--border);

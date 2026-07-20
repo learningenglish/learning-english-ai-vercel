@@ -64,7 +64,7 @@ export async function fetchAndSaveLessonCover(lesson) {
   try {
     const title = (lesson.title || "").trim();
     if (!title) return;
-    const imgRes = await callChatAction("search_lesson_cover_image", { title });
+    const imgRes = await callChatAction("search_lesson_cover_image", { title, content_type: lesson.content_type });
     if (!imgRes.ok) return;
     const { image } = JSON.parse(imgRes.content);
     if (!image?.url) return;

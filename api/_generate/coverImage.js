@@ -35,6 +35,49 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // ====== 3 nguồn ảnh miễn phí — copy nguyên văn từ chat.js (xem ghi chú đầu file) ======
 const WIKIMEDIA_ALLOWED_LICENSE_RE = /^(cc0|public domain|cc[\s-]?by(?:[\s-]?sa)?)([\s-]?\d.*)?$/i;
 
+// BUG THẬT đã gặp (2026-07-20): bài về Việt Nam hiện ảnh bìa là cờ Malaysia — search theo
+// TITLE thô, lấy per_page=1 không lọc gì, và stock photo API hay gắn nhãn "flag"/quốc kỳ vào
+// ảnh minh hoạ du lịch/quốc gia chung chung dù nội dung bài không liên quan cờ/biểu tượng.
+// Chặn 2 lớp: (1) lọc BẤT KỲ ảnh nào có metadata gợi cờ/quốc huy — áp dụng vô điều kiện,
+// không phân biệt đúng/sai quốc gia, vì bài học không có lý do gì cần hiện cờ; (2) tước tên
+// quốc gia khỏi CÂU TRUY VẤN trước khi search — quốc gia là dữ liệu dễ khiến API trả kết quả
+// mang tính biểu tượng/chính trị thay vì cảnh sinh hoạt đời thường mà bài cần minh hoạ.
+const FLAG_SYMBOL_RE = /\b(flags?|national\s+flag|coat\s+of\s+arms|national\s+emblem|national\s+symbol|national\s+colou?rs)\b/i;
+const COUNTRY_NAME_RE = new RegExp(
+  "\\b(" +
+    [
+      "vietnam", "viet nam", "malaysia", "thailand", "singapore", "indonesia", "philippines",
+      "cambodia", "laos", "myanmar", "china", "japan", "korea", "india", "pakistan",
+      "bangladesh", "usa", "u\\.s\\.a\\.", "united states", "america", "uk", "united kingdom",
+      "england", "britain", "france", "germany", "italy", "spain", "portugal", "russia",
+      "australia", "canada", "brazil", "mexico", "netherlands", "sweden", "norway", "denmark",
+    ].join("|") +
+    ")\\b",
+  "gi"
+);
+
+// Query trung tính khi tên riêng bị tước hết (query rỗng) HOẶC bản thân title có chứa tên
+// quốc gia (rủi ro cao gặp lại đúng bug này) — ưu tiên an toàn hơn "khớp đẹp nhưng có thể sai".
+const NEUTRAL_QUERY_BY_CONTENT_TYPE = {
+  dialogue: "two people having a friendly conversation",
+  reading: "person reading a book at a desk",
+};
+
+function sanitizeCoverQuery(rawTitle, contentType) {
+  const stripped = (rawTitle || "").replace(COUNTRY_NAME_RE, " ").replace(/\s+/g, " ").trim();
+  const hadCountryName = stripped.length !== (rawTitle || "").trim().length;
+  if (!stripped || stripped.length < 3 || hadCountryName) {
+    return NEUTRAL_QUERY_BY_CONTENT_TYPE[contentType] || NEUTRAL_QUERY_BY_CONTENT_TYPE.reading;
+  }
+  return stripped;
+}
+
+// Ảnh có alt/description gợi cờ/quốc huy -> loại, bất kể nguồn. Chọn ứng viên SẠCH ĐẦU TIÊN
+// trong danh sách (KHÔNG còn lấy mù per_page=1 như bản cũ).
+function isFlagOrSymbolImage(text) {
+  return FLAG_SYMBOL_RE.test(text || "");
+}
+
 async function fetchFromWikimedia(term) {
   try {
     const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`;
@@ -47,6 +90,8 @@ async function fetchFromWikimedia(term) {
       if (!info) continue;
       const licenseShort = (info.extmetadata?.LicenseShortName?.value || "").trim();
       if (!licenseShort || !WIKIMEDIA_ALLOWED_LICENSE_RE.test(licenseShort.replace(/\s+/g, " "))) continue;
+      const description = (info.extmetadata?.ImageDescription?.value || "").replace(/<[^>]+>/g, "");
+      if (isFlagOrSymbolImage(page.title) || isFlagOrSymbolImage(description)) continue;
       const artist = (info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
       return { url: info.url, source: "wikimedia", license: licenseShort, attribution: artist || null };
     }
@@ -61,12 +106,12 @@ async function fetchFromUnsplash(term) {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return null;
   try {
-    const r = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=1`, {
+    const r = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=5`, {
       headers: { Authorization: `Client-ID ${key}` },
     });
     if (!r.ok) return null;
     const data = await r.json();
-    const photo = data?.results?.[0];
+    const photo = (data?.results || []).find((p) => !isFlagOrSymbolImage(p.alt_description) && !isFlagOrSymbolImage(p.description));
     if (!photo) return null;
     return { url: photo.urls?.regular || photo.urls?.small, source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
   } catch (e) {
@@ -79,12 +124,12 @@ async function fetchFromPexels(term) {
   const key = process.env.PEXELS_API_KEY;
   if (!key) return null;
   try {
-    const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=1`, {
+    const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=5`, {
       headers: { Authorization: key },
     });
     if (!r.ok) return null;
     const data = await r.json();
-    const photo = data?.photos?.[0];
+    const photo = (data?.photos || []).find((p) => !isFlagOrSymbolImage(p.alt));
     if (!photo) return null;
     return { url: photo.src?.medium || photo.src?.large, source: "pexels", license: "Pexels License", attribution: photo.photographer || null };
   } catch (e) {
@@ -142,14 +187,18 @@ export async function search_lesson_cover_image(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const title = (data.title || "").trim();
   if (!title) return { error: "Thiếu 'title'.", status: 400 };
+  const contentType = data.content_type === "dialogue" ? "dialogue" : "reading";
 
-  const key = coverCacheKey(title);
+  // Truy vấn dựng từ tiêu đề đã tước tên quốc gia (hoặc query trung tính nếu độ khớp thấp,
+  // xem sanitizeCoverQuery ở trên) — KHÔNG search thẳng title thô như bản cũ.
+  const query = sanitizeCoverQuery(title, contentType);
+  const key = coverCacheKey(query);
   const cached = await getCoverFromCache(key);
   if (cached) return { content: JSON.stringify({ image: { url: cached.url, source: cached.source } }) };
 
-  const image = (await fetchFromUnsplash(title)) || (await fetchFromPexels(title)) || (await fetchFromWikimedia(title));
+  const image = (await fetchFromUnsplash(query)) || (await fetchFromPexels(query)) || (await fetchFromWikimedia(query));
   if (!image) return { content: JSON.stringify({ image: null }) };
-  saveCoverToCache(key, title, image);
+  saveCoverToCache(key, query, image);
   return { content: JSON.stringify({ image: { url: image.url, source: image.source } }) };
 }
 

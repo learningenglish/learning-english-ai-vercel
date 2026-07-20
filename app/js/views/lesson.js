@@ -568,7 +568,11 @@ export async function renderLessonDetail(mount, params) {
                 </div>
                 ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">${icon("volume", { size: 15 })}</button>` : ""}
               </div>
-              <div class="vocab-type muted">${escapeHtml(w.type || "")}</div>
+              ${
+                categorizeVocabWord(w) === "phrase" && w.type
+                  ? `<div class="vocab-type-badge badge">${escapeHtml(w.type)}</div>`
+                  : `<div class="vocab-type muted">${escapeHtml(w.type || "")}</div>`
+              }
               <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
               <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
             </div>
