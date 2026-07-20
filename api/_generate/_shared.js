@@ -7,7 +7,13 @@
 export const SUPABASE_URL = "https://ijwttrlxsmgaqxszphlp.supabase.co";
 const MAX_TOKENS_CAP = 4000; // giữ đồng bộ với MAX_TOKENS_CAP của chat.js
 
-export async function callOpenAI({ max_tokens, temperature, messages }) {
+// "model" mặc định gpt-4o-mini (giữ hành vi cũ cho lesson.js/wordLookup.js không truyền tham
+// số này) — skin.js (sinh da lĩnh vực, xem docs/prompt-da-linh-vuc.md) truyền model riêng (env
+// MODEL_SKIN) vì cần model mạnh hơn. "tools" optional, dùng cho leo thang web search (Nấc 2 của
+// bước suy luận chân dung nghề) — hình dạng tool phụ thuộc provider của MODEL_SKIN lúc triển
+// khai, CHƯA verify được trong sandbox (không có API key thật, xem
+// feedback_sandbox_blocks_real_api_keys trong memory).
+export async function callOpenAI({ max_tokens, temperature, messages, model, tools }) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -15,10 +21,11 @@ export async function callOpenAI({ max_tokens, temperature, messages }) {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: model || "gpt-4o-mini",
       max_tokens: Math.min(max_tokens || 2000, MAX_TOKENS_CAP),
       temperature,
       messages,
+      ...(tools ? { tools } : {}),
     }),
   });
   const data = await response.json();
