@@ -86,7 +86,12 @@ thang theo đúng thứ tự sau, **chống lồng đệ quy** (cap cứng, KHÔ
   tiên — nếu tự tin đều cao/vừa, DỪNG Ở ĐÂY, đi tiếp sang màn xác nhận (mục 5).
 - **Nấc 2 (leo thang máy):** nếu có mục `confidence` = `"thấp"` sau Nấc 1, thử lại DUY NHẤT 1
   LẦN với `SKIN_WEB_SEARCH=1` (bật tra cứu web cho bước suy luận, để lấy thuật ngữ/thông tin
-  nghề thật thay vì model tự đoán) — vẫn cùng `MODEL_SKIN`.
+  nghề thật thay vì model tự đoán) — vẫn cùng `MODEL_SKIN`, KHÔNG đổi sang model khác/mạnh hơn.
+  **Lý do đặt cứng chỉ 1 đòn bẩy này (duyệt 2026-07-19):** tự tin thấp ở bước này gần như luôn
+  là THIẾU KIẾN THỨC NGÀNH (nghề hiếm, thuật ngữ ít phổ biến), không phải model "chưa đủ thông
+  minh" — thiếu kiến thức chữa bằng DỮ LIỆU (tra cứu web), không phải bằng IQ (đổi model mạnh
+  hơn). `MODEL_SKIN` đã là bậc mạnh (xem `project_ai_model_routing_spec`) — leo thang thêm 1
+  bậc model nữa chỉ tốn thêm tiền mà không giải quyết đúng nguyên nhân.
 - **Trần cứng:** tổng cộng TỐI ĐA 2 lần gọi cho bước suy luận (Nấc 1 + Nấc 2). Không có Nấc 3
   tự động. Biến `MAX_SKIN_PROFILE_ATTEMPTS = 2` đặt cứng trong code, không phụ thuộc kết quả.
 - Sau Nấc 2, nếu VẪN còn mục `confidence = "thấp"`:
@@ -105,6 +110,19 @@ Sau bước suy luận (kể cả khi tự tin cao lẫn khi đã tiếp tục d
 hiện 1 màn TÓM TẮT chân dung — **không phải form, không chặn, người dùng KHÔNG chỉnh sửa thành
 phẩm**. Logic phía sau không đổi so với bản trước — chỉ đổi LỚP NGÔN NGỮ hiển thị từ dạng câu
 hỏi xác nhận sang dạng lời mời.
+
+**Bắt buộc có lối thoát 1 chạm:** nút phụ **"← Nhập lại từ khóa"** — quay về đúng ô nhập 3 từ
+khóa (mục 2), GIỮ SẴN giá trị cũ để sửa nhanh (không bắt gõ lại từ đầu). Không có nút này thì
+người bị AI đoán lệch nghề (vd suy ra "Sửa xe máy" nhưng ý người dùng là "Sửa xe đạp") sẽ kẹt,
+không có đường quay lại ngoài rời hẳn luồng.
+
+**Phân biệt rõ 2 khái niệm "không chỉnh sửa" khác nhau** (dễ nhầm, ghi rõ để khỏi lẫn):
+- *"Không chỉnh sửa BÀI HỌC"* = bài học (nội dung + JSON) là SẢN PHẨM CỐ ĐỊNH sau khi sinh —
+  không có màn nào cho người dùng sửa tay câu chữ/ngữ pháp/từ vựng trong bài.
+- *"Không chỉnh sửa CHÂN DUNG"* (mục này) = ở màn xác nhận, người dùng không được sửa trực tiếp
+  `merged_occupation`/`primary_communication_scope` hiển thị (không có ô text để gõ đè lên chân
+  dung) — muốn sửa chân dung thì đi vòng qua "← Nhập lại từ khóa", tức là SỬA NGUỒN (3 từ khóa)
+  rồi để model suy luận lại, không sửa TRỰC TIẾP KẾT QUẢ suy luận.
 
 Khuôn 3 dòng CỐ ĐỊNH, ghép bởi CODE (không để model tự viết message hiển thị, tránh trôi khuôn):
 
