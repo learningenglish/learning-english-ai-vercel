@@ -1,8 +1,9 @@
 // api/_generate/curriculum/skin.js — sinh "da lĩnh vực" (industry skin) theo đúng bản duyệt
 // docs/prompt-da-linh-vuc.md (commit 53048ef + 1f0018f, duyệt 2026-07-19 lần 8). ĐÃ ĐƯỢC PHÉP
 // viết module thật nhưng CHƯA CHẠY THỬ — sandbox không có OPENAI_API_KEY thật (xem
-// feedback_sandbox_blocks_real_api_keys trong memory). Bài kiểm nghiệm thu 3 ngành (Logistics/
-// Kế toán/Spa-nail) chạy khi có lệnh deploy, TRƯỚC KHI tích hợp da vào app.
+// feedback_sandbox_blocks_real_api_keys trong memory). Bài kiểm nghiệm thu 3 ngành (bộ đã chốt
+// 2026-07-19 lần 9: Logistics / Cửa hàng sửa xe / Vệ sinh buồng máy bay — xem
+// docs/prompt-da-linh-vuc.md mục 11) chạy khi có lệnh deploy, TRƯỚC KHI tích hợp da vào app.
 //
 // Sửa prompt ở ĐÂY phải sửa ĐỒNG BỘ cả docs/prompt-da-linh-vuc.md (nguồn chân lý nội dung
 // prompt) — không để 2 nơi lệch nhau, giống quy tắc đã áp dụng cho lesson.js/docs/prompt-ai-

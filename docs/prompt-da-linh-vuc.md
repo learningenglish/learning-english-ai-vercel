@@ -377,8 +377,17 @@ lượng sau này.
 
 ## 11. BÀI KIỂM NGHIỆM THU DA (bắt buộc chạy 1 lần trước khi tích hợp bất kỳ da nào vào app)
 
-Chạy prompt này cho **3 ngành trái ngược nhau**: Logistics, Kế toán, Spa/nail — xuất bảng cho
-Minh duyệt theo 3 tiêu chí (mỗi ô: đạt/không đạt + ghi chú ngắn nếu không đạt):
+Chạy prompt này cho **3 ngành trái ngược nhau** (bộ đã chốt 2026-07-19 lần 9, thay bộ nháp
+Logistics/Kế toán/Spa-nail trước đó):
+
+1. **Logistics** — từ khóa: `{INDUSTRY}` = "Logistics" (chưa chia sẵn 3 trường, dùng nguyên làm
+   ngành nghề khi test).
+2. **Cửa hàng sửa xe** — từ khóa: `{FIELD}` = "sửa xe máy", `{INDUSTRY}` = "kinh doanh nhỏ lẻ",
+   `{PRODUCT}` = "cửa hàng sửa xe".
+3. **Vệ sinh buồng máy bay** — từ khóa: `{FIELD}` = "hàng không", `{INDUSTRY}` = "chăm sóc
+   khách hàng", `{PRODUCT}` = "vệ sinh buồng máy bay".
+
+Xuất bảng cho Minh duyệt theo 3 tiêu chí (mỗi ô: đạt/không đạt + ghi chú ngắn nếu không đạt):
 
 | Tiêu chí | Cách kiểm |
 |---|---|
