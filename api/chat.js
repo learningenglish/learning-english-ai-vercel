@@ -1607,10 +1607,28 @@ export default async function handler(req, res) {
   // deployment. Whitelist ALLOWED_ORIGINS cũ giữ NGUYÊN, chỉ CỘNG THÊM 2 điều kiện này.
   const selfOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
   const branchOrigin = process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null;
+  // BUG THẬT thứ 2 (2026-07-20): VERCEL_BRANCH_URL chỉ được Vercel tự set khi deploy qua
+  // Git integration (auto-build khi push) — project này KHÔNG bật Git integration, mọi
+  // deploy đều chạy tay qua `vercel deploy` (CLI), nên VERCEL_BRANCH_URL luôn undefined và
+  // selfOrigin đổi mỗi lần deploy. Người vận hành cần 1 link ỔN ĐỊNH để duyệt UI qua nhiều
+  // lần deploy (Vercel CLI tự cấp 1 alias theo tài khoản, dạng "…-<username>-<team>.vercel.
+  // app", KHÔNG đổi giữa các lần `vercel deploy`) — origin đó cũng bị chặn nếu chỉ so khớp
+  // 2 biến trên. Cộng thêm điều kiện match theo ĐÚNG format hostname của project này
+  // ("learning-english-ai-vercel-*-learningenglishai.vercel.app") — không mở cho toàn bộ
+  // *.vercel.app (tránh CORS quá rộng cho site Vercel khác).
+  const originHost = (() => {
+    try {
+      return new URL(origin).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  const isProjectVercelHost = /^learning-english-ai-vercel-[a-z0-9]+-learningenglishai\.vercel\.app$/.test(originHost);
   const originAllowed =
     ALLOWED_ORIGINS.includes(origin) ||
     (!!selfOrigin && origin === selfOrigin) ||
-    (!!branchOrigin && origin === branchOrigin);
+    (!!branchOrigin && origin === branchOrigin) ||
+    isProjectVercelHost;
 
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", originAllowed ? origin : "null");
