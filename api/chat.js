@@ -1623,7 +1623,7 @@ export default async function handler(req, res) {
       return "";
     }
   })();
-  const isProjectVercelHost = /^learning-english-ai-vercel-[a-z0-9]+-learningenglishai\.vercel\.app$/.test(originHost);
+  const isProjectVercelHost = /^learning-english-ai-vercel-[a-z0-9-]+-learningenglishai\.vercel\.app$/.test(originHost);
   const originAllowed =
     ALLOWED_ORIGINS.includes(origin) ||
     (!!selfOrigin && origin === selfOrigin) ||
