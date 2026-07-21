@@ -51,6 +51,13 @@ const REVIEW_QUEUE_LOOKBACK_LESSONS = 10; // "N bài gần nhất" — mục 3 �
 const REVIEW_QUEUE_MIN_ATTEMPTS = 3; // số lần thử tối thiểu 1 grammar_tag mới đủ tin cậy để tính tỷ lệ sai
 const REVIEW_QUEUE_ERROR_RATE_THRESHOLD = 0.4; // "tỷ lệ sai > ngưỡng"
 const REVIEW_QUEUE_COOLDOWN_DAYS = 3; // "chưa được ôn trong M ngày"
+// "Quá hạn NGHIÊM TRỌNG" (chốt với Minh 2026-07-21) — đủ nặng để CHEN NGANG continue_lesson,
+// khác ngưỡng thường ở trên (chỉ dùng khi KHÔNG có bài dang dở). Đếm TUYỆT ĐỐI (không phải tỷ
+// lệ) trong cửa sổ HẸP hơn (6 bài gần nhất thay vì 10) — bắt mẫu hình gần đây, không pha loãng
+// với dữ liệu cũ; cooldown DÀI hơn (5 ngày thay vì 3) — tránh chen ngang ngay sau khi vừa ôn.
+const REVIEW_QUEUE_SEVERE_LOOKBACK_LESSONS = 6;
+const REVIEW_QUEUE_SEVERE_MIN_WRONG = 3;
+const REVIEW_QUEUE_SEVERE_COOLDOWN_DAYS = 5;
 const GOAL_LOW_ACCESS_THRESHOLD = 0.5; // Bước 0 mục 6.3: "truy cập đợt hiện tại CHƯA đạt 50%"
 const DEFAULT_LEVEL_WHEN_UNSET = "B1"; // người dùng chọn "Mình chưa chắc" ở Bước 2
 const MENTOR_LESSON_LENGTH_WORDS = 200; // độ dài mặc định cho bài Mentor tự sinh tiếp (next_slot)
@@ -147,49 +154,82 @@ async function goalProgressCounts(studentId, goalId, { onlyCompleted } = {}) {
   );
 }
 
-async function computeReviewQueue(studentId) {
+// Dùng chung cho cả 2 ngưỡng (thường/nghiêm trọng) — chỉ khác limit (lookback). grammar_tag ->
+// { wrong, total, lastSeenAt }.
+async function fetchGrammarTagStats(studentId, lookbackLessons) {
   const rows = await restGet(
     `lesson_progress?user_id=eq.${studentId}&completed_at=not.is.null&order=completed_at.desc` +
-      `&limit=${REVIEW_QUEUE_LOOKBACK_LESSONS}&select=completed_at,exercise_results,lessons(id,title_vi)`
+      `&limit=${lookbackLessons}&select=completed_at,exercise_results`
   );
   if (!rows?.length) return null;
 
-  const byTag = new Map(); // grammar_tag -> { wrong, total, lastSeenAt, lessons: Set<{id,title_vi}> }
+  const byTag = new Map();
   for (const row of rows) {
     const results = Array.isArray(row.exercise_results) ? row.exercise_results : [];
     for (const item of results) {
       if (!item?.grammar_tag) continue;
       const tag = String(item.grammar_tag).trim();
       if (!tag) continue;
-      if (!byTag.has(tag)) byTag.set(tag, { wrong: 0, total: 0, lastSeenAt: row.completed_at, lessonCandidates: [] });
+      if (!byTag.has(tag)) byTag.set(tag, { wrong: 0, total: 0, lastSeenAt: row.completed_at });
       const entry = byTag.get(tag);
       entry.total += 1;
       if (!item.correct) entry.wrong += 1;
       if (row.completed_at > entry.lastSeenAt) entry.lastSeenAt = row.completed_at;
     }
   }
+  return byTag;
+}
 
-  const now = Date.now();
-  const cooldownMs = REVIEW_QUEUE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+// Tìm 1 bài ĐÃ CÓ của chính user có điểm ngữ pháp này (ưu tiên bài cũ, không sinh AI mới —
+// đúng lựa chọn "không bắt buộc" ở mục 3 Đợt 3, giữ số lượt AI = 0 cho review_lesson).
+async function findLessonForTag(studentId, tag) {
+  const candidateLessons = await restGet(
+    `lessons?user_id=eq.${studentId}&select=id,title_vi,grammar&order=created_at.desc&limit=50`
+  );
+  return (candidateLessons || []).find((l) => (l.grammar || []).some((g) => g?.name === tag)) || null;
+}
+
+function daysSince(dateStr) {
+  return (Date.now() - new Date(dateStr).getTime()) / (24 * 60 * 60 * 1000);
+}
+
+// Ngưỡng THƯỜNG (không đổi hành vi cũ) — chỉ xét khi KHÔNG có bài dang dở (mục 2 Đợt 3, giữ
+// đúng thứ tự đã có: review trước next_slot).
+async function computeReviewQueue(studentId) {
+  const byTag = await fetchGrammarTagStats(studentId, REVIEW_QUEUE_LOOKBACK_LESSONS);
+  if (!byTag) return null;
+
   let worst = null;
   for (const [tag, entry] of byTag) {
     if (entry.total < REVIEW_QUEUE_MIN_ATTEMPTS) continue;
     const errorRate = entry.wrong / entry.total;
     if (errorRate <= REVIEW_QUEUE_ERROR_RATE_THRESHOLD) continue;
-    const daysSince = now - new Date(entry.lastSeenAt).getTime();
-    if (daysSince < cooldownMs) continue; // vừa ôn gần đây, chưa tới lúc nhắc lại
+    if (daysSince(entry.lastSeenAt) < REVIEW_QUEUE_COOLDOWN_DAYS) continue; // vừa ôn gần đây, chưa tới lúc nhắc lại
     if (!worst || errorRate > worst.errorRate) worst = { tag, errorRate, wrong: entry.wrong, total: entry.total };
   }
   if (!worst) return null;
 
-  // Tìm 1 bài ĐÃ CÓ của chính user có điểm ngữ pháp này (ưu tiên bài cũ, không sinh AI mới —
-  // đúng lựa chọn "không bắt buộc" ở mục 3 Đợt 3, giữ số lượt AI = 0 cho review_lesson).
-  const candidateLessons = await restGet(
-    `lessons?user_id=eq.${studentId}&select=id,title_vi,grammar&order=created_at.desc&limit=50`
-  );
-  const match = (candidateLessons || []).find((l) => (l.grammar || []).some((g) => g?.name === worst.tag));
+  const match = await findLessonForTag(studentId, worst.tag);
   if (!match) return null; // không có bài phù hợp -> để decideAction() rơi xuống next_slot/prompt_new_goal
+  return { grammarTag: worst.tag, wrong: worst.wrong, total: worst.total, lesson: match };
+}
 
+// Ngưỡng NGHIÊM TRỌNG (mới, mục 1 yêu cầu sửa decideAction) — đủ nặng để CHEN NGANG
+// continue_lesson. Đếm tuyệt đối trong cửa sổ hẹp, xem hằng số REVIEW_QUEUE_SEVERE_* ở trên.
+async function computeSevereReviewQueue(studentId) {
+  const byTag = await fetchGrammarTagStats(studentId, REVIEW_QUEUE_SEVERE_LOOKBACK_LESSONS);
+  if (!byTag) return null;
+
+  let worst = null;
+  for (const [tag, entry] of byTag) {
+    if (entry.wrong < REVIEW_QUEUE_SEVERE_MIN_WRONG) continue;
+    if (daysSince(entry.lastSeenAt) < REVIEW_QUEUE_SEVERE_COOLDOWN_DAYS) continue;
+    if (!worst || entry.wrong > worst.wrong) worst = { tag, wrong: entry.wrong, total: entry.total };
+  }
+  if (!worst) return null;
+
+  const match = await findLessonForTag(studentId, worst.tag);
+  if (!match) return null;
   return { grammarTag: worst.tag, wrong: worst.wrong, total: worst.total, lesson: match };
 }
 
@@ -201,7 +241,14 @@ async function getMostRecentActiveGoal(studentId) {
 }
 
 async function decideAction(studentId) {
-  const inProgress = await findInProgressLesson(studentId);
+  const [inProgress, severeReview] = await Promise.all([findInProgressLesson(studentId), computeSevereReviewQueue(studentId)]);
+
+  // Mục 1 (sửa decideAction, chốt với Minh 2026-07-21): quá hạn NGHIÊM TRỌNG -> CHEN NGANG
+  // continue_lesson (biến cố "quyết định mới ảnh hưởng luồng cũ dang dở", mục 3.1 Đợt 3). Bài
+  // dang dở KHÔNG mất — findInProgressLesson() luôn tính lại từ dữ liệu thật, nên lượt
+  // decideAction() kế tiếp (sau khi ôn xong/bỏ qua) tự hiện lại continue_lesson như cũ.
+  if (severeReview) return { type: "review_lesson", ...severeReview };
+
   if (inProgress?.lessons) {
     let goalCounts = null;
     if (inProgress.lessons.goal_id) {
