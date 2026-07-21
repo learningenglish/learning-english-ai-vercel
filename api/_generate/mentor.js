@@ -485,22 +485,29 @@ export async function mentor_next_lesson(data, ctx) {
   }
 
   console.log("[MENTOR_AI_CALL] generate_lesson (next_slot)", { studentId: ctx.studentId, goalId: goal.id });
-  const result = await generate_lesson(
-    {
-      description: "",
-      level,
-      content_type: contentType,
-      topic,
-      length_words: MENTOR_LESSON_LENGTH_WORDS,
-      field: "",
-      industry,
-      product: "",
-      situation: "",
-      term_density: termDensity,
-      goal_id: goal.id,
-    },
-    ctx
-  );
+  const genLessonInput = {
+    description: "",
+    level,
+    content_type: contentType,
+    topic,
+    length_words: MENTOR_LESSON_LENGTH_WORDS,
+    field: "",
+    industry,
+    product: "",
+    situation: "",
+    term_density: termDensity,
+    goal_id: goal.id,
+  };
+  // generate_lesson() KHÔNG tự retry (lỗi thật đã biết: model đôi khi lệch số từ >25% ở dialogue
+  // 200 từ, đặc biệt hay gặp — chưa có cơ chế leo thang model, xem project_ai_model_routing_spec
+  // trong memory, CHƯA xây, KHÔNG thuộc phạm vi ở đây). Thử lại 1 LẦN CÙNG model khi lỗi CHÍNH XÁC
+  // là "dữ liệu AI không hợp lệ" (status 502) — đủ để giảm hẳn tỷ lệ fail người dùng thấy, không
+  // phải giải pháp gốc. Lỗi khác (hết hạn mức, lỗi mạng...) KHÔNG retry, trả thẳng cho người dùng.
+  let result = await generate_lesson(genLessonInput, ctx);
+  if (result.error && result.status === 502) {
+    console.log("[MENTOR_AI_CALL] generate_lesson (next_slot) retry 1x sau lỗi:", result.error);
+    result = await generate_lesson(genLessonInput, ctx);
+  }
   if (result.error) return result;
 
   // Tăng bộ đếm HIỂN THỊ ("x/y bài") — không phải hạn mức chặn (đọc ghi chú NỢ KỸ THUẬT trong
