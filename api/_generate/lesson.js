@@ -281,6 +281,21 @@ function suggestedUnitCount(level, lengthWords, contentType) {
   return Math.max(6, Math.ceil(((lengthWords || 200) / avg) * 1.2));
 }
 
+// THỬ NGHIỆM CHẨN ĐOÁN (2026-07-21, chốt với Minh) — đo xem model có bám sát ra đề THEO CẤU
+// TRÚC ("viết đúng N lượt, mỗi lượt X-Y từ") tốt hơn ra đề THEO TỔNG SỐ ("viết ~200 từ") hay
+// không, sau khi bản sửa "làm rõ cách đếm + tăng biên an toàn" KHÔNG cải thiện gì (117/104/121
+// từ, gần như y hệt trước khi sửa 93-137/200). CHỈ áp dụng cho dialogue — reading giữ nguyên
+// theo đúng yêu cầu. Nếu đo thấy model bám sát N lượt + khoảng từ/lượt tốt hơn hẳn, đây sẽ là
+// hướng thiết kế lại generate_lesson (kiến trúc lượt, không phải tổng từ); nếu không, xác nhận
+// giới hạn cứng của model, quay lại thiết kế range theo dữ liệu THẬT (không theo lý thuyết wpm).
+const DIALOGUE_TURN_RANGE_BY_LEVEL = {
+  A1: [5, 9],
+  A2: [6, 11],
+  B1: [8, 15],
+  B2: [10, 18],
+  C1: [12, 22],
+};
+
 function buildGenerateLessonUserPrompt(data) {
   const contentTypeVi = data.content_type === "dialogue" ? "hội thoại" : "bài đọc";
   const unitLabel = data.content_type === "dialogue" ? "lượt thoại" : "câu/đoạn";
@@ -288,15 +303,25 @@ function buildGenerateLessonUserPrompt(data) {
     ? 0
     : data.term_density;
   const lengthWords = data.length_words || 200;
-  const minUnits = suggestedUnitCount(data.level, lengthWords, data.content_type);
-  const avgWordsPerUnit = Math.round(lengthWords / minUnits);
+  const isDialogue = data.content_type === "dialogue";
+  let lengthInstruction;
+  if (isDialogue) {
+    const [turnMin, turnMax] = DIALOGUE_TURN_RANGE_BY_LEVEL[data.level] || [8, 15];
+    const turnAvg = (turnMin + turnMax) / 2;
+    const turnCount = Math.max(6, Math.round(lengthWords / turnAvg));
+    lengthInstruction = `- Cấu trúc hội thoại (THỬ NGHIỆM ĐO — yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"). MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu. Nếu bạn viết đúng ${turnCount} lượt, mỗi lượt trong khoảng ${turnMin}-${turnMax} từ, tổng cả bài sẽ tự động ra khoảng ${lengthWords} từ (không cần tự nhẩm tổng). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn ${turnMin} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn ${turnMax} từ để bù lại — tổng thể vẫn phải đạt đủ ${turnCount} lượt.`;
+  } else {
+    const minUnits = suggestedUnitCount(data.level, lengthWords, data.content_type);
+    const avgWordsPerUnit = Math.round(lengthWords / minUnits);
+    lengthInstruction = `- Độ dài: khoảng ${lengthWords} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Cho phép lệch ±15% khi bạn tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy viết DÀI HƠN chứ đừng viết ngắn hơn. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ. Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWords}.`;
+  }
   return `Tạo bài học theo yêu cầu sau:
 
 - Mô tả của người học: ${orNone(data.description)}
 - Cấp độ: ${data.level}
 - Chủ đề: ${orNone(data.topic)}
 - Loại nội dung: ${contentTypeVi}
-- Độ dài: khoảng ${lengthWords} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử (1 ${unitLabel} chỉ "Sure." vẫn tính là 1 phần tử nhưng chỉ 1 từ). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Cho phép lệch ±15% khi bạn tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy viết DÀI HƠN chứ đừng viết ngắn hơn. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ (một số ${unitLabel} ngắn 1-4 từ phải được bù bằng ${unitLabel} khác dài hơn ${avgWordsPerUnit} từ đáng kể, không phải tất cả đều bằng nhau). Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWords}.
+${lengthInstruction}
 - Lĩnh vực: ${orNone(data.field)}
 - Ngành nghề: ${orNone(data.industry)}
 - Sản phẩm / Dịch vụ liên quan: ${orNone(data.product)}
