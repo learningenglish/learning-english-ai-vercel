@@ -288,12 +288,26 @@ function suggestedUnitCount(level, lengthWords, contentType) {
 // theo đúng yêu cầu. Nếu đo thấy model bám sát N lượt + khoảng từ/lượt tốt hơn hẳn, đây sẽ là
 // hướng thiết kế lại generate_lesson (kiến trúc lượt, không phải tổng từ); nếu không, xác nhận
 // giới hạn cứng của model, quay lại thiết kế range theo dữ liệu THẬT (không theo lý thuyết wpm).
-const DIALOGUE_TURN_RANGE_BY_LEVEL = {
+// Dùng để TÍNH SỐ LƯỢT (turnCount) — vòng 1 đã đo turnCount bám khá sát range này (18/17/14
+// lượt thật so với 18 yêu cầu), giữ nguyên làm cơ sở tính, KHÔNG đổi ở vòng 2.
+const DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL = {
   A1: [5, 9],
   A2: [6, 11],
   B1: [8, 15],
   B2: [10, 18],
   C1: [12, 22],
+};
+// Khoảng HIỂN THỊ cho model viết mỗi lượt — vòng 2 (2026-07-21), đẩy cao hơn HẲN cơ sở tính ở
+// trên để bù thiên lệch neo-đáy đã đo được ở vòng 1: khoảng cho là 8-15 từ/lượt nhưng trung
+// bình THỰC ĐẠT chỉ 8.3 từ/lượt (ngay sát đáy, nhiều lượt còn dưới cả đáy 8). CHỈ B1 có số liệu
+// thật kiểm chứng (8-15 -> 14-22, 3 mẫu thật); các cấp khác NGOẠI SUY cùng tỷ lệ, CHƯA kiểm
+// chứng riêng — sửa lại nếu B1 xác nhận hướng đúng nhưng cấp khác lệch khác B1.
+const DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL = {
+  A1: [9, 14],
+  A2: [11, 16],
+  B1: [14, 22],
+  B2: [17, 26],
+  C1: [21, 32],
 };
 
 function buildGenerateLessonUserPrompt(data) {
@@ -306,10 +320,11 @@ function buildGenerateLessonUserPrompt(data) {
   const isDialogue = data.content_type === "dialogue";
   let lengthInstruction;
   if (isDialogue) {
-    const [turnMin, turnMax] = DIALOGUE_TURN_RANGE_BY_LEVEL[data.level] || [8, 15];
-    const turnAvg = (turnMin + turnMax) / 2;
-    const turnCount = Math.max(6, Math.round(lengthWords / turnAvg));
-    lengthInstruction = `- Cấu trúc hội thoại (THỬ NGHIỆM ĐO — yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"). MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu. Nếu bạn viết đúng ${turnCount} lượt, mỗi lượt trong khoảng ${turnMin}-${turnMax} từ, tổng cả bài sẽ tự động ra khoảng ${lengthWords} từ (không cần tự nhẩm tổng). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn ${turnMin} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn ${turnMax} từ để bù lại — tổng thể vẫn phải đạt đủ ${turnCount} lượt.`;
+    const [basisMin, basisMax] = DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL[data.level] || [8, 15];
+    const turnCount = Math.max(6, Math.round(lengthWords / ((basisMin + basisMax) / 2)));
+    const [turnMin, turnMax] = DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL[data.level] || [basisMin, basisMax];
+    const upperHalfMin = Math.round((turnMin + turnMax) / 2);
+    lengthInstruction = `- Cấu trúc hội thoại (THỬ NGHIỆM ĐO vòng 2 — yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"). MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng này (tức ${upperHalfMin}-${turnMax} từ/lượt), KHÔNG mặc định viết ở đáy khoảng dù đáy vẫn hợp lệ về lý thuyết — số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rất rõ, nên phải CHỦ ĐỘNG nhắm cao hơn để bù, không viết theo bản năng "vừa đủ chạm sàn". Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu — nếu bạn viết đúng ${turnCount} lượt, mỗi lượt trong khoảng ${upperHalfMin}-${turnMax} từ, tổng cả bài sẽ tự động ra khoảng ${lengthWords} từ. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn ${turnMin} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn ${turnMax} từ để bù lại — tổng thể vẫn phải đạt đủ ${turnCount} lượt.`;
   } else {
     const minUnits = suggestedUnitCount(data.level, lengthWords, data.content_type);
     const avgWordsPerUnit = Math.round(lengthWords / minUnits);
