@@ -1481,6 +1481,20 @@ textarea:focus {
   margin-bottom: 18px;
 }
 
+/* ===== Màn nghi thức xưng hô (app/js/views/mentorOnboarding.js) ===== */
+.mentor-onboarding-card p {
+  margin: 0 0 12px;
+}
+
+.mentor-onboarding-greeting {
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.mentor-onboarding-card .filter-row {
+  margin-bottom: 12px;
+}
+
 /* ===== Toast (app/js/toast.js) ===== */
 .app-toast {
   position: fixed;

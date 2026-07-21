@@ -1,0 +1,113 @@
+{
+  "note": "Bọc quanh output THẬT của mentor_infer_goal (occupation_profile.merged_occupation/primary_communication_scope) — không phải nội dung suy luận. Ghép runtime: open + ' Học tiếng Anh cho {occupation}, tập trung {scope}.' + close — 2 câu ở giữa dùng NGUYÊN VĂN dữ liệu AI trả về, không nằm trong kho biến thể.",
+  "open": {
+    "placeholders": [
+      "ten"
+    ],
+    "toi_ten": [
+      "{ten} ơi, tôi đã nắm được ý rồi.",
+      "Nghe {ten} kể xong, tôi hình dung được rồi.",
+      "{ten}, tôi hiểu bạn muốn hướng tới điều này.",
+      "Tôi tóm lại nhé, {ten}.",
+      "Tôi đã ghi nhận mục tiêu của {ten} rồi.",
+      "{ten}, tôi hiểu ý bạn thế này.",
+      "Nghe qua thì tôi hình dung {ten} muốn học như sau.",
+      "{ten} ơi, tôi tóm gọn lại nhé.",
+      "Tôi đã hiểu {ten} muốn gì rồi đây."
+    ],
+    "toi_anh": [
+      "Anh ơi, tôi đã nắm được ý rồi.",
+      "Nghe anh kể xong, tôi hình dung được rồi.",
+      "Anh, tôi hiểu ý anh muốn hướng tới điều này.",
+      "Tôi tóm lại nhé, anh.",
+      "Tôi đã ghi nhận mục tiêu của anh rồi.",
+      "Anh, tôi hiểu ý anh thế này.",
+      "Nghe qua thì tôi hình dung anh muốn học như sau.",
+      "Anh ơi, tôi tóm gọn lại nhé.",
+      "Tôi đã hiểu anh muốn gì rồi đây."
+    ],
+    "toi_chi": [
+      "Chị ơi, tôi đã nắm được ý rồi.",
+      "Nghe chị kể xong, tôi hình dung được rồi.",
+      "Chị, tôi hiểu ý chị muốn hướng tới điều này.",
+      "Tôi tóm lại nhé, chị.",
+      "Tôi đã ghi nhận mục tiêu của chị rồi.",
+      "Chị, tôi hiểu ý chị thế này.",
+      "Nghe qua thì tôi hình dung chị muốn học như sau.",
+      "Chị ơi, tôi tóm gọn lại nhé.",
+      "Tôi đã hiểu chị muốn gì rồi đây."
+    ],
+    "toi_ban_note": "Viết lại sau vòng giám khảo 4 — 7/10 dòng cũ bị loại vì đọc như cụm 'đã hiểu' đứng một mình, rỗng dữ liệu (dù thực tế luôn được nối với dữ liệu thật ngay sau). Đổi hướng: dùng dấu hai chấm để câu PHỤ THUỘC ngữ pháp vào phần dữ liệu theo sau, không đọc trọn nghĩa nếu tách riêng.",
+    "toi_ban": [
+      "Nghe bạn kể xong, đây là điều tôi hiểu:",
+      "Tóm lại từ những gì bạn vừa chia sẻ:",
+      "Bạn ơi, tôi hình dung mục tiêu của bạn như sau:",
+      "Từ câu chuyện bạn vừa kể, tôi hiểu là:",
+      "Bạn ơi, đây là điều tôi ghi nhận được:",
+      "Gói gọn lại thì:",
+      "Tôi tóm tắt lại từ lời bạn kể:",
+      "Đây là những gì tôi hình dung về bạn:",
+      "Bạn ơi, nói ngắn gọn thì tôi hiểu là:",
+      "Từ những gì bạn chia sẻ, tôi thấy là:"
+    ]
+  },
+  "close": {
+    "placeholders": [
+      "ten"
+    ],
+    "note_v2": "Viết lại sau vòng giám khảo lần 1 (mảnh cũ dạng câu hỏi 'đúng không/đúng chưa/chốt được không' bị loại gần hết vì đọc như chất vấn) — đổi thành câu khẳng định điềm tĩnh, không dấu hỏi; lựa chọn xác nhận/nói rõ hơn giao cho 2 nút bấm UI đã có sẵn (mentorGoal.js Bước 3: 'Đúng rồi, bắt đầu' / 'Nói lại cho rõ hơn').",
+    "note_v3": "Vòng giám khảo lần 2: các câu 'tôi đã hiểu/ghi nhận/tóm gọn' đứng riêng (không nhắc lựa chọn cụ thể) bị loại vì đọc như câu khép biểu mẫu/sáo rỗng — chỉ 3/10 câu có nhắc CỤ THỂ 2 lựa chọn bên dưới sống sót. Viết lại toàn bộ theo đúng hướng đó: luôn gắn với hành động cụ thể (2 nút bên dưới), không lặp lại kiểu 'tôi đã hiểu ý bạn' chung chung.",
+    "toi_ten": [
+      "{ten} có thể xem lại và chọn tiếp tục hoặc nói rõ hơn ở 2 lựa chọn bên dưới.",
+      "{ten} cứ chọn tiếp tục hoặc nói rõ hơn ở bên dưới.",
+      "Nếu cần chỉnh sửa, {ten} cứ chọn ở bên dưới.",
+      "{ten} bấm \"Đúng rồi, bắt đầu\" nếu ổn, hoặc \"Nói lại cho rõ hơn\" nếu muốn chỉnh.",
+      "Hai lựa chọn bên dưới để {ten} tiếp tục hoặc chỉnh lại tuỳ ý.",
+      "Bên dưới có 2 lựa chọn cho {ten}: tiếp tục hoặc nói rõ hơn.",
+      "{ten} xem 2 lựa chọn bên dưới rồi chọn hướng phù hợp.",
+      "Nút bên dưới sẽ giúp {ten} tiếp tục hoặc chỉnh lại nếu cần.",
+      "{ten} có toàn quyền chọn tiếp tục hay chỉnh sửa ở bên dưới.",
+      "{ten} chọn tiếp tục nếu đúng ý, hoặc chỉnh lại ở bên dưới.",
+      "Bên dưới là 2 lựa chọn dành cho {ten}, tiếp tục hoặc nói rõ hơn."
+    ],
+    "toi_anh": [
+      "Anh có thể xem lại và chọn tiếp tục hoặc nói rõ hơn ở 2 lựa chọn bên dưới.",
+      "Anh cứ chọn tiếp tục hoặc nói rõ hơn ở bên dưới.",
+      "Nếu cần chỉnh sửa, anh cứ chọn ở bên dưới.",
+      "Anh bấm \"Đúng rồi, bắt đầu\" nếu ổn, hoặc \"Nói lại cho rõ hơn\" nếu muốn chỉnh.",
+      "Hai lựa chọn bên dưới để anh tiếp tục hoặc chỉnh lại tuỳ ý.",
+      "Bên dưới có 2 lựa chọn cho anh: tiếp tục hoặc nói rõ hơn.",
+      "Anh xem 2 lựa chọn bên dưới rồi chọn hướng phù hợp.",
+      "Nút bên dưới sẽ giúp anh tiếp tục hoặc chỉnh lại nếu cần.",
+      "Anh có toàn quyền chọn tiếp tục hay chỉnh sửa ở bên dưới.",
+      "Anh chọn tiếp tục nếu đúng ý, hoặc chỉnh lại ở bên dưới.",
+      "Bên dưới là 2 lựa chọn dành cho anh, tiếp tục hoặc nói rõ hơn."
+    ],
+    "toi_chi": [
+      "Chị có thể xem lại và chọn tiếp tục hoặc nói rõ hơn ở 2 lựa chọn bên dưới.",
+      "Chị cứ chọn tiếp tục hoặc nói rõ hơn ở bên dưới.",
+      "Nếu cần chỉnh sửa, chị cứ chọn ở bên dưới.",
+      "Chị bấm \"Đúng rồi, bắt đầu\" nếu ổn, hoặc \"Nói lại cho rõ hơn\" nếu muốn chỉnh.",
+      "Hai lựa chọn bên dưới để chị tiếp tục hoặc chỉnh lại tuỳ ý.",
+      "Bên dưới có 2 lựa chọn cho chị: tiếp tục hoặc nói rõ hơn.",
+      "Chị xem 2 lựa chọn bên dưới rồi chọn hướng phù hợp.",
+      "Nút bên dưới sẽ giúp chị tiếp tục hoặc chỉnh lại nếu cần.",
+      "Chị có toàn quyền chọn tiếp tục hay chỉnh sửa ở bên dưới.",
+      "Chị chọn tiếp tục nếu đúng ý, hoặc chỉnh lại ở bên dưới.",
+      "Bên dưới là 2 lựa chọn dành cho chị, tiếp tục hoặc nói rõ hơn."
+    ],
+    "toi_ban": [
+      "Bạn có thể xem lại và chọn tiếp tục hoặc nói rõ hơn ở 2 lựa chọn bên dưới.",
+      "Bạn cứ chọn tiếp tục hoặc nói rõ hơn ở bên dưới.",
+      "Nếu cần chỉnh sửa, bạn cứ chọn ở bên dưới.",
+      "Bạn bấm \"Đúng rồi, bắt đầu\" nếu ổn, hoặc \"Nói lại cho rõ hơn\" nếu muốn chỉnh.",
+      "Hai lựa chọn bên dưới để bạn tiếp tục hoặc chỉnh lại tuỳ ý.",
+      "Bên dưới có 2 lựa chọn cho bạn: tiếp tục hoặc nói rõ hơn.",
+      "Bạn xem 2 lựa chọn bên dưới rồi chọn hướng phù hợp.",
+      "Nút bên dưới sẽ giúp bạn tiếp tục hoặc chỉnh lại nếu cần.",
+      "Bạn có toàn quyền chọn tiếp tục hay chỉnh sửa ở bên dưới.",
+      "Bạn chọn tiếp tục nếu đúng ý, hoặc chỉnh lại ở bên dưới.",
+      "Bên dưới là 2 lựa chọn dành cho bạn, tiếp tục hoặc nói rõ hơn."
+    ]
+  }
+}

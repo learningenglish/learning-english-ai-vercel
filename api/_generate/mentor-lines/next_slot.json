@@ -1,0 +1,121 @@
+{
+  "note": "Mảnh 'encourage' (khích lệ) dùng chung với shared.json#encourage, không lặp lại ở đây. Trường \"minh_ban\" đã đổi thành \"toi_ban\" toàn bộ file (cấu trúc xưng hô mới: ngôi 1 cố định = tôi).",
+  "progress": {
+    "placeholders": [
+      "ten",
+      "goal_title",
+      "completed",
+      "lesson_count"
+    ],
+    "toi_ten": [
+      "{ten} đã học {completed}/{lesson_count} bài trong \"{goal_title}\" rồi.",
+      "\"{goal_title}\" của {ten} hiện đã đi được {completed}/{lesson_count} bài.",
+      "{ten} vừa xong thêm 1 bài, giờ là {completed}/{lesson_count} bài của \"{goal_title}\".",
+      "Tính đến giờ {ten} hoàn thành {completed}/{lesson_count} bài trong \"{goal_title}\".",
+      "{ten} đang có {completed}/{lesson_count} bài hoàn thành ở \"{goal_title}\".",
+      "\"{goal_title}\" — {ten} đã xong {completed} trên {lesson_count} bài.",
+      "{ten} đã đi qua {completed}/{lesson_count} bài của lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của {ten} giờ đã có {completed}/{lesson_count} bài xong.",
+      "{ten} vừa hoàn thành xong 1 bài, \"{goal_title}\" giờ ở {completed}/{lesson_count}.",
+      "{completed} trên {lesson_count} bài của \"{goal_title}\" — {ten} đã hoàn thành.",
+      "{ten} đang có {completed}/{lesson_count} bài trong tay ở \"{goal_title}\".",
+      "\"{goal_title}\" của {ten} vừa lên mốc {completed}/{lesson_count} bài."
+    ],
+    "toi_anh": [
+      "Anh đã học {completed}/{lesson_count} bài trong \"{goal_title}\" rồi.",
+      "\"{goal_title}\" của anh hiện đã đi được {completed}/{lesson_count} bài.",
+      "Anh vừa xong thêm 1 bài, giờ là {completed}/{lesson_count} bài của \"{goal_title}\".",
+      "Tính đến giờ anh hoàn thành {completed}/{lesson_count} bài trong \"{goal_title}\".",
+      "Anh đang có {completed}/{lesson_count} bài hoàn thành ở \"{goal_title}\".",
+      "\"{goal_title}\" — anh đã xong {completed} trên {lesson_count} bài.",
+      "Anh đã đi qua {completed}/{lesson_count} bài của lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của anh giờ đã có {completed}/{lesson_count} bài xong.",
+      "Anh vừa hoàn thành xong 1 bài, \"{goal_title}\" giờ ở {completed}/{lesson_count}.",
+      "{completed} trên {lesson_count} bài của \"{goal_title}\" — anh đã hoàn thành.",
+      "Anh đang có {completed}/{lesson_count} bài trong tay ở \"{goal_title}\".",
+      "\"{goal_title}\" của anh vừa lên mốc {completed}/{lesson_count} bài."
+    ],
+    "toi_chi": [
+      "Chị đã học {completed}/{lesson_count} bài trong \"{goal_title}\" rồi.",
+      "\"{goal_title}\" của chị hiện đã đi được {completed}/{lesson_count} bài.",
+      "Chị vừa xong thêm 1 bài, giờ là {completed}/{lesson_count} bài của \"{goal_title}\".",
+      "Tính đến giờ chị hoàn thành {completed}/{lesson_count} bài trong \"{goal_title}\".",
+      "Chị đang có {completed}/{lesson_count} bài hoàn thành ở \"{goal_title}\".",
+      "\"{goal_title}\" — chị đã xong {completed} trên {lesson_count} bài.",
+      "Chị đã đi qua {completed}/{lesson_count} bài của lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của chị giờ đã có {completed}/{lesson_count} bài xong.",
+      "Chị vừa hoàn thành xong 1 bài, \"{goal_title}\" giờ ở {completed}/{lesson_count}.",
+      "{completed} trên {lesson_count} bài của \"{goal_title}\" — chị đã hoàn thành.",
+      "Chị đang có {completed}/{lesson_count} bài trong tay ở \"{goal_title}\".",
+      "\"{goal_title}\" của chị vừa lên mốc {completed}/{lesson_count} bài."
+    ],
+    "toi_ban": [
+      "Bạn đã học {completed}/{lesson_count} bài trong \"{goal_title}\" rồi.",
+      "\"{goal_title}\" của bạn hiện đã đi được {completed}/{lesson_count} bài.",
+      "Bạn vừa xong thêm 1 bài, giờ là {completed}/{lesson_count} bài của \"{goal_title}\".",
+      "Tính đến giờ bạn hoàn thành {completed}/{lesson_count} bài trong \"{goal_title}\".",
+      "Bạn đang có {completed}/{lesson_count} bài hoàn thành ở \"{goal_title}\".",
+      "\"{goal_title}\" — bạn đã xong {completed} trên {lesson_count} bài.",
+      "Bạn đã đi qua {completed}/{lesson_count} bài của lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của bạn giờ đã có {completed}/{lesson_count} bài xong.",
+      "Bạn vừa hoàn thành xong 1 bài, \"{goal_title}\" giờ ở {completed}/{lesson_count}.",
+      "{completed} trên {lesson_count} bài của \"{goal_title}\" — bạn đã hoàn thành.",
+      "Bạn đang có {completed}/{lesson_count} bài trong tay ở \"{goal_title}\".",
+      "\"{goal_title}\" của bạn vừa lên mốc {completed}/{lesson_count} bài."
+    ]
+  },
+  "cta": {
+    "placeholders": [
+      "ten"
+    ],
+    "note_v2": "Viết lại sau vòng giám khảo lần 1 (mảnh cũ dạng câu hỏi bị loại toàn bộ vì đọc như chất vấn/dò xét) — đổi thành câu khẳng định/mời điềm tĩnh, không dấu hỏi; lựa chọn học bài mới giao cho nút bấm UI (primary button 'Học bài mới').",
+    "toi_ten": [
+      "Tôi đã sẵn sàng bài mới cho {ten} rồi.",
+      "Bài mới đang chờ {ten} bất cứ lúc nào.",
+      "{ten} có thể học bài mới ngay khi sẵn sàng.",
+      "Tôi chuẩn bị bài học mới cho {ten} rồi đây.",
+      "Bài tiếp theo đã sẵn sàng cho {ten}.",
+      "{ten} cứ báo khi muốn học bài mới, tôi chuẩn bị ngay.",
+      "Tôi sinh bài mới cho {ten} bất cứ lúc nào {ten} muốn.",
+      "Bài mới đang chờ {ten} bắt đầu.",
+      "{ten} học bài mới khi nào thấy hợp cũng được.",
+      "Tôi luôn sẵn sàng chuẩn bị bài tiếp theo cho {ten}."
+    ],
+    "toi_anh": [
+      "Tôi đã sẵn sàng bài mới cho anh rồi.",
+      "Bài mới đang chờ anh bất cứ lúc nào.",
+      "Anh có thể học bài mới ngay khi sẵn sàng.",
+      "Tôi chuẩn bị bài học mới cho anh rồi đây.",
+      "Bài tiếp theo đã sẵn sàng cho anh.",
+      "Anh cứ báo khi muốn học bài mới, tôi chuẩn bị ngay.",
+      "Tôi sinh bài mới cho anh bất cứ lúc nào anh muốn.",
+      "Bài mới đang chờ anh bắt đầu.",
+      "Anh học bài mới khi nào thấy hợp cũng được.",
+      "Tôi luôn sẵn sàng chuẩn bị bài tiếp theo cho anh."
+    ],
+    "toi_chi": [
+      "Tôi đã sẵn sàng bài mới cho chị rồi.",
+      "Bài mới đang chờ chị bất cứ lúc nào.",
+      "Chị có thể học bài mới ngay khi sẵn sàng.",
+      "Tôi chuẩn bị bài học mới cho chị rồi đây.",
+      "Bài tiếp theo đã sẵn sàng cho chị.",
+      "Chị cứ báo khi muốn học bài mới, tôi chuẩn bị ngay.",
+      "Tôi sinh bài mới cho chị bất cứ lúc nào chị muốn.",
+      "Bài mới đang chờ chị bắt đầu.",
+      "Chị học bài mới khi nào thấy hợp cũng được.",
+      "Tôi luôn sẵn sàng chuẩn bị bài tiếp theo cho chị."
+    ],
+    "toi_ban": [
+      "Tôi đã sẵn sàng bài mới cho bạn rồi.",
+      "Bài mới đang chờ bạn bất cứ lúc nào.",
+      "Bạn có thể học bài mới ngay khi sẵn sàng.",
+      "Tôi chuẩn bị bài học mới cho bạn rồi đây.",
+      "Bài tiếp theo đã sẵn sàng cho bạn.",
+      "Bạn cứ báo khi muốn học bài mới, tôi chuẩn bị ngay.",
+      "Tôi sinh bài mới cho bạn bất cứ lúc nào bạn muốn.",
+      "Bài mới đang chờ bạn bắt đầu.",
+      "Bạn học bài mới khi nào thấy hợp cũng được.",
+      "Tôi luôn sẵn sàng chuẩn bị bài tiếp theo cho bạn."
+    ]
+  }
+}

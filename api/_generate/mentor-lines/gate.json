@@ -1,0 +1,109 @@
+{
+  "status": {
+    "placeholders": [
+      "ten",
+      "goal_title",
+      "remaining"
+    ],
+    "toi_ten": [
+      "{ten} còn {remaining} bài chưa học ở lộ trình \"{goal_title}\" đó.",
+      "\"{goal_title}\" của {ten} vẫn còn {remaining} bài chưa động tới.",
+      "{ten} chưa hoàn thành {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài của \"{goal_title}\" {ten} chưa mở.",
+      "{ten} đang bỏ dở {remaining} bài ở lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của {ten} vẫn còn {remaining} bài chưa xong.",
+      "\"{goal_title}\" — {ten} còn {remaining} bài đang chờ.",
+      "{ten} chưa đụng tới {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài nữa {ten} mới xong \"{goal_title}\".",
+      "{ten} đang có {remaining} bài dang dở ở \"{goal_title}\"."
+    ],
+    "toi_anh": [
+      "Anh còn {remaining} bài chưa học ở lộ trình \"{goal_title}\" đó.",
+      "\"{goal_title}\" của anh vẫn còn {remaining} bài chưa động tới.",
+      "Anh chưa hoàn thành {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài của \"{goal_title}\" anh chưa mở.",
+      "Anh đang bỏ dở {remaining} bài ở lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của anh vẫn còn {remaining} bài chưa xong.",
+      "\"{goal_title}\" — anh còn {remaining} bài đang chờ.",
+      "Anh chưa đụng tới {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài nữa anh mới xong \"{goal_title}\".",
+      "Anh đang có {remaining} bài dang dở ở \"{goal_title}\"."
+    ],
+    "toi_chi": [
+      "Chị còn {remaining} bài chưa học ở lộ trình \"{goal_title}\" đó.",
+      "\"{goal_title}\" của chị vẫn còn {remaining} bài chưa động tới.",
+      "Chị chưa hoàn thành {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài của \"{goal_title}\" chị chưa mở.",
+      "Chị đang bỏ dở {remaining} bài ở lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của chị vẫn còn {remaining} bài chưa xong.",
+      "\"{goal_title}\" — chị còn {remaining} bài đang chờ.",
+      "Chị chưa đụng tới {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài nữa chị mới xong \"{goal_title}\".",
+      "Chị đang có {remaining} bài dang dở ở \"{goal_title}\"."
+    ],
+    "toi_ban": [
+      "Bạn còn {remaining} bài chưa học ở lộ trình \"{goal_title}\" đó.",
+      "\"{goal_title}\" của bạn vẫn còn {remaining} bài chưa động tới.",
+      "Bạn chưa hoàn thành {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài của \"{goal_title}\" bạn chưa mở.",
+      "Bạn đang bỏ dở {remaining} bài ở lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của bạn vẫn còn {remaining} bài chưa xong.",
+      "\"{goal_title}\" — bạn còn {remaining} bài đang chờ.",
+      "Bạn chưa đụng tới {remaining} bài trong \"{goal_title}\".",
+      "Còn {remaining} bài nữa bạn mới xong \"{goal_title}\".",
+      "Bạn đang có {remaining} bài dang dở ở \"{goal_title}\"."
+    ]
+  },
+  "reason": {
+    "note": "Không mang đại từ xưng hô (câu trung tính) nên toi_ten/toi_anh/toi_chi dùng chung nội dung — chỉ minh_ban viết lại giọng casual hơn, đúng tinh thần 'khác register' thay vì chỉ đổi từ xưng hô.",
+    "placeholders": [],
+    "toi_ten": [
+      "Học thêm mục tiêu mới lúc này dễ bị chia sức lắm.",
+      "Tập trung xong lộ trình cũ trước sẽ hiệu quả hơn đó.",
+      "Ôm nhiều mục tiêu cùng lúc dễ làm loãng công sức.",
+      "Xong lộ trình cũ rồi bắt đầu cái mới sẽ chắc hơn.",
+      "Dồn sức cho 1 mục tiêu trước thường học nhanh hơn.",
+      "Chia nhỏ sự tập trung ra nhiều lộ trình dễ làm chậm tiến độ.",
+      "Học xong cái đang dở sẽ giữ được đà tốt hơn.",
+      "Ôm đồm nhiều mục tiêu cùng lúc dễ nản giữa chừng.",
+      "Tập trung 1 lộ trình trước sẽ thấy kết quả rõ hơn.",
+      "Giữ mạch với lộ trình cũ trước khi mở cái mới sẽ ổn hơn."
+    ],
+    "toi_anh": [
+      "Học thêm mục tiêu mới lúc này dễ bị chia sức lắm.",
+      "Tập trung xong lộ trình cũ trước sẽ hiệu quả hơn đó.",
+      "Ôm nhiều mục tiêu cùng lúc dễ làm loãng công sức.",
+      "Xong lộ trình cũ rồi bắt đầu cái mới sẽ chắc hơn.",
+      "Dồn sức cho 1 mục tiêu trước thường học nhanh hơn.",
+      "Chia nhỏ sự tập trung ra nhiều lộ trình dễ làm chậm tiến độ.",
+      "Học xong cái đang dở sẽ giữ được đà tốt hơn.",
+      "Ôm đồm nhiều mục tiêu cùng lúc dễ nản giữa chừng.",
+      "Tập trung 1 lộ trình trước sẽ thấy kết quả rõ hơn.",
+      "Giữ mạch với lộ trình cũ trước khi mở cái mới sẽ ổn hơn."
+    ],
+    "toi_chi": [
+      "Học thêm mục tiêu mới lúc này dễ bị chia sức lắm.",
+      "Tập trung xong lộ trình cũ trước sẽ hiệu quả hơn đó.",
+      "Ôm nhiều mục tiêu cùng lúc dễ làm loãng công sức.",
+      "Xong lộ trình cũ rồi bắt đầu cái mới sẽ chắc hơn.",
+      "Dồn sức cho 1 mục tiêu trước thường học nhanh hơn.",
+      "Chia nhỏ sự tập trung ra nhiều lộ trình dễ làm chậm tiến độ.",
+      "Học xong cái đang dở sẽ giữ được đà tốt hơn.",
+      "Ôm đồm nhiều mục tiêu cùng lúc dễ nản giữa chừng.",
+      "Tập trung 1 lộ trình trước sẽ thấy kết quả rõ hơn.",
+      "Giữ mạch với lộ trình cũ trước khi mở cái mới sẽ ổn hơn."
+    ],
+    "toi_ban": [
+      "Học thêm mục tiêu mới lúc này dễ bị chia sức lắm á.",
+      "Tập trung xong lộ trình cũ trước sẽ hiệu quả hơn đó bạn.",
+      "Ôm nhiều mục tiêu cùng lúc dễ làm loãng công sức lắm.",
+      "Xong lộ trình cũ rồi bắt đầu cái mới sẽ chắc hơn nè.",
+      "Dồn sức cho 1 mục tiêu trước thường học nhanh hơn á.",
+      "Chia nhỏ sự tập trung ra nhiều lộ trình dễ làm chậm tiến độ đó.",
+      "Học xong cái đang dở sẽ giữ được đà tốt hơn nè.",
+      "Ôm đồm nhiều mục tiêu cùng lúc dễ nản giữa chừng lắm.",
+      "Tập trung 1 lộ trình trước sẽ thấy kết quả rõ hơn á.",
+      "Giữ mạch với lộ trình cũ trước khi mở cái mới sẽ ổn hơn đó."
+    ]
+  }
+}

@@ -21,12 +21,29 @@
 // Mọi lượt gọi AI ở 2 điểm trên đều console.log("[MENTOR_AI_CALL] ...") để đếm được thật khi
 // nghiệm thu (mục 8.5 Đợt 3) — KHÔNG thêm lượt gọi AI nào khác trong module này.
 import { SUPABASE_URL } from "./_shared.js";
-import { generateOccupationProfile, buildConfirmationDisplay } from "./curriculum/skin.js";
+import { generateOccupationProfile, buildConfirmationDisplay, loadSkinGeneral } from "./curriculum/skin.js";
 import { generate_lesson } from "./lesson.js";
+import { createLineSession } from "./mentor-lines/select.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SERVICE_HEADERS = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
 const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
+const VALID_PRONOUN_STYLES = ["toi_anh", "toi_chi", "toi_ban", "toi_ten"];
+const DEFAULT_PRONOUN_STYLE = "toi_ban"; // chốt với Minh 2026-07-21: không chọn -> gọi "bạn", Mentor không tự chọn giúp.
+
+// occupation_profile "rỗng" khi bấm "Bạn cứ để tôi tự chọn giúp" (mảnh shared.invite_goal) mà
+// CHƯA từng có mục tiêu nào trước đó — dùng thẳng skin_general.json, KHÔNG gọi AI (mục 3.3 Đợt
+// 3: input rỗng thì không có gì để suy luận thật). is_general=true là cờ DUY NHẤT mentor_next_lesson
+// dùng để rẽ nhánh chọn chủ đề (xem pickGeneralTopic), KHÔNG đụng buildConfirmationDisplay của
+// skin.js (hàm đó không xử lý được merged_occupation=null) — xem buildGoalConfirmationDisplay.
+const GENERAL_OCCUPATION_PROFILE = {
+  is_general: true,
+  merged_occupation: null,
+  primary_communication_scope: "giao tiếp tiếng Anh trong nhiều tình huống hàng ngày",
+  interlocutors: [],
+  core_terms: [],
+  confidence: { merged_occupation: "thấp", interlocutors: "thấp", core_terms: "thấp" },
+};
 
 // ====== HẰNG SỐ CẤU HÌNH — đúng quy ước Đợt 2/3: mọi con số nghiệp vụ đặt 1 chỗ, không rải
 // rác trong code. Đổi ở đây là đổi cho toàn bộ luồng Mentor AI. ======
@@ -70,10 +87,38 @@ async function restCount(path) {
   return Number((r.headers.get("content-range") || "").split("/")[1] || 0);
 }
 
-async function getStudentName(studentId) {
-  const rows = await restGet(`students?id=eq.${studentId}&select=full_name`);
-  const raw = (rows?.[0]?.full_name || "").trim();
-  return raw ? raw.split(/\s+/).slice(-1)[0] : null; // tên gọi (từ cuối họ tên) cho tự nhiên khi xưng hô
+function lastNameOf(fullName) {
+  const raw = (fullName || "").trim();
+  return raw ? raw.split(/\s+/).slice(-1)[0] : null;
+}
+
+// Ngữ cảnh dùng chung cho MỌI lượt chọn câu trong kho: giọng xưng hô hiện tại (mặc định
+// 'toi_ban' nếu chưa chọn — DEFAULT_PRONOUN_STYLE), tên gọi (chỉ có ý nghĩa với giọng toi_ten,
+// các giọng còn lại không dùng placeholder {ten}), và cache chống lặp câu.
+async function getMentorLineContext(studentId) {
+  const rows = await restGet(`students?id=eq.${studentId}&select=full_name,nickname,pronoun_style,mentor_last_lines`);
+  const row = rows?.[0] || {};
+  const style = VALID_PRONOUN_STYLES.includes(row.pronoun_style) ? row.pronoun_style : DEFAULT_PRONOUN_STYLE;
+  const ten = (row.nickname || "").trim() || lastNameOf(row.full_name) || "bạn";
+  return { style, ten, lastLines: row.mentor_last_lines || {} };
+}
+
+async function persistLastLines(studentId, lastLines) {
+  await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}`, {
+    method: "PATCH",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ mentor_last_lines: lastLines }),
+  }).catch((e) => console.error("mentor.js persistLastLines error:", e));
+}
+
+// Nhật ký sự kiện (mục 3.4 điểm 4 Đợt 3) — dữ liệu bổ sung hồ sơ năng lực, KHÔNG dùng để tự
+// kích hoạt phản hồi. Fire-and-forget: lỗi ghi log không được làm hỏng luồng chính.
+async function logMentorEvent(studentId, eventType, context) {
+  fetch(`${SUPABASE_URL}/rest/v1/mentor_events`, {
+    method: "POST",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: studentId, event_type: eventType, context: context || {} }),
+  }).catch((e) => console.error("mentor.js logMentorEvent error:", e));
 }
 
 // ============================================================
@@ -184,32 +229,44 @@ async function decideAction(studentId) {
 // với ai khác không? Nếu còn đúng -> chưa đạt, phải thêm số liệu thật.
 // ============================================================
 
-function buildMentorCard(action, studentName) {
-  const hi = studentName ? `Chào ${studentName}, ` : "Chào bạn, ";
+// Nhãn nút BẤM CỐ ĐỊNH (không thuộc kho biến thể, giống "Học tiếp"/"Bạn cứ để tôi tự chọn
+// giúp" đã ghi trong README.md của kho) — chỉ câu chữ TƯỜNG THUẬT (title/body) mới lấy từ kho.
+function buildMentorCard(action, lineSession) {
+  const pick = (fragment, vars) => lineSession.pick(fragment, vars);
+  const ten = lineSession.ten;
 
   if (action.type === "continue_lesson") {
     const lessonTitle = action.lesson.title_vi;
+    const cta = pick("continue_lesson.cta", { ten, lesson_title: lessonTitle });
     if (action.goal && action.goalCounts) {
       const { completed, total } = action.goalCounts;
       return {
-        title: `${hi}bạn đang học "${action.goal.title}" — ${completed}/${total} bài rồi đó.`,
-        body: `Học tiếp bài "${lessonTitle}" nhé?`,
+        title: pick("continue_lesson.progress_with_goal", { ten, goal_title: action.goal.title, completed, total }),
+        body: cta,
         primary: { label: "Học tiếp", kind: "open_lesson", lessonId: action.lesson.id },
         secondary: { label: "Xem cả lộ trình", kind: "open_hub", goalId: action.goal.id },
       };
     }
     return {
-      title: `${hi}bạn đang học dở "${lessonTitle}" — đã làm ${action.exercisesDone}/${action.exercisesTotal} câu bài tập.`,
-      body: `Học tiếp cho xong nhé?`,
+      title: pick("continue_lesson.progress_no_goal", {
+        ten,
+        lesson_title: lessonTitle,
+        exercises_done: action.exercisesDone,
+        exercises_total: action.exercisesTotal,
+      }),
+      body: cta,
       primary: { label: "Học tiếp", kind: "open_lesson", lessonId: action.lesson.id },
       secondary: { label: "Xem thư viện", kind: "open_hub" },
     };
   }
 
   if (action.type === "review_lesson") {
+    const point = pick("review_lesson.point", { ten, grammar_tag: action.grammarTag, wrong: action.wrong, total: action.total });
+    const reassure = pick("review_lesson.reassure", {});
+    const cta = pick("review_lesson.cta", { ten, lesson_title: action.lesson.title_vi });
     return {
-      title: `${hi}gần đây bạn sai ${action.wrong}/${action.total} câu về "${action.grammarTag}".`,
-      body: `Ôn lại trong bài "${action.lesson.title_vi}" nhé?`,
+      title: point,
+      body: `${reassure} ${cta}`,
       primary: { label: "Ôn lại bài này", kind: "open_lesson", lessonId: action.lesson.id },
       secondary: { label: "Học bài khác", kind: "open_hub" },
     };
@@ -217,17 +274,18 @@ function buildMentorCard(action, studentName) {
 
   if (action.type === "next_slot") {
     return {
-      title: `${hi}bạn đã học ${action.completed}/${action.goal.lesson_count} bài trong "${action.goal.title}".`,
-      body: `Sẵn sàng học bài mới chưa?`,
+      title: pick("next_slot.progress", { ten, goal_title: action.goal.title, completed: action.completed, lesson_count: action.goal.lesson_count }),
+      body: pick("next_slot.cta", { ten }),
       primary: { label: "Học bài mới", kind: "next_lesson", goalId: action.goal.id },
       secondary: { label: "Xem lại bài cũ", kind: "open_hub", goalId: action.goal.id },
     };
   }
 
   // prompt_new_goal — người dùng chưa từng có mục tiêu nào, dẫn thẳng xuống nút (+) (mục 6.2).
+  const greeting = ten && ten !== "bạn" ? pick("new_goal.named_opener", { ten }) : pick("new_goal.blank_greeting", {});
   return {
-    title: `${hi}mình là Mentor AI.`,
-    body: `Kể mình nghe bạn muốn học tiếng Anh để làm gì, mình chuẩn bị lộ trình riêng cho bạn.`,
+    title: greeting,
+    body: pick("shared.invite_goal", { ten }),
     primary: { label: "Bắt đầu", kind: "open_goal_flow" },
     secondary: null,
   };
@@ -239,29 +297,57 @@ function buildMentorCard(action, studentName) {
 
 export async function mentor_get_action(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  const [action, studentName] = await Promise.all([decideAction(ctx.studentId), getStudentName(ctx.studentId)]);
-  const card = buildMentorCard(action, studentName);
+  const [action, lineCtx] = await Promise.all([decideAction(ctx.studentId), getMentorLineContext(ctx.studentId)]);
+  const session = createLineSession(lineCtx.style, lineCtx.lastLines, lineCtx.ten);
+  const card = buildMentorCard(action, session);
+  await persistLastLines(ctx.studentId, session.getUpdatedLastLines());
+  logMentorEvent(ctx.studentId, "mentor_opened", { action: action.type });
   return { content: JSON.stringify({ action: action.type, card }) };
 }
 
 // Bước 0 (mục 6.3): chặn CÓ ĐIỀU KIỆN khi bấm nút (+) — chỉ tính, không tự ý chặn (client tự
-// quyết định có hiện màn chặn hay bỏ qua thẳng Bước 1). Không gọi AI.
+// quyết định có hiện màn chặn hay bỏ qua thẳng Bước 1). Không gọi AI. Gộp CHUNG 1 lượt gọi với
+// "màn nhớ từ khoá cũ" (mục 3.4 điểm 2 Đợt 3: Trường hợp A/B) + câu mời Bước 1 (shared.invite_goal)
+// để luồng mentorGoal.js chỉ cần 1 round-trip trước khi vào Bước 1/màn B, KHÔNG thêm action riêng.
 export async function mentor_check_goal_gate(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  const goal = await getMostRecentActiveGoal(ctx.studentId);
-  if (!goal || !goal.lesson_count) return { content: JSON.stringify({ shouldGate: false }) };
-  const accessed = await goalProgressCounts(ctx.studentId, goal.id, {});
-  const pct = accessed / goal.lesson_count;
-  if (pct >= GOAL_LOW_ACCESS_THRESHOLD) return { content: JSON.stringify({ shouldGate: false }) };
-  const remaining = goal.lesson_count - accessed;
-  return {
-    content: JSON.stringify({
-      shouldGate: true,
-      goalTitle: goal.title,
-      remaining,
-      message: `Bạn còn ${remaining} bài chưa học ở lộ trình "${goal.title}" đó. Học thêm mục tiêu mới sẽ tách sự tập trung — bạn có chắc muốn bắt đầu cái mới không?`,
-    }),
-  };
+  const [gateGoal, latestGoalRows, lineCtx] = await Promise.all([
+    getMostRecentActiveGoal(ctx.studentId),
+    restGet(`learning_goals?user_id=eq.${ctx.studentId}&order=created_at.desc&limit=1&select=raw_keywords,level,occupation_profile`),
+    getMentorLineContext(ctx.studentId),
+  ]);
+  const session = createLineSession(lineCtx.style, lineCtx.lastLines, lineCtx.ten);
+  const ten = session.ten;
+
+  const result = { shouldGate: false, hasHistory: false, inviteLine: session.pick("shared.invite_goal", { ten }) };
+
+  if (gateGoal?.lesson_count) {
+    const accessed = await goalProgressCounts(ctx.studentId, gateGoal.id, {});
+    const pct = accessed / gateGoal.lesson_count;
+    if (pct < GOAL_LOW_ACCESS_THRESHOLD) {
+      const remaining = gateGoal.lesson_count - accessed;
+      const status = session.pick("gate.status", { ten, goal_title: gateGoal.title, remaining });
+      const reason = session.pick("gate.reason", {});
+      result.shouldGate = true;
+      result.goalTitle = gateGoal.title;
+      result.remaining = remaining;
+      result.message = `${status} ${reason}`;
+    }
+  }
+
+  const latestGoal = latestGoalRows?.[0];
+  if (latestGoal) {
+    const profile = latestGoal.occupation_profile;
+    const occupation = profile?.is_general ? "giao tiếp tổng quát" : profile?.merged_occupation;
+    result.hasHistory = true;
+    result.resumeTop = session.pick("resume_goal.resume_top", { ten, occupation, scope: profile?.primary_communication_scope });
+    result.resumeBottom = session.pick("resume_goal.resume_bottom", { ten });
+    result.rawKeywords = latestGoal.raw_keywords || "";
+    result.level = latestGoal.level || null;
+  }
+
+  await persistLastLines(ctx.studentId, session.getUpdatedLastLines());
+  return { content: JSON.stringify(result) };
 }
 
 // AI CALL #1/2 (mục 5 Đợt 3) — chân dung nghề, TÁI DÙNG NGUYÊN VẸN skin.js.
@@ -271,10 +357,10 @@ export async function mentor_infer_goal(data, ctx) {
   if (!rawText) return { error: "Thiếu nội dung mục tiêu.", status: 400 };
 
   console.log("[MENTOR_AI_CALL] profile_inference", { studentId: ctx.studentId });
-  // 3 từ khoá field/industry/product của skin.js gộp thành 1 câu trả lời tự do của người
-  // dùng ("Kể mình nghe, bạn muốn học tiếng Anh để làm gì?") — không có 3 ô nhập riêng ở
-  // luồng Mentor (khác form "Tạo bài học" cũ), nên dồn hết vào "industry" (nghĩa rộng nhất
-  // trong 3 trường của skin.js) để chân dung nghề suy luận có tối đa ngữ cảnh.
+  // 3 từ khoá field/industry/product của skin.js gộp thành 1 đoạn trả lời tự do của người dùng
+  // ở Bước 1 (shared.invite_goal trong kho, KHÔNG phải form 3 ô riêng như "Tạo bài học" cũ) —
+  // dồn hết vào "industry" (nghĩa rộng nhất trong 3 trường của skin.js) để chân dung nghề suy
+  // luận có tối đa ngữ cảnh.
   const result = await generateOccupationProfile({ field: "", industry: rawText, product: "" });
   if (result.status !== "ok") {
     // KHÔNG coi là lỗi HTTP — đây là 1 kết quả hợp lệ của lượt suy luận (mục "needs_user_question"
@@ -283,43 +369,88 @@ export async function mentor_infer_goal(data, ctx) {
     return { content: JSON.stringify({ status: "needs_user_question" }) };
   }
   const occupationProfile = result.data.occupation_profile;
+
+  // Câu "nói lại bằng lời" ở Bước 3 (renderConfirm trong mentorGoal.js) — bọc quanh dữ liệu AI
+  // THẬT bằng confirm_wrapper.open/close (kho), câu giữa dùng NGUYÊN VĂN occupation_profile,
+  // không nằm trong kho biến thể (xem note trong confirm_wrapper.json).
+  const lineCtx = await getMentorLineContext(ctx.studentId);
+  const session = createLineSession(lineCtx.style, lineCtx.lastLines, lineCtx.ten);
+  const open = session.pick("confirm_wrapper.open", { ten: session.ten });
+  const close = session.pick("confirm_wrapper.close", { ten: session.ten });
+  const middle = `Học tiếng Anh cho ${occupationProfile.merged_occupation}, tập trung ${occupationProfile.primary_communication_scope}.`;
+  await persistLastLines(ctx.studentId, session.getUpdatedLastLines());
+
   return {
     content: JSON.stringify({
       status: "ok",
       occupation_profile: occupationProfile,
       confirmation: buildConfirmationDisplay(occupationProfile),
+      confirm_text: `${open} ${middle} ${close}`,
     }),
   };
 }
 
-// Không gọi AI — chỉ lưu kết quả Bước 3 đã được người dùng xác nhận.
-export async function mentor_create_goal(data, ctx) {
-  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  const profile = data.occupation_profile;
-  if (!profile?.merged_occupation) return { error: "Thiếu chân dung nghề.", status: 400 };
-  const display = buildConfirmationDisplay(profile);
-  const level = VALID_LEVELS.includes(data.level) ? data.level : null;
+// occupation_profile "chung" (GENERAL_OCCUPATION_PROFILE) không có merged_occupation cho
+// buildConfirmationDisplay của skin.js đọc (hàm đó KHÔNG được sửa) — tự dựng hiển thị riêng.
+function buildGoalConfirmationDisplay(profile) {
+  if (profile?.is_general) {
+    return { title_line: "Giao tiếp tổng quát", topic_line: `Chủ đề: ${profile.primary_communication_scope}`, invite_line: "Mời bạn học" };
+  }
+  return buildConfirmationDisplay(profile);
+}
 
+async function insertLearningGoal(studentId, profile, rawKeywords, level) {
+  const display = buildGoalConfirmationDisplay(profile);
+  const validLevel = VALID_LEVELS.includes(level) ? level : null;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals`, {
     method: "POST",
     headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({
-      user_id: ctx.studentId,
+      user_id: studentId,
       title: display.title_line,
       topic_line: display.topic_line,
-      raw_keywords: (data.raw_keywords || "").slice(0, 500) || null,
-      level,
+      raw_keywords: (rawKeywords || "").slice(0, 500) || null,
+      level: validLevel,
       occupation_profile: profile,
       status: "active",
       lesson_count: 0,
     }),
   });
   if (!r.ok) {
-    console.error("mentor_create_goal insert error:", r.status, await r.text().catch(() => ""));
-    return { error: "Tạo mục tiêu thất bại, vui lòng thử lại.", status: 502 };
+    console.error("mentor.js insertLearningGoal error:", r.status, await r.text().catch(() => ""));
+    return null;
   }
   const rows = await r.json();
-  return { content: JSON.stringify({ goal: rows?.[0] || null, confirmation: display }) };
+  const goal = rows?.[0] || null;
+  if (goal) logMentorEvent(studentId, "goal_created", { goal_id: goal.id, is_general: !!profile?.is_general });
+  return { goal, confirmation: display };
+}
+
+// Không gọi AI — chỉ lưu kết quả Bước 3 đã được người dùng xác nhận.
+export async function mentor_create_goal(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const profile = data.occupation_profile;
+  if (!profile?.merged_occupation && !profile?.is_general) return { error: "Thiếu chân dung nghề.", status: 400 };
+  const result = await insertLearningGoal(ctx.studentId, profile, data.raw_keywords, data.level);
+  if (!result) return { error: "Tạo mục tiêu thất bại, vui lòng thử lại.", status: 502 };
+  return { content: JSON.stringify(result) };
+}
+
+// Không gọi AI — "Bạn cứ để tôi tự chọn giúp" khi input rỗng (mục 3.3 Đợt 3, đã chốt với Minh
+// 2026-07-21): CÓ lịch sử -> lặp lại occupation_profile của mục tiêu gần nhất (không gọi AI lại,
+// giữ đúng luật "chỉ 2 điểm gọi AI"); TRẮNG hoàn toàn -> GENERAL_OCCUPATION_PROFILE
+// (skin_general.json). Bỏ qua Bước 2/3 (chọn cấp độ/xác nhận bằng lời) vì không có gì mới để
+// hỏi lại — đúng tinh thần "bấm 1 phát là đi luôn" của nút này.
+export async function mentor_auto_goal(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const rows = await restGet(
+    `learning_goals?user_id=eq.${ctx.studentId}&order=created_at.desc&limit=1&select=occupation_profile,level,raw_keywords`
+  );
+  const prior = rows?.[0];
+  const profile = prior?.occupation_profile || GENERAL_OCCUPATION_PROFILE;
+  const result = await insertLearningGoal(ctx.studentId, profile, prior?.raw_keywords, prior?.level);
+  if (!result) return { error: "Tạo mục tiêu thất bại, vui lòng thử lại.", status: 502 };
+  return { content: JSON.stringify(result) };
 }
 
 // AI CALL #2/2 (mục 5 Đợt 3) — sinh 1 bài học thật, TÁI DÙNG NGUYÊN VẸN generate_lesson()
@@ -330,9 +461,21 @@ export async function mentor_next_lesson(data, ctx) {
   const goal = goalRows?.[0];
   if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
 
-  const angle = MENTOR_SITUATION_ANGLES[goal.lesson_count % MENTOR_SITUATION_ANGLES.length];
   const contentType = goal.lesson_count % 2 === 0 ? "reading" : "dialogue";
   const level = goal.level || DEFAULT_LEVEL_WHEN_UNSET;
+  const isGeneral = goal.occupation_profile?.is_general === true;
+
+  let topic, industry, termDensity;
+  if (isGeneral) {
+    topic = pickGeneralTopic(level, goal.lesson_count);
+    industry = "";
+    termDensity = 0;
+  } else {
+    const angle = MENTOR_SITUATION_ANGLES[goal.lesson_count % MENTOR_SITUATION_ANGLES.length];
+    topic = `${goal.occupation_profile.merged_occupation}: ${angle}`;
+    industry = goal.occupation_profile.merged_occupation;
+    termDensity = MENTOR_TERM_DENSITY;
+  }
 
   console.log("[MENTOR_AI_CALL] generate_lesson (next_slot)", { studentId: ctx.studentId, goalId: goal.id });
   const result = await generate_lesson(
@@ -340,13 +483,13 @@ export async function mentor_next_lesson(data, ctx) {
       description: "",
       level,
       content_type: contentType,
-      topic: `${goal.occupation_profile.merged_occupation}: ${angle}`,
+      topic,
       length_words: MENTOR_LESSON_LENGTH_WORDS,
       field: "",
-      industry: goal.occupation_profile.merged_occupation,
+      industry,
       product: "",
       situation: "",
-      term_density: MENTOR_TERM_DENSITY,
+      term_density: termDensity,
       goal_id: goal.id,
     },
     ctx
@@ -361,5 +504,86 @@ export async function mentor_next_lesson(data, ctx) {
     body: JSON.stringify({ lesson_count: goal.lesson_count + 1 }),
   }).catch((e) => console.error("mentor_next_lesson lesson_count update error:", e));
 
+  logMentorEvent(ctx.studentId, "lesson_generated", { goal_id: goal.id, is_general: isGeneral });
   return result;
+}
+
+// Mục tiêu "chung" (không ngành cụ thể) chọn chủ đề bằng CODE thuần, xoay vòng qua toàn bộ
+// (khung, chủ đề) của skin_general.json — GIỐNG cơ chế MENTOR_SITUATION_ANGLES cho mục tiêu
+// ngành, KHÔNG dùng generateLevelTopicsForAllLevels (Lượt B của skin.js, 5 lượt gọi AI riêng,
+// nằm NGOÀI 2 điểm được phép gọi AI của Đợt 3 mục 5).
+function pickGeneralTopic(level, lessonCount) {
+  const levels = loadSkinGeneral();
+  const frameMap = levels[level] || levels[DEFAULT_LEVEL_WHEN_UNSET];
+  const flat = [];
+  for (const topics of Object.values(frameMap)) {
+    for (const topic of topics) flat.push(topic);
+  }
+  return flat[lessonCount % flat.length];
+}
+
+// ============================================================
+// MÀN NGHI THỨC XƯNG HÔ (mục 3.2/3.4 điểm 1 Đợt 3) — hỏi ĐÚNG 1 LẦN/user, đầu tiên khi chạm
+// Mentor. KHÔNG có "để Mentor tự chọn giúp" ở màn này (đã chốt với Minh 2026-07-21) — người
+// dùng phải TỰ chọn 1 trong 4 chip; không chọn (điều hướng đi chỗ khác) thì mặc định 'toi_ban'
+// (DEFAULT_PRONOUN_STYLE), không có bước "xác nhận lại bằng lời" vì lựa chọn đã tường minh.
+// ============================================================
+
+// Đọc trạng thái để client quyết định có hiện màn nghi thức hay không — không gọi AI.
+export async function mentor_get_pronoun_state(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const rows = await restGet(`students?id=eq.${ctx.studentId}&select=full_name,nickname,pronoun_style,pronoun_asked_at`);
+  const row = rows?.[0] || {};
+  return {
+    content: JSON.stringify({
+      asked: !!row.pronoun_asked_at,
+      pronounStyle: row.pronoun_style || null,
+      ten: (row.nickname || "").trim() || lastNameOf(row.full_name) || null,
+    }),
+  };
+}
+
+// Đánh dấu "đã hiện màn" — gọi ngay khi màn nghi thức MOUNT (không đợi người dùng bấm gì), đúng
+// nghĩa "hỏi đúng 1 lần" = hiện đúng 1 lần, không phải "chọn đúng 1 lần".
+export async function mentor_mark_pronoun_asked(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}&pronoun_asked_at=is.null`, {
+    method: "PATCH",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ pronoun_asked_at: new Date().toISOString() }),
+  }).catch((e) => console.error("mentor_mark_pronoun_asked error:", e));
+  return { content: JSON.stringify({ ok: true }) };
+}
+
+// Người dùng bấm 1 trong 4 chip — lưu thẳng, không gọi AI, không câu xác nhận thêm (lựa chọn đã
+// tường minh do chính người dùng bấm).
+export async function mentor_set_pronoun_style(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!VALID_PRONOUN_STYLES.includes(data.pronoun_style)) return { error: "Cách xưng hô không hợp lệ.", status: 400 };
+  const nickname = data.pronoun_style === "toi_ten" ? (data.nickname || "").trim().slice(0, 50) || null : null;
+  await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}`, {
+    method: "PATCH",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ pronoun_style: data.pronoun_style, nickname, pronoun_asked_at: new Date().toISOString() }),
+  }).catch((e) => console.error("mentor_set_pronoun_style error:", e));
+  logMentorEvent(ctx.studentId, "pronoun_style_set", { pronoun_style: data.pronoun_style });
+  return { content: JSON.stringify({ ok: true }) };
+}
+
+// Câu chờ dùng chung (transient.json) — cho những màn chờ ngắn cần đúng giọng xưng hô đã chọn
+// nhưng không đi qua mentor_get_action/mentor_check_goal_gate. Whitelist "key" -> mảnh, KHÔNG
+// nhận thẳng tên mảnh từ client (tránh client dò tên mảnh khác không dành cho màn chờ).
+const TRANSIENT_LINE_KEYS = {
+  loading_first_lesson: "transient.loading_first_lesson",
+};
+
+export async function mentor_get_transient_line(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const fragmentPath = TRANSIENT_LINE_KEYS[data.key];
+  if (!fragmentPath) return { error: "Không rõ loại câu chờ.", status: 400 };
+  const lineCtx = await getMentorLineContext(ctx.studentId);
+  const session = createLineSession(lineCtx.style, lineCtx.lastLines, lineCtx.ten);
+  const text = session.pick(fragmentPath, { ten: session.ten });
+  await persistLastLines(ctx.studentId, session.getUpdatedLastLines());
+  return { content: JSON.stringify({ text }) };
 }

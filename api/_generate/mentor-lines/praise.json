@@ -1,0 +1,119 @@
+{
+  "note": "Tình huống 10 (MỚI, mục 4.10 file này) — trigger CLIENT-SIDE ngay khoảnh khắc hoàn thành (lesson.js/mentorGoal.js đã có đủ dữ liệu tại đúng thời điểm đó), KHÔNG qua mentor_get_action/lớp Quyết định backend, đúng phạm vi 'không động lớp Quyết định'.",
+  "single_lesson": {
+    "placeholders": [
+      "ten",
+      "lesson_title",
+      "correct_count",
+      "exercises_total"
+    ],
+    "toi_ten": [
+      "{ten} vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó!",
+      "Xong bài \"{lesson_title}\" rồi, {ten} làm đúng {correct_count}/{exercises_total} câu, quá ổn.",
+      "{ten} vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
+      "\"{lesson_title}\" xong rồi, {ten} đúng {correct_count}/{exercises_total} câu, tốt lắm.",
+      "{ten} làm đúng {correct_count}/{exercises_total} câu ở bài \"{lesson_title}\" — ấn tượng đó.",
+      "Hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, {ten} làm tốt lắm.",
+      "Bài \"{lesson_title}\" {ten} vừa hoàn thành, đúng {correct_count} trên {exercises_total} câu.",
+      "{ten} kết thúc bài \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, khá đó.",
+      "Xong rồi đó {ten} — \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu.",
+      "{ten} vừa hoàn tất \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" — {ten} vừa xong với {correct_count}/{exercises_total} câu đúng, giỏi ghê."
+    ],
+    "toi_anh": [
+      "Anh vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó!",
+      "Xong bài \"{lesson_title}\" rồi, anh làm đúng {correct_count}/{exercises_total} câu, quá ổn.",
+      "Anh vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
+      "\"{lesson_title}\" xong rồi, anh đúng {correct_count}/{exercises_total} câu, tốt lắm.",
+      "Anh làm đúng {correct_count}/{exercises_total} câu ở bài \"{lesson_title}\" — ấn tượng đó.",
+      "Hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, anh làm tốt lắm.",
+      "Bài \"{lesson_title}\" anh vừa hoàn thành, đúng {correct_count} trên {exercises_total} câu.",
+      "Anh kết thúc bài \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, khá đó.",
+      "Xong rồi đó anh — \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu.",
+      "Anh vừa hoàn tất \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" — anh vừa xong với {correct_count}/{exercises_total} câu đúng, giỏi ghê."
+    ],
+    "toi_chi": [
+      "Chị vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó!",
+      "Xong bài \"{lesson_title}\" rồi, chị làm đúng {correct_count}/{exercises_total} câu, quá ổn.",
+      "Chị vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
+      "\"{lesson_title}\" xong rồi, chị đúng {correct_count}/{exercises_total} câu, tốt lắm.",
+      "Chị làm đúng {correct_count}/{exercises_total} câu ở bài \"{lesson_title}\" — ấn tượng đó.",
+      "Hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, chị làm tốt lắm.",
+      "Bài \"{lesson_title}\" chị vừa hoàn thành, đúng {correct_count} trên {exercises_total} câu.",
+      "Chị kết thúc bài \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, khá đó.",
+      "Xong rồi đó chị — \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu.",
+      "Chị vừa hoàn tất \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" — chị vừa xong với {correct_count}/{exercises_total} câu đúng, giỏi ghê."
+    ],
+    "toi_ban": [
+      "Bạn vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — đỉnh đó!",
+      "Xong bài \"{lesson_title}\" rồi, bạn làm đúng {correct_count}/{exercises_total} câu, quá ngon.",
+      "Bạn vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
+      "\"{lesson_title}\" xong rồi, bạn đúng {correct_count}/{exercises_total} câu, tốt lắm nha.",
+      "Bạn làm đúng {correct_count}/{exercises_total} câu ở bài \"{lesson_title}\" — ấn tượng ghê.",
+      "Hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, bạn làm tốt lắm.",
+      "Bạn vừa xong xuôi \"{lesson_title}\", tỉ lệ đúng {correct_count}/{exercises_total} câu đó.",
+      "Bài \"{lesson_title}\" bạn vừa hoàn thành, đúng {correct_count} trên {exercises_total} câu.",
+      "Bạn kết thúc bài \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng, khá đó nha.",
+      "Xong rồi đó bạn — \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu.",
+      "Bạn vừa hoàn tất \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" — bạn vừa xong với {correct_count}/{exercises_total} câu đúng, đỉnh ghê."
+    ]
+  },
+  "goal_complete": {
+    "placeholders": [
+      "ten",
+      "goal_title",
+      "lesson_count"
+    ],
+    "toi_ten": [
+      "{ten} vừa hoàn thành trọn \"{goal_title}\" — đủ {lesson_count} bài luôn!",
+      "Xong hết \"{goal_title}\" rồi, {ten} đã học trọn {lesson_count} bài.",
+      "{ten} vừa hoàn tất cả {lesson_count} bài của \"{goal_title}\", tuyệt vời.",
+      "\"{goal_title}\" đã xong trọn vẹn, {ten} học đủ {lesson_count} bài rồi đó.",
+      "{ten} vừa chinh phục xong \"{goal_title}\" với {lesson_count} bài.",
+      "Hoàn thành trọn \"{goal_title}\" — {ten} đã đi hết {lesson_count} bài.",
+      "{ten} vừa khép lại \"{goal_title}\" sau {lesson_count} bài.",
+      "\"{goal_title}\" — {ten} đã học xong toàn bộ {lesson_count} bài, giỏi lắm.",
+      "{ten} hoàn thành cả lộ trình \"{goal_title}\", đủ {lesson_count} bài.",
+      "Chúc mừng {ten}, \"{goal_title}\" đã xong trọn {lesson_count} bài."
+    ],
+    "toi_anh": [
+      "Anh vừa hoàn thành trọn \"{goal_title}\" — đủ {lesson_count} bài luôn!",
+      "Xong hết \"{goal_title}\" rồi, anh đã học trọn {lesson_count} bài.",
+      "Anh vừa hoàn tất cả {lesson_count} bài của \"{goal_title}\", tuyệt vời.",
+      "\"{goal_title}\" đã xong trọn vẹn, anh học đủ {lesson_count} bài rồi đó.",
+      "Anh vừa chinh phục xong \"{goal_title}\" với {lesson_count} bài.",
+      "Hoàn thành trọn \"{goal_title}\" — anh đã đi hết {lesson_count} bài.",
+      "Anh vừa khép lại \"{goal_title}\" sau {lesson_count} bài.",
+      "\"{goal_title}\" — anh đã học xong toàn bộ {lesson_count} bài, giỏi lắm.",
+      "Anh hoàn thành cả lộ trình \"{goal_title}\", đủ {lesson_count} bài.",
+      "Chúc mừng anh, \"{goal_title}\" đã xong trọn {lesson_count} bài."
+    ],
+    "toi_chi": [
+      "Chị vừa hoàn thành trọn \"{goal_title}\" — đủ {lesson_count} bài luôn!",
+      "Xong hết \"{goal_title}\" rồi, chị đã học trọn {lesson_count} bài.",
+      "Chị vừa hoàn tất cả {lesson_count} bài của \"{goal_title}\", tuyệt vời.",
+      "\"{goal_title}\" đã xong trọn vẹn, chị học đủ {lesson_count} bài rồi đó.",
+      "Chị vừa chinh phục xong \"{goal_title}\" với {lesson_count} bài.",
+      "Hoàn thành trọn \"{goal_title}\" — chị đã đi hết {lesson_count} bài.",
+      "Chị vừa khép lại \"{goal_title}\" sau {lesson_count} bài.",
+      "\"{goal_title}\" — chị đã học xong toàn bộ {lesson_count} bài, giỏi lắm.",
+      "Chị hoàn thành cả lộ trình \"{goal_title}\", đủ {lesson_count} bài.",
+      "Chúc mừng chị, \"{goal_title}\" đã xong trọn {lesson_count} bài."
+    ],
+    "toi_ban": [
+      "Bạn vừa hoàn thành trọn \"{goal_title}\" — đủ {lesson_count} bài luôn!",
+      "Xong hết \"{goal_title}\" rồi, bạn đã học trọn {lesson_count} bài.",
+      "Bạn vừa hoàn tất cả {lesson_count} bài của \"{goal_title}\", đỉnh thật sự.",
+      "\"{goal_title}\" đã xong trọn vẹn, bạn học đủ {lesson_count} bài rồi đó.",
+      "Bạn vừa chinh phục xong \"{goal_title}\" với {lesson_count} bài.",
+      "Hoàn thành trọn \"{goal_title}\" — bạn đã đi hết {lesson_count} bài.",
+      "Bạn vừa khép lại \"{goal_title}\" sau {lesson_count} bài.",
+      "\"{goal_title}\" — bạn đã học xong toàn bộ {lesson_count} bài, giỏi lắm.",
+      "Bạn hoàn thành cả lộ trình \"{goal_title}\", đủ {lesson_count} bài.",
+      "Chúc mừng bạn, \"{goal_title}\" đã xong trọn {lesson_count} bài."
+    ]
+  }
+}

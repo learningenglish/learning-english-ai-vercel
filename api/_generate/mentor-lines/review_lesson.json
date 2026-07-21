@@ -1,0 +1,188 @@
+{
+  "point": {
+    "placeholders": [
+      "ten",
+      "grammar_tag",
+      "wrong",
+      "total"
+    ],
+    "toi_ten": [
+      "{ten} hay sai ở \"{grammar_tag}\" gần đây — {wrong}/{total} câu đó.",
+      "Điểm \"{grammar_tag}\" {ten} đang sai khá nhiều, {wrong}/{total} câu.",
+      "Gần đây {ten} vấp \"{grammar_tag}\" {wrong} trên {total} câu.",
+      "\"{grammar_tag}\" là chỗ {ten} hay nhầm nhất, {wrong}/{total} câu gần đây.",
+      "{ten} sai \"{grammar_tag}\" {wrong}/{total} câu trong mấy bài gần đây.",
+      "Nhìn lại thì \"{grammar_tag}\" đang là điểm cần chú ý của {ten}, {wrong}/{total} câu.",
+      "{wrong} trên {total} câu gần đây {ten} sai đều rơi vào \"{grammar_tag}\".",
+      "\"{grammar_tag}\" — {ten} còn sai {wrong}/{total} câu ở điểm này.",
+      "{ten} đang lấn cấn ở \"{grammar_tag}\", sai {wrong}/{total} câu.",
+      "Có vẻ \"{grammar_tag}\" đang làm khó {ten}, {wrong}/{total} câu sai gần đây.",
+      "{ten} sai khá đều ở \"{grammar_tag}\" — {wrong}/{total} câu.",
+      "Điểm cần chú ý của {ten} là \"{grammar_tag}\", {wrong}/{total} câu sai."
+    ],
+    "toi_anh": [
+      "Anh hay sai ở \"{grammar_tag}\" gần đây — {wrong}/{total} câu đó.",
+      "Điểm \"{grammar_tag}\" anh đang sai khá nhiều, {wrong}/{total} câu.",
+      "Gần đây anh vấp \"{grammar_tag}\" {wrong} trên {total} câu.",
+      "\"{grammar_tag}\" là chỗ anh hay nhầm nhất, {wrong}/{total} câu gần đây.",
+      "Anh sai \"{grammar_tag}\" {wrong}/{total} câu trong mấy bài gần đây.",
+      "Nhìn lại thì \"{grammar_tag}\" đang là điểm cần chú ý của anh, {wrong}/{total} câu.",
+      "{wrong} trên {total} câu gần đây anh sai đều rơi vào \"{grammar_tag}\".",
+      "\"{grammar_tag}\" — anh còn sai {wrong}/{total} câu ở điểm này.",
+      "Anh đang lấn cấn ở \"{grammar_tag}\", sai {wrong}/{total} câu.",
+      "Có vẻ \"{grammar_tag}\" đang làm khó anh, {wrong}/{total} câu sai gần đây.",
+      "Anh sai khá đều ở \"{grammar_tag}\" — {wrong}/{total} câu.",
+      "Điểm cần chú ý của anh là \"{grammar_tag}\", {wrong}/{total} câu sai."
+    ],
+    "toi_chi": [
+      "Chị hay sai ở \"{grammar_tag}\" gần đây — {wrong}/{total} câu đó.",
+      "Điểm \"{grammar_tag}\" chị đang sai khá nhiều, {wrong}/{total} câu.",
+      "Gần đây chị vấp \"{grammar_tag}\" {wrong} trên {total} câu.",
+      "\"{grammar_tag}\" là chỗ chị hay nhầm nhất, {wrong}/{total} câu gần đây.",
+      "Chị sai \"{grammar_tag}\" {wrong}/{total} câu trong mấy bài gần đây.",
+      "Nhìn lại thì \"{grammar_tag}\" đang là điểm cần chú ý của chị, {wrong}/{total} câu.",
+      "{wrong} trên {total} câu gần đây chị sai đều rơi vào \"{grammar_tag}\".",
+      "\"{grammar_tag}\" — chị còn sai {wrong}/{total} câu ở điểm này.",
+      "Chị đang lấn cấn ở \"{grammar_tag}\", sai {wrong}/{total} câu.",
+      "Có vẻ \"{grammar_tag}\" đang làm khó chị, {wrong}/{total} câu sai gần đây.",
+      "Chị sai khá đều ở \"{grammar_tag}\" — {wrong}/{total} câu.",
+      "Điểm cần chú ý của chị là \"{grammar_tag}\", {wrong}/{total} câu sai."
+    ],
+    "toi_ban": [
+      "Bạn hay sai ở \"{grammar_tag}\" gần đây — {wrong}/{total} câu đó.",
+      "Điểm \"{grammar_tag}\" bạn đang sai khá nhiều, {wrong}/{total} câu.",
+      "Gần đây bạn vấp \"{grammar_tag}\" {wrong} trên {total} câu.",
+      "\"{grammar_tag}\" là chỗ bạn hay nhầm nhất, {wrong}/{total} câu gần đây.",
+      "Bạn sai \"{grammar_tag}\" {wrong}/{total} câu trong mấy bài gần đây.",
+      "Nhìn lại thì \"{grammar_tag}\" đang là điểm cần chú ý của bạn, {wrong}/{total} câu.",
+      "{wrong} trên {total} câu gần đây bạn sai đều rơi vào \"{grammar_tag}\".",
+      "\"{grammar_tag}\" — bạn còn sai {wrong}/{total} câu ở điểm này.",
+      "Bạn đang lấn cấn ở \"{grammar_tag}\", sai {wrong}/{total} câu.",
+      "Có vẻ \"{grammar_tag}\" đang làm khó bạn, {wrong}/{total} câu sai gần đây.",
+      "Bạn sai khá đều ở \"{grammar_tag}\" — {wrong}/{total} câu.",
+      "Điểm cần chú ý của bạn là \"{grammar_tag}\", {wrong}/{total} câu sai."
+    ]
+  },
+  "reassure": {
+    "placeholders": [],
+    "toi_ten": [
+      "Không sao, ôn lại chút là chắc ngay thôi.",
+      "Ai học cũng có điểm cần luyện thêm mà.",
+      "Chuyện bình thường, ôn lại là ổn liền.",
+      "Chỗ này luyện thêm chút là quen tay ngay.",
+      "Không có gì đáng lo, ôn lại là nhớ lại thôi.",
+      "Điểm này ôn vài lần là thấm ngay.",
+      "Bình thường thôi, ai cũng cần ôn lại đôi chỗ.",
+      "Ôn lại phát này là chắc kiến thức luôn.",
+      "Không việc gì phải ngại, ai cũng có lúc quên.",
+      "Luyện lại chút xíu là ổn thôi mà.",
+      "Đây là bước bình thường trong quá trình học thôi.",
+      "Ôn lại là nhớ ngay ấy mà."
+    ],
+    "toi_anh": [
+      "Không sao, ôn lại chút là anh chắc ngay thôi.",
+      "Ai học cũng có điểm cần luyện thêm mà anh.",
+      "Chuyện bình thường, ôn lại là ổn liền.",
+      "Chỗ này luyện thêm chút là anh quen tay ngay.",
+      "Không có gì đáng lo, ôn lại là nhớ lại thôi.",
+      "Điểm này ôn vài lần là anh thấm ngay.",
+      "Bình thường thôi, ai cũng cần ôn lại đôi chỗ.",
+      "Ôn lại phát này là anh chắc kiến thức luôn.",
+      "Không việc gì phải ngại, ai cũng có lúc quên anh à.",
+      "Luyện lại chút xíu là ổn thôi mà.",
+      "Đây là bước bình thường trong quá trình học thôi anh.",
+      "Ôn lại là anh nhớ ngay ấy mà."
+    ],
+    "toi_chi": [
+      "Không sao, ôn lại chút là chị chắc ngay thôi.",
+      "Ai học cũng có điểm cần luyện thêm mà chị.",
+      "Chuyện bình thường, ôn lại là ổn liền.",
+      "Chỗ này luyện thêm chút là chị quen tay ngay.",
+      "Không có gì đáng lo, ôn lại là nhớ lại thôi.",
+      "Điểm này ôn vài lần là chị thấm ngay.",
+      "Bình thường thôi, ai cũng cần ôn lại đôi chỗ.",
+      "Ôn lại phát này là chị chắc kiến thức luôn.",
+      "Không việc gì phải ngại, ai cũng có lúc quên chị à.",
+      "Luyện lại chút xíu là ổn thôi mà.",
+      "Đây là bước bình thường trong quá trình học thôi chị.",
+      "Ôn lại là chị nhớ ngay ấy mà."
+    ],
+    "toi_ban": [
+      "Không sao đâu, ôn lại chút là chắc liền à.",
+      "Ai học cũng có chỗ cần luyện thêm mà bạn.",
+      "Bình thường thôi, ôn phát là ổn ngay.",
+      "Chỗ này luyện thêm xíu là quen tay liền.",
+      "Đừng lo, ôn lại là nhớ lại ngay thôi.",
+      "Điểm này ôn vài lần là thấm liền à.",
+      "Bình thường mà, ai cũng cần ôn lại vài chỗ.",
+      "Ôn phát này là chắc kiến thức luôn nè.",
+      "Đừng ngại, ai cũng có lúc quên mà.",
+      "Luyện lại xíu là ổn thôi à.",
+      "Đây là bước bình thường khi học thôi mà.",
+      "Ôn lại là nhớ ngay á."
+    ]
+  },
+  "cta": {
+    "placeholders": [
+      "ten",
+      "lesson_title"
+    ],
+    "note_v2": "Viết lại sau vòng giám khảo lần 1 (mảnh cũ dạng câu hỏi bị loại toàn bộ vì đọc như chất vấn) — đổi thành câu khẳng định/mời điềm tĩnh, không dấu hỏi; lựa chọn ôn lại giao cho nút bấm UI (primary button 'Ôn lại bài này').",
+    "toi_ten": [
+      "\"{lesson_title}\" là chỗ tốt để {ten} ôn lại điểm này.",
+      "Ôn lại trong \"{lesson_title}\" là {ten} chắc ngay thôi.",
+      "{ten} có thể ôn lại điểm này ngay trong bài \"{lesson_title}\".",
+      "\"{lesson_title}\" vẫn còn đó để {ten} ôn lại khi cần.",
+      "Ôn lại chỗ này qua bài \"{lesson_title}\" sẽ giúp {ten} chắc kiến thức hơn.",
+      "{ten} ôn lại trong \"{lesson_title}\" là ổn ngay thôi.",
+      "Mở \"{lesson_title}\" ra ôn lại điểm này khi {ten} sẵn sàng.",
+      "\"{lesson_title}\" là bài phù hợp để {ten} luyện lại chỗ đó.",
+      "{ten} quay lại \"{lesson_title}\" ôn thêm chút là chắc liền.",
+      "Ôn lại điểm này trong \"{lesson_title}\" bất cứ lúc nào {ten} thấy tiện.",
+      "\"{lesson_title}\" đang chờ {ten} ôn lại đúng chỗ cần luyện.",
+      "{ten} ôn qua bài \"{lesson_title}\" một lượt là nhớ ngay."
+    ],
+    "toi_anh": [
+      "\"{lesson_title}\" là chỗ tốt để anh ôn lại điểm này.",
+      "Ôn lại trong \"{lesson_title}\" là anh chắc ngay thôi.",
+      "Anh có thể ôn lại điểm này ngay trong bài \"{lesson_title}\".",
+      "\"{lesson_title}\" vẫn còn đó để anh ôn lại khi cần.",
+      "Ôn lại chỗ này qua bài \"{lesson_title}\" sẽ giúp anh chắc kiến thức hơn.",
+      "Anh ôn lại trong \"{lesson_title}\" là ổn ngay thôi.",
+      "Mở \"{lesson_title}\" ra ôn lại điểm này khi anh sẵn sàng.",
+      "\"{lesson_title}\" là bài phù hợp để anh luyện lại chỗ đó.",
+      "Anh quay lại \"{lesson_title}\" ôn thêm chút là chắc liền.",
+      "Ôn lại điểm này trong \"{lesson_title}\" bất cứ lúc nào anh thấy tiện.",
+      "\"{lesson_title}\" đang chờ anh ôn lại đúng chỗ cần luyện.",
+      "Anh ôn qua bài \"{lesson_title}\" một lượt là nhớ ngay."
+    ],
+    "toi_chi": [
+      "\"{lesson_title}\" là chỗ tốt để chị ôn lại điểm này.",
+      "Ôn lại trong \"{lesson_title}\" là chị chắc ngay thôi.",
+      "Chị có thể ôn lại điểm này ngay trong bài \"{lesson_title}\".",
+      "\"{lesson_title}\" vẫn còn đó để chị ôn lại khi cần.",
+      "Ôn lại chỗ này qua bài \"{lesson_title}\" sẽ giúp chị chắc kiến thức hơn.",
+      "Chị ôn lại trong \"{lesson_title}\" là ổn ngay thôi.",
+      "Mở \"{lesson_title}\" ra ôn lại điểm này khi chị sẵn sàng.",
+      "\"{lesson_title}\" là bài phù hợp để chị luyện lại chỗ đó.",
+      "Chị quay lại \"{lesson_title}\" ôn thêm chút là chắc liền.",
+      "Ôn lại điểm này trong \"{lesson_title}\" bất cứ lúc nào chị thấy tiện.",
+      "\"{lesson_title}\" đang chờ chị ôn lại đúng chỗ cần luyện.",
+      "Chị ôn qua bài \"{lesson_title}\" một lượt là nhớ ngay."
+    ],
+    "toi_ban": [
+      "\"{lesson_title}\" là chỗ tốt để bạn ôn lại điểm này.",
+      "Ôn lại trong \"{lesson_title}\" là bạn chắc ngay thôi.",
+      "Bạn có thể ôn lại điểm này ngay trong bài \"{lesson_title}\".",
+      "\"{lesson_title}\" vẫn còn đó để bạn ôn lại khi cần.",
+      "Ôn lại chỗ này qua bài \"{lesson_title}\" sẽ giúp bạn chắc kiến thức hơn.",
+      "Bạn ôn lại trong \"{lesson_title}\" là ổn ngay thôi.",
+      "Mở \"{lesson_title}\" ra ôn lại điểm này khi bạn sẵn sàng.",
+      "\"{lesson_title}\" là bài phù hợp để bạn luyện lại chỗ đó.",
+      "Bạn quay lại \"{lesson_title}\" ôn thêm chút là chắc liền.",
+      "Ôn lại điểm này trong \"{lesson_title}\" bất cứ lúc nào bạn thấy tiện.",
+      "\"{lesson_title}\" đang chờ bạn ôn lại đúng chỗ cần luyện.",
+      "Bạn ôn qua bài \"{lesson_title}\" một lượt là nhớ ngay."
+    ]
+  }
+}

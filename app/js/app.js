@@ -13,6 +13,7 @@ import { renderLogin } from "./views/login.js";
 import { renderLessons } from "./views/lessons.js";
 import { renderMentorHub } from "./views/mentor.js";
 import { renderMentorGoalFlow } from "./views/mentorGoal.js";
+import { withPronounOnboarding } from "./views/mentorOnboarding.js";
 import { renderLessonDetail } from "./views/lesson.js";
 import { renderHistory } from "./views/history.js";
 import { renderStats } from "./views/stats.js";
@@ -35,8 +36,10 @@ const NAV_TABS = [
 registerRoute("/login", renderLogin);
 registerRoute("/lessons", renderLessons);
 registerRoute("/favorites", (mount) => renderLessons(mount, ["favorite"]));
-registerRoute("/mentor", renderMentorHub);
-registerRoute("/mentor-goal", renderMentorGoalFlow);
+// Cả 2 điểm vào Mentor AI đều đi qua màn nghi thức xưng hô 1 lần đầu tiên (mục 3.2/3.4 điểm 1
+// Đợt 3) — không đụng route/nav nào khác ngoài 2 route này.
+registerRoute("/mentor", (mount) => withPronounOnboarding(mount, renderMentorHub));
+registerRoute("/mentor-goal", (mount) => withPronounOnboarding(mount, renderMentorGoalFlow));
 registerRoute("/lesson", renderLessonDetail);
 registerRoute("/history", renderHistory);
 registerRoute("/stats", renderStats);

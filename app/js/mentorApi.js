@@ -37,3 +37,27 @@ export async function createGoal(occupationProfile, rawKeywords, level) {
 export async function generateNextLessonForGoal(goalId) {
   return callAndParse("mentor_next_lesson", { goal_id: goalId });
 }
+
+// Không gọi AI — "Bạn cứ để tôi tự chọn giúp" ở Bước 1 khi input rỗng (mục 3.3/3.4 Đợt 3).
+export async function autoCreateGoal() {
+  return callAndParse("mentor_auto_goal", {});
+}
+
+// ====== Màn nghi thức xưng hô (mục 3.2/3.4 điểm 1 Đợt 3) ======
+
+export async function getPronounState() {
+  return callAndParse("mentor_get_pronoun_state", {});
+}
+
+export async function markPronounAsked() {
+  return callAndParse("mentor_mark_pronoun_asked", {});
+}
+
+export async function setPronounStyle(pronounStyle, nickname) {
+  return callAndParse("mentor_set_pronoun_style", { pronoun_style: pronounStyle, nickname: nickname || null });
+}
+
+// Câu chờ ngắn dùng đúng giọng xưng hô đã chọn, không đi qua director card.
+export async function getTransientLine(key) {
+  return callAndParse("mentor_get_transient_line", { key });
+}

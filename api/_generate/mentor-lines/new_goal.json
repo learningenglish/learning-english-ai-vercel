@@ -1,0 +1,108 @@
+{
+  "named_opener": {
+    "note": "Tình huống 4 (mục 3 nhánh 2) — có tên, chưa có tiến độ. Cố ý viết KHÁC câu ở màn nghi thức xưng hô (không lặp lại 'trong thời gian tới tôi sẽ là người đồng hành...').",
+    "placeholders": [
+      "ten"
+    ],
+    "toi_ten": [
+      "{ten}, rất vui được đồng hành cùng {ten} từ đây.",
+      "Chào {ten}, tôi bắt đầu hành trình học cùng {ten} nhé.",
+      "{ten} ơi, tôi đợi để cùng {ten} lên kế hoạch học đây.",
+      "Rất vui vì {ten} đã ghé Mentor AI.",
+      "{ten}, tôi sẵn sàng đồng hành cùng {ten} rồi đây.",
+      "Chào mừng {ten} đến với hành trình học cùng tôi.",
+      "{ten} ơi, giờ là lúc tôi cùng {ten} vạch ra lộ trình học rồi.",
+      "Rất vui được làm người đồng hành của {ten}.",
+      "{ten}, tôi háo hức được cùng {ten} bắt đầu lắm.",
+      "Chào {ten}, hành trình học của {ten} bắt đầu từ đây nhé."
+    ],
+    "toi_anh": [
+      "Anh, rất vui được đồng hành cùng anh từ đây.",
+      "Chào anh, tôi bắt đầu hành trình học cùng anh nhé.",
+      "Anh ơi, tôi đợi để cùng anh lên kế hoạch học đây.",
+      "Rất vui vì anh đã ghé Mentor AI.",
+      "Anh, tôi sẵn sàng đồng hành cùng anh rồi đây.",
+      "Chào mừng anh đến với hành trình học cùng tôi.",
+      "Anh ơi, giờ là lúc tôi cùng anh vạch ra lộ trình học rồi.",
+      "Rất vui được làm người đồng hành của anh.",
+      "Anh, tôi háo hức được cùng anh bắt đầu lắm.",
+      "Chào anh, hành trình học của anh bắt đầu từ đây nhé."
+    ],
+    "toi_chi": [
+      "Chị, rất vui được đồng hành cùng chị từ đây.",
+      "Chào chị, tôi bắt đầu hành trình học cùng chị nhé.",
+      "Chị ơi, tôi đợi để cùng chị lên kế hoạch học đây.",
+      "Rất vui vì chị đã ghé Mentor AI.",
+      "Chị, tôi sẵn sàng đồng hành cùng chị rồi đây.",
+      "Chào mừng chị đến với hành trình học cùng tôi.",
+      "Chị ơi, giờ là lúc tôi cùng chị vạch ra lộ trình học rồi.",
+      "Rất vui được làm người đồng hành của chị.",
+      "Chị, tôi háo hức được cùng chị bắt đầu lắm.",
+      "Chào chị, hành trình học của chị bắt đầu từ đây nhé."
+    ],
+    "toi_ban": [
+      "Bạn ơi, rất vui được đồng hành cùng bạn từ đây.",
+      "Chào bạn, tôi bắt đầu hành trình học cùng bạn nhé.",
+      "Bạn ơi, tôi đợi để cùng bạn lên kế hoạch học đây.",
+      "Rất vui vì bạn đã ghé Mentor AI.",
+      "Bạn ơi, tôi sẵn sàng đồng hành cùng bạn rồi đây.",
+      "Chào mừng bạn đến với hành trình học cùng tôi.",
+      "Bạn ơi, giờ là lúc tôi cùng bạn vạch ra lộ trình học rồi.",
+      "Rất vui được làm người đồng hành của bạn.",
+      "Bạn ơi, tôi háo hức được cùng bạn bắt đầu lắm.",
+      "Chào bạn, hành trình học của bạn bắt đầu từ đây nhé."
+    ]
+  },
+  "blank_greeting": {
+    "note": "Tình huống 5 (mục 3 nhánh 3, hiếm) — không tên, không tiến độ. Bản 'toi_ten' KHÔNG nên xảy ra thật (không có tên thì không thể chọn 'Tôi & tên' ở màn nghi thức) — giữ giống hệt bản toi_anh làm phương án dự phòng an toàn, không phải lỗi thiết kế.",
+    "placeholders": [],
+    "toi_ten": [
+      "Chào anh, rất vui được gặp anh ở đây.",
+      "Anh ơi, chào mừng anh đến với Mentor AI.",
+      "Rất vui được đồng hành cùng anh từ hôm nay.",
+      "Chào anh, tôi là Mentor AI, sẵn sàng đồng hành cùng anh.",
+      "Anh ơi, tôi bắt đầu hành trình học tiếng Anh nhé.",
+      "Chào mừng anh ghé qua Mentor AI.",
+      "Rất vui vì anh đã đến đây, tôi bắt đầu nhé.",
+      "Anh, tôi mong được đồng hành cùng anh từ hôm nay.",
+      "Chào anh, tôi cùng anh bắt đầu hành trình học nhé.",
+      "Anh ơi, rất vui được làm người đồng hành của anh."
+    ],
+    "toi_anh": [
+      "Chào anh, rất vui được gặp anh ở đây.",
+      "Anh ơi, chào mừng anh đến với Mentor AI.",
+      "Rất vui được đồng hành cùng anh từ hôm nay.",
+      "Chào anh, tôi là Mentor AI, sẵn sàng đồng hành cùng anh.",
+      "Anh ơi, tôi bắt đầu hành trình học tiếng Anh nhé.",
+      "Chào mừng anh ghé qua Mentor AI.",
+      "Rất vui vì anh đã đến đây, tôi bắt đầu nhé.",
+      "Anh, tôi mong được đồng hành cùng anh từ hôm nay.",
+      "Chào anh, tôi cùng anh bắt đầu hành trình học nhé.",
+      "Anh ơi, rất vui được làm người đồng hành của anh."
+    ],
+    "toi_chi": [
+      "Chào chị, rất vui được gặp chị ở đây.",
+      "Chị ơi, chào mừng chị đến với Mentor AI.",
+      "Rất vui được đồng hành cùng chị từ hôm nay.",
+      "Chào chị, tôi là Mentor AI, sẵn sàng đồng hành cùng chị.",
+      "Chị ơi, tôi bắt đầu hành trình học tiếng Anh nhé.",
+      "Chào mừng chị ghé qua Mentor AI.",
+      "Rất vui vì chị đã đến đây, tôi bắt đầu nhé.",
+      "Chị, tôi mong được đồng hành cùng chị từ hôm nay.",
+      "Chào chị, tôi cùng chị bắt đầu hành trình học nhé.",
+      "Chị ơi, rất vui được làm người đồng hành của chị."
+    ],
+    "toi_ban": [
+      "Chào bạn, rất vui được gặp bạn ở đây.",
+      "Bạn ơi, chào mừng bạn đến với Mentor AI.",
+      "Rất vui được đồng hành cùng bạn từ hôm nay.",
+      "Chào bạn, tôi là Mentor AI, sẵn sàng đồng hành cùng bạn.",
+      "Bạn ơi, tôi cùng bạn bắt đầu hành trình học tiếng Anh nhé.",
+      "Chào mừng bạn ghé qua Mentor AI.",
+      "Rất vui vì bạn đã đến đây, tôi bắt đầu nhé.",
+      "Bạn ơi, tôi mong được đồng hành cùng bạn từ hôm nay.",
+      "Chào bạn, tôi cùng bạn bắt đầu hành trình học nhé.",
+      "Bạn ơi, rất vui được làm người đồng hành của bạn."
+    ]
+  }
+}

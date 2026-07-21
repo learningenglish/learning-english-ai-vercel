@@ -1,0 +1,192 @@
+{
+  "progress_with_goal": {
+    "placeholders": [
+      "ten",
+      "goal_title",
+      "completed",
+      "total"
+    ],
+    "toi_ten": [
+      "{ten} đang học \"{goal_title}\" — đã xong {completed}/{total} bài rồi đó.",
+      "{ten} đi được {completed}/{total} bài trong \"{goal_title}\" rồi, khá đều tay đó.",
+      "Nhìn lại thì {ten} đã hoàn thành {completed}/{total} bài của \"{goal_title}\".",
+      "\"{goal_title}\" của {ten} đang ở mốc {completed}/{total} bài.",
+      "{ten} đang ở chặng {completed}/{total} bài trong lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của {ten} đã đi được {completed}/{total} bài.",
+      "{ten} vừa hoàn thành {completed} trong tổng {total} bài của \"{goal_title}\".",
+      "Đợt học \"{goal_title}\" của {ten} hiện đang ở {completed}/{total} bài.",
+      "{ten} còn đang dở lộ trình \"{goal_title}\", đã qua {completed}/{total} bài.",
+      "{completed} trên {total} bài của \"{goal_title}\" — {ten} đang tiến khá ổn.",
+      "{ten} đang giữ nhịp {completed}/{total} bài ở \"{goal_title}\".",
+      "Tính đến giờ {ten} đã học {completed}/{total} bài trong \"{goal_title}\"."
+    ],
+    "toi_anh": [
+      "Anh đang học \"{goal_title}\" — đã xong {completed}/{total} bài rồi đó.",
+      "Anh đi được {completed}/{total} bài trong \"{goal_title}\" rồi, khá đều tay đó.",
+      "Nhìn lại thì anh đã hoàn thành {completed}/{total} bài của \"{goal_title}\".",
+      "\"{goal_title}\" của anh đang ở mốc {completed}/{total} bài.",
+      "Anh đang ở chặng {completed}/{total} bài trong lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của anh đã đi được {completed}/{total} bài.",
+      "Anh vừa hoàn thành {completed} trong tổng {total} bài của \"{goal_title}\".",
+      "Đợt học \"{goal_title}\" của anh hiện đang ở {completed}/{total} bài.",
+      "Anh còn đang dở lộ trình \"{goal_title}\", đã qua {completed}/{total} bài.",
+      "{completed} trên {total} bài của \"{goal_title}\" — anh đang tiến khá ổn.",
+      "Anh đang giữ nhịp {completed}/{total} bài ở \"{goal_title}\".",
+      "Tính đến giờ anh đã học {completed}/{total} bài trong \"{goal_title}\"."
+    ],
+    "toi_chi": [
+      "Chị đang học \"{goal_title}\" — đã xong {completed}/{total} bài rồi đó.",
+      "Chị đi được {completed}/{total} bài trong \"{goal_title}\" rồi, khá đều tay đó.",
+      "Nhìn lại thì chị đã hoàn thành {completed}/{total} bài của \"{goal_title}\".",
+      "\"{goal_title}\" của chị đang ở mốc {completed}/{total} bài.",
+      "Chị đang ở chặng {completed}/{total} bài trong lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của chị đã đi được {completed}/{total} bài.",
+      "Chị vừa hoàn thành {completed} trong tổng {total} bài của \"{goal_title}\".",
+      "Đợt học \"{goal_title}\" của chị hiện đang ở {completed}/{total} bài.",
+      "Chị còn đang dở lộ trình \"{goal_title}\", đã qua {completed}/{total} bài.",
+      "{completed} trên {total} bài của \"{goal_title}\" — chị đang tiến khá ổn.",
+      "Chị đang giữ nhịp {completed}/{total} bài ở \"{goal_title}\".",
+      "Tính đến giờ chị đã học {completed}/{total} bài trong \"{goal_title}\"."
+    ],
+    "toi_ban": [
+      "Bạn đang học \"{goal_title}\" — đã xong {completed}/{total} bài rồi đó.",
+      "Bạn đi được {completed}/{total} bài trong \"{goal_title}\" rồi, khá đều tay đó.",
+      "Nhìn lại thì bạn đã hoàn thành {completed}/{total} bài của \"{goal_title}\".",
+      "\"{goal_title}\" của bạn đang ở mốc {completed}/{total} bài.",
+      "Bạn đang ở chặng {completed}/{total} bài trong lộ trình \"{goal_title}\".",
+      "Lộ trình \"{goal_title}\" của bạn đã đi được {completed}/{total} bài.",
+      "Bạn vừa hoàn thành {completed} trong tổng {total} bài của \"{goal_title}\".",
+      "Bạn còn đang dở lộ trình \"{goal_title}\", đã qua {completed}/{total} bài.",
+      "{completed} trên {total} bài của \"{goal_title}\" — bạn đang tiến khá ổn.",
+      "Bạn đang giữ nhịp {completed}/{total} bài ở \"{goal_title}\".",
+      "Tính đến giờ bạn đã học {completed}/{total} bài trong \"{goal_title}\"."
+    ]
+  },
+  "progress_no_goal": {
+    "placeholders": [
+      "ten",
+      "lesson_title",
+      "exercises_done",
+      "exercises_total"
+    ],
+    "toi_ten": [
+      "{ten} đang học dở \"{lesson_title}\" — đã làm {exercises_done}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" của {ten} còn dở, mới làm {exercises_done}/{exercises_total} câu.",
+      "{ten} để dở bài \"{lesson_title}\" ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Bài \"{lesson_title}\" {ten} đang học có {exercises_done}/{exercises_total} câu đã làm.",
+      "{ten} đang dừng ở {exercises_done}/{exercises_total} câu của bài \"{lesson_title}\".",
+      "\"{lesson_title}\" — {ten} đã làm {exercises_done} trong tổng {exercises_total} câu.",
+      "{ten} còn bài \"{lesson_title}\" đang học dở, {exercises_done}/{exercises_total} câu.",
+      "Bài tập của \"{lesson_title}\" {ten} đã làm {exercises_done}/{exercises_total} câu.",
+      "{ten} mở bài \"{lesson_title}\" lần trước, làm được {exercises_done}/{exercises_total} câu.",
+      "\"{lesson_title}\" của {ten} hiện ở {exercises_done}/{exercises_total} câu bài tập.",
+      "{ten} đang học dở \"{lesson_title}\", {exercises_done} trên {exercises_total} câu rồi.",
+      "Còn bài \"{lesson_title}\" {ten} chưa xong, đã làm {exercises_done}/{exercises_total} câu."
+    ],
+    "toi_anh": [
+      "Anh đang học dở \"{lesson_title}\" — đã làm {exercises_done}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" của anh còn dở, mới làm {exercises_done}/{exercises_total} câu.",
+      "Anh để dở bài \"{lesson_title}\" ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Bài \"{lesson_title}\" anh đang học có {exercises_done}/{exercises_total} câu đã làm.",
+      "Anh đang dừng ở {exercises_done}/{exercises_total} câu của bài \"{lesson_title}\".",
+      "\"{lesson_title}\" — anh đã làm {exercises_done} trong tổng {exercises_total} câu.",
+      "Anh còn bài \"{lesson_title}\" đang học dở, {exercises_done}/{exercises_total} câu.",
+      "Bài tập của \"{lesson_title}\" anh đã làm {exercises_done}/{exercises_total} câu.",
+      "Anh mở bài \"{lesson_title}\" lần trước, làm được {exercises_done}/{exercises_total} câu.",
+      "\"{lesson_title}\" của anh hiện ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Anh đang học dở \"{lesson_title}\", {exercises_done} trên {exercises_total} câu rồi.",
+      "Còn bài \"{lesson_title}\" anh chưa xong, đã làm {exercises_done}/{exercises_total} câu."
+    ],
+    "toi_chi": [
+      "Chị đang học dở \"{lesson_title}\" — đã làm {exercises_done}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" của chị còn dở, mới làm {exercises_done}/{exercises_total} câu.",
+      "Chị để dở bài \"{lesson_title}\" ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Bài \"{lesson_title}\" chị đang học có {exercises_done}/{exercises_total} câu đã làm.",
+      "Chị đang dừng ở {exercises_done}/{exercises_total} câu của bài \"{lesson_title}\".",
+      "\"{lesson_title}\" — chị đã làm {exercises_done} trong tổng {exercises_total} câu.",
+      "Chị còn bài \"{lesson_title}\" đang học dở, {exercises_done}/{exercises_total} câu.",
+      "Bài tập của \"{lesson_title}\" chị đã làm {exercises_done}/{exercises_total} câu.",
+      "Chị mở bài \"{lesson_title}\" lần trước, làm được {exercises_done}/{exercises_total} câu.",
+      "\"{lesson_title}\" của chị hiện ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Chị đang học dở \"{lesson_title}\", {exercises_done} trên {exercises_total} câu rồi.",
+      "Còn bài \"{lesson_title}\" chị chưa xong, đã làm {exercises_done}/{exercises_total} câu."
+    ],
+    "toi_ban": [
+      "Bạn đang học dở \"{lesson_title}\" — đã làm {exercises_done}/{exercises_total} câu bài tập.",
+      "\"{lesson_title}\" của bạn còn dở, mới làm {exercises_done}/{exercises_total} câu.",
+      "Bạn để dở bài \"{lesson_title}\" ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Bài \"{lesson_title}\" bạn đang học có {exercises_done}/{exercises_total} câu đã làm.",
+      "Bạn đang dừng ở {exercises_done}/{exercises_total} câu của bài \"{lesson_title}\".",
+      "\"{lesson_title}\" — bạn đã làm {exercises_done} trong tổng {exercises_total} câu.",
+      "Bạn còn bài \"{lesson_title}\" đang học dở, {exercises_done}/{exercises_total} câu.",
+      "Bài tập của \"{lesson_title}\" bạn đã làm {exercises_done}/{exercises_total} câu.",
+      "Bạn mở bài \"{lesson_title}\" lần trước, làm được {exercises_done}/{exercises_total} câu.",
+      "\"{lesson_title}\" của bạn hiện ở {exercises_done}/{exercises_total} câu bài tập.",
+      "Bạn đang học dở \"{lesson_title}\", {exercises_done} trên {exercises_total} câu rồi.",
+      "Còn bài \"{lesson_title}\" bạn chưa xong, đã làm {exercises_done}/{exercises_total} câu."
+    ]
+  },
+  "cta": {
+    "placeholders": [
+      "ten",
+      "lesson_title"
+    ],
+    "note_v2": "Viết lại sau vòng giám khảo lần 1 (mảnh cũ dạng câu hỏi '...nhé?/...chứ?' bị loại gần hết vì đọc như chất vấn) — đổi thành câu khẳng định/mời điềm tĩnh, không dấu hỏi; lựa chọn tiếp tục giao cho nút bấm UI đã có sẵn (primary button 'Học tiếp').",
+    "toi_ten": [
+      "\"{lesson_title}\" đang chờ {ten} học tiếp đó.",
+      "Mở lại \"{lesson_title}\" để học tiếp thôi.",
+      "{ten} có thể quay lại \"{lesson_title}\" học tiếp bất cứ lúc nào.",
+      "\"{lesson_title}\" vẫn đang chờ đúng chỗ {ten} dừng lại.",
+      "Học tiếp \"{lesson_title}\" khi {ten} sẵn sàng.",
+      "{ten} quay lại \"{lesson_title}\" là học tiếp được ngay.",
+      "Bài \"{lesson_title}\" luôn sẵn sàng cho {ten} học tiếp.",
+      "Mở \"{lesson_title}\" ra là {ten} học tiếp được liền.",
+      "\"{lesson_title}\" đang chờ đúng chỗ {ten} dừng lại lần trước.",
+      "{ten} cứ quay lại \"{lesson_title}\" học tiếp khi thấy tiện.",
+      "Học nốt \"{lesson_title}\" khi nào {ten} thấy hợp.",
+      "\"{lesson_title}\" vẫn ở đó, {ten} học tiếp lúc nào cũng được."
+    ],
+    "toi_anh": [
+      "\"{lesson_title}\" đang chờ anh học tiếp đó.",
+      "Mở lại \"{lesson_title}\" để học tiếp thôi.",
+      "Anh có thể quay lại \"{lesson_title}\" học tiếp bất cứ lúc nào.",
+      "\"{lesson_title}\" vẫn đang chờ đúng chỗ anh dừng lại.",
+      "Học tiếp \"{lesson_title}\" khi anh sẵn sàng.",
+      "Anh quay lại \"{lesson_title}\" là học tiếp được ngay.",
+      "Bài \"{lesson_title}\" luôn sẵn sàng cho anh học tiếp.",
+      "Mở \"{lesson_title}\" ra là anh học tiếp được liền.",
+      "\"{lesson_title}\" đang chờ đúng chỗ anh dừng lại lần trước.",
+      "Anh cứ quay lại \"{lesson_title}\" học tiếp khi thấy tiện.",
+      "Học nốt \"{lesson_title}\" khi nào anh thấy hợp.",
+      "\"{lesson_title}\" vẫn ở đó, anh học tiếp lúc nào cũng được."
+    ],
+    "toi_chi": [
+      "\"{lesson_title}\" đang chờ chị học tiếp đó.",
+      "Mở lại \"{lesson_title}\" để học tiếp thôi.",
+      "Chị có thể quay lại \"{lesson_title}\" học tiếp bất cứ lúc nào.",
+      "\"{lesson_title}\" vẫn đang chờ đúng chỗ chị dừng lại.",
+      "Học tiếp \"{lesson_title}\" khi chị sẵn sàng.",
+      "Chị quay lại \"{lesson_title}\" là học tiếp được ngay.",
+      "Bài \"{lesson_title}\" luôn sẵn sàng cho chị học tiếp.",
+      "Mở \"{lesson_title}\" ra là chị học tiếp được liền.",
+      "\"{lesson_title}\" đang chờ đúng chỗ chị dừng lại lần trước.",
+      "Chị cứ quay lại \"{lesson_title}\" học tiếp khi thấy tiện.",
+      "Học nốt \"{lesson_title}\" khi nào chị thấy hợp.",
+      "\"{lesson_title}\" vẫn ở đó, chị học tiếp lúc nào cũng được."
+    ],
+    "toi_ban": [
+      "\"{lesson_title}\" đang chờ bạn học tiếp đó.",
+      "Mở lại \"{lesson_title}\" để học tiếp thôi.",
+      "Bạn có thể quay lại \"{lesson_title}\" học tiếp bất cứ lúc nào.",
+      "\"{lesson_title}\" vẫn đang chờ đúng chỗ bạn dừng lại.",
+      "Học tiếp \"{lesson_title}\" khi bạn sẵn sàng nha.",
+      "Bạn quay lại \"{lesson_title}\" là học tiếp được ngay.",
+      "Bài \"{lesson_title}\" luôn sẵn sàng cho bạn học tiếp.",
+      "Mở \"{lesson_title}\" ra là bạn học tiếp được liền.",
+      "\"{lesson_title}\" đang chờ đúng chỗ bạn dừng lại lần trước.",
+      "Bạn cứ quay lại \"{lesson_title}\" học tiếp khi thấy tiện.",
+      "Học nốt \"{lesson_title}\" khi nào bạn thấy hợp.",
+      "\"{lesson_title}\" vẫn ở đó, bạn học tiếp lúc nào cũng được."
+    ]
+  }
+}

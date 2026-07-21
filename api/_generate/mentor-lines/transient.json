@@ -1,0 +1,126 @@
+{
+  "loading_first_lesson": {
+    "note": "Ngoại lệ 1-mảnh (câu quá ngắn để chia mảnh có ý nghĩa) — màn chờ Bước 4, không mang số liệu.",
+    "placeholders": [
+      "ten"
+    ],
+    "toi_ten": [
+      "Tôi đang chuẩn bị bài học đầu tiên cho {ten}...",
+      "Đợi tôi một chút, đang soạn bài cho {ten} đây...",
+      "Tôi đang ghép bài học phù hợp với {ten}...",
+      "Chờ tôi xíu, bài đầu tiên sắp xong rồi...",
+      "Tôi đang dựng bài học riêng cho {ten}...",
+      "Sắp xong rồi, tôi đang hoàn thiện bài học cho {ten}...",
+      "Tôi đang soạn nội dung phù hợp với {ten}...",
+      "Đợi chút nhé, bài học đầu tiên đang được chuẩn bị...",
+      "Tôi đang lên bài học đầu tiên cho {ten} đây...",
+      "Chờ tôi một lát, đang ráp bài học cho {ten}...",
+      "Tôi đang chuẩn bị nội dung riêng cho {ten}...",
+      "Sắp có bài học đầu tiên cho {ten} rồi, đợi chút nhé..."
+    ],
+    "toi_anh": [
+      "Tôi đang chuẩn bị bài học đầu tiên cho anh...",
+      "Đợi tôi một chút, đang soạn bài cho anh đây...",
+      "Tôi đang ghép bài học phù hợp với anh...",
+      "Chờ tôi xíu, bài đầu tiên sắp xong rồi...",
+      "Tôi đang dựng bài học riêng cho anh...",
+      "Sắp xong rồi, tôi đang hoàn thiện bài học cho anh...",
+      "Tôi đang soạn nội dung phù hợp với anh...",
+      "Đợi chút nhé, bài học đầu tiên đang được chuẩn bị...",
+      "Tôi đang lên bài học đầu tiên cho anh đây...",
+      "Chờ tôi một lát, đang ráp bài học cho anh...",
+      "Tôi đang chuẩn bị nội dung riêng cho anh...",
+      "Sắp có bài học đầu tiên cho anh rồi, đợi chút nhé..."
+    ],
+    "toi_chi": [
+      "Tôi đang chuẩn bị bài học đầu tiên cho chị...",
+      "Đợi tôi một chút, đang soạn bài cho chị đây...",
+      "Tôi đang ghép bài học phù hợp với chị...",
+      "Chờ tôi xíu, bài đầu tiên sắp xong rồi...",
+      "Tôi đang dựng bài học riêng cho chị...",
+      "Sắp xong rồi, tôi đang hoàn thiện bài học cho chị...",
+      "Tôi đang soạn nội dung phù hợp với chị...",
+      "Đợi chút nhé, bài học đầu tiên đang được chuẩn bị...",
+      "Tôi đang lên bài học đầu tiên cho chị đây...",
+      "Chờ tôi một lát, đang ráp bài học cho chị...",
+      "Tôi đang chuẩn bị nội dung riêng cho chị...",
+      "Sắp có bài học đầu tiên cho chị rồi, đợi chút nhé..."
+    ],
+    "toi_ban": [
+      "Tôi đang chuẩn bị bài học đầu tiên cho bạn...",
+      "Đợi tôi một chút, đang soạn bài cho bạn đây...",
+      "Tôi đang ghép bài học phù hợp với bạn...",
+      "Chờ tôi xíu, bài đầu tiên sắp xong rồi...",
+      "Tôi đang dựng bài học riêng cho bạn...",
+      "Sắp xong rồi, tôi đang hoàn thiện bài học cho bạn...",
+      "Tôi đang soạn nội dung phù hợp với bạn...",
+      "Đợi chút nha, bài học đầu tiên đang được chuẩn bị...",
+      "Tôi đang lên bài học đầu tiên cho bạn đây...",
+      "Chờ tôi một lát, đang ráp bài học cho bạn...",
+      "Tôi đang chuẩn bị nội dung riêng cho bạn...",
+      "Sắp có bài học đầu tiên cho bạn rồi, đợi chút nha..."
+    ]
+  },
+  "leave_unfinished_toast": {
+    "note": "Mục 6.4 file Đợt 3 — giọng rủ rê, cấm giọng trách móc ('bạn chưa hoàn thành').",
+    "placeholders": [
+      "ten"
+    ],
+    "toi_ten": [
+      "Bài này {ten} đang học dở, tôi lưu lại rồi, khi nào quay lại {ten} học tiếp nhé.",
+      "{ten} ơi, bài đang học dở tôi đã lưu lại, lúc nào quay lại học tiếp nhé.",
+      "Tôi giữ lại chỗ {ten} đang học dở rồi, quay lại là học tiếp được ngay.",
+      "{ten} yên tâm, bài đang dở tôi lưu lại đầy đủ rồi.",
+      "Chỗ {ten} đang học dở, tôi đã lưu lại, hẹn gặp lại nhé.",
+      "{ten} cứ đi, bài này tôi giữ nguyên chỗ đang học dở nhé.",
+      "Tôi đã lưu lại tiến độ của {ten}, quay lại là học tiếp được liền.",
+      "{ten} yên tâm rời đi, tôi giữ đúng chỗ đang học dở.",
+      "Bài đang dở của {ten}, tôi lưu lại rồi, hẹn {ten} quay lại nhé.",
+      "{ten} cứ nghỉ, tôi giữ nguyên tiến độ, quay lại học tiếp là được.",
+      "Tôi đã lưu chỗ {ten} đang dừng, lúc nào quay lại học tiếp nhé.",
+      "{ten} ơi, tôi lưu lại bài đang học dở rồi, khi nào rảnh quay lại nhé."
+    ],
+    "toi_anh": [
+      "Bài này anh đang học dở, tôi lưu lại rồi, khi nào quay lại anh học tiếp nhé.",
+      "Anh ơi, bài đang học dở tôi đã lưu lại, lúc nào quay lại học tiếp nhé.",
+      "Tôi giữ lại chỗ anh đang học dở rồi, quay lại là học tiếp được ngay.",
+      "Anh yên tâm, bài đang dở tôi lưu lại đầy đủ rồi.",
+      "Chỗ anh đang học dở, tôi đã lưu lại, hẹn gặp lại nhé.",
+      "Anh cứ đi, bài này tôi giữ nguyên chỗ đang học dở nhé.",
+      "Tôi đã lưu lại tiến độ của anh, quay lại là học tiếp được liền.",
+      "Anh yên tâm rời đi, tôi giữ đúng chỗ đang học dở.",
+      "Bài đang dở của anh, tôi lưu lại rồi, hẹn anh quay lại nhé.",
+      "Anh cứ nghỉ, tôi giữ nguyên tiến độ, quay lại học tiếp là được.",
+      "Tôi đã lưu chỗ anh đang dừng, lúc nào quay lại học tiếp nhé.",
+      "Anh ơi, tôi lưu lại bài đang học dở rồi, khi nào rảnh quay lại nhé."
+    ],
+    "toi_chi": [
+      "Bài này chị đang học dở, tôi lưu lại rồi, khi nào quay lại chị học tiếp nhé.",
+      "Chị ơi, bài đang học dở tôi đã lưu lại, lúc nào quay lại học tiếp nhé.",
+      "Tôi giữ lại chỗ chị đang học dở rồi, quay lại là học tiếp được ngay.",
+      "Chị yên tâm, bài đang dở tôi lưu lại đầy đủ rồi.",
+      "Chỗ chị đang học dở, tôi đã lưu lại, hẹn gặp lại nhé.",
+      "Chị cứ đi, bài này tôi giữ nguyên chỗ đang học dở nhé.",
+      "Tôi đã lưu lại tiến độ của chị, quay lại là học tiếp được liền.",
+      "Chị yên tâm rời đi, tôi giữ đúng chỗ đang học dở.",
+      "Bài đang dở của chị, tôi lưu lại rồi, hẹn chị quay lại nhé.",
+      "Chị cứ nghỉ, tôi giữ nguyên tiến độ, quay lại học tiếp là được.",
+      "Tôi đã lưu chỗ chị đang dừng, lúc nào quay lại học tiếp nhé.",
+      "Chị ơi, tôi lưu lại bài đang học dở rồi, khi nào rảnh quay lại nhé."
+    ],
+    "toi_ban": [
+      "Bài này bạn đang học dở, tôi lưu lại rồi, khi nào quay lại bạn học tiếp nhé.",
+      "Bạn ơi, bài đang học dở tôi đã lưu lại, lúc nào quay lại học tiếp nhé.",
+      "Tôi giữ lại chỗ bạn đang học dở rồi, quay lại là học tiếp được ngay.",
+      "Bạn yên tâm, bài đang dở tôi lưu lại đầy đủ rồi.",
+      "Chỗ bạn đang học dở, tôi đã lưu lại, hẹn gặp lại nhé.",
+      "Bạn cứ đi, bài này tôi giữ nguyên chỗ đang học dở nhé.",
+      "Tôi đã lưu lại tiến độ của bạn, quay lại là học tiếp được liền.",
+      "Bạn yên tâm rời đi, tôi giữ đúng chỗ đang học dở.",
+      "Bài đang dở của bạn, tôi lưu lại rồi, hẹn bạn quay lại nhé.",
+      "Bạn cứ nghỉ, tôi giữ nguyên tiến độ, quay lại học tiếp là được.",
+      "Tôi đã lưu chỗ bạn đang dừng, lúc nào quay lại học tiếp nhé.",
+      "Bạn ơi, tôi lưu lại bài đang học dở rồi, khi nào rảnh quay lại nhé."
+    ]
+  }
+}

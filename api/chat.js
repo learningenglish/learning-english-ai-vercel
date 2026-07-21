@@ -8,7 +8,12 @@ import {
   mentor_check_goal_gate,
   mentor_infer_goal,
   mentor_create_goal,
+  mentor_auto_goal,
   mentor_next_lesson,
+  mentor_get_pronoun_state,
+  mentor_mark_pronoun_asked,
+  mentor_set_pronoun_style,
+  mentor_get_transient_line,
 } from "./_generate/mentor.js";
 
 /**
@@ -1288,7 +1293,12 @@ const ACTIONS = {
   mentor_check_goal_gate,
   mentor_infer_goal,
   mentor_create_goal,
+  mentor_auto_goal,
   mentor_next_lesson,
+  mentor_get_pronoun_state,
+  mentor_mark_pronoun_asked,
+  mentor_set_pronoun_style,
+  mentor_get_transient_line,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —
