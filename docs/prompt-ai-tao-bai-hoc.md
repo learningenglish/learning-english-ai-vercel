@@ -81,12 +81,12 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
 - Dùng phản hồi ngắn tự nhiên đúng cấp độ: A1-A2 (Yes, sure / Oh no / Thank you so much), B1+ thêm (Actually... / I see what you mean / Well, the thing is...). Không nhồi vào mọi lượt — rải tự nhiên.
 - Ít nhất 1 lần trong bài: một nhân vật hỏi lại để làm rõ hoặc xác nhận thông tin (Sorry, did you say 3 PM? / So that's two boxes, right?) — đây là kỹ năng giao tiếp thật cần dạy.
-- Tổng số từ toàn bài vẫn theo length_words; biến thiên nằm ở phân bổ giữa các lượt, không phải kéo dài bài.
-- BẮT BUỘC hội thoại TRỌN VẸN: có mở đầu — diễn biến — chốt lại tự nhiên (vd cảm ơn/tạm biệt/xác nhận đã xong việc). LƯỢT THOẠI CUỐI CÙNG TUYỆT ĐỐI KHÔNG ĐƯỢC LÀ CÂU HỎI CHƯA CÓ LỜI ĐÁP (lỗi thật đã gặp: bài kết ở "Will I get paid for this delivery?" rồi hết, không nhân vật nào trả lời) — nếu gần hết length_words mà diễn biến chưa xong, RÚT NGẮN phần giữa để dành chỗ chốt lại cho trọn, KHÔNG được cắt ngang khi câu chuyện còn dở.
+- Độ dài TỔNG THỂ của hội thoại tuân theo user prompt (xem QUY TẮC VỀ ĐỘ DÀI + mục 3 USER PROMPT — dialogue dùng kiến trúc "N lượt cụ thể, mỗi lượt 1 khoảng từ cụ thể", KHÔNG phải "viết ~X từ tổng"); biến thiên độ dài lượt (mục đầu tiên ở trên) vẫn phải giữ, chỉ là phân bổ KHÔNG ĐỀU trong số lượt đã cho, không phải lý do để bớt số lượt.
+- BẮT BUỘC hội thoại TRỌN VẸN: có mở đầu — diễn biến — chốt lại tự nhiên (vd cảm ơn/tạm biệt/xác nhận đã xong việc). LƯỢT THOẠI CUỐI CÙNG TUYỆT ĐỐI KHÔNG ĐƯỢC LÀ CÂU HỎI CHƯA CÓ LỜI ĐÁP (lỗi thật đã gặp: bài kết ở "Will I get paid for this delivery?" rồi hết, không nhân vật nào trả lời) — nếu gần hết số lượt yêu cầu mà diễn biến chưa xong, RÚT NGẮN phần giữa để dành chỗ chốt lại cho trọn, KHÔNG được cắt ngang khi câu chuyện còn dở.
 
-QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý):
-- Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. Hệ thống sẽ TỰ ĐỘNG TỪ CHỐI và bắt sinh lại nếu lệch quá 25% — bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
-- LỖI THẬT HAY GẶP Ở HỘI THOẠI MỌI CẤP ĐỘ (không riêng A1/A2): quy tắc "lượt ngắn 1-4 từ xen giữa lượt dài" (QUY TẮC HỘI THOẠI TỰ NHIÊN) khiến độ dài trung bình MỖI LƯỢT THỰC TẾ thấp hơn nhiều so với cảm giác khi viết — đo được thật: hội thoại B1 yêu cầu 200 từ chỉ đạt ~110-140 từ (thiếu 30-45%) khi dừng theo cảm giác "đã đủ ý" thay vì đếm số lượt. Cách DUY NHẤT để đạt đủ length_words khi có nhiều lượt ngắn là TĂNG TỔNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — KHÔNG PHẢI viết từng lượt dài hơn trần cấp độ cho phép. User prompt đã tính SẴN số lượt/đoạn tối thiểu cần có (công thức đã cộng biên an toàn cho đúng thực tế lượt ngắn) — coi đó là SỐ CỨNG phải đạt hoặc vượt, không phải gợi ý tham khảo. Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó (chẻ tình huống thành nhiều bước nhỏ, xem ví dụ ở đầu prompt) — không lặp ý, không rề rà giả tạo.
+QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý) — "reading" và "dialogue" dùng 2 CƠ CHẾ KHÁC NHAU (chốt 2026-07-21, xem lịch sử thay đổi ở mục 3):
+- reading: tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" phải nằm trong khoảng ±25% của length_words yêu cầu — hệ thống TỰ ĐỘNG TỪ CHỐI nếu lệch quá. Cơ chế này KHÔNG đổi, vẫn hoạt động ổn định (không có vấn đề như dialogue bên dưới).
+- dialogue: KHÔNG ra đề theo tổng số từ nữa — LỖI THẬT ĐÃ XÁC NHẬN (không phải giả thuyết): yêu cầu "viết ~200 từ tổng" khiến model hội tụ về 93-140 từ (thiếu 30-55%) DÙ ĐÃ THỬ làm rõ cách đếm + tăng biên an toàn số lượt gợi ý — model không tự cộng tổng qua nhiều lượt tốt. Ra đề THEO CẤU TRÚC thay vào đó: user prompt cho ĐÚNG số lượt (N) + khoảng từ/lượt cụ thể (X-Y, đã đẩy cao hơn lý thuyết để bù thiên lệch neo-đáy đã đo được) — validator VẪN kiểm tổng ±25% như cũ (không đổi validator), chỉ đổi CÁCH RA ĐỀ để đạt tổng đó gián tiếp qua cấu trúc, không đổi ngưỡng chấp nhận.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.
@@ -165,6 +165,10 @@ SỐ LƯỢNG:
 
 ## 3. USER PROMPT (dựng từ form mỗi lần bấm Tạo)
 
+Dòng "Độ dài"/"Cấu trúc hội thoại" tách theo content_type — xem lịch sử 3 lần sửa ở cuối mục này.
+"reading" giữ nguyên cách CŨ (tổng số từ). "dialogue" đổi hẳn sang cách MỚI (N lượt + khoảng
+từ/lượt) từ 2026-07-21, đã kiểm chứng bằng dữ liệu thật (xem bảng cuối mục).
+
 ```
 Tạo bài học theo yêu cầu sau:
 
@@ -172,11 +176,8 @@ Tạo bài học theo yêu cầu sau:
 - Cấp độ: {LEVEL}
 - Chủ đề: {TOPIC}
 - Loại nội dung: {CONTENT_TYPE}
-- Độ dài: khoảng {LENGTH_WORDS} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số đơn vị/số phần tử (1 lượt chỉ "Sure." vẫn tính là 1 phần tử nhưng chỉ 1 từ). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Cho phép lệch ±15% khi tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy viết DÀI HƠN chứ đừng viết ngắn hơn. CẦN khoảng {MIN_UNITS} {lượt thoại|câu/đoạn} ở cấp {LEVEL} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: {MIN_UNITS} đơn vị, trung bình mỗi đơn vị khoảng {AVG_WORDS_PER_UNIT} từ, cộng lại ≈ {LENGTH_WORDS} từ (một số đơn vị ngắn 1-4 từ phải được bù bằng đơn vị khác dài hơn {AVG_WORDS_PER_UNIT} từ đáng kể, không phải tất cả đều bằng nhau). Đừng dừng sớm hơn {MIN_UNITS} đơn vị nếu tổng từ trong "content" đo được chưa tới {LENGTH_WORDS}.
-  ({MIN_UNITS} = ceil((LENGTH_WORDS ÷ độ dài trung bình 1 đơn vị) × 1.2) — biên an toàn +20%, làm tròn LÊN. Độ dài trung bình 1 đơn vị TÁCH RIÊNG theo content_type (xem AVG_WORDS_PER_UNIT_BY_LEVEL trong lesson.js):
-  - dialogue: A1:6, A2:6, B1:6, B2:7, C1:8 từ/lượt — THẤP hơn nhiều so với reading ở MỌI cấp, vì QUY TẮC HỘI THOẠI TỰ NHIÊN bắt buộc nhiều lượt ngắn 1-4 từ xen giữa lượt dài, kéo trung bình THỰC TẾ xuống thấp bất kể cấp độ.
-  - reading: A1:6, A2:8, B1:10, B2:13, C1:15 từ/đơn vị — không có ràng buộc lượt ngắn bắt buộc, giữ nguyên bảng cũ.
-  Sửa 2026-07-21 sau khi test thật: bảng "dialogue" cũ dùng chung với "reading" (B1:10) khiến hội thoại B1/200 từ chỉ đạt ~110-140 từ thật (0/6 đạt ngay lần 1, chỉ 33% đạt sau 1 lần retry, đo bằng 6 lượt gọi AI thật) — suy ngược từ số liệu đó ra trung bình THỰC ĐẠT ~5.7 từ/lượt, gần bằng A1, không phải 10 như ước tính ban đầu.)
+- [NẾU dialogue] Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG {TURN_COUNT} lượt thoại ({TURN_COUNT} phần tử trong "content"). MỖI LƯỢT dài khoảng {TURN_MIN}-{TURN_MAX} từ tiếng Anh — ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng này (tức {UPPER_HALF_MIN}-{TURN_MAX} từ/lượt), KHÔNG mặc định viết ở đáy khoảng dù đáy vẫn hợp lệ về lý thuyết — số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rất rõ, nên phải CHỦ ĐỘNG nhắm cao hơn để bù, không viết theo bản năng "vừa đủ chạm sàn". Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu — nếu bạn viết đúng {TURN_COUNT} lượt, mỗi lượt trong khoảng {UPPER_HALF_MIN}-{TURN_MAX} từ, tổng cả bài sẽ tự động ra khoảng {LENGTH_WORDS} từ. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn {TURN_MIN} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn {TURN_MAX} từ để bù lại — tổng thể vẫn phải đạt đủ {TURN_COUNT} lượt.
+- [NẾU reading] Độ dài: khoảng {LENGTH_WORDS} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Cho phép lệch ±15% khi tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU, nên khi phân vân hãy viết DÀI HƠN. CẦN khoảng {MIN_UNITS} câu/đoạn ở cấp {LEVEL} để đạt đủ (đã tính kèm biên an toàn) — ví dụ: {MIN_UNITS} đơn vị × ~{AVG_WORDS_PER_UNIT} từ/đơn vị ≈ {LENGTH_WORDS} từ. Đừng dừng sớm hơn {MIN_UNITS} đơn vị nếu tổng từ chưa tới {LENGTH_WORDS}.
 - Lĩnh vực: {FIELD}
 - Ngành nghề: {INDUSTRY}
 - Sản phẩm / Dịch vụ liên quan: {PRODUCT}
@@ -186,6 +187,16 @@ Tạo bài học theo yêu cầu sau:
 Nếu mô tả của người học mâu thuẫn với các trường còn lại (ví dụ mô tả đòi thì quá khứ
 nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho vừa cấp độ.
 ```
+
+**Công thức tính (dialogue)** — xem `DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL` / `DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL` trong lesson.js:
+- `{TURN_COUNT}` = round(LENGTH_WORDS ÷ trung bình khoảng CƠ SỞ theo cấp) — khoảng cơ sở: A1:[5,9], A2:[6,11], B1:[8,15], B2:[10,18], C1:[12,22] từ/lượt (dùng để TÍNH SỐ LƯỢT, không phải để hiển thị).
+- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A1:[9,14], A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32].
+- `{UPPER_HALF_MIN}` = round((TURN_MIN + TURN_MAX) / 2) — mốc "nửa trên" model được yêu cầu ưu tiên.
+
+**Lịch sử 3 lần sửa "dialogue hụt từ" (2026-07-21, GIỮ LẠI để không lặp lại các hướng đã thử và thất bại):**
+1. *Làm rõ cách đếm + tăng biên an toàn tổng số* (vẫn ra đề theo TỔNG): KHÔNG hiệu quả — model vẫn hội tụ ~104-137/200 từ, gần như y hệt trước khi sửa (93-137/200). Kết luận: model không tự cộng tổng qua nhiều lượt tốt, dù đã nói rõ cách đếm.
+2. *Đổi sang ra đề THEO CẤU TRÚC* (N lượt cụ thể + khoảng từ/lượt, khoảng CHƯA đẩy cao): số LƯỢT bám khá sát (18/17/14 lượt thật so với 18 yêu cầu) nhưng ĐỘ DÀI mỗi lượt neo sát ĐÁY khoảng cho (đo: TB 8.3 từ/lượt trên khoảng 8-15, một số lượt còn dưới cả đáy) → tổng vẫn hụt (96/141/170 trên 200, chỉ 1/3 đạt validator).
+3. *Đẩy khoảng hiển thị cao hơn hẳn + yêu cầu tường minh ưu tiên nửa trên* (kiến trúc CHỐT, đang dùng): B1/200 từ đạt 191/215/220 trên 200 (3/3 đạt validator ±25%, không còn thiên lệch một chiều). Đã kiểm chứng thêm ở 2 điểm biên A1/C1 (200 từ) — xem log commit lesson.js ngày 2026-07-21 để biết số liệu cụ thể nếu cần đối chiếu lại.
 
 ---
 
