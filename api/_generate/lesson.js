@@ -181,7 +181,7 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 
 QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý):
 - Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. Hệ thống sẽ TỰ ĐỘNG TỪ CHỐI và bắt sinh lại nếu lệch quá 25% — bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
-- LỖI THẬT HAY GẶP Ở A1/A2 (câu bị giới hạn tối đa 8-12 từ): model dừng lại sau 6-8 lượt thoại ngắn, tổng chưa tới 50 từ, TRONG KHI length_words yêu cầu 300 — SAI, vì trần độ dài câu áp cho TỪNG CÂU, không áp cho TỔNG BÀI. Khi câu bị giới hạn ngắn, cách DUY NHẤT để đạt đủ length_words là TĂNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — ước lượng trước: length_words ÷ độ dài trung bình 1 lượt (~5-7 từ ở A1) = số lượt thoại cần có (vd 300 từ ở A1 cần khoảng 40-50 lượt thoại, không phải 8 lượt). Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó — không lặp ý, không rề rà giả tạo.
+- LỖI THẬT HAY GẶP Ở HỘI THOẠI MỌI CẤP ĐỘ (không riêng A1/A2): quy tắc "lượt ngắn 1-4 từ xen giữa lượt dài" (QUY TẮC HỘI THOẠI TỰ NHIÊN) khiến độ dài trung bình MỖI LƯỢT THỰC TẾ thấp hơn nhiều so với cảm giác khi viết — đo được thật: hội thoại B1 yêu cầu 200 từ chỉ đạt ~110-140 từ (thiếu 30-45%) khi dừng theo cảm giác "đã đủ ý" thay vì đếm số lượt. Cách DUY NHẤT để đạt đủ length_words khi có nhiều lượt ngắn là TĂNG TỔNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — KHÔNG PHẢI viết từng lượt dài hơn trần cấp độ cho phép. User prompt đã tính SẴN số lượt/đoạn tối thiểu cần có (công thức đã cộng biên an toàn cho đúng thực tế lượt ngắn) — coi đó là SỐ CỨNG phải đạt hoặc vượt, không phải gợi ý tham khảo. Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó (chẻ tình huống thành nhiều bước nhỏ, xem ví dụ ở đầu prompt) — không lặp ý, không rề rà giả tạo.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.
@@ -261,11 +261,24 @@ SỐ LƯỢNG:
 // 45 từ dù yêu cầu 300, vì trần "câu tối đa 8 từ" bị hiểu nhầm thành trần cho CẢ BÀI). Số ở
 // đây chỉ là ước tính hợp lý (không phải hằng số nghiệp vụ cứng như DAILY_LESSON_LIMIT), đặt
 // gần chỗ dùng cho dễ chỉnh khi có dữ liệu thật.
-const AVG_WORDS_PER_UNIT_BY_LEVEL = { A1: 6, A2: 8, B1: 10, B2: 13, C1: 15 };
+//
+// SỬA 2026-07-21 (test thật): "dialogue" dùng bảng RIÊNG, thấp hơn nhiều — QUY TẮC HỘI THOẠI
+// TỰ NHIÊN bắt buộc nhiều lượt ngắn 1-4 từ ("Sure.", "Of course.") xen giữa lượt dài, kéo
+// trung bình THỰC TẾ xuống rất thấp ở MỌI cấp độ, không riêng A1. Số liệu thật: hội thoại
+// B1/200 từ (ước tính cũ 10 từ/lượt -> minUnits=20) chỉ đạt 93-137 từ thật (TB ~114) — suy
+// ngược ra trung bình THỰC ĐẠT ~5.7 từ/lượt, gần bằng A1. "reading" KHÔNG có ràng buộc lượt
+// ngắn bắt buộc này nên giữ bảng cũ (đã ổn định qua nhiều lần test trước).
+const AVG_WORDS_PER_UNIT_BY_LEVEL = {
+  dialogue: { A1: 6, A2: 6, B1: 6, B2: 7, C1: 8 },
+  reading: { A1: 6, A2: 8, B1: 10, B2: 13, C1: 15 },
+};
 
-function suggestedUnitCount(level, lengthWords) {
-  const avg = AVG_WORDS_PER_UNIT_BY_LEVEL[level] || 10;
-  return Math.max(6, Math.round((lengthWords || 200) / avg));
+function suggestedUnitCount(level, lengthWords, contentType) {
+  const table = AVG_WORDS_PER_UNIT_BY_LEVEL[contentType] || AVG_WORDS_PER_UNIT_BY_LEVEL.reading;
+  const avg = table[level] || 8;
+  // Biên an toàn +20%, làm tròn LÊN — lỗi thật đo được LUÔN LÀ HỤT (chưa từng gặp thừa quá đà),
+  // nên thà ước tính dư số lượt còn hơn thiếu.
+  return Math.max(6, Math.ceil(((lengthWords || 200) / avg) * 1.2));
 }
 
 function buildGenerateLessonUserPrompt(data) {
@@ -275,14 +288,15 @@ function buildGenerateLessonUserPrompt(data) {
     ? 0
     : data.term_density;
   const lengthWords = data.length_words || 200;
-  const minUnits = suggestedUnitCount(data.level, lengthWords);
+  const minUnits = suggestedUnitCount(data.level, lengthWords, data.content_type);
+  const avgWordsPerUnit = Math.round(lengthWords / minUnits);
   return `Tạo bài học theo yêu cầu sau:
 
 - Mô tả của người học: ${orNone(data.description)}
 - Cấp độ: ${data.level}
 - Chủ đề: ${orNone(data.topic)}
 - Loại nội dung: ${contentTypeVi}
-- Độ dài: khoảng ${lengthWords} từ tiếng Anh — CHỈ TÍNH phần "text" trong "content" (hội thoại/bài đọc chính), KHÔNG tính từ trong vocabulary/grammar/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Cho phép lệch ±15% khi bạn tự ước lượng, nhưng hệ thống chấp nhận tới ±25%. ƯỚC TÍNH cần khoảng ${minUnits} ${unitLabel} để đạt đủ số từ này ở cấp ${data.level} (câu/lượt ngắn ở cấp thấp thì cần NHIỀU đơn vị hơn, không phải câu dài hơn giới hạn cấp độ). Đừng dừng sớm hơn con số này nếu tổng từ trong "content" chưa đạt.
+- Độ dài: khoảng ${lengthWords} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử (1 ${unitLabel} chỉ "Sure." vẫn tính là 1 phần tử nhưng chỉ 1 từ). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Cho phép lệch ±15% khi bạn tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy viết DÀI HƠN chứ đừng viết ngắn hơn. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ (một số ${unitLabel} ngắn 1-4 từ phải được bù bằng ${unitLabel} khác dài hơn ${avgWordsPerUnit} từ đáng kể, không phải tất cả đều bằng nhau). Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWords}.
 - Lĩnh vực: ${orNone(data.field)}
 - Ngành nghề: ${orNone(data.industry)}
 - Sản phẩm / Dịch vụ liên quan: ${orNone(data.product)}
