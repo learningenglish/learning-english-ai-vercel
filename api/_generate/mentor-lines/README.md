@@ -125,8 +125,33 @@ tác ("vạch ra lộ trình học", "lên kế hoạch học") ở đúng lúc 
 trước khi người dùng nhập gì) — đã đơn giản hoá lại. Quét lại: 0 dòng còn dính cả 2 vòng lỗi,
 1213 dòng, cấu trúc/chống lặp/4 giọng vẫn nguyên vẹn (kiểm bằng `select.js` test).
 
-**Từ sau đợt audit 2 vòng này, kho lời thoại coi là ỔN ĐỊNH** — mọi kho sinh thêm sau này (tình
-huống mới, ngôn ngữ mới nếu có) tự động qua đúng 6 nguyên tắc (đã bổ sung) trong
+## Vòng 3 (cùng ngày) — nâng cấp NĂNG LỰC giám khảo, không chỉ thêm từ cấm
+
+Minh chỉ ra vấn đề ở tầng khác hẳn 2 vòng trước: không phải từ ngữ cụ thể, mà là **thiếu năng
+lực đọc hiểu tâm lý học hành vi/ngôn ngữ học để nhận ra một câu có mang giọng MENTOR thật hay
+không**. Ví dụ cụ thể: `resume_bottom` ("Anh xem lại nội dung bên dưới, sửa nếu cần rồi tiếp
+tục") đọc như UI/tooltip hệ thống, không phải lời một người dẫn dắt/đồng hành.
+
+Đã cập nhật vai trò giám khảo + mở rộng Nguyên tắc 3 (Đồng hành) trong `judge-criteria.md` với
+phép thử cụ thể: *"Nếu bỏ hết placeholder, câu này có thể là dòng chữ trên nút bấm/tooltip hệ
+thống không, hay CHỈ CÓ THỂ là lời một người đang thực sự đồng hành nói ra?"*
+
+Kiểm tra: `resume_bottom` (30 dòng/giọng bản cũ) **0/30 dòng có "tôi"** — xác nhận đúng, toàn bộ
+mảnh thiếu hẳn sự hiện diện của Mentor. Đã sinh lại còn **18 dòng/giọng**, MỌI dòng đều có "tôi"
++ kết câu bằng hướng đi tiếp (không chỉ liệt kê thao tác).
+
+Kiểm tra thêm 6 mảnh "Hỗ trợ" khác (`continue_lesson.cta`, `review_lesson.cta`, `next_slot.cta`,
+`gate.status`, `shared.invite_goal`, `confirm_wrapper.close`) — phần lớn tuy không có chữ "tôi"
+tường minh vẫn mang sắc thái quan tâm qua cách diễn đạt ("đang chờ đúng chỗ bạn dừng lại", "khi
+bạn sẵn sàng") nên GIỮ NGUYÊN, không rewrite hàng loạt theo kiểu đếm từ máy móc (đúng tinh thần
+"không so khớp cụm từ" của giám khảo). Riêng `gate.reason` (vừa viết ở vòng 2) đọc phẳng/hành
+chính hơn — đã thêm "tôi" + giọng đồng hành vào cả 10 dòng/giọng.
+
+**Tổng số dòng sau vòng 3: 1165** (giảm từ 1213 do `resume_bottom` rút từ 30 xuống 18 dòng/giọng
+— chất lượng ưu tiên hơn số lượng ở mảnh tần suất cao). Đã verify bằng dữ liệu thật + `select.js`
+test: cấu trúc/chống lặp/4 giọng nguyên vẹn.
+
+**Từ sau đợt audit 3 vòng này, kho lời thoại coi là ỔN ĐỊNH** — mọi kho sinh thêm sau này (tình
+huống mới, ngôn ngữ mới nếu có) tự động qua đúng 6 nguyên tắc (đã bổ sung qua cả 3 vòng) trong
 `judge-criteria.md`, không cần trình từng câu để người vận hành duyệt tay nữa, trừ khi người vận
-hành chủ động phát hiện vấn đề
-gì đó khi dùng thật.
+hành chủ động phát hiện vấn đề gì đó khi dùng thật.
