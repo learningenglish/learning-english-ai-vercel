@@ -627,13 +627,6 @@ export async function generate_lesson(data, ctx) {
   const validation = validateLessonShape(parsed, { expectedWords: data.length_words, checkDialogueEnding: true });
   if (!validation.valid) {
     console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
-    // THỬ NGHIỆM CHẨN ĐOÁN 2026-07-21 (xoá sau khi kết luận): log độ dài TỪNG lượt để đo model
-    // có bám sát cấu trúc N lượt/X-Y từ hay không, kể cả khi validate FAIL (vẫn cần thấy dữ liệu
-    // thô để chẩn đoán, không chỉ biết pass/fail).
-    if (validation.reason === "word_count_deviation" && Array.isArray(parsed.content)) {
-      const perTurn = parsed.content.map((c) => (c?.text || "").trim().split(/\s+/).filter(Boolean).length);
-      console.error("[generate_lesson] DIAGNOSTIC per-turn word counts:", JSON.stringify(perTurn), "turnCount:", perTurn.length);
-    }
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
