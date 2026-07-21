@@ -85,3 +85,29 @@ trước. Bộ 100+ ví dụ calibration vẫn giữ làm ngữ cảnh minh ho�
 
 Tổng **1213 dòng ĐẠT**, phân bổ trên 10 file, 4 giọng cân bằng, không mảnh nào dưới ngưỡng 5
 biến thể/giọng.
+
+## Audit toàn kho theo Nguyên tắc 6 (2026-07-21, LẦN CUỐI trước khi coi kho ổn định)
+
+Sau khi thêm Nguyên tắc 6 vào `judge-criteria.md` ("Mô tả sự kiện, không dùng từ phán xét" —
+phát hiện qua 1 card `review_lesson` thật dùng "lấn cấn"/"sai"), chạy giám khảo lại **toàn bộ
+1213 dòng** theo đủ 6 nguyên tắc. Kết quả: **36/1213 dòng KHÔNG ĐẠT, 100% tập trung ở đúng 1
+mảnh — `review_lesson.point`** (9/12 biến thể mỗi giọng dùng "sai", 1/12 dùng thêm "lấn cấn",
+1/12 dùng thêm "làm khó"). Không phát hiện vi phạm Nguyên tắc 6 ở 9 file/mảnh còn lại.
+
+**Đã sinh lại toàn bộ `point`** (12 biến thể/giọng, giữ nguyên số lượng) theo hướng mô tả sự
+kiện trung tính ("chưa trùng đáp án đúng"/"chưa khớp đáp án" thay cho "sai", bỏ hẳn "lấn
+cấn"/"làm khó").
+
+**Phát hiện kèm theo (không thuộc Nguyên tắc 6, nhưng cùng mảnh nên sửa chung):** đo được
+`reassure` (10/12 giọng) và `cta` (12/12 giọng) cùng dùng từ vựng "ôn/luyện/chắc" — xác suất
+1 card thật ghép ra "Ôn lại... Ôn lại..." (lặp ý) ở mức ~83-100%, không phải hiện tượng hiếm.
+Đã sinh lại `reassure` (12 biến thể/giọng) bỏ hẳn "ôn/luyện/chắc" — dành hẳn vùng từ vựng đó
+cho `cta` (đúng chức năng Hỗ trợ/mời hành động), `reassure` chỉ còn thuần đồng cảm/bình thường
+hoá (chức năng Đồng hành). Đã kiểm lại: 0/12 giọng còn trùng từ vựng.
+
+Quét lại toàn kho (1213 dòng) sau khi sửa: **0 dòng còn vi phạm Nguyên tắc 6**.
+
+**Từ sau đợt audit này, kho lời thoại coi là ỔN ĐỊNH** — mọi kho sinh thêm sau này (tình huống
+mới, ngôn ngữ mới nếu có) tự động qua đúng 6 nguyên tắc trong `judge-criteria.md`, không cần
+trình từng câu để người vận hành duyệt tay nữa, trừ khi người vận hành chủ động phát hiện vấn đề
+gì đó khi dùng thật.
