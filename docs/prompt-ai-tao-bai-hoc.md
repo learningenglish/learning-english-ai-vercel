@@ -132,13 +132,15 @@ SCHEMA JSON:
       "question": "câu hỏi",
       "options": ["A", "B", "C", "D"],
       "answer": 0,
-      "explanation": "vì sao đáp án đúng, bằng tiếng Việt"
+      "explanation": "vì sao đáp án đúng, bằng tiếng Việt",
+      "grammar_tag": "trùng ĐÚNG NGUYÊN VĂN 1 giá trị \"name\" trong mảng \"grammar\" ở trên nếu câu này kiểm tra riêng điểm đó, hoặc null nếu không gắn với điểm ngữ pháp nào trong đó (vd câu hỏi từ vựng thuần)"
     },
     {
       "type": "fill_blank",
       "sentence": "câu có chỗ trống ghi là ___",
       "answer": "từ cần điền",
-      "hint": "gợi ý ngắn"
+      "hint": "gợi ý ngắn",
+      "grammar_tag": "như trên"
     }
   ],
   "xp_reward": số XP đề xuất (bài ngắn 20, vừa 35, dài 50)
@@ -147,7 +149,7 @@ SCHEMA JSON:
 SỐ LƯỢNG:
 - vocabulary: 6-10 từ với bài ngắn, 10-14 với bài vừa, 14-18 với bài dài. Toàn bộ từ chuyên ngành trong bài phải nằm ở đây trước, còn lại lấy từ thường đáng học nhất trong bài. MỌI cụm từ (word có khoảng trắng) PHẢI trích XUẤT HIỆN NGUYÊN VĂN trong câu/đoạn nào đó của "content" — không tự bịa cụm hay/đúng ngữ pháp nhưng không thật sự có trong bài.
 - grammar: CHỈ chọn điểm ngữ pháp ĐÚNG CẤP ĐỘ của bài (bài B1 → chỉ điểm B1), là trọng tâm bài này dạy. KHÔNG liệt kê cấu trúc thuộc cấp thấp hơn dù chúng xuất hiện trong bài. Nếu bài không có điểm ngữ pháp nào đúng cấp, trả mảng rỗng.
-- exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài.
+- exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — không ảnh hưởng nội dung câu hỏi, chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra.
 ```
 
 ---

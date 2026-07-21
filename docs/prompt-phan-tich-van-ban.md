@@ -97,13 +97,15 @@ SCHEMA JSON:
       "question": "câu hỏi về nội dung hoặc từ vựng của chính văn bản này",
       "options": ["A", "B", "C", "D"],
       "answer": 0,
-      "explanation": "giải thích bằng tiếng Việt"
+      "explanation": "giải thích bằng tiếng Việt",
+      "grammar_tag": "trùng ĐÚNG NGUYÊN VĂN 1 giá trị \"name\" trong mảng \"grammar\" ở trên nếu câu này kiểm tra riêng điểm đó, hoặc null nếu không gắn với điểm ngữ pháp nào trong đó"
     },
     {
       "type": "fill_blank",
       "sentence": "lấy một câu trong bài, khoét một từ thành ___",
       "answer": "từ bị khoét",
-      "hint": "gợi ý ngắn"
+      "hint": "gợi ý ngắn",
+      "grammar_tag": "như trên"
     }
   ],
   "notes": ["các lỗi chính tả/ngữ pháp phát hiện trong văn bản gốc, nếu có; không có thì mảng rỗng"],
@@ -113,7 +115,7 @@ SCHEMA JSON:
 SỐ LƯỢNG:
 - vocabulary: 8-15 từ tùy độ dài và độ khó văn bản so với cấp độ người học.
 - grammar: 1-3 điểm THỰC SỰ xuất hiện trong văn bản, ưu tiên điểm lặp lại nhiều lần nhất.
-- exercises: tối thiểu 3 trắc nghiệm + 2 điền từ, tất cả bám vào văn bản.
+- exercises: tối thiểu 3 trắc nghiệm + 2 điền từ, tất cả bám vào văn bản. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra.
 ```
 
 ---

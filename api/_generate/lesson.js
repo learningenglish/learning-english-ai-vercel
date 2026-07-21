@@ -227,13 +227,15 @@ SCHEMA JSON:
       "question": "câu hỏi",
       "options": ["A", "B", "C", "D"],
       "answer": 0,
-      "explanation": "vì sao đáp án đúng, bằng tiếng Việt"
+      "explanation": "vì sao đáp án đúng, bằng tiếng Việt",
+      "grammar_tag": "trùng ĐÚNG NGUYÊN VĂN 1 giá trị \\"name\\" trong mảng \\"grammar\\" ở trên nếu câu này kiểm tra riêng điểm đó, hoặc null nếu không gắn với điểm ngữ pháp nào trong đó (vd câu hỏi từ vựng thuần)"
     },
     {
       "type": "fill_blank",
       "sentence": "câu có chỗ trống ghi là ___",
       "answer": "từ cần điền",
-      "hint": "gợi ý ngắn"
+      "hint": "gợi ý ngắn",
+      "grammar_tag": "như trên"
     }
   ],
   "xp_reward": số XP đề xuất (bài ngắn 20, vừa 35, dài 50)
@@ -242,7 +244,7 @@ SCHEMA JSON:
 SỐ LƯỢNG:
 - vocabulary: 6-10 từ với bài ngắn, 10-14 với bài vừa, 14-18 với bài dài. Toàn bộ từ chuyên ngành trong bài phải nằm ở đây trước, còn lại lấy từ thường đáng học nhất trong bài. MỌI cụm từ (word có khoảng trắng) PHẢI trích XUẤT HIỆN NGUYÊN VĂN trong câu/đoạn nào đó của "content" — không tự bịa cụm hay/đúng ngữ pháp nhưng không thật sự có trong bài.
 - grammar: CHỈ chọn điểm ngữ pháp ĐÚNG CẤP ĐỘ của bài (bài B1 → chỉ điểm B1), là trọng tâm bài này dạy. KHÔNG liệt kê cấu trúc thuộc cấp thấp hơn dù chúng xuất hiện trong bài. Nếu bài không có điểm ngữ pháp nào đúng cấp, trả mảng rỗng.
-- exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài.`;
+- exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — không ảnh hưởng nội dung câu hỏi, chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra.`;
 
 // Độ dài trung bình 1 lượt thoại/1 câu-đoạn (từ) theo cấp độ — dùng để TÍNH SẴN một con số
 // lượt/đoạn cụ thể đưa vào user prompt, thay vì bắt model tự ước lượng (thử nghiệm thật:
@@ -359,13 +361,15 @@ SCHEMA JSON:
       "question": "câu hỏi về nội dung hoặc từ vựng của chính văn bản này",
       "options": ["A", "B", "C", "D"],
       "answer": 0,
-      "explanation": "giải thích bằng tiếng Việt"
+      "explanation": "giải thích bằng tiếng Việt",
+      "grammar_tag": "trùng ĐÚNG NGUYÊN VĂN 1 giá trị \\"name\\" trong mảng \\"grammar\\" ở trên nếu câu này kiểm tra riêng điểm đó, hoặc null nếu không gắn với điểm ngữ pháp nào trong đó"
     },
     {
       "type": "fill_blank",
       "sentence": "lấy một câu trong bài, khoét một từ thành ___",
       "answer": "từ bị khoét",
-      "hint": "gợi ý ngắn"
+      "hint": "gợi ý ngắn",
+      "grammar_tag": "như trên"
     }
   ],
   "notes": ["các lỗi chính tả/ngữ pháp phát hiện trong văn bản gốc, nếu có; không có thì mảng rỗng"],
@@ -375,7 +379,7 @@ SCHEMA JSON:
 SỐ LƯỢNG:
 - vocabulary: 8-15 từ tùy độ dài và độ khó văn bản so với cấp độ người học.
 - grammar: 1-3 điểm THỰC SỰ xuất hiện trong văn bản, ưu tiên điểm lặp lại nhiều lần nhất.
-- exercises: tối thiểu 3 trắc nghiệm + 2 điền từ, tất cả bám vào văn bản.`;
+- exercises: tối thiểu 3 trắc nghiệm + 2 điền từ, tất cả bám vào văn bản. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra.`;
 
 function buildAnalyzeTextUserPrompt(level, userText) {
   // Lọc bỏ chuỗi """ khỏi input trước khi chèn — chống prompt injection cơ bản (đúng
@@ -444,10 +448,11 @@ function validateLessonShape(parsed, { expectedWords, checkDialogueEnding } = {}
   return { valid: true };
 }
 
-function buildLessonInsertRow(parsed, { userId, source }) {
+function buildLessonInsertRow(parsed, { userId, source, goalId }) {
   return {
     user_id: userId,
     source,
+    goal_id: goalId || null,
     title: parsed.title,
     title_vi: parsed.title_vi,
     level: parsed.level,
@@ -461,6 +466,28 @@ function buildLessonInsertRow(parsed, { userId, source }) {
     notes: parsed.notes || null,
     xp_reward: Number.isFinite(parsed.xp_reward) ? parsed.xp_reward : 20,
   };
+}
+
+// Mentor AI (Đợt 3): generate_lesson nhận thêm data.goal_id TÙY CHỌN để gắn bài mới vào
+// đúng mục tiêu (learning_goals) khi được gọi TỪ api/_generate/mentor.js. generate_lesson
+// vẫn là action CÔNG KHAI (client gọi trực tiếp qua /api/chat), nên PHẢI xác nhận goal_id
+// đó thật sự thuộc về CHÍNH ctx.studentId trước khi gắn — nếu không, âm thầm bỏ qua (coi
+// như không có goal_id) thay vì lỗi cả lượt tạo bài, tránh 1 client cố tình gắn bài vào
+// goal_id của người khác (learning_goals.id không có gì ràng buộc theo user ở tầng FK).
+async function resolveOwnedGoalId(goalId, userId) {
+  if (!goalId) return null;
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/learning_goals?id=eq.${encodeURIComponent(goalId)}&user_id=eq.${userId}&select=id`,
+      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows?.[0]?.id || null;
+  } catch (e) {
+    console.error("resolveOwnedGoalId error:", e);
+    return null;
+  }
 }
 
 async function insertLesson(row) {
@@ -526,7 +553,8 @@ export async function generate_lesson(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
-  const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated" }));
+  const goalId = await resolveOwnedGoalId(data.goal_id, ctx.studentId);
+  const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated", goalId }));
   if (!saved) return { error: "Tạo bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
   return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };

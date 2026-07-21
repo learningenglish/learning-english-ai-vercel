@@ -1,0 +1,39 @@
+// app/js/mentorApi.js — hiểu biết "Mentor AI gọi action nào, payload/response ra sao" nằm
+// DUY NHẤT ở file này, giống nguyên tắc lessonApi.js. views/mentor.js và
+// views/mentorGoal.js chỉ gọi các hàm dưới đây, không tự biết tên action backend.
+import { callChatAction } from "./chatApi.js";
+
+async function callAndParse(action, payload) {
+  const res = await callChatAction(action, payload);
+  if (!res.ok) return res;
+  try {
+    return { ok: true, data: JSON.parse(res.content) };
+  } catch {
+    return { ok: false, error: "Phản hồi máy chủ không hợp lệ.", status: 502 };
+  }
+}
+
+// Thẻ đạo diễn (lớp Lời thoại, không gọi AI) — hiện tức thời khi mở màn Mentor AI.
+export async function getMentorAction() {
+  return callAndParse("mentor_get_action", {});
+}
+
+// Bước 0 (mục 6.3): kiểm tra có cần hiện màn chặn khi bấm nút (+) hay không — không gọi AI.
+export async function checkGoalGate() {
+  return callAndParse("mentor_check_goal_gate", {});
+}
+
+// AI CALL #1 — suy luận chân dung nghề từ câu trả lời tự do của người dùng.
+export async function inferGoalProfile(rawText, level) {
+  return callAndParse("mentor_infer_goal", { raw_text: rawText, level: level || null });
+}
+
+// Lưu mục tiêu đã xác nhận — không gọi AI.
+export async function createGoal(occupationProfile, rawKeywords, level) {
+  return callAndParse("mentor_create_goal", { occupation_profile: occupationProfile, raw_keywords: rawKeywords, level: level || null });
+}
+
+// AI CALL #2 — sinh 1 bài học thật cho mục tiêu (đợt tiếp theo hoặc bài đầu tiên).
+export async function generateNextLessonForGoal(goalId) {
+  return callAndParse("mentor_next_lesson", { goal_id: goalId });
+}

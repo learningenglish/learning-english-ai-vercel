@@ -299,14 +299,6 @@ textarea:focus {
   margin-bottom: 8px;
 }
 
-/* Nút test-fill: cảnh báo tạm, viền đứt cam để nhắc phải xoá trước khi merge */
-.test-fill-btn {
-  border: 1px dashed var(--orange);
-  color: #b45309;
-  background: #fffbeb;
-  margin-bottom: 14px;
-}
-
 /* ===== Cards ===== */
 .card {
   background: var(--surface);
@@ -1398,4 +1390,116 @@ textarea:focus {
   .screen {
     max-width: 560px;
   }
+}
+
+/* ===== Mentor AI (Đợt 3) — thẻ đạo diễn, lưới Thư Viện AI, luồng tạo mục tiêu ===== */
+.director-card {
+  margin-bottom: 20px;
+}
+
+.director-card-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+}
+
+.director-card-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.director-card-body {
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.director-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mentor-goal-group {
+  margin-bottom: 8px;
+}
+
+.mentor-goal-group-title {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--purple);
+  margin: 18px 0 4px;
+}
+
+.goal-chip-row {
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* Nút (+) NỔI TRONG màn Mentor AI (mở luồng tạo mục tiêu mới) — khác nút (+) ở bottom nav
+   (đó là nút ĐI ĐẾN màn này), nên không dùng lại .nav-tab-fab (nút đó nằm trong thanh nav,
+   nút này nổi tự do phía trên thanh nav). */
+.fab-inscreen {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--nav-height) + 20px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.mentor-result-card {
+  text-align: center;
+}
+
+.mentor-result-line-1 {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.mentor-result-line-2 {
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+
+.mentor-result-line-3 {
+  color: var(--purple);
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+/* ===== Toast (app/js/toast.js) ===== */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-height) + 16px);
+  transform: translate(-50%, 12px);
+  max-width: calc(100vw - 32px);
+  background: var(--text);
+  color: var(--surface);
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+}
+
+.app-toast-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }

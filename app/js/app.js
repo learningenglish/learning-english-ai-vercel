@@ -11,7 +11,8 @@ import { applyBackground } from "./background.js";
 import { icon } from "./icons.js";
 import { renderLogin } from "./views/login.js";
 import { renderLessons } from "./views/lessons.js";
-import { renderCreateLesson } from "./views/createLesson.js";
+import { renderMentorHub } from "./views/mentor.js";
+import { renderMentorGoalFlow } from "./views/mentorGoal.js";
 import { renderLessonDetail } from "./views/lesson.js";
 import { renderHistory } from "./views/history.js";
 import { renderStats } from "./views/stats.js";
@@ -21,10 +22,12 @@ applyTheme();
 watchSystemTheme();
 applyBackground();
 
+// "Tạo bài học" (form nhập tay) đã bị THAY HẲN bởi "Mentor AI" (Đợt 3) — nút nổi giữa giờ dẫn
+// vào màn có thẻ đạo diễn + Thư Viện AI thay vì form trực tiếp, xem views/mentor.js.
 const NAV_TABS = [
   { path: "/lessons", label: "Bài học", icon: "book" },
   { path: "/favorites", label: "Yêu thích", icon: "heart" },
-  { path: "/create", label: "Tạo bài học", icon: "plus", fab: true },
+  { path: "/mentor", label: "Mentor AI", icon: "sparkles", fab: true },
   { path: "/history", label: "Lịch sử", icon: "clock" },
   { path: "/stats", label: "Thống kê", icon: "bar-chart" },
 ];
@@ -32,7 +35,8 @@ const NAV_TABS = [
 registerRoute("/login", renderLogin);
 registerRoute("/lessons", renderLessons);
 registerRoute("/favorites", (mount) => renderLessons(mount, ["favorite"]));
-registerRoute("/create", renderCreateLesson);
+registerRoute("/mentor", renderMentorHub);
+registerRoute("/mentor-goal", renderMentorGoalFlow);
 registerRoute("/lesson", renderLessonDetail);
 registerRoute("/history", renderHistory);
 registerRoute("/stats", renderStats);

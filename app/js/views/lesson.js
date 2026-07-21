@@ -8,6 +8,7 @@ import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported } from "../tts.js";
 import { icon } from "../icons.js";
+import { showToast } from "../toast.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
@@ -96,6 +97,7 @@ export async function renderLessonDetail(mount, params) {
     tab: "content",
     page: progress?.completed_paragraphs || 0,
     completedExercises: new Set(progress?.completed_exercises || []),
+    exerciseResults: Array.isArray(progress?.exercise_results) ? [...progress.exercise_results] : [],
     xpEarned: progress?.xp_earned || 0,
     showAllContent: false,
     showTranslation: true, // luôn hiện dịch mặc định, tắt được qua icon
@@ -665,7 +667,7 @@ export async function renderLessonDetail(mount, params) {
           btn.classList.add(correct ? "option-correct" : "option-wrong");
           feedback.hidden = false;
           feedback.innerHTML = feedbackHtml(correct, correct ? "Chính xác! " : "Chưa đúng. ", ex.explanation);
-          markExerciseDone(i, correct);
+          markExerciseDone(i, correct, ex.grammar_tag);
         });
       });
     } else {
@@ -676,13 +678,18 @@ export async function renderLessonDetail(mount, params) {
         item.querySelector(".check-fill-btn").disabled = true;
         feedback.hidden = false;
         feedback.innerHTML = correct ? feedbackHtml(true, "Chính xác!") : feedbackHtml(false, "Đáp án đúng: ", ex.answer);
-        markExerciseDone(i, correct);
+        markExerciseDone(i, correct, ex.grammar_tag);
       });
     }
   }
 
-  function markExerciseDone(i, correct) {
+  // exerciseResults: nguồn dữ liệu DUY NHẤT cho Review Queue của Mentor AI (api/_generate/
+  // mentor.js computeReviewQueue) — khác completedExercises (Set chỉ số, chỉ biết "đã làm hay
+  // chưa"), mảng này lưu ĐÚNG/SAI + grammar_tag từng câu, mới phân biệt được "hay sai điểm
+  // ngữ pháp nào" để Mentor gợi ý ôn tập đúng chỗ.
+  function markExerciseDone(i, correct, grammarTag) {
     state.completedExercises.add(i);
+    state.exerciseResults.push({ index: i, correct, grammar_tag: grammarTag || null });
     if (correct) {
       const total = (lesson.exercises || []).length || 1;
       state.xpEarned += Math.max(1, Math.round((lesson.xp_reward || 20) / total));
@@ -696,6 +703,7 @@ export async function renderLessonDetail(mount, params) {
     upsertLessonProgress(lesson.id, {
       completed_paragraphs: state.page,
       completed_exercises: Array.from(state.completedExercises),
+      exercise_results: state.exerciseResults,
       xp_earned: state.xpEarned,
       last_opened_at: new Date().toISOString(),
       completed_at: allDone ? new Date().toISOString() : null,
@@ -740,6 +748,15 @@ export async function renderLessonDetail(mount, params) {
   return function teardown() {
     ttsPlayer.stop();
     document.getElementById("word-popover")?.remove();
+    // Rời bài CHƯA hoàn thành nhưng ĐÃ có chút tiến độ (đọc dở/làm dở bài tập) — giọng rủ rê,
+    // KHÔNG trách móc (mục 6.4 Đợt 3: cấm giọng "bạn chưa hoàn thành"). Bài chưa động tới gì
+    // (mở ra rồi thoát ngay) thì không có gì để "lưu lại", không hiện thông báo.
+    const total = (lesson.exercises || []).length;
+    const allDone = total > 0 && state.completedExercises.size === total;
+    const hasProgress = state.completedExercises.size > 0 || state.page > 0;
+    if (!allDone && hasProgress) {
+      showToast("Bài này bạn đang học dở, mình lưu lại rồi, khi nào quay lại mình học tiếp nhé");
+    }
   };
 }
 

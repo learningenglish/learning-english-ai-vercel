@@ -3,6 +3,13 @@ import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
 import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { add_vocab_word } from "./_generate/vocab.js";
+import {
+  mentor_get_action,
+  mentor_check_goal_gate,
+  mentor_infer_goal,
+  mentor_create_goal,
+  mentor_next_lesson,
+} from "./_generate/mentor.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1273,6 +1280,15 @@ const ACTIONS = {
   // Người học bấm tra 1 từ trong bài -> tự thêm vào "vocabulary" của bài đó (nhóm "Đã tra"),
   // xem api/_generate/vocab.js.
   add_vocab_word,
+
+  // Mentor AI (Đợt 3) — thay luồng "Tạo nội dung" cũ, xem api/_generate/mentor.js. Tách lớp
+  // Quyết định/Lời thoại NGAY TRONG module đó — 5 action dưới đây chỉ là điểm vào, không tự
+  // thêm logic nào ở đây (đúng luật "chat.js đóng băng", chỉ thêm import + entry).
+  mentor_get_action,
+  mentor_check_goal_gate,
+  mentor_infer_goal,
+  mentor_create_goal,
+  mentor_next_lesson,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

@@ -53,6 +53,22 @@ export async function listLessons({ filter = "all" } = {}) {
   return restFetch(`lessons?${q}`);
 }
 
+// Lưới thư viện Mentor AI (Đợt 3 mục 6.1) — CHỈ bài có goal_id (sinh từ luồng Mentor), khác
+// listLessons() ở trên vốn trả TOÀN BỘ bài của user bất kể nguồn nào (tab "Bài học" cũ vẫn
+// giữ nguyên hành vi, không lọc theo goal_id).
+export async function listMentorLibraryLessons({ filter = "all" } = {}) {
+  let q =
+    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id" +
+    "&goal_id=not.is.null&order=created_at.desc";
+  if (filter === "favorite") q += "&is_favorite=eq.true";
+  if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
+  return restFetch(`lessons?${q}`);
+}
+
+export async function listLearningGoals() {
+  return restFetch("learning_goals?select=id,title&status=eq.active&order=created_at.desc");
+}
+
 export async function getLessonById(id) {
   const rows = await restFetch(`lessons?id=eq.${encodeURIComponent(id)}&select=*`);
   return rows?.[0] || null;

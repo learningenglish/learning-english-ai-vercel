@@ -46,6 +46,10 @@ const PATHS = {
   "dollar-sign": '<path d="M12 2v20"/><path d="M17 6.5c0-1.9-2.2-3.5-5-3.5S7 4.6 7 6.5 9.2 10 12 10s5 1.6 5 3.5-2.2 3.5-5 3.5-5-1.6-5-3.5"/>',
   briefcase: '<rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M2.5 13h19"/>',
   bookmark: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z"/>',
+  // Mentor AI (Đợt 3) — nút (+) đổi từ "plus" thuần sang icon riêng biệt với "compass" (đã
+  // dùng cho tier badge ở màn Bài học, tránh trùng icon 2 nơi khác nghĩa nhau).
+  sparkles:
+    '<path d="M12 3l1.8 4.8L18.5 9.5l-4.7 1.7L12 16l-1.8-4.8-4.7-1.7 4.7-1.7z"/><path d="M5 16l.9 2.3L8 19l-2.1.7L5 22l-.9-2.3L2 19l2.1-.7z"/><path d="M19 14l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8L16.5 16.5l1.8-.7z"/>',
 };
 
 // "name": tên icon trong PATHS ở trên. "size"/"strokeWidth": tuỳ biến kích thước hiển thị.
