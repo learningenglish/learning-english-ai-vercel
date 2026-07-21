@@ -55,6 +55,13 @@ const GOAL_LOW_ACCESS_THRESHOLD = 0.5; // Bước 0 mục 6.3: "truy cập đợ
 const DEFAULT_LEVEL_WHEN_UNSET = "B1"; // người dùng chọn "Mình chưa chắc" ở Bước 2
 const MENTOR_LESSON_LENGTH_WORDS = 200; // độ dài mặc định cho bài Mentor tự sinh tiếp (next_slot)
 const MENTOR_TERM_DENSITY = 20; // lượng từ chuyên ngành mặc định cho bài Mentor tự sinh
+// term_density=0 ("không có từ chuyên ngành") kích lỗi THẬT đã biết (memory: model trả
+// vocabulary:[] rỗng hoàn toàn khi prompt ghi "Lượng từ chuyên ngành: không có" — lỗi ở
+// lesson.js/prompt, chưa sửa gốc, cần bàn riêng vì đụng nội dung prompt). Mục tiêu "chung"
+// (is_general) không có ngành cụ thể để yêu cầu 20 từ như MENTOR_TERM_DENSITY, nhưng KHÔNG
+// dùng 0 — dùng 1 số nhỏ để né câu "không có" trong prompt, vẫn hợp lý về nội dung (vài từ/cụm
+// từ đáng học trong bài, không đòi hỏi phải "chuyên ngành").
+const MENTOR_GENERAL_TERM_DENSITY = 3;
 // Các "góc tình huống" luân phiên KHÔNG DÙNG AI để chọn chủ đề bài kế tiếp trong cùng 1 mục
 // tiêu — thay cho Lượt B (generateLevelTopicsForAllLevels) của skin.js, vì Lượt B là 5 lượt
 // gọi AI riêng, NẰM NGOÀI 2 điểm được phép ở mục 5 Đợt 3. Đây là lựa chọn kỹ thuật tự chọn,
@@ -469,7 +476,7 @@ export async function mentor_next_lesson(data, ctx) {
   if (isGeneral) {
     topic = pickGeneralTopic(level, goal.lesson_count);
     industry = "";
-    termDensity = 0;
+    termDensity = MENTOR_GENERAL_TERM_DENSITY;
   } else {
     const angle = MENTOR_SITUATION_ANGLES[goal.lesson_count % MENTOR_SITUATION_ANGLES.length];
     topic = `${goal.occupation_profile.merged_occupation}: ${angle}`;
