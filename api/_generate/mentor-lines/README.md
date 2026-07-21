@@ -107,7 +107,26 @@ hoá (chức năng Đồng hành). Đã kiểm lại: 0/12 giọng còn trùng t
 
 Quét lại toàn kho (1213 dòng) sau khi sửa: **0 dòng còn vi phạm Nguyên tắc 6**.
 
-**Từ sau đợt audit này, kho lời thoại coi là ỔN ĐỊNH** — mọi kho sinh thêm sau này (tình huống
-mới, ngôn ngữ mới nếu có) tự động qua đúng 6 nguyên tắc trong `judge-criteria.md`, không cần
-trình từng câu để người vận hành duyệt tay nữa, trừ khi người vận hành chủ động phát hiện vấn đề
+**Vòng 2 (cùng ngày, sau phản hồi thực tế lần 2 từ bảng mẫu 14 dòng)** — Minh chỉ ra 3 vấn đề
+KHÔNG được bắt bởi Nguyên tắc 6 gốc, đã bổ sung thành phần mở rộng của Nguyên tắc 6 trong
+`judge-criteria.md`:
+1. **Trấn an rỗng** ("cứ yên tâm, rồi sẽ ổn thôi") — hứa hẹn tương lai không có căn cứ. Đã sinh
+   lại toàn bộ `review_lesson.reassure` (12 giọng), chỉ còn mô tả TÍNH CHẤT hiện tại (bình
+   thường/tự nhiên/nhiều người từng gặp), không hứa hẹn kết quả tương lai.
+2. **Sai chủ ngữ** ("Chị chưa hoàn thành X") — đặt người dùng làm chủ thể của trạng thái thiếu
+   sót. Đã sinh lại `gate.status` (đặt NỘI DUNG/bài học làm chủ ngữ: "X bài đang chờ chị hoàn
+   tất") và viết lại `gate.reason` (bỏ giọng khuyên can "dễ chia sức/dễ nản", đổi sang thông tin
+   trung tính + xác nhận rõ cả 2 lựa chọn đều ổn, quyền quyết định ở người dùng).
+3. **Cảm thán thừa** — bỏ dấu "!" ở `praise.single_lesson` (routine, xảy ra thường xuyên), GIỮ
+   nguyên ở `praise.goal_complete` (khoảnh khắc lớn, xứng đáng cảm thán hơn).
+
+Ngoài ra tự phát hiện thêm khi sửa: `new_goal.named_opener` có 2 dòng phóng đại quy mô tương
+tác ("vạch ra lộ trình học", "lên kế hoạch học") ở đúng lúc chưa có gì xảy ra (màn chào lần đầu,
+trước khi người dùng nhập gì) — đã đơn giản hoá lại. Quét lại: 0 dòng còn dính cả 2 vòng lỗi,
+1213 dòng, cấu trúc/chống lặp/4 giọng vẫn nguyên vẹn (kiểm bằng `select.js` test).
+
+**Từ sau đợt audit 2 vòng này, kho lời thoại coi là ỔN ĐỊNH** — mọi kho sinh thêm sau này (tình
+huống mới, ngôn ngữ mới nếu có) tự động qua đúng 6 nguyên tắc (đã bổ sung) trong
+`judge-criteria.md`, không cần trình từng câu để người vận hành duyệt tay nữa, trừ khi người vận
+hành chủ động phát hiện vấn đề
 gì đó khi dùng thật.

@@ -8,7 +8,7 @@
       "exercises_total"
     ],
     "toi_ten": [
-      "{ten} vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó!",
+      "{ten} vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó.",
       "Xong bài \"{lesson_title}\" rồi, {ten} làm đúng {correct_count}/{exercises_total} câu, quá ổn.",
       "{ten} vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
       "\"{lesson_title}\" xong rồi, {ten} đúng {correct_count}/{exercises_total} câu, tốt lắm.",
@@ -21,7 +21,7 @@
       "\"{lesson_title}\" — {ten} vừa xong với {correct_count}/{exercises_total} câu đúng, giỏi ghê."
     ],
     "toi_anh": [
-      "Anh vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó!",
+      "Anh vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó.",
       "Xong bài \"{lesson_title}\" rồi, anh làm đúng {correct_count}/{exercises_total} câu, quá ổn.",
       "Anh vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
       "\"{lesson_title}\" xong rồi, anh đúng {correct_count}/{exercises_total} câu, tốt lắm.",
@@ -34,7 +34,7 @@
       "\"{lesson_title}\" — anh vừa xong với {correct_count}/{exercises_total} câu đúng, giỏi ghê."
     ],
     "toi_chi": [
-      "Chị vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó!",
+      "Chị vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — giỏi đó.",
       "Xong bài \"{lesson_title}\" rồi, chị làm đúng {correct_count}/{exercises_total} câu, quá ổn.",
       "Chị vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
       "\"{lesson_title}\" xong rồi, chị đúng {correct_count}/{exercises_total} câu, tốt lắm.",
@@ -47,7 +47,7 @@
       "\"{lesson_title}\" — chị vừa xong với {correct_count}/{exercises_total} câu đúng, giỏi ghê."
     ],
     "toi_ban": [
-      "Bạn vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — đỉnh đó!",
+      "Bạn vừa xong bài \"{lesson_title}\", đúng {correct_count}/{exercises_total} câu — đỉnh đó.",
       "Xong bài \"{lesson_title}\" rồi, bạn làm đúng {correct_count}/{exercises_total} câu, quá ngon.",
       "Bạn vừa hoàn thành \"{lesson_title}\" với {correct_count}/{exercises_total} câu đúng.",
       "\"{lesson_title}\" xong rồi, bạn đúng {correct_count}/{exercises_total} câu, tốt lắm nha.",

@@ -7,11 +7,11 @@
     "toi_ten": [
       "{ten}, rất vui được đồng hành cùng {ten} từ đây.",
       "Chào {ten}, tôi bắt đầu hành trình học cùng {ten} nhé.",
-      "{ten} ơi, tôi đợi để cùng {ten} lên kế hoạch học đây.",
+      "{ten} ơi, tôi đang chờ để bắt đầu cùng {ten} đây.",
       "Rất vui vì {ten} đã ghé Mentor AI.",
       "{ten}, tôi sẵn sàng đồng hành cùng {ten} rồi đây.",
       "Chào mừng {ten} đến với hành trình học cùng tôi.",
-      "{ten} ơi, giờ là lúc tôi cùng {ten} vạch ra lộ trình học rồi.",
+      "{ten} ơi, giờ là lúc tôi cùng {ten} bắt đầu rồi đó.",
       "Rất vui được làm người đồng hành của {ten}.",
       "{ten}, tôi háo hức được cùng {ten} bắt đầu lắm.",
       "Chào {ten}, hành trình học của {ten} bắt đầu từ đây nhé."
@@ -19,11 +19,11 @@
     "toi_anh": [
       "Anh, rất vui được đồng hành cùng anh từ đây.",
       "Chào anh, tôi bắt đầu hành trình học cùng anh nhé.",
-      "Anh ơi, tôi đợi để cùng anh lên kế hoạch học đây.",
+      "Anh ơi, tôi đang chờ để bắt đầu cùng anh đây.",
       "Rất vui vì anh đã ghé Mentor AI.",
       "Anh, tôi sẵn sàng đồng hành cùng anh rồi đây.",
       "Chào mừng anh đến với hành trình học cùng tôi.",
-      "Anh ơi, giờ là lúc tôi cùng anh vạch ra lộ trình học rồi.",
+      "Anh ơi, giờ là lúc tôi cùng anh bắt đầu rồi đó.",
       "Rất vui được làm người đồng hành của anh.",
       "Anh, tôi háo hức được cùng anh bắt đầu lắm.",
       "Chào anh, hành trình học của anh bắt đầu từ đây nhé."
@@ -31,11 +31,11 @@
     "toi_chi": [
       "Chị, rất vui được đồng hành cùng chị từ đây.",
       "Chào chị, tôi bắt đầu hành trình học cùng chị nhé.",
-      "Chị ơi, tôi đợi để cùng chị lên kế hoạch học đây.",
+      "Chị ơi, tôi đang chờ để bắt đầu cùng chị đây.",
       "Rất vui vì chị đã ghé Mentor AI.",
       "Chị, tôi sẵn sàng đồng hành cùng chị rồi đây.",
       "Chào mừng chị đến với hành trình học cùng tôi.",
-      "Chị ơi, giờ là lúc tôi cùng chị vạch ra lộ trình học rồi.",
+      "Chị ơi, giờ là lúc tôi cùng chị bắt đầu rồi đó.",
       "Rất vui được làm người đồng hành của chị.",
       "Chị, tôi háo hức được cùng chị bắt đầu lắm.",
       "Chào chị, hành trình học của chị bắt đầu từ đây nhé."
@@ -43,11 +43,11 @@
     "toi_ban": [
       "Bạn ơi, rất vui được đồng hành cùng bạn từ đây.",
       "Chào bạn, tôi bắt đầu hành trình học cùng bạn nhé.",
-      "Bạn ơi, tôi đợi để cùng bạn lên kế hoạch học đây.",
+      "Bạn ơi, tôi đang chờ để bắt đầu cùng bạn đây.",
       "Rất vui vì bạn đã ghé Mentor AI.",
       "Bạn ơi, tôi sẵn sàng đồng hành cùng bạn rồi đây.",
       "Chào mừng bạn đến với hành trình học cùng tôi.",
-      "Bạn ơi, giờ là lúc tôi cùng bạn vạch ra lộ trình học rồi.",
+      "Bạn ơi, giờ là lúc tôi cùng bạn bắt đầu rồi đó.",
       "Rất vui được làm người đồng hành của bạn.",
       "Bạn ơi, tôi háo hức được cùng bạn bắt đầu lắm.",
       "Chào bạn, hành trình học của bạn bắt đầu từ đây nhé."
