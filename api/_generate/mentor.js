@@ -74,7 +74,11 @@ const REVIEW_QUEUE_SEVERE_MIN_WRONG = 3;
 const REVIEW_QUEUE_SEVERE_COOLDOWN_DAYS = 5;
 const GOAL_LOW_ACCESS_THRESHOLD = 0.5; // Bước 0 mục 6.3: "truy cập đợt hiện tại CHƯA đạt 50%"
 const DEFAULT_LEVEL_WHEN_UNSET = "B1"; // người dùng chọn "Mình chưa chắc" ở Bước 2
-const MENTOR_LESSON_LENGTH_WORDS = 200; // độ dài mặc định cho bài Mentor tự sinh tiếp (next_slot)
+// Độ dài bài next_slot tự sinh: KHÔNG tự chọn số từ ở đây nữa (2026-07-23) — generate_lesson
+// (lesson.js) tự tra LEVEL_LENGTH_TABLE theo level (A1/A2 tự động 1 mức cố định, B1+ theo
+// length_tier). next_slot không hỏi người dùng chọn độ dài -> luôn gửi "medium" cho B1+, giá
+// trị ĐÚNG NHƯ đã kiểm chứng ổn định trước đây (B1 medium ~205 từ, gần khớp target 200 cũ).
+const MENTOR_LESSON_LENGTH_TIER = "medium";
 const MENTOR_TERM_DENSITY = 20; // lượng từ chuyên ngành mặc định cho bài Mentor tự sinh
 // term_density=0 ("không có từ chuyên ngành") kích lỗi THẬT đã biết (memory: model trả
 // vocabulary:[] rỗng hoàn toàn khi prompt ghi "Lượng từ chuyên ngành: không có" — lỗi ở
@@ -646,7 +650,7 @@ export async function mentor_next_lesson(data, ctx) {
     // nhận skin_general.json phủ đủ 100% frame_key của spine cả 5 level) — tên khung tiếng
     // Việt còn hơn chặn hẳn lượt sinh bài.
     topic: topic || slot.situation_frame,
-    length_words: MENTOR_LESSON_LENGTH_WORDS,
+    length_tier: MENTOR_LESSON_LENGTH_TIER,
     field: "",
     industry,
     product: "",

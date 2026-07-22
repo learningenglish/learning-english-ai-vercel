@@ -7,7 +7,7 @@
 | Ô mô tả chủ đề (textarea 500 ký tự) | `{USER_DESCRIPTION}` | "Hội thoại tại quầy check-in sân bay, dùng thì hiện tại đơn" |
 | Cấp độ | `{LEVEL}` | A1 / A2 / B1 / B2 / C1 |
 | Chủ đề | `{TOPIC}` | Giao tiếp hằng ngày |
-| Độ dài đoạn văn | `{LENGTH_WORDS}` | 100 (Ngắn) / 200 (Vừa) / 300 (Dài) — đổi option thành số từ |
+| Độ dài đoạn văn | `{LENGTH_WORDS_MIN}`-`{LENGTH_WORDS_MAX}` | **THAY HẲN 2026-07-23** — không còn 1 số 100/200/300 chung mọi cấp, xem bảng `LEVEL_LENGTH_TABLE` ở mục "QUY TẮC VỀ ĐỘ DÀI" bên dưới: A1/A2 CHỈ 1 mức cố định (không hiện control chọn độ dài trên form), B1 trở lên hiện Ngắn/Vừa/Dài với số RIÊNG từng cấp |
 | Loại nội dung | `{CONTENT_TYPE}` | "hội thoại" hoặc "bài đọc" |
 | Lĩnh vực (nâng cao) | `{FIELD}` | Du lịch |
 | Ngành nghề (nâng cao) | `{INDUSTRY}` | Khách sạn |
@@ -88,19 +88,40 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 - Độ dài TỔNG THỂ của hội thoại tuân theo user prompt (xem QUY TẮC VỀ ĐỘ DÀI + mục 3 USER PROMPT — dialogue dùng kiến trúc "N lượt cụ thể, mỗi lượt 1 khoảng từ cụ thể", KHÔNG phải "viết ~X từ tổng"); biến thiên độ dài lượt (mục đầu tiên ở trên) vẫn phải giữ, chỉ là phân bổ KHÔNG ĐỀU trong số lượt đã cho, không phải lý do để bớt số lượt.
 - BẮT BUỘC hội thoại TRỌN VẸN: có mở đầu — diễn biến — chốt lại tự nhiên (vd cảm ơn/tạm biệt/xác nhận đã xong việc). LƯỢT THOẠI CUỐI CÙNG TUYỆT ĐỐI KHÔNG ĐƯỢC LÀ CÂU HỎI CHƯA CÓ LỜI ĐÁP (lỗi thật đã gặp: bài kết ở "Will I get paid for this delivery?" rồi hết, không nhân vật nào trả lời) — nếu gần hết số lượt yêu cầu mà diễn biến chưa xong, RÚT NGẮN phần giữa để dành chỗ chốt lại cho trọn, KHÔNG được cắt ngang khi câu chuyện còn dở.
 
-QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý) — "reading" và "dialogue" dùng 2 CƠ CHẾ KHÁC NHAU (chốt 2026-07-21, xem lịch sử thay đổi ở mục 3):
-- reading: tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" phải nằm trong khoảng ±25% của length_words yêu cầu — hệ thống TỰ ĐỘNG TỪ CHỐI nếu lệch quá. Cơ chế này KHÔNG đổi, vẫn hoạt động ổn định (không có vấn đề như dialogue bên dưới).
-- dialogue: KHÔNG ra đề theo tổng số từ nữa — LỖI THẬT ĐÃ XÁC NHẬN (không phải giả thuyết): yêu cầu "viết ~200 từ tổng" khiến model hội tụ về 93-140 từ (thiếu 30-55%) DÙ ĐÃ THỬ làm rõ cách đếm + tăng biên an toàn số lượt gợi ý — model không tự cộng tổng qua nhiều lượt tốt. Ra đề THEO CẤU TRÚC thay vào đó: user prompt cho ĐÚNG số lượt (N) + khoảng từ/lượt cụ thể (X-Y, đã đẩy cao hơn lý thuyết để bù thiên lệch neo-đáy đã đo được) — validator VẪN kiểm tổng ±25% như cũ (không đổi validator), chỉ đổi CÁCH RA ĐỀ để đạt tổng đó gián tiếp qua cấu trúc, không đổi ngưỡng chấp nhận.
-- **A1 — length_words THẤP HƠN hẳn (chốt 2026-07-22):** dù đã đổi cách ra đề dialogue ở trên,
-  A1/200 từ VẪN fail validate 20/20 lượt thật khi nối `next_slot` vào da lĩnh vực (xem
-  `project_next_slot_skin_wiring` trong memory — không phải lỗi truyền tham số, next_slot
-  truyền ĐÚNG 200 như các cấp khác). Kết luận: 200 từ NGOÀI khả năng tự nhiên của A1 khi câu bị
-  ép TỐI ĐA 8 từ — không phải lỗi ra đề, mà SAI bản chất sư phạm A1 (xem QUY TẮC BẮT BUỘC VỀ
-  CẤP ĐỘ, đoạn "RIÊNG A1" mới thêm). Từ nay `length_words` mọi caller truyền vào cho A1 (kể cả
-  form nhập tay chọn "Dài") đều bị NẮN (clamp) về khung `50-90` — xem
-  `LENGTH_WORDS_SAFE_RANGE_BY_LEVEL`/`clampLengthWordsForLevel()` trong lesson.js, áp dụng
-  TRƯỚC khi build cả user prompt lẫn validate, đảm bảo prompt và validator luôn khớp cùng 1 số.
-  CHỈ áp cho A1 — A2-C1 giữ nguyên, chưa có dữ liệu thật để đổi.
+QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý) — "reading" và "dialogue" dùng 2 CƠ CHẾ KHÁC NHAU để RA ĐỀ (cách viết prompt, xem mục 3), nhưng CÙNG 1 CƠ CHẾ VALIDATE (khoảng min-max tuyệt đối, xem bảng dưới):
+
+**Bảng độ dài theo cấp CEFR (`LEVEL_LENGTH_TABLE` trong lesson.js, chốt 2026-07-23) — THAY HẲN
+cơ chế "1 số length_words + ±25%" cũ dùng chung mọi cấp.** Căn cứ: vốn từ theo cấp (A1~500 →
+C1~8000+ từ), độ dài câu theo CEFR (A1-A2 <10 từ/câu, B1-B2 10-16 từ/câu), và chuẩn độ dài bài
+đọc Cambridge KET/PET/FCE/CAE ứng A2/B1/B2/C1 — KHÔNG phải số tự chọn:
+
+| Cấp | Mức | Khoảng (từ) |
+|---|---|---|
+| A1 | (cố định, không hiện lựa chọn) | 60-90 |
+| A2 | (cố định, không hiện lựa chọn) | 90-130 |
+| B1 | Ngắn / Vừa / Dài | 150-180 / 180-230 / 230-280 |
+| B2 | Ngắn / Vừa / Dài | 250-300 / 300-380 / 380-450 |
+| C1 | Ngắn / Vừa / Dài | 350-420 / 420-500 / 500-600 |
+
+A1/A2 KHÔNG có khái niệm "Dài" — văn bản CEFR ở 2 cấp này là đoạn RỜI RẠC NGẮN (biển báo/tin
+nhắn), không phải đoạn liên kết dài, nên form KHÔNG hiện control chọn độ dài cho 2 cấp này.
+Mentor AI (next_slot, không hỏi người dùng chọn độ dài) luôn dùng mức "Vừa" cho B1 trở lên.
+
+- **reading:** tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" phải nằm TRONG khoảng min-max
+  của bảng trên (không phải ±25% quanh 1 điểm nữa) — hệ thống TỰ ĐỘNG TỪ CHỐI nếu ngoài khoảng.
+- **dialogue:** KHÔNG ra đề theo tổng số từ — LỖI THẬT ĐÃ XÁC NHẬN: yêu cầu "viết ~N từ tổng"
+  khiến model không tự cộng tổng qua nhiều lượt tốt (hội tụ thấp hơn hẳn yêu cầu). Ra đề THEO
+  CẤU TRÚC thay vào đó: user prompt cho ĐÚNG số lượt (N) + khoảng từ/lượt cụ thể (xem mục
+  "Công thức tính (dialogue)" bên dưới) — validator VẪN kiểm tổng nằm trong khoảng min-max như
+  reading (không đổi validator, chỉ đổi CÁCH RA ĐỀ để đạt tổng đó gián tiếp qua cấu trúc).
+- **Lịch sử hiệu chỉnh A1 (2026-07-22 → 2026-07-23):** A1/200 từ (mức chung cũ) fail validate
+  20/20 lượt thật khi nối `next_slot` vào da lĩnh vực (xem `project_next_slot_skin_wiring`
+  trong memory) — 200 từ NGOÀI khả năng tự nhiên của A1 khi câu bị ép TỐI ĐA 8 từ, SAI bản chất
+  sư phạm A1 (xem đoạn "RIÊNG A1" trong QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ). Hạ xuống 50-90 trước, sau
+  đó (2026-07-23) đổi hẳn sang bảng đầy đủ 5 cấp ở trên (60-90, số liền kề gần giống, không đổi
+  hành vi A1 đáng kể). B1 "Vừa" (180-230, giữa 205) khớp gần đúng target 200 cũ đã kiểm chứng
+  nhiều lần — không đổi hành vi B1 hiện có. B2/C1 THỰC SỰ tăng mạnh so với mặc định 200 cũ, xem
+  ghi chú kết quả test thật ở `project_next_slot_skin_wiring` trong memory khi kiểm lại.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.
@@ -204,7 +225,7 @@ nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho 
 
 **Công thức tính (dialogue)** — xem `DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL` / `DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL` trong lesson.js:
 - `{TURN_COUNT}` = round(LENGTH_WORDS ÷ trung bình khoảng CƠ SỞ theo cấp) — khoảng cơ sở: A1:[5,9], A2:[6,11], B1:[8,15], B2:[10,18], C1:[12,22] từ/lượt (dùng để TÍNH SỐ LƯỢT, không phải để hiển thị).
-- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32]. **A1 RIÊNG (hiệu chỉnh 2026-07-22): [5,8]**, gần khoảng cơ sở chứ không đẩy cao — khoảng [9,14] cũ được đo khi length_words A1 còn ~200, sau khi hạ xuống 50-90 (xem đoạn "A1 — length_words THẤP HƠN hẳn" ở trên) giữ nguyên [9,14] gây THỪA (đo thật: target 90 → hội tụ ~119-130). CHƯA đo lại [5,8] bằng dữ liệu thật, chỉ tính theo công thức — kiểm khi có dịp.
+- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32]. **A1 RIÊNG (hiệu chỉnh 2026-07-22): [5,8]**, gần khoảng cơ sở chứ không đẩy cao — khoảng [9,14] cũ được đo khi length_words A1 còn ~200, sau khi hạ xuống mức thấp (xem "Bảng độ dài theo cấp CEFR" ở trên) giữ nguyên [9,14] gây THỪA (đo thật: target 90 → hội tụ ~119-130). Đã đo lại [5,8] bằng dữ liệu thật (6/6 đạt validator ở target 50-90) — B2/C1 CHƯA đo (target tăng mạnh so với 200 cũ), kiểm khi có dịp.
 - `{UPPER_HALF_MIN}` = round((TURN_MIN + TURN_MAX) / 2) — mốc "nửa trên" model được yêu cầu ưu tiên.
 
 **Lịch sử 3 lần sửa "dialogue hụt từ" (2026-07-21, GIỮ LẠI để không lặp lại các hướng đã thử và thất bại):**

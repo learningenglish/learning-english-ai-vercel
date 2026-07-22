@@ -299,13 +299,15 @@ const DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL = {
 // neo-đáy. B1 ĐÃ KIỂM CHỨNG bằng dữ liệu thật (8-15 -> 14-22, 6 mẫu). A2/B2: NGOẠI SUY tuyến
 // tính giữa các điểm biên đã đo (chấp nhận ngoại suy, không đo riêng).
 // A1 RIÊNG — hiệu chỉnh lại 2026-07-22 (KHÁC ngoại suy A2-C1 ở trên): khoảng gốc [9,14] được đo
-// khi length_words A1 còn ở mức cao hơn hẳn (~200) — sau khi hạ length_words A1 xuống 50-90
-// (xem LENGTH_WORDS_SAFE_RANGE_BY_LEVEL), giữ NGUYÊN khoảng cũ gây THỪA hẳn (đo thật: target 90
-// -> hội tụ ~119-130, vượt tôn 25%) vì bias "đẩy nửa trên" vốn tính để bù thiên lệch neo-đáy ở
-// target CAO, áp lên target THẤP thì hoá ra lại đẩy quá đà. Hạ về [5,8] (gần khoảng CƠ SỞ tính
-// số lượt, gần như bỏ hẳn phần đẩy) — theo tính toán: turnCount (không đổi, vẫn theo cơ sở
-// avg=7) × trung bình khoảng mới (~6.5) ≈ khớp target 50-90. CHƯA đo lại bằng dữ liệu thật sau
-// hiệu chỉnh này — kiểm khi có dịp, xem project_next_slot_skin_wiring trong memory.
+// khi length_words A1 còn ở mức cao hơn hẳn (~200) — sau khi hạ length_words A1 xuống mức thấp
+// (xem LEVEL_LENGTH_TABLE, 2026-07-23 đổi tiếp thành bảng đủ 5 cấp), giữ NGUYÊN khoảng cũ gây
+// THỪA hẳn (đo thật: target 90 -> hội tụ ~119-130, vượt tôn 25%) vì bias "đẩy nửa trên" vốn
+// tính để bù thiên lệch neo-đáy ở target CAO, áp lên target THẤP thì hoá ra lại đẩy quá đà. Hạ
+// về [5,8] (gần khoảng CƠ SỞ tính số lượt, gần như bỏ hẳn phần đẩy) — theo tính toán: turnCount
+// (không đổi, vẫn theo cơ sở avg=7) × trung bình khoảng mới (~6.5) ≈ khớp target thấp. Đã kiểm
+// lại bằng dữ liệu thật (6/6 đạt) khi target còn 50-90 — CHƯA đo lại ở target 60-90 hiện tại
+// (khoảng gần như không đổi, không kỳ vọng khác biệt đáng kể), xem
+// project_next_slot_skin_wiring trong memory nếu cần đo lại.
 const DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL = {
   A1: [5, 8],
   A2: [11, 16],
@@ -314,30 +316,34 @@ const DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL = {
   C1: [21, 32],
 };
 
-// KHUNG AN TOÀN length_words THEO CẤP ĐỘ (chốt 2026-07-22, sau khi nối next_slot vào skin.js
-// lộ ra: 20/20 lượt gọi generate_lesson THẬT ở A1/200 từ đều fail validate (~99-143 từ, hụt
-// 30-50%, xem project_next_slot_skin_wiring trong memory) — không phải lỗi truyền tham số (đã
-// xác nhận next_slot dùng ĐÚNG length_words=200 như mọi level khác), mà là 200 từ NGOÀI khả
-// năng tự nhiên của A1 với cấu trúc câu bị ép ngắn (TỐI ĐA 8 từ/câu, xem QUY TẮC BẮT BUỘC VỀ
-// CẤP ĐỘ) — ép model viết dài hơn khả năng tự nhiên chỉ tạo lặp ý/rề rà giả tạo, SAI bản chất
-// sư phạm A1 (câu/cấu trúc đơn giản, dễ nhớ, dùng lại được nhiều tình huống — không phải đoạn
-// văn/hội thoại dài). Áp KHUNG THẤP HƠN thay vì tiếp tục ép đạt 200 từ. CHỈ áp cho A1 (dữ liệu
-// thật hiện có), KHÔNG suy diễn sang A2+ (B1 đã kiểm chứng ổn định ở 200 từ nhiều lần, xem
-// DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL comment) — mở rộng khi có dữ liệu thật riêng cho A2.
-// NẮN (clamp) length_words người gọi truyền vào về khung này — áp dụng ĐỒNG NHẤT cho MỌI
-// caller (next_slot lẫn form nhập tay chọn "Dài"), không tách luồng: bản chất A1 luôn nên như
-// vậy bất kể ai kích hoạt sinh bài. Tôn trọng NHÃN người dùng chọn ("Ngắn"/"Dài"...) ở tầng
-// UI, chỉ nắn SỐ TỪ MỤC TIÊU thật gửi cho model.
-const LENGTH_WORDS_SAFE_RANGE_BY_LEVEL = {
-  A1: [50, 90],
+// BẢNG ĐỘ DÀI THEO CẤP CEFR (chốt 2026-07-23, THAY HẲN cơ chế length_words tự do + ±25% cũ) —
+// căn cứ: vốn từ theo cấp (A1~500 → C1~8000+ từ), độ dài câu theo CEFR (A1-A2 <10 từ/câu, B1-B2
+// 10-16 từ/câu), và chuẩn độ dài bài đọc Cambridge KET/PET/FCE/CAE ứng A2/B1/B2/C1 — KHÔNG phải
+// số tự chọn. A1/A2 CHỈ 1 mức CỐ ĐỊNH — văn bản CEFR ở 2 cấp này là đoạn RỜI RẠC NGẮN (biển
+// báo/tin nhắn), không phải đoạn liên kết dài, nên KHÔNG có khái niệm "Dài" ở đây (không hiện
+// control chọn độ dài cho A1/A2 ở bất kỳ UI nào sau này). B1 trở lên có 3 mức Ngắn/Vừa/Dài, số
+// riêng từng cấp — "Vừa" của B1 (180-230, giữa 205) khớp gần đúng target 200 đã kiểm chứng
+// nhiều lần trước đây (xem DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL) nên không đổi hành vi B1 hiện
+// có, chỉ B2/C1 THỰC SỰ tăng mạnh so với mặc định 200 cũ (chưa test tới, xem
+// project_next_slot_skin_wiring trong memory khi kiểm lại).
+const LEVEL_LENGTH_TABLE = {
+  A1: { fixed: [60, 90] },
+  A2: { fixed: [90, 130] },
+  B1: { short: [150, 180], medium: [180, 230], long: [230, 280] },
+  B2: { short: [250, 300], medium: [300, 380], long: [380, 450] },
+  C1: { short: [350, 420], medium: [420, 500], long: [500, 600] },
 };
+const VALID_LENGTH_TIERS = ["short", "medium", "long"];
 
-function clampLengthWordsForLevel(level, requestedLengthWords) {
-  const range = LENGTH_WORDS_SAFE_RANGE_BY_LEVEL[level];
-  const requested = requestedLengthWords || 200;
-  if (!range) return requested;
-  const [min, max] = range;
-  return Math.min(Math.max(requested, min), max);
+// Trả về [min, max] THẬT dùng cho prompt + validate — A1/A2 LUÔN dùng mức cố định (bỏ qua
+// lengthTier nếu caller có gửi), B1+ dùng lengthTier (mặc định "medium" nếu thiếu/sai giá trị,
+// đúng lựa chọn tự động của next_slot — luồng này không hỏi người dùng chọn độ dài).
+function resolveLengthRange(level, lengthTier) {
+  const entry = LEVEL_LENGTH_TABLE[level];
+  if (!entry) return [180, 230]; // phòng hờ, level đã validate hợp lệ trước đó nên không nên tới đây
+  if (entry.fixed) return entry.fixed;
+  const tier = VALID_LENGTH_TIERS.includes(lengthTier) ? lengthTier : "medium";
+  return entry[tier];
 }
 
 function buildGenerateLessonUserPrompt(data) {
@@ -346,7 +352,9 @@ function buildGenerateLessonUserPrompt(data) {
   const termDensity = data.term_density === undefined || data.term_density === null || data.term_density === ""
     ? 0
     : data.term_density;
-  const lengthWords = data.length_words || 200;
+  const lengthWords = data.length_words || 200; // trung điểm khoảng đã nắn — dùng để TÍNH CƠ HỌC (số lượt/đơn vị), band thật hiển thị cho model là length_words_min/max bên dưới.
+  const lengthWordsMin = data.length_words_min || Math.round(lengthWords * 0.85);
+  const lengthWordsMax = data.length_words_max || Math.round(lengthWords * 1.15);
   const isDialogue = data.content_type === "dialogue";
   let lengthInstruction;
   if (isDialogue) {
@@ -354,11 +362,11 @@ function buildGenerateLessonUserPrompt(data) {
     const turnCount = Math.max(6, Math.round(lengthWords / ((basisMin + basisMax) / 2)));
     const [turnMin, turnMax] = DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL[data.level] || [basisMin, basisMax];
     const upperHalfMin = Math.round((turnMin + turnMax) / 2);
-    lengthInstruction = `- Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"). MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng này (tức ${upperHalfMin}-${turnMax} từ/lượt), KHÔNG mặc định viết ở đáy khoảng dù đáy vẫn hợp lệ về lý thuyết — số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rất rõ, nên phải CHỦ ĐỘNG nhắm cao hơn để bù, không viết theo bản năng "vừa đủ chạm sàn". Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu — nếu bạn viết đúng ${turnCount} lượt, mỗi lượt trong khoảng ${upperHalfMin}-${turnMax} từ, tổng cả bài sẽ tự động ra khoảng ${lengthWords} từ. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn ${turnMin} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn ${turnMax} từ để bù lại — tổng thể vẫn phải đạt đủ ${turnCount} lượt.`;
+    lengthInstruction = `- Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"). MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng này (tức ${upperHalfMin}-${turnMax} từ/lượt), KHÔNG mặc định viết ở đáy khoảng dù đáy vẫn hợp lệ về lý thuyết — số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rất rõ, nên phải CHỦ ĐỘNG nhắm cao hơn để bù, không viết theo bản năng "vừa đủ chạm sàn". Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu — nếu bạn viết đúng ${turnCount} lượt, mỗi lượt trong khoảng ${upperHalfMin}-${turnMax} từ, tổng cả bài sẽ tự động rơi vào khoảng ${lengthWordsMin}-${lengthWordsMax} từ yêu cầu (xem QUY TẮC VỀ ĐỘ DÀI). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn ${turnMin} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn ${turnMax} từ để bù lại — tổng thể vẫn phải đạt đủ ${turnCount} lượt.`;
   } else {
     const minUnits = suggestedUnitCount(data.level, lengthWords, data.content_type);
     const avgWordsPerUnit = Math.round(lengthWords / minUnits);
-    lengthInstruction = `- Độ dài: khoảng ${lengthWords} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Cho phép lệch ±15% khi bạn tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy viết DÀI HƠN chứ đừng viết ngắn hơn. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ. Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWords}.`;
+    lengthInstruction = `- Độ dài: viết trong khoảng ${lengthWordsMin}-${lengthWordsMax} từ tiếng Anh (khung CỐ ĐỊNH theo cấp ${data.level}, không phải ước lượng). CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Hệ thống TỰ ĐỘNG TỪ CHỐI nếu ngoài khoảng ${lengthWordsMin}-${lengthWordsMax} — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy nhắm về nửa TRÊN của khoảng chứ đừng viết sát đáy. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ. Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWordsMin}.`;
   }
   return `Tạo bài học theo yêu cầu sau:
 
@@ -522,7 +530,7 @@ function endsOnDanglingQuestion(content) {
   return !!last && typeof last.text === "string" && last.text.trim().endsWith("?");
 }
 
-function validateLessonShape(parsed, { expectedWords, checkDialogueEnding } = {}) {
+function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkDialogueEnding } = {}) {
   if (!parsed || typeof parsed !== "object") return { valid: false, reason: "not_object" };
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return { valid: false, reason: "missing_title" };
   if (typeof parsed.title_vi !== "string" || !parsed.title_vi.trim()) return { valid: false, reason: "missing_title_vi" };
@@ -538,7 +546,15 @@ function validateLessonShape(parsed, { expectedWords, checkDialogueEnding } = {}
   if (!Array.isArray(parsed.grammar)) return { valid: false, reason: "grammar_not_array" };
   if (!Array.isArray(parsed.exercises) || !parsed.exercises.length) return { valid: false, reason: "empty_exercises" };
 
-  if (typeof expectedWords === "number" && expectedWords > 0) {
+  // minWords/maxWords (bảng độ dài theo cấp CEFR, generate_lesson dùng) ưu tiên hơn
+  // expectedWords±% (analyze_user_text vẫn dùng riêng — kiểm nội dung PHẢN ÁNH ĐỦ văn bản
+  // GỐC người dùng dán vào, không liên quan bảng cấp độ nào cả).
+  if (typeof minWords === "number" && typeof maxWords === "number") {
+    const actualWords = totalContentWords(parsed.content);
+    if (actualWords < minWords || actualWords > maxWords) {
+      return { valid: false, reason: "word_count_out_of_range", actualWords, minWords, maxWords };
+    }
+  } else if (typeof expectedWords === "number" && expectedWords > 0) {
     const actualWords = totalContentWords(parsed.content);
     const deviation = Math.abs(actualWords - expectedWords) / expectedWords;
     if (deviation > WORD_COUNT_DEVIATION_LIMIT) {
@@ -651,11 +667,13 @@ export async function generate_lesson(data, ctx) {
   const limitCheck = await checkDailyLessonLimit(ctx.studentId);
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
-  // Nắn length_words về khung an toàn theo cấp độ (xem LENGTH_WORDS_SAFE_RANGE_BY_LEVEL) —
-  // dùng CÙNG 1 giá trị đã nắn cho cả prompt lẫn validate bên dưới, không đọc lại data.length_words
+  // Lấy khoảng độ dài THẬT theo bảng cấp CEFR (xem LEVEL_LENGTH_TABLE) — A1/A2 luôn 1 mức cố
+  // định, B1+ theo data.length_tier ("short"/"medium"/"long", mặc định "medium"). Dùng CÙNG 1
+  // khoảng đã nắn cho cả prompt lẫn validate bên dưới, không đọc lại data.length_words/length_tier
   // gốc ở đâu khác trong hàm này.
-  const targetLengthWords = clampLengthWordsForLevel(data.level, data.length_words);
-  const genData = { ...data, length_words: targetLengthWords };
+  const [minWords, maxWords] = resolveLengthRange(data.level, data.length_tier);
+  const targetLengthWords = Math.round((minWords + maxWords) / 2);
+  const genData = { ...data, length_words: targetLengthWords, length_words_min: minWords, length_words_max: maxWords };
 
   // (b) Gọi AI + parse + validate.
   const r = await generateStructuredJSON({
@@ -674,7 +692,7 @@ export async function generate_lesson(data, ctx) {
   }
   const parsed = r.data;
   capLessonArrays(parsed);
-  const validation = validateLessonShape(parsed, { expectedWords: targetLengthWords, checkDialogueEnding: true });
+  const validation = validateLessonShape(parsed, { minWords, maxWords, checkDialogueEnding: true });
   if (!validation.valid) {
     console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
