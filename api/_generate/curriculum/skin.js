@@ -146,31 +146,36 @@ async function callProfileOnce(keywords, { webSearch }) {
     messages,
     webSearch,
   });
-  return r.ok ? { ok: true, data: r.data } : { ok: false, parseError: !!r.parseError };
+  const telemetry = { model: r.model, usage: r.usage, durationMs: r.durationMs };
+  return r.ok ? { ok: true, data: r.data, ...telemetry } : { ok: false, parseError: !!r.parseError, ...telemetry };
 }
 
 // Nấc 1 (không web search) -> Nấc 2 (web search) nếu confidence thấp hoặc gãy — trần cứng 2
-// lượt gọi, đúng docs/prompt-da-linh-vuc.md mục 4.
+// lượt gọi, đúng docs/prompt-da-linh-vuc.md mục 4. "model"/"usage"/"durationMs" ở output là
+// của LƯỢT GỌI CUỐI (không cộng dồn nhiều lượt) — đủ cho việc ước tính chi phí/hiệu năng, xem
+// project_ai_provider_abstraction trong memory (nguồn cần số liệu này lần đầu: bài kiểm
+// nghiệm thu 3 ngành).
 export async function generateOccupationProfile(keywords) {
   for (let attempt = 1; attempt <= MAX_SKIN_PROFILE_ATTEMPTS; attempt++) {
     const isFinalAttempt = attempt === MAX_SKIN_PROFILE_ATTEMPTS;
     const webSearch = attempt > 1; // chỉ Nấc 2 (attempt 2) bật web search
     const result = await callProfileOnce(keywords, { webSearch });
+    const telemetry = { model: result.model, usage: result.usage, durationMs: result.durationMs };
 
     if (!result.ok || result.parseError) {
-      if (isFinalAttempt) return { status: "needs_user_question", reason: "call_or_parse_failed", attempts: attempt, webSearchUsed: webSearch };
+      if (isFinalAttempt) return { status: "needs_user_question", reason: "call_or_parse_failed", attempts: attempt, webSearchUsed: webSearch, ...telemetry };
       continue;
     }
     const check = validateProfilePayload(result.data);
     if (!check.valid) {
-      if (isFinalAttempt) return { status: "needs_user_question", reason: check.reason, attempts: attempt, webSearchUsed: webSearch };
+      if (isFinalAttempt) return { status: "needs_user_question", reason: check.reason, attempts: attempt, webSearchUsed: webSearch, ...telemetry };
       continue;
     }
     const low = profileConfidenceIsLow(result.data);
-    if (!low) return { status: "ok", data: result.data, attempts: attempt, webSearchUsed: webSearch, lowConfidence: false };
+    if (!low) return { status: "ok", data: result.data, attempts: attempt, webSearchUsed: webSearch, lowConfidence: false, ...telemetry };
     if (isFinalAttempt) {
       // Nghề hiếm/hẹp nhưng CÓ THẬT (merged_occupation dựng được) — vẫn tiếp tục, không hỏi.
-      return { status: "ok", data: result.data, attempts: attempt, webSearchUsed: webSearch, lowConfidence: true };
+      return { status: "ok", data: result.data, attempts: attempt, webSearchUsed: webSearch, lowConfidence: true, ...telemetry };
     }
     // còn trần, confidence thấp -> thử tiếp Nấc 2
   }
@@ -283,24 +288,28 @@ async function callLevelOnce({ occupationProfile, level, frames, requiredCounts,
     { role: "user", content: buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel }) },
   ];
   const r = await generateStructuredJSON({ tier: SKIN_MODEL_TIER, temperature: 0.7, maxTokens: 3500, messages });
-  return r.ok ? { ok: true, data: r.data } : { ok: false, parseError: !!r.parseError };
+  const telemetry = { model: r.model, usage: r.usage, durationMs: r.durationMs };
+  return r.ok ? { ok: true, data: r.data, ...telemetry } : { ok: false, parseError: !!r.parseError, ...telemetry };
 }
 
 // Gọi lại RIÊNG lượt B của 1 level khi gãy — cap MAX_SKIN_LEVEL_ATTEMPTS, đúng mục 10.
+// "model"/"usage"/"durationMs" ở output là của LƯỢT GỌI CUỐI, giống generateOccupationProfile.
 export async function generateLevelTopics({ occupationProfile, level, requiredCounts, skinGeneralForLevel }) {
   const frames = SITUATION_FRAMES[level];
   let lastProblems = ["chưa gọi lần nào"];
+  let lastTelemetry = {};
   for (let attempt = 1; attempt <= MAX_SKIN_LEVEL_ATTEMPTS; attempt++) {
     const result = await callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel });
+    lastTelemetry = { model: result.model, usage: result.usage, durationMs: result.durationMs };
     if (!result.ok || result.parseError) {
       lastProblems = ["gọi API hoặc parse JSON thất bại"];
       continue;
     }
     const problems = validateLevelPayload(level, result.data, frames, requiredCounts);
-    if (!problems.length) return { ok: true, level, frames: result.data.frames, attempts: attempt };
+    if (!problems.length) return { ok: true, level, frames: result.data.frames, attempts: attempt, ...lastTelemetry };
     lastProblems = problems;
   }
-  return { ok: false, level, problems: lastProblems, attempts: MAX_SKIN_LEVEL_ATTEMPTS };
+  return { ok: false, level, problems: lastProblems, attempts: MAX_SKIN_LEVEL_ATTEMPTS, ...lastTelemetry };
 }
 
 // ====== Điều phối toàn bộ 6 lượt gọi (mục 0 + mục 10) ======
