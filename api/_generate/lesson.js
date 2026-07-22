@@ -274,9 +274,12 @@ const AVG_WORDS_PER_UNIT_BY_LEVEL = {
 function suggestedUnitCount(level, lengthWords, contentType) {
   const table = AVG_WORDS_PER_UNIT_BY_LEVEL[contentType] || AVG_WORDS_PER_UNIT_BY_LEVEL.reading;
   const avg = table[level] || 8;
-  // Biên an toàn +20%, làm tròn LÊN — lỗi thật đo được LUÔN LÀ HỤT (chưa từng gặp thừa quá đà),
-  // nên thà ước tính dư số lượt còn hơn thiếu.
-  return Math.max(6, Math.ceil(((lengthWords || 200) / avg) * 1.2));
+  // Biên an toàn — lỗi thật đo được LUÔN LÀ HỤT (chưa từng gặp thừa quá đà), nên thà ước tính
+  // dư số đoạn còn hơn thiếu. NÂNG 1.2 -> 1.6 (2026-07-23, sau khi tăng length_words B1-C1 lên
+  // hẳn theo LEVEL_LENGTH_TABLE — dữ liệu thật cho thấy 1.2 (hiệu chỉnh cho target ~200 cũ)
+  // KHÔNG đủ ở target cao hơn nhiều: reading B1/C1 hụt 30-40% (110/230, 280/460) dù minUnits đã
+  // tính theo 1.2 — undershoot NẶNG hơn hẳn mức 1.2 từng bù được, cần biên rộng hơn nhiều.
+  return Math.max(6, Math.ceil(((lengthWords || 200) / avg) * 1.6));
 }
 
 // KIẾN TRÚC ĐỘ DÀI HỘI THOẠI (chốt 2026-07-21, thay hẳn cách "viết ~N từ tổng" cũ) — ra đề
@@ -681,9 +684,8 @@ export async function generate_lesson(data, ctx) {
 
   // (b) Gọi AI + parse + validate.
   const r = await generateStructuredJSON({
-    maxTokens: 4000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 3500 vì A1/A2 giờ cần
-    // nhiều lượt thoại hơn hẳn để đạt đủ length_words khi câu bị giới hạn ngắn (xem "LỖI THẬT
-    // HAY GẶP Ở A1/A2" trong prompt), JSON output theo đó cũng dài hơn trước.
+    maxTokens: 6000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng 4000->6000 (2026-07-23):
+    // C1 "long" (500-600 từ, xem LEVEL_LENGTH_TABLE) bị cắt giữa JSON ở 4000, parse fail.
     temperature: 0.7,
     messages: [
       { role: "system", content: GENERATE_LESSON_SYSTEM_PROMPT },

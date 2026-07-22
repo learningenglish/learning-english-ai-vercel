@@ -14,7 +14,11 @@
 // verify bằng key thật trước khi set AI_PROVIDER=gemini ở production.
 
 const PROVIDER = (process.env.AI_PROVIDER || "openai").toLowerCase();
-const MAX_TOKENS_CAP = 4000;
+// Nâng 4000 -> 6000 (2026-07-23) — sau khi LEVEL_LENGTH_TABLE (lesson.js) đưa target C1 lên
+// tới 600 từ tiếng Anh, JSON đầu ra generate_lesson (content + translation + explanation mỗi
+// đơn vị + vocabulary/grammar/sentence_patterns/exercises) vượt hẳn 4000 token — quan sát thật:
+// C1 "long" (500-600 từ) bị cắt giữa chừng, JSON không đóng được, parse fail.
+const MAX_TOKENS_CAP = 6000;
 
 function resolveModel(tier, explicitModel) {
   if (explicitModel) return explicitModel;

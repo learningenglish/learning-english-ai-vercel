@@ -109,6 +109,11 @@ Mentor AI (next_slot, không hỏi người dùng chọn độ dài) luôn dùng
 
 - **reading:** tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" phải nằm TRONG khoảng min-max
   của bảng trên (không phải ±25% quanh 1 điểm nữa) — hệ thống TỰ ĐỘNG TỪ CHỐI nếu ngoài khoảng.
+  Số đoạn tối thiểu gợi ý cho model = `lengthWords ÷ AVG_WORDS_PER_UNIT_BY_LEVEL.reading[level] ×
+  1.6` (biên an toàn, xem `suggestedUnitCount()` trong lesson.js) — **nâng 1.2→1.6 (2026-07-23)**:
+  hệ số 1.2 hiệu chỉnh cho target ~200 từ cũ KHÔNG đủ ở target B1-C1 cao hơn nhiều theo bảng mới
+  — đo thật: reading B1 (110/230), B2 (185/250, 264/380), C1 (280/420) đều hụt 30-40%, biên cũ
+  không bù nổi. CHƯA đo lại 1.6 bằng dữ liệu thật đủ rộng — kiểm khi có dịp.
 - **dialogue:** KHÔNG ra đề theo tổng số từ — LỖI THẬT ĐÃ XÁC NHẬN: yêu cầu "viết ~N từ tổng"
   khiến model không tự cộng tổng qua nhiều lượt tốt (hội tụ thấp hơn hẳn yêu cầu). Ra đề THEO
   CẤU TRÚC thay vào đó: user prompt cho ĐÚNG số lượt (N) + khoảng từ/lượt cụ thể (xem mục
