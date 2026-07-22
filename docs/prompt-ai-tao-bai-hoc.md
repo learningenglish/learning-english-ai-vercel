@@ -204,7 +204,7 @@ nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho 
 
 **Công thức tính (dialogue)** — xem `DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL` / `DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL` trong lesson.js:
 - `{TURN_COUNT}` = round(LENGTH_WORDS ÷ trung bình khoảng CƠ SỞ theo cấp) — khoảng cơ sở: A1:[5,9], A2:[6,11], B1:[8,15], B2:[10,18], C1:[12,22] từ/lượt (dùng để TÍNH SỐ LƯỢT, không phải để hiển thị).
-- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A1:[9,14], A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32].
+- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32]. **A1 RIÊNG (hiệu chỉnh 2026-07-22): [5,8]**, gần khoảng cơ sở chứ không đẩy cao — khoảng [9,14] cũ được đo khi length_words A1 còn ~200, sau khi hạ xuống 50-90 (xem đoạn "A1 — length_words THẤP HƠN hẳn" ở trên) giữ nguyên [9,14] gây THỪA (đo thật: target 90 → hội tụ ~119-130). CHƯA đo lại [5,8] bằng dữ liệu thật, chỉ tính theo công thức — kiểm khi có dịp.
 - `{UPPER_HALF_MIN}` = round((TURN_MIN + TURN_MAX) / 2) — mốc "nửa trên" model được yêu cầu ưu tiên.
 
 **Lịch sử 3 lần sửa "dialogue hụt từ" (2026-07-21, GIỮ LẠI để không lặp lại các hướng đã thử và thất bại):**

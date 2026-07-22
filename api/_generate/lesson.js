@@ -296,11 +296,18 @@ const DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL = {
   C1: [12, 22],
 };
 // Khoảng HIỂN THỊ cho model viết mỗi lượt — đẩy cao hơn hẳn cơ sở tính ở trên để bù thiên lệch
-// neo-đáy. B1 ĐÃ KIỂM CHỨNG bằng dữ liệu thật (8-15 -> 14-22, 6 mẫu). A1/C1: đo 2026-07-21 (xem
-// ghi chú kết quả cạnh từng dòng). A2/B2: NGOẠI SUY tuyến tính giữa 2 điểm biên đã đo (A1↔B1↔C1
-// đều đạt validator ổn định ở mức tương đương nên chấp nhận ngoại suy, không đo riêng).
+// neo-đáy. B1 ĐÃ KIỂM CHỨNG bằng dữ liệu thật (8-15 -> 14-22, 6 mẫu). A2/B2: NGOẠI SUY tuyến
+// tính giữa các điểm biên đã đo (chấp nhận ngoại suy, không đo riêng).
+// A1 RIÊNG — hiệu chỉnh lại 2026-07-22 (KHÁC ngoại suy A2-C1 ở trên): khoảng gốc [9,14] được đo
+// khi length_words A1 còn ở mức cao hơn hẳn (~200) — sau khi hạ length_words A1 xuống 50-90
+// (xem LENGTH_WORDS_SAFE_RANGE_BY_LEVEL), giữ NGUYÊN khoảng cũ gây THỪA hẳn (đo thật: target 90
+// -> hội tụ ~119-130, vượt tôn 25%) vì bias "đẩy nửa trên" vốn tính để bù thiên lệch neo-đáy ở
+// target CAO, áp lên target THẤP thì hoá ra lại đẩy quá đà. Hạ về [5,8] (gần khoảng CƠ SỞ tính
+// số lượt, gần như bỏ hẳn phần đẩy) — theo tính toán: turnCount (không đổi, vẫn theo cơ sở
+// avg=7) × trung bình khoảng mới (~6.5) ≈ khớp target 50-90. CHƯA đo lại bằng dữ liệu thật sau
+// hiệu chỉnh này — kiểm khi có dịp, xem project_next_slot_skin_wiring trong memory.
 const DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL = {
-  A1: [9, 14],
+  A1: [5, 8],
   A2: [11, 16],
   B1: [14, 22],
   B2: [17, 26],
