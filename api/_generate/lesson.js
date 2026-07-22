@@ -43,7 +43,11 @@ const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 // (2 request gần như đồng thời cùng đọc thấy còn 1 suất) có thể khiến 1 ngày có 11 bài thay
 // vì tối đa 10 — CHẤP NHẬN được cho MVP (không phải hệ thống thanh toán, không cần RPC
 // "for update" như credit cũ).
-const DAILY_LESSON_LIMIT = 10;
+// TẠM tăng 10->50 (2026-07-23, xác nhận với Minh) — tài khoản test đã dùng hết 10 bài/ngày do
+// test next_slot trước đó, cần thêm suất để đo tỷ lệ đạt validator theo LEVEL_LENGTH_TABLE mới
+// trên CHÍNH tài khoản test đó (không tạo tài khoản khác). PHẢI trả lại đúng 10 + deploy lại
+// SAU KHI đo xong — không được để giá trị tạm này lọt vào bản chạy thật lâu dài.
+const DAILY_LESSON_LIMIT = 50;
 const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè
 
 // Trả về thời điểm UTC tương ứng với 00:00:00 hôm nay theo giờ VN (dùng làm mốc "gte" khi
