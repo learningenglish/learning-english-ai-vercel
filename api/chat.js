@@ -15,6 +15,9 @@ import {
   mentor_set_pronoun_style,
   mentor_get_transient_line,
 } from "./_generate/mentor.js";
+// TẠM THỜI — bài kiểm nghiệm thu 3 ngành cho skin.js, xem api/_generate/skinTest.js. Xoá
+// import này + entry ACTIONS tương ứng sau khi Minh đã xem báo cáo.
+import { run_skin_acceptance_test } from "./_generate/skinTest.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1299,6 +1302,7 @@ const ACTIONS = {
   mentor_mark_pronoun_asked,
   mentor_set_pronoun_style,
   mentor_get_transient_line,
+  run_skin_acceptance_test,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —
