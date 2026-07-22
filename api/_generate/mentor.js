@@ -602,6 +602,7 @@ async function ensureSkinLevel(skinRow, level, occupationProfile) {
 // đúng slot spine) trước khi gọi — xem khối comment "NỐI DA LĨNH VỰC" ở trên.
 export async function mentor_next_lesson(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const requestStartedAt = Date.now();
   const goalRows = await restGet(`learning_goals?id=eq.${data.goal_id}&user_id=eq.${ctx.studentId}&select=*`);
   const goal = goalRows?.[0];
   if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
@@ -660,8 +661,15 @@ export async function mentor_next_lesson(data, ctx) {
   // trong memory, CHƯA xây, KHÔNG thuộc phạm vi ở đây). Thử lại 1 LẦN CÙNG model khi lỗi CHÍNH XÁC
   // là "dữ liệu AI không hợp lệ" (status 502) — đủ để giảm hẳn tỷ lệ fail người dùng thấy, không
   // phải giải pháp gốc. Lỗi khác (hết hạn mức, lỗi mạng...) KHÔNG retry, trả thẳng cho người dùng.
+  // CHỈ retry nếu còn ĐỦ thời gian trong trần maxDuration=60s của api/chat.js (vercel.json) —
+  // LỖI THẬT đã gặp khi nối da lĩnh vực (2026-07-22): lượt ĐẦU TIÊN của 1 ngành mới còn phải
+  // gọi thêm ensureSkinLevel() TRƯỚC generate_lesson, nên nếu retry vô điều kiện, tổng số lượt
+  // AI tuần tự trong 1 request có thể lên tới 3 (sinh da + 2 lượt generate_lesson) — quan sát
+  // thật: 1 request timeout hẳn ở Vercel (504 "FUNCTION_INVOCATION_TIMEOUT", lỗi mù mờ hơn hẳn
+  // 502 "dữ liệu không hợp lệ" bình thường). 30s là mốc an toàn: 1 lượt generate_lesson ~15-25s
+  // thật đo được, còn dư đủ cho 1 lượt nữa mà không chạm trần.
   let result = await generate_lesson(genLessonInput, ctx);
-  if (result.error && result.status === 502) {
+  if (result.error && result.status === 502 && Date.now() - requestStartedAt < 30000) {
     console.log("[MENTOR_AI_CALL] generate_lesson (next_slot) retry 1x sau lỗi:", result.error);
     result = await generate_lesson(genLessonInput, ctx);
   }
