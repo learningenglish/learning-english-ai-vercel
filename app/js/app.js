@@ -11,9 +11,7 @@ import { applyBackground } from "./background.js";
 import { icon } from "./icons.js";
 import { renderLogin } from "./views/login.js";
 import { renderLessons } from "./views/lessons.js";
-import { renderMentorHub } from "./views/mentor.js";
-import { renderMentorGoalFlow } from "./views/mentorGoal.js";
-import { withPronounOnboarding } from "./views/mentorOnboarding.js";
+import { renderCreateLesson } from "./views/createLesson.js";
 import { renderLessonDetail } from "./views/lesson.js";
 import { renderHistory } from "./views/history.js";
 import { renderStats } from "./views/stats.js";
@@ -23,12 +21,14 @@ applyTheme();
 watchSystemTheme();
 applyBackground();
 
-// "Tạo bài học" (form nhập tay) đã bị THAY HẲN bởi "Mentor AI" (Đợt 3) — nút nổi giữa giờ dẫn
-// vào màn có thẻ đạo diễn + Thư Viện AI thay vì form trực tiếp, xem views/mentor.js.
+// Mentor AI (Đợt 3) đã TẮT UI 2026-07-23 (chất lượng thật không đạt, "như spam" — quyết định
+// của Minh) — nút nổi giữa quay lại dẫn thẳng vào form "Tạo bài học" tự nhập (xem
+// views/createLesson.js). Backend mentor.js/mentor-lines/industry_skins/learning_goals VẪN
+// giữ nguyên (không xoá) — chỉ không còn route/nav nào trên UI trỏ tới views/mentor*.js nữa.
 const NAV_TABS = [
   { path: "/lessons", label: "Bài học", icon: "book" },
   { path: "/favorites", label: "Yêu thích", icon: "heart" },
-  { path: "/mentor", label: "Mentor AI", icon: "sparkles", fab: true },
+  { path: "/create", label: "Tạo bài học", icon: "plus", fab: true },
   { path: "/history", label: "Lịch sử", icon: "clock" },
   { path: "/stats", label: "Thống kê", icon: "bar-chart" },
 ];
@@ -36,10 +36,7 @@ const NAV_TABS = [
 registerRoute("/login", renderLogin);
 registerRoute("/lessons", renderLessons);
 registerRoute("/favorites", (mount) => renderLessons(mount, ["favorite"]));
-// Cả 2 điểm vào Mentor AI đều đi qua màn nghi thức xưng hô 1 lần đầu tiên (mục 3.2/3.4 điểm 1
-// Đợt 3) — không đụng route/nav nào khác ngoài 2 route này.
-registerRoute("/mentor", (mount) => withPronounOnboarding(mount, renderMentorHub));
-registerRoute("/mentor-goal", (mount) => withPronounOnboarding(mount, renderMentorGoalFlow));
+registerRoute("/create", renderCreateLesson);
 registerRoute("/lesson", renderLessonDetail);
 registerRoute("/history", renderHistory);
 registerRoute("/stats", renderStats);

@@ -1,13 +1,15 @@
 // app/js/lessonApi.js — ĐIỂM PLUG PLAN B.
 //
-// Toàn bộ hiểu biết "phân tích văn bản dán sẵn = gọi action nào, hình dạng payload/response ra
-// sao" nằm DUY NHẤT ở file này. views/mentorGoal.js (ô "Tôi có văn bản", Bước 1) chỉ gọi
-// createLessonFromText() và nhận về đúng 1 Promise<{ ok, data: {lesson, meta} } | { ok: false,
-// error, status }> — nó không biết và không cần biết bên trong là 1 hay nhiều lần gọi mạng.
-// createLessonFromAI() (gọi generate_lesson trực tiếp từ client) đã bị RÚT khỏi file này ở
-// Đợt 3 — luồng "AI tạo bài học" cũ (views/createLesson.js) bị thay hẳn bởi Mentor AI
-// (views/mentorGoal.js), nơi generate_lesson được gọi GIÁN TIẾP qua action mentor_next_lesson
-// (api/_generate/mentor.js) để gắn thêm goal_id, không qua client nữa.
+// Toàn bộ hiểu biết "phân tích văn bản dán sẵn / tự tạo bài = gọi action nào, hình dạng
+// payload/response ra sao" nằm DUY NHẤT ở file này. Các view chỉ gọi createLessonFromText()/
+// createLessonFromAI() và nhận về đúng 1 Promise<{ ok, data: {lesson, meta} } | { ok: false,
+// error, status }> — không biết và không cần biết bên trong là 1 hay nhiều lần gọi mạng.
+//
+// createLessonFromAI() KHÔI PHỤC lại 2026-07-23 (đã bị rút khỏi file này ở Đợt 3 khi Mentor AI
+// thay hẳn form tự nhập cũ) — Mentor AI bị TẮT UI (chất lượng thật không đạt, "như spam"),
+// backend mentor.js/mentor-lines/industry_skins/learning_goals VẪN giữ nguyên (không xoá,
+// không đụng), chỉ không còn điểm vào nào trên UI gọi tới. views/createLesson.js gọi thẳng
+// generate_lesson qua đây, KHÔNG qua goal_id/mentor_next_lesson nữa.
 //
 // Lý do tồn tại: nếu đo thời gian thật cho thấy analyze_user_text sát hoặc vượt trần
 // maxDuration=60s của Vercel, backend sẽ tách thành 2 action nối tiếp (vd sinh content+
@@ -18,6 +20,10 @@ import { callChatAction } from "./chatApi.js";
 
 export async function createLessonFromText(userText, level) {
   return callAndParse("analyze_user_text", { user_text: userText, level });
+}
+
+export async function createLessonFromAI(payload) {
+  return callAndParse("generate_lesson", payload);
 }
 
 async function callAndParse(action, payload) {
