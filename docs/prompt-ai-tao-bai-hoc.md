@@ -54,6 +54,10 @@ QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ (CEFR):
 - B2: câu phức tự nhiên (không giới hạn cứng số từ), bị động, câu điều kiện loại 2-3, mệnh đề quan hệ; từ vựng học thuật nhẹ.
 - C1: văn phong tự nhiên như người bản xứ, thành ngữ, cấu trúc đảo ngữ.
 Tuyệt đối không dùng ngữ pháp hoặc từ vựng vượt cấp độ được yêu cầu, trừ các TỪ CHUYÊN NGÀNH được chỉ định.
+RIÊNG A1 (chốt 2026-07-22): length_words của bài A1 CỐ Ý ngắn hơn hẳn các cấp khác — KHÔNG phải
+lỗi, đừng cố "kéo dài cho đủ nghĩa". Bản chất A1 là câu và cấu trúc ĐƠN GIẢN, DỄ NHỚ, DÙNG LẠI
+ĐƯỢC trong nhiều tình huống khác nhau, không phải đoạn văn/hội thoại dài. Ưu tiên vài câu/lượt
+thật rõ ràng, đúng cấu trúc, học xong dùng lại ngay được — hơn là nhiều câu để đạt đủ số từ.
 
 QUY TẮC VỀ TỪ CHUYÊN NGÀNH:
 - Lượng từ chuyên ngành được cho dưới dạng SỐ LƯỢT xuất hiện tuyệt đối trong bài (không phải phần trăm), bất kể độ dài bài dài hay ngắn.
@@ -87,6 +91,16 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý) — "reading" và "dialogue" dùng 2 CƠ CHẾ KHÁC NHAU (chốt 2026-07-21, xem lịch sử thay đổi ở mục 3):
 - reading: tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" phải nằm trong khoảng ±25% của length_words yêu cầu — hệ thống TỰ ĐỘNG TỪ CHỐI nếu lệch quá. Cơ chế này KHÔNG đổi, vẫn hoạt động ổn định (không có vấn đề như dialogue bên dưới).
 - dialogue: KHÔNG ra đề theo tổng số từ nữa — LỖI THẬT ĐÃ XÁC NHẬN (không phải giả thuyết): yêu cầu "viết ~200 từ tổng" khiến model hội tụ về 93-140 từ (thiếu 30-55%) DÙ ĐÃ THỬ làm rõ cách đếm + tăng biên an toàn số lượt gợi ý — model không tự cộng tổng qua nhiều lượt tốt. Ra đề THEO CẤU TRÚC thay vào đó: user prompt cho ĐÚNG số lượt (N) + khoảng từ/lượt cụ thể (X-Y, đã đẩy cao hơn lý thuyết để bù thiên lệch neo-đáy đã đo được) — validator VẪN kiểm tổng ±25% như cũ (không đổi validator), chỉ đổi CÁCH RA ĐỀ để đạt tổng đó gián tiếp qua cấu trúc, không đổi ngưỡng chấp nhận.
+- **A1 — length_words THẤP HƠN hẳn (chốt 2026-07-22):** dù đã đổi cách ra đề dialogue ở trên,
+  A1/200 từ VẪN fail validate 20/20 lượt thật khi nối `next_slot` vào da lĩnh vực (xem
+  `project_next_slot_skin_wiring` trong memory — không phải lỗi truyền tham số, next_slot
+  truyền ĐÚNG 200 như các cấp khác). Kết luận: 200 từ NGOÀI khả năng tự nhiên của A1 khi câu bị
+  ép TỐI ĐA 8 từ — không phải lỗi ra đề, mà SAI bản chất sư phạm A1 (xem QUY TẮC BẮT BUỘC VỀ
+  CẤP ĐỘ, đoạn "RIÊNG A1" mới thêm). Từ nay `length_words` mọi caller truyền vào cho A1 (kể cả
+  form nhập tay chọn "Dài") đều bị NẮN (clamp) về khung `50-90` — xem
+  `LENGTH_WORDS_SAFE_RANGE_BY_LEVEL`/`clampLengthWordsForLevel()` trong lesson.js, áp dụng
+  TRƯỚC khi build cả user prompt lẫn validate, đảm bảo prompt và validator luôn khớp cùng 1 số.
+  CHỈ áp cho A1 — A2-C1 giữ nguyên, chưa có dữ liệu thật để đổi.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.

@@ -139,6 +139,10 @@ QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ (CEFR):
 - B2: câu phức tự nhiên (không giới hạn cứng số từ), bị động, câu điều kiện loại 2-3, mệnh đề quan hệ; từ vựng học thuật nhẹ.
 - C1: văn phong tự nhiên như người bản xứ, thành ngữ, cấu trúc đảo ngữ.
 Tuyệt đối không dùng ngữ pháp hoặc từ vựng vượt cấp độ được yêu cầu, trừ các TỪ CHUYÊN NGÀNH được chỉ định.
+RIÊNG A1 (chốt 2026-07-22): length_words của bài A1 CỐ Ý ngắn hơn hẳn các cấp khác — KHÔNG phải
+lỗi, đừng cố "kéo dài cho đủ nghĩa". Bản chất A1 là câu và cấu trúc ĐƠN GIẢN, DỄ NHỚ, DÙNG LẠI
+ĐƯỢC trong nhiều tình huống khác nhau, không phải đoạn văn/hội thoại dài. Ưu tiên vài câu/lượt
+thật rõ ràng, đúng cấu trúc, học xong dùng lại ngay được — hơn là nhiều câu để đạt đủ số từ.
 
 QUY TẮC VỀ TỪ CHUYÊN NGÀNH:
 - Lượng từ chuyên ngành được cho dưới dạng SỐ LƯỢT xuất hiện tuyệt đối trong bài (không phải phần trăm), bất kể độ dài bài dài hay ngắn.
@@ -302,6 +306,32 @@ const DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL = {
   B2: [17, 26],
   C1: [21, 32],
 };
+
+// KHUNG AN TOÀN length_words THEO CẤP ĐỘ (chốt 2026-07-22, sau khi nối next_slot vào skin.js
+// lộ ra: 20/20 lượt gọi generate_lesson THẬT ở A1/200 từ đều fail validate (~99-143 từ, hụt
+// 30-50%, xem project_next_slot_skin_wiring trong memory) — không phải lỗi truyền tham số (đã
+// xác nhận next_slot dùng ĐÚNG length_words=200 như mọi level khác), mà là 200 từ NGOÀI khả
+// năng tự nhiên của A1 với cấu trúc câu bị ép ngắn (TỐI ĐA 8 từ/câu, xem QUY TẮC BẮT BUỘC VỀ
+// CẤP ĐỘ) — ép model viết dài hơn khả năng tự nhiên chỉ tạo lặp ý/rề rà giả tạo, SAI bản chất
+// sư phạm A1 (câu/cấu trúc đơn giản, dễ nhớ, dùng lại được nhiều tình huống — không phải đoạn
+// văn/hội thoại dài). Áp KHUNG THẤP HƠN thay vì tiếp tục ép đạt 200 từ. CHỈ áp cho A1 (dữ liệu
+// thật hiện có), KHÔNG suy diễn sang A2+ (B1 đã kiểm chứng ổn định ở 200 từ nhiều lần, xem
+// DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL comment) — mở rộng khi có dữ liệu thật riêng cho A2.
+// NẮN (clamp) length_words người gọi truyền vào về khung này — áp dụng ĐỒNG NHẤT cho MỌI
+// caller (next_slot lẫn form nhập tay chọn "Dài"), không tách luồng: bản chất A1 luôn nên như
+// vậy bất kể ai kích hoạt sinh bài. Tôn trọng NHÃN người dùng chọn ("Ngắn"/"Dài"...) ở tầng
+// UI, chỉ nắn SỐ TỪ MỤC TIÊU thật gửi cho model.
+const LENGTH_WORDS_SAFE_RANGE_BY_LEVEL = {
+  A1: [50, 90],
+};
+
+function clampLengthWordsForLevel(level, requestedLengthWords) {
+  const range = LENGTH_WORDS_SAFE_RANGE_BY_LEVEL[level];
+  const requested = requestedLengthWords || 200;
+  if (!range) return requested;
+  const [min, max] = range;
+  return Math.min(Math.max(requested, min), max);
+}
 
 function buildGenerateLessonUserPrompt(data) {
   const contentTypeVi = data.content_type === "dialogue" ? "hội thoại" : "bài đọc";
@@ -614,6 +644,12 @@ export async function generate_lesson(data, ctx) {
   const limitCheck = await checkDailyLessonLimit(ctx.studentId);
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
+  // Nắn length_words về khung an toàn theo cấp độ (xem LENGTH_WORDS_SAFE_RANGE_BY_LEVEL) —
+  // dùng CÙNG 1 giá trị đã nắn cho cả prompt lẫn validate bên dưới, không đọc lại data.length_words
+  // gốc ở đâu khác trong hàm này.
+  const targetLengthWords = clampLengthWordsForLevel(data.level, data.length_words);
+  const genData = { ...data, length_words: targetLengthWords };
+
   // (b) Gọi AI + parse + validate.
   const r = await generateStructuredJSON({
     maxTokens: 4000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 3500 vì A1/A2 giờ cần
@@ -622,7 +658,7 @@ export async function generate_lesson(data, ctx) {
     temperature: 0.7,
     messages: [
       { role: "system", content: GENERATE_LESSON_SYSTEM_PROMPT },
-      { role: "user", content: buildGenerateLessonUserPrompt(data) },
+      { role: "user", content: buildGenerateLessonUserPrompt(genData) },
     ],
   });
   if (!r.ok) {
@@ -631,7 +667,7 @@ export async function generate_lesson(data, ctx) {
   }
   const parsed = r.data;
   capLessonArrays(parsed);
-  const validation = validateLessonShape(parsed, { expectedWords: data.length_words, checkDialogueEnding: true });
+  const validation = validateLessonShape(parsed, { expectedWords: targetLengthWords, checkDialogueEnding: true });
   if (!validation.valid) {
     console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
