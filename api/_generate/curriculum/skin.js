@@ -57,6 +57,21 @@ export function loadSkinGeneral() {
   return loadJSON("skin_general.json").levels;
 }
 
+// Danh sách slot đã đóng băng theo thứ tự (level -> mảng slot, mỗi slot có situation_frame_key/
+// content_type/function_name_vi...) — mentor.js dùng để xác định "slot kế tiếp" khi nối
+// next_slot vào da lĩnh vực (2026-07-22), KHÔNG tự đọc file JSON riêng để tránh 2 nơi cùng biết
+// đường dẫn file.
+export function loadCurriculumSpine() {
+  return loadJSON("curriculum_spine.json").levels;
+}
+
+// Khoá dùng chung cho bảng industry_skins (supabase/023_industry_skins.sql) — nhiều
+// learning_goals cùng 1 ngành thật (theo CHỮ, không gộp ngữ nghĩa, xem note nợ kỹ thuật trong
+// migration) chia sẻ 1 hàng da, không sinh lại mỗi mục tiêu.
+export function normalizeOccupationKey(mergedOccupation) {
+  return (mergedOccupation || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 // ====== Lượt A — chân dung nghề (mục 8a/9a) ======
 
 const PROFILE_SYSTEM_PROMPT = `Bạn là chuyên gia thiết kế giáo trình tiếng Anh chuyên ngành. Nhiệm vụ CỦA LƯỢT NÀY: nhận 3 từ

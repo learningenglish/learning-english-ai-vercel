@@ -13,15 +13,29 @@
 // Sửa giọng văn (buildMentorCard) sau này KHÔNG được đụng vào logic chọn bài (decideAction)
 // và ngược lại — đây là lý do tách file/hàm, không phải chỉ để dễ đọc.
 //
-// CHỈ 2 ĐIỂM ĐƯỢC GỌI AI TRONG TOÀN BỘ MODULE NÀY (mục 5 Đợt 3):
+// 3 ĐIỂM ĐƯỢC GỌI AI TRONG TOÀN BỘ MODULE NÀY (mục 5 Đợt 3 gốc chỉ có 2 điểm — cộng thêm
+// điểm 2 dưới đây 2026-07-22 khi nối Lượt B của skin.js vào next_slot, chốt với Minh):
 //   1. mentor_infer_goal() -> generateOccupationProfile() (skin.js, TÁI DÙNG NGUYÊN VẸN,
 //      không sửa 1 dòng nào trong skin.js).
-//   2. mentor_next_lesson() -> generate_lesson() (lesson.js, TÁI DÙNG NGUYÊN VẸN action đã
-//      duyệt, chỉ truyền thêm data.goal_id — xem resolveOwnedGoalId() trong lesson.js).
-// Mọi lượt gọi AI ở 2 điểm trên đều console.log("[MENTOR_AI_CALL] ...") để đếm được thật khi
+//   2. ensureSkinLevel() -> generateLevelTopics() (skin.js, TÁI DÙNG NGUYÊN VẸN) — CHỈ gọi
+//      khi industry_skins CHƯA có sẵn level đang cần (dùng chung theo ngành, xem
+//      supabase/023_industry_skins.sql), 1 lượt/(ngành, level) rồi lưu lại vĩnh viễn cho mọi
+//      user cùng ngành sau này — KHÔNG gọi lại mỗi lần next_slot.
+//   3. mentor_next_lesson() -> generate_lesson() (lesson.js, TÁI DÙNG NGUYÊN VẸN action đã
+//      duyệt, chỉ truyền thêm data.goal_id/skin_id/spine_slot — xem resolveOwnedGoalId()/
+//      resolveSkinId() trong lesson.js).
+// Mọi lượt gọi AI ở 3 điểm trên đều console.log("[MENTOR_AI_CALL] ...") để đếm được thật khi
 // nghiệm thu (mục 8.5 Đợt 3) — KHÔNG thêm lượt gọi AI nào khác trong module này.
 import { SUPABASE_URL } from "./_shared.js";
-import { generateOccupationProfile, buildConfirmationDisplay, loadSkinGeneral } from "./curriculum/skin.js";
+import {
+  generateOccupationProfile,
+  generateLevelTopics,
+  requiredCountsByLevel,
+  loadSkinGeneral,
+  loadCurriculumSpine,
+  normalizeOccupationKey,
+  buildConfirmationDisplay,
+} from "./curriculum/skin.js";
 import { generate_lesson } from "./lesson.js";
 import { createLineSession } from "./mentor-lines/select.js";
 
@@ -34,7 +48,7 @@ const DEFAULT_PRONOUN_STYLE = "toi_ban"; // chốt với Minh 2026-07-21: không
 // occupation_profile "rỗng" khi bấm "Bạn cứ để tôi tự chọn giúp" (mảnh shared.invite_goal) mà
 // CHƯA từng có mục tiêu nào trước đó — dùng thẳng skin_general.json, KHÔNG gọi AI (mục 3.3 Đợt
 // 3: input rỗng thì không có gì để suy luận thật). is_general=true là cờ DUY NHẤT mentor_next_lesson
-// dùng để rẽ nhánh chọn chủ đề (xem pickGeneralTopic), KHÔNG đụng buildConfirmationDisplay của
+// dùng để rẽ nhánh chọn chủ đề trong mentor_next_lesson, KHÔNG đụng buildConfirmationDisplay của
 // skin.js (hàm đó không xử lý được merged_occupation=null) — xem buildGoalConfirmationDisplay.
 const GENERAL_OCCUPATION_PROFILE = {
   is_general: true,
@@ -69,18 +83,6 @@ const MENTOR_TERM_DENSITY = 20; // lượng từ chuyên ngành mặc định ch
 // dùng 0 — dùng 1 số nhỏ để né câu "không có" trong prompt, vẫn hợp lý về nội dung (vài từ/cụm
 // từ đáng học trong bài, không đòi hỏi phải "chuyên ngành").
 const MENTOR_GENERAL_TERM_DENSITY = 3;
-// Các "góc tình huống" luân phiên KHÔNG DÙNG AI để chọn chủ đề bài kế tiếp trong cùng 1 mục
-// tiêu — thay cho Lượt B (generateLevelTopicsForAllLevels) của skin.js, vì Lượt B là 5 lượt
-// gọi AI riêng, NẰM NGOÀI 2 điểm được phép ở mục 5 Đợt 3. Đây là lựa chọn kỹ thuật tự chọn,
-// ghi rõ trong báo cáo bàn giao — xoay vòng theo lesson_count của mục tiêu, thuần code.
-const MENTOR_SITUATION_ANGLES = [
-  "giới thiệu bản thân và công việc với người mới gặp",
-  "hỏi và xác nhận lại thông tin quan trọng",
-  "xử lý một tình huống phát sinh ngoài kế hoạch",
-  "trao đổi qua điện thoại hoặc email công việc",
-  "báo cáo tiến độ hoặc kết quả cho cấp trên/khách hàng",
-  "thương lượng hoặc từ chối khéo một yêu cầu",
-];
 
 async function restGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: SERVICE_HEADERS });
@@ -507,43 +509,151 @@ export async function mentor_auto_goal(data, ctx) {
   return { content: JSON.stringify(result) };
 }
 
-// AI CALL #2/2 (mục 5 Đợt 3) — sinh 1 bài học thật, TÁI DÙNG NGUYÊN VẸN generate_lesson()
-// (lesson.js). Chủ đề/loại nội dung/cấp độ chọn bằng CODE thuần (không AI) trước khi gọi.
+// ============================================================
+// NỐI DA LĨNH VỰC (skin.js Lượt B) VÀO next_slot — 2026-07-22. "Slot kế tiếp" của 1 mục tiêu =
+// spine[level][goal.lesson_count % tổng số slot của level đó] (curriculum_spine.json, thứ tự
+// ĐÃ ĐÓNG BĂNG) — lesson_count vốn đã là bộ đếm tăng dần mỗi bài sinh cho mục tiêu (migration
+// 020), tái dùng LUÔN làm chỉ số slot thay vì thêm cột đếm riêng. level của 1 mục tiêu KHÔNG
+// đổi theo thời gian (xác nhận đọc code hiện tại, chưa có cơ chế lên cấp) nên phép chia dư này
+// luôn chỉ đúng 1 mảng slot của ĐÚNG level đó, không lẫn level khác. Hết 1 vòng slot của level
+// (lesson_count vượt tổng số slot), chỉ số quay vòng lại từ đầu — chủ đề LẶP LẠI đúng như đã
+// dùng ở lượt đầu (biết trước, chấp nhận cho MVP — lên cấp/mở rộng nội dung là việc sau).
+// ============================================================
+
+// slot đang cần + "đây là lần thứ mấy khung này xuất hiện tính từ đầu level" (occurrenceIndex)
+// — 1 khung (situation_frame_key) có thể xuất hiện ở NHIỀU slot khác nhau trong level (vd
+// "meeting_intro" ở cả slot 1 lẫn slot 5), mỗi lần xuất hiện cần 1 BIẾN THỂ chủ đề KHÁC NHAU
+// trong mảng topics[frame_key] mà Lượt B đã sinh (đúng "required_count" = số lần khung xuất
+// hiện, xem requiredCountsByLevel trong skin.js).
+function findSpineSlot(spineLevelSlots, lessonCount) {
+  const slotIndex = lessonCount % spineLevelSlots.length;
+  const slot = spineLevelSlots[slotIndex];
+  const occurrenceIndex =
+    spineLevelSlots.slice(0, slotIndex + 1).filter((s) => s.situation_frame_key === slot.situation_frame_key).length - 1;
+  return { slot, occurrenceIndex };
+}
+
+// "frames" là 1 trong 2 dạng: da lĩnh vực THẬT (industry_skins.levels[level], mỗi biến thể là
+// {topic, fallback}) hoặc da Tổng quát skin_general.json (mỗi biến thể là string thuần) — chuẩn
+// hoá về topic string ở đây để chỗ gọi không cần biết đang dùng nguồn nào. Trả null nếu thiếu
+// hẳn dữ liệu cho khung này (caller tự rơi về nguồn khác).
+function topicFromFrames(frames, frameKey, occurrenceIndex) {
+  const variants = frames?.[frameKey];
+  if (!variants?.length) return null;
+  const variant = variants[occurrenceIndex % variants.length];
+  return typeof variant === "string" ? variant : variant?.topic || null;
+}
+
+// Tìm/tạo hàng industry_skins DÙNG CHUNG theo ngành (occupation_key, xem
+// supabase/023_industry_skins.sql) — KHÔNG gọi AI ở hàm này, chỉ đọc/tạo hàng rỗng.
+async function getOrCreateIndustrySkin(occupationProfile) {
+  const key = normalizeOccupationKey(occupationProfile.merged_occupation);
+  if (!key) return null;
+  const existing = await restGet(`industry_skins?occupation_key=eq.${encodeURIComponent(key)}&select=*`);
+  if (existing?.[0]) return existing[0];
+
+  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/industry_skins`, {
+    method: "POST",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({ occupation_key: key, occupation_profile: occupationProfile }),
+  });
+  if (insertRes.ok) {
+    const rows = await insertRes.json();
+    if (rows?.[0]) return rows[0];
+  }
+  // Race hiếm (2 request cùng tạo mới cho cùng 1 ngành, occupation_key unique constraint chặn
+  // 1 trong 2) hoặc lỗi thoáng qua -> đọc lại theo key, hàng vừa được request kia tạo.
+  const retry = await restGet(`industry_skins?occupation_key=eq.${encodeURIComponent(key)}&select=*`);
+  return retry?.[0] || null;
+}
+
+// AI CALL #2/3 (mục 5 Đợt 3, xem đầu file) — CHỈ gọi khi industry_skins CHƯA có sẵn level đang
+// cần. Sinh xong 1 lần thì lưu vĩnh viễn, mọi user cùng ngành sau này dùng thẳng không gọi AI
+// lại. Thất bại (hết MAX_SKIN_LEVEL_ATTEMPTS bên trong generateLevelTopics của skin.js) -> trả
+// ok:false, KHÔNG chặn tạo bài — caller tự rơi về da Tổng quát (skin_general.json) cho ĐÚNG
+// lượt này, đúng mục 3 yêu cầu gốc.
+async function ensureSkinLevel(skinRow, level, occupationProfile) {
+  if (skinRow.levels?.[level] && skinRow.level_status?.[level] === "ok") {
+    return { ok: true, frames: skinRow.levels[level] };
+  }
+  console.log("[MENTOR_AI_CALL] skin_level_generation", { skinId: skinRow.id, occupationKey: skinRow.occupation_key, level });
+  const result = await generateLevelTopics({
+    occupationProfile,
+    level,
+    requiredCounts: requiredCountsByLevel()[level],
+    skinGeneralForLevel: loadSkinGeneral()[level] || {},
+  });
+  const updatedLevels = result.ok ? { ...skinRow.levels, [level]: result.frames } : skinRow.levels;
+  const updatedStatus = { ...skinRow.level_status, [level]: result.ok ? "ok" : "failed" };
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${skinRow.id}`, {
+      method: "PATCH",
+      headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ levels: updatedLevels, level_status: updatedStatus, updated_at: new Date().toISOString() }),
+    });
+  } catch (e) {
+    console.error("ensureSkinLevel PATCH error:", e);
+  }
+  return result.ok ? { ok: true, frames: result.frames } : { ok: false };
+}
+
+// AI CALL #3/3 (mục 5 Đợt 3) — sinh 1 bài học thật, TÁI DÙNG NGUYÊN VẸN generate_lesson()
+// (lesson.js). Chủ đề/loại nội dung/cấp độ/khung ngữ cảnh chọn bằng CODE thuần (không AI, đọc
+// đúng slot spine) trước khi gọi — xem khối comment "NỐI DA LĨNH VỰC" ở trên.
 export async function mentor_next_lesson(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const goalRows = await restGet(`learning_goals?id=eq.${data.goal_id}&user_id=eq.${ctx.studentId}&select=*`);
   const goal = goalRows?.[0];
   if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
 
-  const contentType = goal.lesson_count % 2 === 0 ? "reading" : "dialogue";
   const level = goal.level || DEFAULT_LEVEL_WHEN_UNSET;
   const isGeneral = goal.occupation_profile?.is_general === true;
+  const spineLevels = loadCurriculumSpine();
+  const spineLevelSlots = spineLevels[level] || spineLevels[DEFAULT_LEVEL_WHEN_UNSET];
+  const { slot, occurrenceIndex } = findSpineSlot(spineLevelSlots, goal.lesson_count);
+  const generalFramesForLevel = loadSkinGeneral()[level] || loadSkinGeneral()[DEFAULT_LEVEL_WHEN_UNSET];
 
-  let topic, industry, termDensity;
+  let topic, industry, termDensity, skinId;
   if (isGeneral) {
-    topic = pickGeneralTopic(level, goal.lesson_count);
+    topic = topicFromFrames(generalFramesForLevel, slot.situation_frame_key, occurrenceIndex);
     industry = "";
     termDensity = MENTOR_GENERAL_TERM_DENSITY;
+    skinId = null;
   } else {
-    const angle = MENTOR_SITUATION_ANGLES[goal.lesson_count % MENTOR_SITUATION_ANGLES.length];
-    topic = `${goal.occupation_profile.merged_occupation}: ${angle}`;
+    const skinRow = await getOrCreateIndustrySkin(goal.occupation_profile);
+    const levelResult = skinRow ? await ensureSkinLevel(skinRow, level, goal.occupation_profile) : { ok: false };
+    if (levelResult.ok) {
+      topic = topicFromFrames(levelResult.frames, slot.situation_frame_key, occurrenceIndex);
+      skinId = topic ? skinRow.id : null;
+    }
+    // Da ngành CHƯA có (chưa tạo được hàng, sinh level thất bại, hoặc thiếu đúng khung này) ->
+    // rơi về da Tổng quát cho ĐÚNG lượt này, đúng mục 3 yêu cầu gốc — KHÔNG chặn tạo bài.
+    if (!topic) {
+      topic = topicFromFrames(generalFramesForLevel, slot.situation_frame_key, occurrenceIndex);
+      skinId = null;
+    }
     industry = goal.occupation_profile.merged_occupation;
     termDensity = MENTOR_TERM_DENSITY;
   }
 
-  console.log("[MENTOR_AI_CALL] generate_lesson (next_slot)", { studentId: ctx.studentId, goalId: goal.id });
+  console.log("[MENTOR_AI_CALL] generate_lesson (next_slot)", { studentId: ctx.studentId, goalId: goal.id, slot: slot.slot });
   const genLessonInput = {
     description: "",
     level,
-    content_type: contentType,
-    topic,
+    content_type: slot.content_type,
+    // Phòng hờ cả da ngành lẫn da Tổng quát đều thiếu đúng khung (không nên xảy ra — đã xác
+    // nhận skin_general.json phủ đủ 100% frame_key của spine cả 5 level) — tên khung tiếng
+    // Việt còn hơn chặn hẳn lượt sinh bài.
+    topic: topic || slot.situation_frame,
     length_words: MENTOR_LESSON_LENGTH_WORDS,
     field: "",
     industry,
     product: "",
-    situation: "",
+    situation: slot.function_name_vi || "",
     term_density: termDensity,
     goal_id: goal.id,
+    skin_id: skinId,
+    spine_slot: slot.slot,
   };
   // generate_lesson() KHÔNG tự retry (lỗi thật đã biết: model đôi khi lệch số từ >25% ở dialogue
   // 200 từ, đặc biệt hay gặp — chưa có cơ chế leo thang model, xem project_ai_model_routing_spec
@@ -559,28 +669,16 @@ export async function mentor_next_lesson(data, ctx) {
 
   // Tăng bộ đếm HIỂN THỊ ("x/y bài") — không phải hạn mức chặn (đọc ghi chú NỢ KỸ THUẬT trong
   // supabase/020_mentor_ai.sql), nên read-modify-write đơn giản là đủ, không cần RPC atomic.
+  // CŨNG là chỉ số slot kế tiếp (xem đầu khối comment) — tăng đúng 1 lần là đủ, không cần cột
+  // đếm riêng.
   await fetch(`${SUPABASE_URL}/rest/v1/learning_goals?id=eq.${goal.id}`, {
     method: "PATCH",
     headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify({ lesson_count: goal.lesson_count + 1 }),
   }).catch((e) => console.error("mentor_next_lesson lesson_count update error:", e));
 
-  logMentorEvent(ctx.studentId, "lesson_generated", { goal_id: goal.id, is_general: isGeneral });
+  logMentorEvent(ctx.studentId, "lesson_generated", { goal_id: goal.id, is_general: isGeneral, spine_slot: slot.slot });
   return result;
-}
-
-// Mục tiêu "chung" (không ngành cụ thể) chọn chủ đề bằng CODE thuần, xoay vòng qua toàn bộ
-// (khung, chủ đề) của skin_general.json — GIỐNG cơ chế MENTOR_SITUATION_ANGLES cho mục tiêu
-// ngành, KHÔNG dùng generateLevelTopicsForAllLevels (Lượt B của skin.js, 5 lượt gọi AI riêng,
-// nằm NGOÀI 2 điểm được phép gọi AI của Đợt 3 mục 5).
-function pickGeneralTopic(level, lessonCount) {
-  const levels = loadSkinGeneral();
-  const frameMap = levels[level] || levels[DEFAULT_LEVEL_WHEN_UNSET];
-  const flat = [];
-  for (const topics of Object.values(frameMap)) {
-    for (const topic of topics) flat.push(topic);
-  }
-  return flat[lessonCount % flat.length];
 }
 
 // ============================================================

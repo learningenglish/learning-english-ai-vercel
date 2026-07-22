@@ -514,11 +514,13 @@ function validateLessonShape(parsed, { expectedWords, checkDialogueEnding } = {}
   return { valid: true };
 }
 
-function buildLessonInsertRow(parsed, { userId, source, goalId }) {
+function buildLessonInsertRow(parsed, { userId, source, goalId, skinId, spineSlot }) {
   return {
     user_id: userId,
     source,
     goal_id: goalId || null,
+    skin_id: skinId || null,
+    spine_slot: Number.isInteger(spineSlot) ? spineSlot : null,
     title: parsed.title,
     title_vi: parsed.title_vi,
     level: parsed.level,
@@ -553,6 +555,25 @@ async function resolveOwnedGoalId(goalId, userId) {
     return rows?.[0]?.id || null;
   } catch (e) {
     console.error("resolveOwnedGoalId error:", e);
+    return null;
+  }
+}
+
+// data.skin_id TÙY CHỌN (2026-07-22, nối next_slot vào da lĩnh vực) — chỉ audit "bài này lấy
+// chủ đề từ da nào", industry_skins KHÔNG thuộc về 1 user (dùng chung theo ngành) nên không
+// cần kiểm ownership như goal_id ở trên — chỉ cần xác nhận id đó CÓ TỒN TẠI, tránh lỗi FK
+// constraint làm hỏng cả lượt lưu bài nếu client gửi id rác.
+async function resolveSkinId(skinId) {
+  if (!skinId) return null;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${encodeURIComponent(skinId)}&select=id`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows?.[0]?.id || null;
+  } catch (e) {
+    console.error("resolveSkinId error:", e);
     return null;
   }
 }
@@ -616,8 +637,13 @@ export async function generate_lesson(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
-  const goalId = await resolveOwnedGoalId(data.goal_id, ctx.studentId);
-  const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated", goalId }));
+  const [goalId, skinId] = await Promise.all([
+    resolveOwnedGoalId(data.goal_id, ctx.studentId),
+    resolveSkinId(data.skin_id),
+  ]);
+  const saved = await insertLesson(
+    buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated", goalId, skinId, spineSlot: data.spine_slot })
+  );
   if (!saved) return { error: "Tạo bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
   return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };
