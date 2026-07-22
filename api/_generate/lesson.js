@@ -698,7 +698,7 @@ export async function generate_lesson(data, ctx) {
   capLessonArrays(parsed);
   const validation = validateLessonShape(parsed, { minWords, maxWords, checkDialogueEnding: true });
   if (!validation.valid) {
-    console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
+    console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, `range=[${minWords},${maxWords}]`);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
