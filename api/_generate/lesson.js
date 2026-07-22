@@ -11,11 +11,11 @@
 //
 // KHÔNG import ngược bất kỳ thứ gì từ chat.js: chat.js "đóng băng" theo luật của dự án
 // (chỉ được thêm dòng import + entry ACTIONS, không thêm export mới vào các hàm sẵn có).
-// Vì vậy vài hằng số/hàm nhỏ (SUPABASE_URL, callOpenAI, content, safeOpenAIError,
-// stripJsonFence) được COPY nguyên văn từ chat.js — nhưng CHỈ COPY 1 LẦN DUY NHẤT, đặt ở
-// api/_generate/_shared.js để các module khác trong CÙNG thư mục _generate/ (như
-// wordLookup.js) dùng chung, không phải copy lại lần nữa mỗi khi thêm action mới.
-import { SUPABASE_URL, callOpenAI, content, safeOpenAIError, stripJsonFence } from "./_shared.js";
+// Vì vậy hằng số nhỏ (SUPABASE_URL) được COPY nguyên văn từ chat.js — đặt ở
+// api/_generate/_shared.js để các module khác trong CÙNG thư mục _generate/ dùng chung.
+// Gọi AI đi qua api/_shared/aiProvider.js (lớp trừu tượng OpenAI/Gemini dùng chung toàn repo).
+import { SUPABASE_URL } from "./_shared.js";
+import { generateStructuredJSON } from "../_shared/aiProvider.js";
 
 // SPEC ghi sổ, CHƯA triển khai (2026-07-19 — xem project_ai_model_routing_spec trong memory):
 // model routing 2 bậc dự kiến — (1) sinh DA LĨNH VỰC (chưa có module, sẽ ở
@@ -96,16 +96,6 @@ async function checkDailyLessonLimit(studentId) {
     console.error("checkDailyLessonLimit error:", e);
     return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
   }
-}
-
-// Đo riêng thời gian gọi OpenAI (khác thời gian tổng round-trip mà trình duyệt đo được ở
-// /app/ — chênh lệch cho biết độ trễ nằm ở OpenAI hay ở phần còn lại: cold start, mạng...).
-// Trả kèm "usage" (prompt/completion/total tokens) để /app/ tự tính chi phí ước tính, hiển
-// thị cùng đồng hồ thời gian trên màn hình Tạo bài học — phục vụ bài đo Phase 0/3.
-async function timedCallOpenAI(args) {
-  const start = Date.now();
-  const r = await callOpenAI(args);
-  return { ...r, durationMs: Date.now() - start };
 }
 
 function wordCount(text) {
@@ -604,8 +594,8 @@ export async function generate_lesson(data, ctx) {
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
-  const r = await timedCallOpenAI({
-    max_tokens: 4000, // trần chung MAX_TOKENS_CAP (_shared.js) — nâng từ 3500 vì A1/A2 giờ cần
+  const r = await generateStructuredJSON({
+    maxTokens: 4000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 3500 vì A1/A2 giờ cần
     // nhiều lượt thoại hơn hẳn để đạt đủ length_words khi câu bị giới hạn ngắn (xem "LỖI THẬT
     // HAY GẶP Ở A1/A2" trong prompt), JSON output theo đó cũng dài hơn trước.
     temperature: 0.7,
@@ -614,15 +604,11 @@ export async function generate_lesson(data, ctx) {
       { role: "user", content: buildGenerateLessonUserPrompt(data) },
     ],
   });
-  if (!r.ok) return safeOpenAIError(r);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(stripJsonFence(content(r)));
-  } catch (e) {
-    console.error("[generate_lesson] parse error:", e, content(r).slice(0, 500));
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+  if (!r.ok) {
+    if (r.parseError) console.error("[generate_lesson] parse error:", r.text?.slice(0, 500));
+    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
   }
+  const parsed = r.data;
   capLessonArrays(parsed);
   const validation = validateLessonShape(parsed, { expectedWords: data.length_words, checkDialogueEnding: true });
   if (!validation.valid) {
@@ -649,8 +635,8 @@ export async function analyze_user_text(data, ctx) {
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
-  const r = await timedCallOpenAI({
-    max_tokens: 4000, // trần chung MAX_TOKENS_CAP (_shared.js) — nâng từ 3500 vì A1/A2 giờ cần
+  const r = await generateStructuredJSON({
+    maxTokens: 4000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 3500 vì A1/A2 giờ cần
     // nhiều lượt thoại hơn hẳn để đạt đủ length_words khi câu bị giới hạn ngắn (xem "LỖI THẬT
     // HAY GẶP Ở A1/A2" trong prompt), JSON output theo đó cũng dài hơn trước.
     temperature: 0.7,
@@ -659,15 +645,11 @@ export async function analyze_user_text(data, ctx) {
       { role: "user", content: buildAnalyzeTextUserPrompt(data.level, data.user_text) },
     ],
   });
-  if (!r.ok) return safeOpenAIError(r);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(stripJsonFence(content(r)));
-  } catch (e) {
-    console.error("[analyze_user_text] parse error:", e, content(r).slice(0, 500));
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+  if (!r.ok) {
+    if (r.parseError) console.error("[analyze_user_text] parse error:", r.text?.slice(0, 500));
+    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
   }
+  const parsed = r.data;
   capLessonArrays(parsed);
   // Không check checkDialogueEnding: content ở đây là VĂN BẢN THẬT của người dùng (giữ
   // nguyên 100%, xem QUY TẮC TỐI THƯỢNG trong prompt) — nếu văn bản gốc thật sự kết thúc
@@ -689,7 +671,7 @@ export async function analyze_user_text(data, ctx) {
 // meta không phải 1 phần "hợp đồng dữ liệu" Lesson JSON (mục 4 brief) — chỉ để /app/ hiển
 // thị thời gian/token/chi phí ước tính lúc đo Phase 0/3, KHÔNG lưu vào bảng "lessons".
 function buildMeta(r) {
-  return { usage: r.data?.usage || null, openai_duration_ms: r.durationMs, model: "gpt-4o-mini" };
+  return { usage: r.usage || null, openai_duration_ms: r.durationMs, model: r.model };
 }
 
 // ============================================================

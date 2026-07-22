@@ -9,12 +9,12 @@
 // prompt) — không để 2 nơi lệch nhau, giống quy tắc đã áp dụng cho lesson.js/docs/prompt-ai-
 // tao-bai-hoc.md.
 //
-// KHÔNG import ngược chat.js (đóng băng). Dùng callOpenAI/content/stripJsonFence từ _shared.js
-// giống các module khác trong api/_generate/.
+// KHÔNG import ngược chat.js (đóng băng). Gọi AI qua api/_shared/aiProvider.js (lớp trừu
+// tượng OpenAI/Gemini dùng chung toàn repo) — giống các module khác trong api/_generate/.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { callOpenAI, content, stripJsonFence } from "../_shared.js";
+import { generateStructuredJSON } from "../../_shared/aiProvider.js";
 import { SITUATION_FRAMES } from "./situation-frames.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,11 +28,12 @@ const MAX_SKIN_PROFILE_ATTEMPTS = 2;
 const MAX_SKIN_LEVEL_ATTEMPTS = 2;
 
 // Model mạnh dùng cho TOÀN BỘ lượt sinh da (cả lượt chân dung lẫn 5 lượt/level) — xem
-// project_ai_model_routing_spec trong memory. Fallback "gpt-4o-mini" CHỈ để không throw lúc
-// import module khi thiếu env (dev/test tĩnh) — PHẢI set MODEL_SKIN thật trước khi triển khai,
-// KHÔNG được để mặc định âm thầm chạy bằng model yếu cho việc sinh da (tài sản dùng vĩnh viễn).
-const MODEL_SKIN = process.env.MODEL_SKIN || "gpt-4o-mini";
-const SKIN_WEB_SEARCH_TOOL = [{ type: "web_search" }]; // hình dạng tool CHƯA verify với provider thật lúc triển khai
+// project_ai_model_routing_spec trong memory. Truyền tier: "strong" cho aiProvider.js thay vì
+// tự chọn tên model ở đây (tên model là chi tiết riêng từng hãng) — aiProvider.js đọc
+// OPENAI_MODEL_STRONG, hoặc MODEL_SKIN nếu chưa set biến mới, PHẢI set 1 trong 2 biến đó thật
+// trước khi triển khai, KHÔNG để mặc định âm thầm chạy model yếu cho việc sinh da (tài sản
+// dùng vĩnh viễn).
+const SKIN_MODEL_TIER = "strong";
 
 function loadJSON(fileName) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, fileName), "utf8"));
@@ -138,19 +139,14 @@ async function callProfileOnce(keywords, { webSearch }) {
     { role: "system", content: PROFILE_SYSTEM_PROMPT },
     { role: "user", content: buildProfileUserPrompt(keywords, { webSearch }) },
   ];
-  const r = await callOpenAI({
-    model: MODEL_SKIN,
+  const r = await generateStructuredJSON({
+    tier: SKIN_MODEL_TIER,
     temperature: 0.4,
-    max_tokens: 1500,
+    maxTokens: 1500,
     messages,
-    tools: webSearch ? SKIN_WEB_SEARCH_TOOL : undefined,
+    webSearch,
   });
-  if (!r.ok) return { ok: false };
-  try {
-    return { ok: true, data: JSON.parse(stripJsonFence(content(r))) };
-  } catch {
-    return { ok: false, parseError: true };
-  }
+  return r.ok ? { ok: true, data: r.data } : { ok: false, parseError: !!r.parseError };
 }
 
 // Nấc 1 (không web search) -> Nấc 2 (web search) nếu confidence thấp hoặc gãy — trần cứng 2
@@ -286,13 +282,8 @@ async function callLevelOnce({ occupationProfile, level, frames, requiredCounts,
     { role: "system", content: LEVEL_SYSTEM_PROMPT },
     { role: "user", content: buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel }) },
   ];
-  const r = await callOpenAI({ model: MODEL_SKIN, temperature: 0.7, max_tokens: 3500, messages });
-  if (!r.ok) return { ok: false };
-  try {
-    return { ok: true, data: JSON.parse(stripJsonFence(content(r))) };
-  } catch {
-    return { ok: false, parseError: true };
-  }
+  const r = await generateStructuredJSON({ tier: SKIN_MODEL_TIER, temperature: 0.7, maxTokens: 3500, messages });
+  return r.ok ? { ok: true, data: r.data } : { ok: false, parseError: !!r.parseError };
 }
 
 // Gọi lại RIÊNG lượt B của 1 level khi gãy — cap MAX_SKIN_LEVEL_ATTEMPTS, đúng mục 10.

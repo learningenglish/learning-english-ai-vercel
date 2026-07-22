@@ -12,7 +12,7 @@
 // phân loại đã tinh chỉnh sẵn cho analyze_sentence, không tự nghĩ ra tiêu chí mới) — chỉ
 // còn A1-C1 (bỏ C2 riêng) để khớp đúng enum level của toàn hệ thống (VALID_LEVELS ở
 // lesson.js, cột "level" bảng lessons).
-import { callOpenAI, content, safeOpenAIError, stripJsonFence } from "./_shared.js";
+import { generateStructuredJSON } from "../_shared/aiProvider.js";
 
 const CEFR_LEVEL_REFERENCE = `CEFR LEVEL REFERENCE TABLE — use this to assign "level" for EVERY word/phrase. Check here FIRST before relying on general judgment. If a chunk isn't listed exactly, match it to the closest PATTERN/STRUCTURE type below (e.g. an unlisted basic phrasal verb → same group as the basic phrasal verbs listed under A2):
 - A1: familiar set phrases (good morning, thank you, excuse me, how are you, nice to meet you, see you later, of course, I'm sorry, I don't know, a lot of, every day, next week, last year); basic prepositional phrases (at home, at work, at school, in bed, in class, on the table, under the chair, next to the door); simple noun phrases (my mother, your friend, a big house, the red car, an old man); simple verb phrases (can swim, can speak English, want to eat, like playing football, have breakfast); time expressions (every day, every week, this morning, last night, next month, at six o'clock).
@@ -41,23 +41,19 @@ function buildUserPrompt(word, sentence) {
 export async function word_lookup(data) {
   if (!data.word || !data.sentence) return { error: "Thiếu 'word' hoặc 'sentence'.", status: 400 };
 
-  const r = await callOpenAI({
-    max_tokens: 150,
+  const r = await generateStructuredJSON({
+    maxTokens: 150,
     temperature: 0.2,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserPrompt(data.word, data.sentence) },
     ],
   });
-  if (!r.ok) return safeOpenAIError(r);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(stripJsonFence(content(r)));
-  } catch (e) {
-    console.error("[word_lookup] parse error:", e, content(r).slice(0, 300));
-    return { error: "Không tra được từ, vui lòng thử lại.", status: 502 };
+  if (!r.ok) {
+    if (r.parseError) console.error("[word_lookup] parse error:", r.text?.slice(0, 300));
+    return { error: r.error || "Không tra được từ, vui lòng thử lại.", status: r.status || 502 };
   }
+  const parsed = r.data;
   if (!["A1", "A2", "B1", "B2", "C1"].includes(parsed.level)) {
     return { error: "Không tra được từ, vui lòng thử lại.", status: 502 };
   }
