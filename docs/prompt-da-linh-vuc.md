@@ -89,6 +89,10 @@ Trước khi sinh bất kỳ chủ đề nào, model PHẢI tự dựng 1 "chân
    thuật ngữ nghe có vẻ đúng nhưng sai hoặc không ai dùng. Danh sách ngắn (dưới 8 thuật ngữ chắc
    chắn) là TÍN HIỆU TRUNG THỰC hợp lệ để kích hoạt leo thang web search (mục 4), KHÔNG phải lỗi
    của model — không được cố kéo dài danh sách cho đủ số bằng cách bịa thêm.
+   **BẮT BUỘC tiếng Anh, không phải tiếng Việt** (lỗi THẬT đã gặp ở bài kiểm nghiệm thu vòng 1,
+   2026-07-22: ngành "kinh doanh nhỏ lẻ/sửa xe máy" trả về `["sửa chữa", "phụ tùng", ...]` thay
+   vì `["repair", "spare parts", ...]`) — code phía sau giờ VALIDATE ngôn ngữ của từng phần tử
+   (mục 10), không còn chỉ dựa vào prompt.
 4. **Chấm độ tự tin từng mục** (`confidence`): với MỖI mục ở trên, tự chấm 1 trong 3 mức `"cao"`
    / `"vừa"` / `"thấp"` theo TIÊU CHÍ ĐO ĐƯỢC sau (không tự đánh giá cảm tính "đoán mò hay
    không"):
@@ -214,6 +218,11 @@ Liệt kê thuật ngữ tiếng Anh chuyên ngành THẬT (`core_terms`) — T�
 thiểu. Nếu không chắc chắn 1 thuật ngữ có thật sự tồn tại/đúng dùng trong ngành này, KHÔNG đưa
 vào — thà liệt kê ít còn hơn bịa ra thuật ngữ nghe có vẻ đúng nhưng sai. Danh sách ngắn là tín
 hiệu trung thực hợp lệ, không phải lỗi.
+MỖI phần tử BẮT BUỘC là từ/cụm từ TIẾNG ANH (English) — KHÔNG được dịch sang hoặc viết bằng
+tiếng Việt (lỗi THẬT đã gặp: ngành "kinh doanh nhỏ lẻ/sửa xe máy" từng trả về core_terms tiếng
+Việt như "sửa chữa", "phụ tùng" thay vì "repair", "spare parts"). Nếu ngành này không có thuật
+ngữ tiếng Anh chuyên biệt nào bạn thật sự chắc chắn, để danh sách NGẮN hoặc RỖNG — KHÔNG thay
+bằng từ tiếng Việt cho "đủ số".
 
 Viết 1 cụm ngắn mô tả phạm vi giao tiếp chính (`primary_communication_scope`, dùng hiển thị cho
 người dùng, vd "Giao tiếp với khách nước ngoài tại cửa hàng").
@@ -282,6 +291,20 @@ cung cấp làm nguồn. Quy tắc thích nghi:
   tắc): trả về CHỦ ĐỀ TỔNG QUÁT (sẽ được cung cấp sẵn trong dữ liệu đầu vào cho mỗi khung) và
   đánh dấu "fallback": true cho mục đó — không được tự bịa 1 chủ đề gượng ép chỉ để có vẻ đúng
   ngành.
+  TIÊU CHÍ KIỂM ĐƯỢC cho "thật sự không thể thích nghi" (thêm sau bài kiểm nghiệm thu vòng 1,
+  2026-07-22 — model chưa từng tự đánh dấu fallback dù có khung rõ ràng bị gượng): nếu thay tên
+  ngành trong chủ đề bạn sắp viết bằng MỘT NGÀNH BẤT KỲ khác mà câu vẫn đúng y nguyên, không cần
+  sửa gì thêm ngoài đúng cái tên ngành/vai — nghĩa là chủ đề đó chỉ đang GẮN NHÃN ngành lên một ý
+  chung chung, không chứa chi tiết/thuật ngữ/tình huống ĐẶC THÙ của riêng ngành này — thì đó là
+  dấu hiệu PHẢI đánh dấu "fallback": true, KHÔNG được cố nghĩ ra 1 câu nghe hợp lý rồi để
+  "fallback": false.
+  Ví dụ minh hoạ (chỉ để hiểu Ý, không phải nội dung thật của ngành nào trong hệ thống): ngành
+  "Đánh giày dạo" gặp khung trừu tượng "quyền riêng tư số" — câu "Quyền riêng tư của khách hàng
+  khi đánh giày" chỉ gắn nhãn ngành lên 1 ý chung, xoá "đánh giày" đi câu vẫn đúng với BẤT KỲ dịch
+  vụ nào khác -> PHẢI "fallback": true. Cùng ngành "Đánh giày dạo" gặp khung "đàm phán hợp
+  đồng/thương lượng" thì KHÔNG cần fallback: "Thương lượng giá đánh giày trọn gói với khách quen
+  lâu năm" là tình huống THẬT của riêng nghề này (khách quen, giá trọn gói là chi tiết đặc thù),
+  không phải nhãn dán chung chung.
 - Mỗi khung cần ÍT NHẤT số biến thể ghi trong "required_count" của khung đó (có thể sinh dư 1-2
   cho an toàn, không được ít hơn). CÁC BIẾN THỂ TRONG CÙNG 1 KHUNG PHẢI KHÁC NHAU RÕ RỆT — không
   lặp lại cùng 1 câu chuyện/bối cảnh dưới cách diễn đạt khác, để học viên không thấy 2 bài liền
@@ -336,6 +359,10 @@ tầng lúc viết module — không ảnh hưởng nội dung prompt).
 1. **Chân dung hợp lệ:** `occupation_profile.merged_occupation` khác null VÀ
    `khong_xac_dinh !== true` — nếu không, đây là tín hiệu quay lại mục 6 (hỏi người dùng), không
    phải lỗi hệ thống.
+1b. **`core_terms` đúng ngôn ngữ** (thêm sau bài kiểm nghiệm thu vòng 1, 2026-07-22): mỗi phần
+   tử KHÔNG được chứa ký tự có dấu tiếng Việt (regex ký tự có dấu, không cần thư viện phát hiện
+   ngôn ngữ đầy đủ — đủ bắt các trường hợp thật đã gặp). Fail điều này coi như chân dung KHÔNG
+   hợp lệ (cùng nhánh xử lý với mục 1: quay lại bậc thang mục 4, KHÔNG âm thầm cho qua).
 2. Nếu Lượt A gãy parse JSON: gọi lại theo đúng bậc thang mục 4 (vẫn tính vào trần cứng
    `MAX_SKIN_PROFILE_ATTEMPTS = 2` — gãy parse KHÔNG được cộng thêm lượt ngoài trần này).
 

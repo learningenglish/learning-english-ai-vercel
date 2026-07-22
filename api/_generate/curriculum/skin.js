@@ -76,6 +76,9 @@ Liệt kê thuật ngữ tiếng Anh chuyên ngành THẬT (core_terms) — TỐ
 thiểu. Nếu không chắc chắn 1 thuật ngữ có thật sự tồn tại/đúng dùng trong ngành này, KHÔNG đưa
 vào — thà liệt kê ít còn hơn bịa ra thuật ngữ nghe có vẻ đúng nhưng sai. Danh sách ngắn là tín
 hiệu trung thực hợp lệ, không phải lỗi.
+MỖI phần tử BẮT BUỘC là từ/cụm từ TIẾNG ANH (English) — KHÔNG được dịch sang hoặc viết bằng
+tiếng Việt. Nếu ngành này không có thuật ngữ tiếng Anh chuyên biệt nào bạn thật sự chắc chắn, để
+danh sách NGẮN hoặc RỖNG — KHÔNG thay bằng từ tiếng Việt cho "đủ số".
 
 Viết 1 cụm ngắn mô tả phạm vi giao tiếp chính (primary_communication_scope, dùng hiển thị cho
 người dùng, vd "Giao tiếp với khách nước ngoài tại cửa hàng").
@@ -122,10 +125,19 @@ function buildProfileUserPrompt({ field, industry, product }, { webSearch } = {}
   return lines.join("\n");
 }
 
+// Bắt lỗi THẬT đã gặp ở bài kiểm nghiệm thu vòng 1 (2026-07-22): core_terms trả về tiếng Việt
+// dù prompt yêu cầu tiếng Anh — dò ký tự có dấu tiếng Việt, đủ bắt các trường hợp thật đã gặp,
+// không cần thư viện phát hiện ngôn ngữ đầy đủ.
+const VIETNAMESE_CHAR_RE =
+  /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
+
 function validateProfilePayload(data) {
   const op = data && data.occupation_profile;
   if (!op) return { valid: false, reason: "missing_occupation_profile" };
   if (op.khong_xac_dinh === true || !op.merged_occupation) return { valid: false, reason: "khong_xac_dinh" };
+  if ((op.core_terms || []).some((t) => VIETNAMESE_CHAR_RE.test(String(t)))) {
+    return { valid: false, reason: "core_terms_not_english" };
+  }
   return { valid: true };
 }
 
@@ -214,6 +226,18 @@ cấp làm nguồn. Quy tắc thích nghi:
   tắc): trả về CHỦ ĐỀ TỔNG QUÁT (sẽ được cung cấp sẵn trong dữ liệu đầu vào cho mỗi khung) và
   đánh dấu "fallback": true cho mục đó — không được tự bịa 1 chủ đề gượng ép chỉ để có vẻ đúng
   ngành.
+  TIÊU CHÍ KIỂM ĐƯỢC cho "thật sự không thể thích nghi": nếu thay tên ngành trong chủ đề bạn sắp
+  viết bằng MỘT NGÀNH BẤT KỲ khác mà câu vẫn đúng y nguyên, không cần sửa gì thêm ngoài đúng cái
+  tên ngành/vai — nghĩa là chủ đề đó chỉ đang GẮN NHÃN ngành lên một ý chung chung, không chứa
+  chi tiết/thuật ngữ/tình huống ĐẶC THÙ của riêng ngành này — thì đó là dấu hiệu PHẢI đánh dấu
+  "fallback": true, KHÔNG được cố nghĩ ra 1 câu nghe hợp lý rồi để "fallback": false.
+  Ví dụ minh hoạ (chỉ để hiểu Ý, không phải nội dung thật của ngành nào trong hệ thống): ngành
+  "Đánh giày dạo" gặp khung trừu tượng "quyền riêng tư số" — câu "Quyền riêng tư của khách hàng
+  khi đánh giày" chỉ gắn nhãn ngành lên 1 ý chung, xoá "đánh giày" đi câu vẫn đúng với BẤT KỲ dịch
+  vụ nào khác -> PHẢI "fallback": true. Cùng ngành "Đánh giày dạo" gặp khung "đàm phán hợp
+  đồng/thương lượng" thì KHÔNG cần fallback: "Thương lượng giá đánh giày trọn gói với khách quen
+  lâu năm" là tình huống THẬT của riêng nghề này (khách quen, giá trọn gói là chi tiết đặc thù),
+  không phải nhãn dán chung chung.
 - Mỗi khung cần ÍT NHẤT số biến thể ghi trong "required_count" của khung đó (có thể sinh dư 1-2
   cho an toàn, không được ít hơn). CÁC BIẾN THỂ TRONG CÙNG 1 KHUNG PHẢI KHÁC NHAU RÕ RỆT — không
   lặp lại cùng 1 câu chuyện/bối cảnh dưới cách diễn đạt khác, để học viên không thấy 2 bài liền
