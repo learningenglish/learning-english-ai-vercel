@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
-import { generate_writing_task, grade_writing } from "./_generate/writing.js";
+import { generate_writing_task, grade_writing, save_writing_favorite } from "./_generate/writing.js";
 import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { add_vocab_word } from "./_generate/vocab.js";
@@ -1278,6 +1278,7 @@ const ACTIONS = {
   // lập hoàn toàn với luồng Lesson-first, không đụng gì tới generate_lesson/analyze_user_text.
   generate_writing_task,
   grade_writing,
+  save_writing_favorite,
   // Tooltip rê chuột trong màn Bài học: level CEFR + nghĩa ngắn + cụm từ đi kèm cho 1 từ,
   // khác word_tip/word_explain có sẵn (2 action đó trả text tự do dài, không có level).
   word_lookup,

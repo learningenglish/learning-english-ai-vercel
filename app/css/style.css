@@ -2252,3 +2252,41 @@ textarea:focus {
   margin: 0;
   font-size: 0.85rem;
 }
+
+/* ===== Tab "Bài viết" trong Yêu thích (Việc 3/Item 7) ===== */
+.writing-favorite-card {
+  cursor: pointer;
+}
+
+.writing-favorite-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.writing-favorite-kind {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--purple-soft);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.writing-favorite-score {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.writing-favorite-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.writing-favorite-date {
+  font-size: 0.78rem;
+  margin: 4px 0 0;
+}

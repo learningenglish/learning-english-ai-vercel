@@ -1,6 +1,6 @@
 // app/js/writingApi.js — điểm plug cho tính năng "Luyện viết" (2026-07-27), theo ĐÚNG mẫu
-// lessonApi.js: view chỉ gọi 2 hàm dưới đây, không biết/không cần biết hình dạng action bên
-// trong. Xem api/_generate/writing.js cho toàn bộ logic thật (giao đề, chấm bài).
+// lessonApi.js: view chỉ gọi các hàm dưới đây, không biết/không cần biết hình dạng action bên
+// trong. Xem api/_generate/writing.js cho toàn bộ logic thật (giao đề, chấm bài, lưu Yêu thích).
 import { callChatAction } from "./chatApi.js";
 
 export async function generateWritingTask(level, industry) {
@@ -9,6 +9,20 @@ export async function generateWritingTask(level, industry) {
 
 export async function gradeWriting({ level, industry, task, text }) {
   return callAndParse("grade_writing", { level, industry: industry || "", task, text });
+}
+
+// kind: "detailed" | "complete" (kèm variant "clean_rewrite"|"reference_essay" khi complete) —
+// xem supabase/028_writing_favorites.sql.
+export async function saveWritingFavorite({ kind, variant, level, industry, task, overallScore, content }) {
+  return callAndParse("save_writing_favorite", {
+    kind,
+    variant: variant || undefined,
+    level,
+    industry: industry || "",
+    task,
+    overall_score: Number.isFinite(overallScore) ? overallScore : null,
+    content,
+  });
 }
 
 async function callAndParse(action, payload) {

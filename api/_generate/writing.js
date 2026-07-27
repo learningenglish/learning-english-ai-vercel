@@ -772,3 +772,56 @@ export async function grade_writing(data, ctx) {
     }),
   };
 }
+
+// ====== "Lưu vào Yêu thích" (Việc 3 gốc + Item 7, xem supabase/028_writing_favorites.sql) ======
+async function insertWritingFavorite(row) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/writing_favorites`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(row),
+    });
+    if (!r.ok) {
+      console.error("insert writing_favorites error:", r.status, await r.text());
+      return null;
+    }
+    const rows = await r.json();
+    return rows?.[0] || null;
+  } catch (e) {
+    console.error("insertWritingFavorite error:", e);
+    return null;
+  }
+}
+
+// data.kind: "detailed" (bài đã sửa — chi tiết theo câu) | "complete" (bài hoàn chỉnh/tham
+// khảo — cần thêm data.variant: "clean_rewrite" | "reference_essay"). Không gọi AI, không tính
+// vào hạn mức/ngày (thuần lưu trữ 1 lần đã có sẵn dữ liệu từ lượt chấm/giao đề trước đó).
+export async function save_writing_favorite(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!["detailed", "complete"].includes(data.kind)) return { error: "Thiếu hoặc sai 'kind'.", status: 400 };
+  if (data.kind === "complete" && !["clean_rewrite", "reference_essay"].includes(data.variant)) {
+    return { error: "Thiếu hoặc sai 'variant'.", status: 400 };
+  }
+  if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
+  if (!data.task || typeof data.task !== "object") return { error: "Thiếu đề bài.", status: 400 };
+  if (!data.content || typeof data.content !== "object") return { error: "Thiếu nội dung.", status: 400 };
+
+  const saved = await insertWritingFavorite({
+    user_id: ctx.studentId,
+    kind: data.kind,
+    variant: data.kind === "complete" ? data.variant : null,
+    level: data.level,
+    industry: (data.industry || "").trim() || null,
+    task: data.task,
+    overall_score: Number.isFinite(data.overall_score) ? data.overall_score : null,
+    content: data.content,
+  });
+  if (!saved) return { error: "Lưu thất bại, vui lòng thử lại.", status: 502 };
+
+  return { content: JSON.stringify({ favorite: saved }) };
+}

@@ -19,10 +19,11 @@
 //   (Việc 2), gộp vào CÙNG 1 lượt gọi grade_writing (không tách action riêng), xem
 //   api/_generate/writing.js::GRADE_SYSTEM_PROMPT phần "clean_rewrite".
 import { navigate } from "../router.js";
-import { generateWritingTask, gradeWriting } from "../writingApi.js";
+import { generateWritingTask, gradeWriting, saveWritingFavorite } from "../writingApi.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
+import { showToast } from "../toast.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
@@ -46,8 +47,11 @@ export function renderWritingPractice(mount) {
     targetWordsMax: 0,
     text: "",
     supportTab: "structure",
-    grading: null, // { overall_score, criteria, strengths, segments, notices, clean_rewrite: { text, vocab, patterns } }
+    grading: null, // { overall_score, tier, tier_label, criteria, strengths, segments, notices, clean_rewrite, reference_essay }
     cleanTab: "content",
+    savedDetailed: false,
+    savedClean: false,
+    savedReference: false,
   };
 
   // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
@@ -235,7 +239,9 @@ export function renderWritingPractice(mount) {
         <p class="writing-annotated-text">${annotatedBlockHtml(g.segments)}</p>
       </div>
       ${g.notices.length ? `<div class="writing-notices">${g.notices.map((n) => `<p class="writing-notice">${escapeHtml(n)}</p>`).join("")}</div>` : ""}
+      <div id="save-detailed-slot"></div>
       <div class="director-card-actions">
+        <button type="button" class="btn btn-ghost btn-block" id="save-detailed-btn" ${state.savedDetailed ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedDetailed ? "Đã lưu bài đã sửa" : "Lưu bài đã sửa"}</button>
         ${secondaryBtnHtml}
         <button type="button" class="btn btn-ghost btn-block" id="back-to-result-btn">Quay lại kết quả</button>
       </div>
@@ -252,11 +258,24 @@ export function renderWritingPractice(mount) {
       <div class="card writing-card">
         <p class="writing-clean-text">${escapeHtml(g.reference_essay.text)}</p>
       </div>
-      <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-from-reference-btn">Quay lại chi tiết</button>
+      <div id="save-reference-slot"></div>
+      <div class="director-card-actions">
+        <button type="button" class="btn btn-ghost btn-block" id="save-reference-btn" ${state.savedReference ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedReference ? "Đã lưu bài tham khảo" : "Lưu bài tham khảo"}</button>
+        <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-from-reference-btn">Quay lại chi tiết</button>
+      </div>
     `;
   }
 
   function wireReferenceStep() {
+    mount.querySelector("#save-reference-btn").addEventListener("click", async () => {
+      await saveFavorite({
+        kind: "complete",
+        variant: "reference_essay",
+        content: { text: state.grading.reference_essay.text },
+        slotSelector: "#save-reference-slot",
+        markSaved: () => (state.savedReference = true),
+      });
+    });
     mount.querySelector("#back-to-detail-from-reference-btn").addEventListener("click", () => {
       state.step = "detail";
       render();
@@ -288,7 +307,11 @@ export function renderWritingPractice(mount) {
         <button type="button" class="tab-btn ${state.cleanTab === "vocab-grammar" ? "active" : ""}" data-tab="vocab-grammar">Từ vựng &amp; Ngữ pháp</button>
       </div>
       <div class="card writing-card" id="clean-panel">${renderCleanPanel()}</div>
-      <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-btn">Quay lại chi tiết</button>
+      <div id="save-clean-slot"></div>
+      <div class="director-card-actions">
+        <button type="button" class="btn btn-ghost btn-block" id="save-clean-btn" ${state.savedClean ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedClean ? "Đã lưu bài hoàn chỉnh" : "Lưu bài hoàn chỉnh"}</button>
+        <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-btn">Quay lại chi tiết</button>
+      </div>
     `;
   }
 
@@ -396,6 +419,15 @@ export function renderWritingPractice(mount) {
   }
 
   function wireDetailStep() {
+    mount.querySelector("#save-detailed-btn").addEventListener("click", async () => {
+      const g = state.grading;
+      await saveFavorite({
+        kind: "detailed",
+        content: { criteria: g.criteria, strengths: g.strengths, segments: g.segments, notices: g.notices },
+        slotSelector: "#save-detailed-slot",
+        markSaved: () => (state.savedDetailed = true),
+      });
+    });
     mount.querySelector("#view-clean-btn")?.addEventListener("click", () => {
       state.cleanTab = "content";
       state.step = "clean";
@@ -419,10 +451,42 @@ export function renderWritingPractice(mount) {
         mount.querySelector("#clean-panel").innerHTML = renderCleanPanel();
       });
     });
+    mount.querySelector("#save-clean-btn").addEventListener("click", async () => {
+      const c = state.grading.clean_rewrite;
+      await saveFavorite({
+        kind: "complete",
+        variant: "clean_rewrite",
+        content: { text: c.text, vocab: c.vocab, patterns: c.patterns },
+        slotSelector: "#save-clean-slot",
+        markSaved: () => (state.savedClean = true),
+      });
+    });
     mount.querySelector("#back-to-detail-btn").addEventListener("click", () => {
       state.step = "detail";
       render();
     });
+  }
+
+  // Dùng chung cho cả 3 nút lưu (Bước 5 / Bài hoàn chỉnh / Bài tham khảo) — chỉ khác "kind"/
+  // "variant"/"content" truyền vào, phần gọi API + phản hồi UI giống hệt nhau.
+  async function saveFavorite({ kind, variant, content, slotSelector, markSaved }) {
+    const slot = mount.querySelector(slotSelector);
+    const res = await saveWritingFavorite({
+      kind,
+      variant,
+      level: state.level,
+      industry: state.industry,
+      task: state.task,
+      overallScore: state.grading.overall_score,
+      content,
+    });
+    if (!res.ok) {
+      if (slot) slot.innerHTML = `<p class="field-hint field-hint-error">${escapeHtml(res.error || "Lưu thất bại, vui lòng thử lại.")}</p>`;
+      return;
+    }
+    markSaved();
+    showToast("Đã lưu vào Yêu thích.");
+    render();
   }
 
   // ====== gọi API ======
@@ -463,6 +527,9 @@ export function renderWritingPractice(mount) {
       return;
     }
     state.grading = res.data;
+    state.savedDetailed = false;
+    state.savedClean = false;
+    state.savedReference = false;
     state.step = "result";
     render();
   }

@@ -11,11 +11,12 @@
 // - Dòng phụ màu cam = lessons.situation (bảng "lessons" hiện KHÔNG lưu cột "chủ đề" riêng
 //   — trường "topic" chỉ dùng để dựng prompt lúc tạo bài, không persist).
 import { navigate } from "../router.js";
-import { listLessons, listAiGeneratedLessons, listInProgressLessons, setLessonFavorite } from "../db.js";
+import { listLessons, listAiGeneratedLessons, listInProgressLessons, setLessonFavorite, listWritingFavorites } from "../db.js";
 import { icon } from "../icons.js";
 import { lessonCardHtml, continueCardHtml, industryCardHtml, wireLessonCards } from "../lessonCard.js";
 import { showToast } from "../toast.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
+import { escapeHtml, formatDate } from "../utils.js";
 
 // 4 lối tạo bài học nhanh (thay cho luồng Mentor AI nhiều bước đã tắt) — "Văn bản" là tính
 // năng CŨ "Tôi có văn bản" (analyze_user_text) trước đây chỉ vào được qua màn Mentor AI, nay
@@ -110,6 +111,7 @@ export function renderLessons(mount, params) {
       <div class="content-tabs" role="tablist">
         <button type="button" class="content-tab-btn active" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
         <button type="button" class="content-tab-btn" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
+        ${mode === "favorite" ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>` : ""}
       </div>
 
       <div id="lessons-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
@@ -260,6 +262,14 @@ export function renderLessons(mount, params) {
   async function renderList() {
     const listEl = mount.querySelector("#lessons-list");
     listEl.innerHTML = `<p class="muted">Đang tải...</p>`;
+    // Tab "Bài viết" (chỉ ở Yêu thích, Việc 3/Item 7 — 2026-07-27) — nguồn dữ liệu HOÀN TOÀN
+    // khác (writing_favorites, không phải lessons), tự thoát sớm khỏi luồng lessons bên dưới,
+    // không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).
+    if (mode === "favorite" && state.contentType === "writing") {
+      const row = mount.querySelector("#level-count-row");
+      if (row) row.innerHTML = "";
+      return renderWritingFavoritesList(listEl);
+    }
     try {
       // 3 nguồn dữ liệu khác nhau theo mode — CÙNG áp dụng tiếp bộ lọc cấp độ/tìm kiếm/tab
       // Bài đọc-Hội thoại bên dưới, không phân biệt nữa sau bước này.
@@ -311,6 +321,49 @@ export function renderLessons(mount, params) {
       });
     } catch {
       listEl.innerHTML = `<p class="error-text">Không tải được danh sách bài học.</p>`;
+    }
+  }
+
+  // Tab "Bài viết" trong Yêu thích — liệt kê CẢ 2 loại đã lưu (Việc 3/Item 7), gắn nhãn phân
+  // biệt rõ ("Đã sửa"/"Hoàn chỉnh"/"Tham khảo"). Bấm vào -> mở lại ĐÚNG dữ liệu tĩnh đã lưu
+  // (route /writing-favorite/:id, xem views/writingFavoriteDetail.js) — KHÔNG chấm lại, KHÔNG
+  // gọi AI lại.
+  const FAVORITE_KIND_LABELS = {
+    detailed: "Đã sửa",
+    clean_rewrite: "Hoàn chỉnh",
+    reference_essay: "Tham khảo",
+  };
+
+  async function renderWritingFavoritesList(listEl) {
+    try {
+      const favorites = await listWritingFavorites();
+      if (!favorites.length) {
+        listEl.innerHTML = `<p class="muted">Bạn chưa lưu bài viết nào từ Luyện viết.</p>`;
+        return;
+      }
+      listEl.innerHTML = favorites
+        .map((f) => {
+          const labelKey = f.kind === "detailed" ? "detailed" : f.variant;
+          const label = FAVORITE_KIND_LABELS[labelKey] || "Đã lưu";
+          const scoreHtml = Number.isFinite(f.overall_score) ? `<span class="writing-favorite-score">${f.overall_score}/100</span>` : "";
+          return `
+          <div class="card writing-card writing-favorite-card" data-id="${f.id}">
+            <div class="writing-favorite-head">
+              <span class="level-pill">${escapeHtml(f.level)}</span>
+              <span class="writing-favorite-kind">${label}</span>
+              ${scoreHtml}
+            </div>
+            <p class="writing-favorite-title">${escapeHtml(f.task?.topic_en || "")}</p>
+            <p class="muted writing-favorite-date">${formatDate(f.created_at)}</p>
+          </div>
+        `;
+        })
+        .join("");
+      listEl.querySelectorAll(".writing-favorite-card").forEach((card) => {
+        card.addEventListener("click", () => navigate(`/writing-favorite/${card.dataset.id}`));
+      });
+    } catch {
+      listEl.innerHTML = `<p class="error-text">Không tải được danh sách bài viết đã lưu.</p>`;
     }
   }
 }

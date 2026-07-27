@@ -115,6 +115,20 @@ export async function setLessonFavorite(id, isFavorite) {
   });
 }
 
+// Tab "Bài viết" trong Yêu thích (Việc 3/Item 7, 2026-07-27) — đọc trực tiếp qua RLS "select
+// own" (giống listLessons() ở trên), GHI (lưu mới) bắt buộc qua action save_writing_favorite
+// trong api/_generate/writing.js (service role), xem supabase/028_writing_favorites.sql.
+export async function listWritingFavorites() {
+  return restFetch(
+    "writing_favorites?select=id,kind,variant,level,industry,task,overall_score,created_at&order=created_at.desc"
+  );
+}
+
+export async function getWritingFavoriteById(id) {
+  const rows = await restFetch(`writing_favorites?id=eq.${encodeURIComponent(id)}&select=*`);
+  return rows?.[0] || null;
+}
+
 export async function getLessonProgress(lessonId) {
   const rows = await restFetch(`lesson_progress?lesson_id=eq.${encodeURIComponent(lessonId)}&select=*`);
   return rows?.[0] || null;
