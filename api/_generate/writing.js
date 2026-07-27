@@ -152,6 +152,42 @@ async function getRecentGenres(studentId, limit = 5) {
   }
 }
 
+// ====== Lời dẫn thông minh trong Bước 2 (Item 5, chốt Minh 2026-07-27 lần 3) — MỘT DÒNG bổ
+// sung vào nội dung màn giao nhiệm vụ đã có sẵn (KHÔNG phải thông báo/popup riêng — đúng
+// nguyên tắc "không tự động khơi mào ngoài luồng" đã áp dụng cho Mentor AI). "Chủ đề gần
+// tương tự" ĐƯỢC NHÓM THEO THỂ LOẠI (genre_vi) — chủ đề CỤ THỂ (topic_en) do AI tự viết lại mỗi
+// lần từ cùng 1 gợi ý trong pool nên gần như không bao giờ trùng chữ, không dùng được làm khoá
+// nhóm; thể loại là 1 trong 14 giá trị CỐ ĐỊNH (WRITING_TOPIC_POOL), đã có sẵn trên cả
+// writing_task_requests.genre lẫn writing_submissions.task->>genre_vi — khoá nhóm ổn định,
+// không cần thêm cột/bảng nào.
+async function getGenreScoreStats(studentId, genreVi, limit = 5) {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/writing_submissions?user_id=eq.${studentId}&task->>genre_vi=eq.${encodeURIComponent(genreVi)}&select=overall_score&order=created_at.desc&limit=${limit}`,
+      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!rows.length) return null;
+    const avg = rows.reduce((sum, x) => sum + (x.overall_score || 0), 0) / rows.length;
+    return { avg, count: rows.length };
+  } catch (e) {
+    console.error("getGenreScoreStats error:", e);
+    return null;
+  }
+}
+
+// KHÔNG suy diễn khi chưa có lịch sử ở thể loại này (return null -> frontend không hiện dòng
+// nào, đúng nguyên tắc "Quy tắc Hiểu" đã áp dụng cho Mentor AI). Ngưỡng dùng LẠI đúng 2 mốc của
+// SCORE_TIERS (70/50) cho nhất quán, gộp Khá+Giỏi thành 1 mức "cao" (Item 5 chỉ cần 3 sắc thái,
+// không cần chia nhỏ như màn Kết quả).
+function buildTopicNote(stats) {
+  if (!stats) return null;
+  if (stats.avg >= 70) return "Bạn đang làm khá tốt ở thể loại này — nhiệm vụ lần này để bạn phát huy tiếp.";
+  if (stats.avg >= 50) return "Bạn có tiến bộ ở thể loại này, luyện thêm chút nữa sẽ tốt hơn.";
+  return "Đây là thể loại bạn có thể luyện thêm — cứ thử sức, mỗi lần viết đều giúp bạn tiến bộ.";
+}
+
 // ====== Bảng độ dài bài viết theo cấp CEFR — tự ước tính riêng cho Luyện viết (KHÔNG dùng lại
 // LEVEL_LENGTH_TABLE của lesson.js, bảng đó tính cho hội thoại/bài đọc, đơn vị khác). Căn cứ
 // tham khảo: chuẩn số từ bài viết các kỳ thi Cambridge ứng theo cấp CEFR — KET(A2) ~25-35 từ,
@@ -615,6 +651,11 @@ export async function generate_writing_task(data, ctx) {
   // đóng băng/dừng NGAY sau khi response được trả về, insert chưa kịp chạy xong sẽ mất đếm/lịch sử.
   await logWritingTaskRequest(ctx.studentId, chosenEntry.genre_vi);
 
+  // Item 5 — lời dẫn thông minh (KHÔNG chặn/làm chậm response nếu lỗi, chỉ là gia vị thêm vào
+  // nội dung Bước 2 đã có, không phải phần bắt buộc của luồng).
+  const genreStats = await getGenreScoreStats(ctx.studentId, chosenEntry.genre_vi).catch(() => null);
+  const topicNote = buildTopicNote(genreStats);
+
   const [minWords, maxWords] = WRITING_LENGTH_TABLE[data.level] || [90, 150];
   return {
     content: JSON.stringify({
@@ -626,6 +667,7 @@ export async function generate_writing_task(data, ctx) {
         structure: parsed.structure,
         vocabulary_suggestions: Array.isArray(parsed.vocabulary_suggestions) ? parsed.vocabulary_suggestions : [],
         useful_phrases: Array.isArray(parsed.useful_phrases) ? parsed.useful_phrases : [],
+        topic_note: topicNote,
       },
       target_words_min: minWords,
       target_words_max: maxWords,

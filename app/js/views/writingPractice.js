@@ -116,6 +116,7 @@ export function renderWritingPractice(mount) {
         <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Nhiệm vụ")} <span class="level-pill">${state.level}</span></div>
         <p class="writing-topic-en">${escapeHtml(t.topic_en)}</p>
         <p class="writing-topic-vi muted">${escapeHtml(t.topic_vi)}</p>
+        ${t.topic_note ? `<p class="writing-topic-note">${icon("compass", { size: 14 })} ${escapeHtml(t.topic_note)}</p>` : ""}
       </div>
 
       <div class="card writing-card">

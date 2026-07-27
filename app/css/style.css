@@ -2015,6 +2015,16 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
+/* Item 5 — lời dẫn thông minh theo lịch sử điểm cùng thể loại (chỉ hiện khi CÓ lịch sử) */
+.writing-topic-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: var(--purple);
+}
+
 .writing-section-title {
   font-weight: 700;
   margin-bottom: 10px;
