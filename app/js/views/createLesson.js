@@ -1,7 +1,13 @@
-// app/js/views/createLesson.js — form tự nhập "Tạo bài học", KHÔI PHỤC 2026-07-23 sau khi tắt
-// UI Mentor AI (chất lượng thật không đạt, "như spam" — quyết định của Minh, backend
-// mentor.js/mentor-lines/industry_skins/learning_goals VẪN giữ nguyên, không xoá). Gọi thẳng
-// generate_lesson qua createLessonFromAI() (lessonApi.js), KHÔNG qua goal_id/next_slot.
+// app/js/views/createLesson.js — form tự nhập "Tạo bài học" / "AI tạo nội dung", KHÔI PHỤC
+// 2026-07-23 sau khi tắt UI Mentor AI (chất lượng thật không đạt, "như spam" — quyết định của
+// Minh, backend mentor.js/mentor-lines/industry_skins/learning_goals VẪN giữ nguyên, không xoá).
+//
+// SỬA LẠI 2026-07-27 (chốt lần 2 — "tắt Mentor AI = chỉ tắt LỚP HỘI THOẠI, KHÔNG tắt việc bám
+// lộ trình cá nhân"): submit() KHÔNG còn gọi generate_lesson trực tiếp — giờ ĐI QUA đúng cơ chế
+// mục tiêu/spine đã xây cho Mentor AI (learning_goals + next_slot + industry_skins), CHỈ bỏ lớp
+// hội thoại (nghi thức xưng hô, thẻ đạo diễn, câu "Tôi đã hiểu...", hỏi-đáp tuần tự). Xem
+// resolveGoalId() bên dưới cho toàn bộ logic quyết định "tiếp tục mục tiêu hiện có" hay "đổi
+// mục tiêu" hay "chưa có gì -> mục tiêu chung".
 //
 // ĐƠN GIẢN HOÁ (2026-07-23, yêu cầu người dùng): bỏ hẳn Độ dài (luôn "medium"), Chủ đề (AI tự
 // sinh — xem QUY TẮC VỀ CHỦ ĐỀ trong api/_generate/lesson.js), Sản phẩm/Dịch vụ, Tình huống cụ
@@ -9,8 +15,13 @@
 // vào "Ngành nghề" — xem ghi chú bên dưới). SỬA LẠI 2026-07-23 lần 2: Lĩnh vực + Ngành nghề
 // KHÔNG gộp làm 1 — người dùng chỉ yêu cầu bỏ field TRÙNG LẶP nằm NGOÀI "Tuỳ chọn nâng cao",
 // còn 2 field NẰM TRONG "Tuỳ chọn nâng cao" (Lĩnh vực, Ngành nghề) vẫn GIỮ NGUYÊN, tách biệt.
+// GIỮ NGUYÊN CHƯA ĐỤNG (2026-07-27, chờ xác nhận riêng — xem báo cáo cuối phiên): ý nghĩa của 2
+// field này khi đã bám lộ trình theo slot (chủ đề giờ do slot+gói ngành quyết định) — CHỈ đổi
+// logic PHÍA SAU khi bấm submit, không đổi UI/field nào ở form này.
 import { navigate } from "../router.js";
-import { createLessonFromAI, fetchAndSaveLessonCover } from "../lessonApi.js";
+import { fetchAndSaveLessonCover } from "../lessonApi.js";
+import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal } from "../mentorApi.js";
+import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
@@ -169,29 +180,67 @@ export function renderCreateLesson(mount) {
     mount.querySelector("#create-submit-btn").addEventListener("click", submit);
   }
 
+  // So khớp Lĩnh vực/Ngành nghề vừa điền với mục tiêu ĐANG HOẠT ĐỘNG hiện tại — KHÔNG PHẢI
+  // dùng AI/so khớp ngữ nghĩa (tốn thêm 1 lượt gọi chỉ để "biết có đổi hay không"), so THẲNG với
+  // "raw_keywords" đã lưu lúc tạo mục tiêu đó (nguyên văn người dùng từng điền) — vì hồ sơ nhớ
+  // lại (loadRememberedProfile ở trên) tự điền lại ĐÚNG NGUYÊN VĂN nếu người dùng không đổi gì,
+  // nên so khớp text đơn giản là đủ tin cậy cho ca thường gặp nhất (giữ nguyên, không đổi).
+  function matchesActiveGoal(industryText, activeGoal) {
+    if (!activeGoal) return false;
+    const norm = (s) => (s || "").trim().toLowerCase();
+    return norm(industryText) === norm(activeGoal.raw_keywords);
+  }
+
+  // Xác định goal_id sẽ dùng để sinh bài — ĐÚNG 3 nhánh theo yêu cầu gốc (Phần A mục 1-4):
+  // (1) không điền Lĩnh vực/Ngành nghề khác mục tiêu hiện có -> TIẾP TỤC mục tiêu đó.
+  // (2) có điền và KHÁC mục tiêu hiện có (hoặc chưa có mục tiêu nào) -> ĐỔI/TẠO mục tiêu mới
+  //     đúng luồng mentor_infer_goal -> mentor_create_goal (bỏ qua bước xác nhận bằng lời của
+  //     luồng hội thoại cũ — không còn lớp hội thoại).
+  // (3) hoàn toàn chưa điền gì VÀ chưa từng có mục tiêu nào -> mentor_auto_goal (rơi về
+  //     "Giao tiếp tổng quát"/skin_general.json, không tốn lượt AI tạo gói ngành mới).
+  async function resolveGoalId(onProgress) {
+    const activeGoal = await getActiveLearningGoal();
+    const industryText = (state.industry || state.field || "").trim();
+
+    if (activeGoal && (!industryText || matchesActiveGoal(industryText, activeGoal))) {
+      return { ok: true, goalId: activeGoal.id };
+    }
+
+    if (industryText) {
+      onProgress("Đang tạo hồ sơ lĩnh vực...");
+      const inferRes = await inferGoalProfile(industryText, state.level);
+      if (!inferRes.ok) return { ok: false, error: inferRes.error };
+      if (inferRes.data.status !== "ok") {
+        return { ok: false, error: "AI chưa hiểu rõ lĩnh vực/ngành nghề bạn mô tả, vui lòng viết cụ thể hơn." };
+      }
+      const createRes = await createGoal(inferRes.data.occupation_profile, industryText, state.level);
+      if (!createRes.ok) return { ok: false, error: createRes.error };
+      return { ok: true, goalId: createRes.data.goal.id };
+    }
+
+    const autoRes = await autoCreateGoal();
+    if (!autoRes.ok) return { ok: false, error: autoRes.error };
+    return { ok: true, goalId: autoRes.data.goal.id };
+  }
+
   async function submit() {
     const resultSlot = mount.querySelector("#create-result-slot");
     const btn = mount.querySelector("#create-submit-btn");
     btn.disabled = true;
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang tạo bài học...</div>`;
-
-    // topic/product/situation LUÔN rỗng — không còn ô nhập riêng (đã bỏ/tự động hoá), server
-    // tự suy ra chủ đề + tình huống dựa trên Lĩnh vực/Ngành nghề (xem QUY TẮC VỀ CHỦ ĐỀ / QUY
-    // TẮC VỀ TÌNH HUỐNG trong api/_generate/lesson.js). length_tier KHÔNG gửi -> server tự
-    // dùng mức "medium" mặc định (đã bỏ chọn Độ dài khỏi UI).
-    const payload = {
-      description: "",
-      level: state.level,
-      content_type: state.content_type,
-      topic: "",
-      field: state.field || "",
-      industry: state.industry || "",
-      product: "",
-      situation: "",
-      term_density: state.term_density || 0,
+    const setProgress = (text) => {
+      resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${escapeHtml(text)}</div>`;
     };
+    setProgress("Đang xác định lộ trình...");
 
-    const res = await createLessonFromAI(payload);
+    const goalResult = await resolveGoalId(setProgress);
+    if (!goalResult.ok) {
+      btn.disabled = false;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(goalResult.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
+      return;
+    }
+
+    setProgress("AI đang soạn bài theo lộ trình...");
+    const res = await generateNextLessonForGoal(goalResult.goalId);
     btn.disabled = false;
     if (!res.ok) {
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;

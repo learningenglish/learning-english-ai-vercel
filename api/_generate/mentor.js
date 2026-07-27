@@ -37,6 +37,7 @@ import {
   buildConfirmationDisplay,
 } from "./curriculum/skin.js";
 import { generate_lesson } from "./lesson.js";
+import { GRAMMAR_CATALOG } from "./curriculum/grammar-catalog.js";
 import { createLineSession } from "./mentor-lines/select.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -601,6 +602,30 @@ async function ensureSkinLevel(skinRow, level, occupationProfile) {
   return result.ok ? { ok: true, frames: result.frames } : { ok: false };
 }
 
+// Lỗi thật đã gặp (2026-07-27, Minh phát hiện): bài gắn nhãn A1 nhưng dùng "will" (tương lai)
+// làm trọng tâm — "will" thuộc A2 theo GRAMMAR_CATALOG, không phải A1. NGUYÊN NHÂN: slot.grammar
+// (điểm ngữ pháp ĐÃ KHOÁ sẵn theo đúng vị trí trong spine) trước đây KHÔNG được đọc/truyền đi
+// đâu cả — generate_lesson() chỉ nhận "level" rồi tự do chọn ngữ pháp bất kỳ TRONG PHẠM VI cấp
+// đó, không phải ĐÚNG điểm slot quy định. Hàm này đọc slot.grammar, tra cứu tên/công thức đầy
+// đủ trong GRAMMAR_CATALOG (curriculum/grammar-catalog.js, đã đóng băng), trả về mảng để
+// generate_lesson khoá cứng (xem "QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC" trong
+// GENERATE_LESSON_SYSTEM_PROMPT, lesson.js). 1 vài slot KHÔNG có grammar (mảng rỗng, slot ôn
+// tập/không giới thiệu điểm mới) -> trả mảng rỗng, generate_lesson tự hiểu là "không ràng buộc
+// thêm", giữ nguyên hành vi CŨ (tự chọn trong phạm vi cấp độ) cho những slot đó.
+function buildGrammarFocus(slotGrammar) {
+  if (!Array.isArray(slotGrammar) || !slotGrammar.length) return [];
+  return slotGrammar
+    .map((g) => {
+      const entry = GRAMMAR_CATALOG[g.key];
+      if (!entry) {
+        console.error("[mentor_next_lesson] grammar key không có trong GRAMMAR_CATALOG:", g.key);
+        return null;
+      }
+      return { key: g.key, name_vi: entry.name_vi, formula: entry.formula };
+    })
+    .filter(Boolean);
+}
+
 // AI CALL #3/3 (mục 5 Đợt 3) — sinh 1 bài học thật, TÁI DÙNG NGUYÊN VẸN generate_lesson()
 // (lesson.js). Chủ đề/loại nội dung/cấp độ/khung ngữ cảnh chọn bằng CODE thuần (không AI, đọc
 // đúng slot spine) trước khi gọi — xem khối comment "NỐI DA LĨNH VỰC" ở trên.
@@ -659,6 +684,7 @@ export async function mentor_next_lesson(data, ctx) {
     goal_id: goal.id,
     skin_id: skinId,
     spine_slot: slot.slot,
+    grammar_focus: buildGrammarFocus(slot.grammar),
   };
   // generate_lesson() KHÔNG tự retry (lỗi thật đã biết: model đôi khi lệch số từ >25% ở dialogue
   // 200 từ, đặc biệt hay gặp — chưa có cơ chế leo thang model, xem project_ai_model_routing_spec

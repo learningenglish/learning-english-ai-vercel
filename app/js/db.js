@@ -103,6 +103,18 @@ export async function listLearningGoals() {
   return restFetch("learning_goals?select=id,title&status=eq.active&order=created_at.desc");
 }
 
+// "AI tạo nội dung" bám lộ trình (2026-07-27, xem views/createLesson.js) — mục tiêu ĐANG HOẠT
+// ĐỘNG gần nhất của người dùng, đủ trường để (a) quyết định "tiếp tục mục tiêu cũ" hay "đổi mục
+// tiêu" (so raw_keywords với Lĩnh vực/Ngành nghề vừa điền) và (b) gọi thẳng mentor_next_lesson
+// nếu tiếp tục. Khác listLearningGoals() ở trên (chỉ id+title, phục vụ màn Mentor AI cũ đã tắt
+// UI) — hàm CHỦ Ý MỚI thay vì sửa hàm cũ, tránh đụng code đường (dead nhưng chưa xoá) đó.
+export async function getActiveLearningGoal() {
+  const rows = await restFetch(
+    "learning_goals?select=id,raw_keywords,level,occupation_profile,lesson_count&status=eq.active&order=created_at.desc&limit=1"
+  );
+  return rows?.[0] || null;
+}
+
 export async function getLessonById(id) {
   const rows = await restFetch(`lessons?id=eq.${encodeURIComponent(id)}&select=*`);
   return rows?.[0] || null;

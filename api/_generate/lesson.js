@@ -144,6 +144,21 @@ lỗi, đừng cố "kéo dài cho đủ nghĩa". Bản chất A1 là câu và c
 ĐƯỢC trong nhiều tình huống khác nhau, không phải đoạn văn/hội thoại dài. Ưu tiên vài câu/lượt
 thật rõ ràng, đúng cấu trúc, học xong dùng lại ngay được — hơn là nhiều câu để đạt đủ số từ.
 
+QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC (2026-07-27 — chỉ có khi user prompt liệt kê rõ
+"Điểm ngữ pháp trọng tâm BẮT BUỘC"; KHÔNG có mục này trong user prompt thì bỏ qua toàn bộ đoạn
+này, tự chọn ngữ pháp trong phạm vi cấp độ như bình thường):
+- Đây là bài đi theo lộ trình học đã định sẵn (spine) — điểm ngữ pháp trọng tâm KHÔNG phải gợi
+  ý, mà là ĐIỂM DUY NHẤT bài này PHẢI dạy, đã khoá sẵn theo đúng vị trí trong lộ trình.
+- "content" PHẢI thể hiện RÕ RÀNG, LẶP LẠI TỰ NHIÊN đúng điểm ngữ pháp đó (không chỉ xuất hiện
+  1 lần cho có) — đây là trọng tâm chính bài học dạy, không phải 1 chi tiết phụ.
+- KHÔNG lái sang điểm ngữ pháp khác cùng cấp độ dù hợp lý về ngữ cảnh (ví dụ được giao trọng
+  tâm "Thì hiện tại đơn" thì KHÔNG được viết chính bằng "will"/tương lai dù chủ đề có vẻ hợp —
+  đây CHÍNH XÁC là lỗi thật đã xảy ra trước khi có ràng buộc này: bài gắn nhãn A1 nhưng dùng
+  "will" làm trọng tâm, trong khi "will" thuộc A2 theo catalog, không phải A1).
+- "grammar" trong JSON kết quả BẮT BUỘC có đúng 1 mục dùng CHÍNH XÁC tên (trường "name_vi") đã
+  cho ở điểm ngữ pháp trọng tâm này — được phép thêm tối đa 1 điểm phụ khác cùng cấp độ nếu THẬT
+  SỰ xuất hiện tự nhiên trong bài, nhưng điểm bắt buộc không được thiếu.
+
 QUY TẮC VỀ TỪ CHUYÊN NGÀNH:
 - Lượng từ chuyên ngành được cho dưới dạng SỐ LƯỢT xuất hiện tuyệt đối trong bài (không phải phần trăm), bất kể độ dài bài dài hay ngắn.
 - Ví dụ: lượng từ chuyên ngành = 20 → chèn khoảng 20 lượt từ/cụm từ chuyên ngành trong toàn bài (một từ lặp lại vẫn tính mỗi lần xuất hiện).
@@ -252,7 +267,7 @@ SCHEMA JSON:
 
 SỐ LƯỢNG:
 - vocabulary: 6-10 từ với bài ngắn, 10-14 với bài vừa, 14-18 với bài dài. Toàn bộ từ chuyên ngành trong bài phải nằm ở đây trước, còn lại lấy từ thường đáng học nhất trong bài. MỌI cụm từ (word có khoảng trắng) PHẢI trích XUẤT HIỆN NGUYÊN VĂN trong câu/đoạn nào đó của "content" — không tự bịa cụm hay/đúng ngữ pháp nhưng không thật sự có trong bài.
-- grammar: CHỈ chọn điểm ngữ pháp ĐÚNG CẤP ĐỘ của bài (bài B1 → chỉ điểm B1), là trọng tâm bài này dạy. KHÔNG liệt kê cấu trúc thuộc cấp thấp hơn dù chúng xuất hiện trong bài. Nếu bài không có điểm ngữ pháp nào đúng cấp, trả mảng rỗng.
+- grammar: NẾU user prompt có "Điểm ngữ pháp trọng tâm BẮT BUỘC" — mảng này PHẢI có đúng 1 mục dùng CHÍNH XÁC tên đã cho (xem quy tắc riêng ở trên), được thêm tối đa 1 điểm phụ khác cùng cấp nếu thật sự xuất hiện. NẾU KHÔNG có mục bắt buộc nào (form tự do): CHỈ chọn điểm ngữ pháp ĐÚNG CẤP ĐỘ của bài (bài B1 → chỉ điểm B1), là trọng tâm bài này dạy. KHÔNG liệt kê cấu trúc thuộc cấp thấp hơn dù chúng xuất hiện trong bài. Nếu bài không có điểm ngữ pháp nào đúng cấp, trả mảng rỗng.
 - sentence_patterns: quét TOÀN BỘ "content" (không giới hạn ở câu có điểm ngữ pháp trọng tâm), CHỈ chọn khuôn câu THỰC SỰ đáng học lại để dùng trong giao tiếp (câu hỏi thông dụng, cấu trúc tái dùng được ở nhiều tình huống khác) — bỏ qua câu quá đơn giản không có gì đáng nêu (vd "I like coffee"). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN, không phải bài liệt kê — việc khó không phải "tìm cấu trúc" (câu nào cũng có cấu trúc) mà là biết cái nào ĐÁNG chọn, cái nào KHÔNG. Bắt buộc: (1) khuôn phải VỪA TẦM cấp độ của bài — không chọn khuôn quá cơ bản mà cấp độ đó chắc chắn đã thấm từ lâu, cũng không chọn khuôn vượt quá xa khiến người học chưa dùng được ngay; (2) "why_worth_it" phải là lý do THẬT — nếu không nghĩ ra lý do thuyết phục cho 1 khuôn, ĐỪNG đưa khuôn đó vào, KHÔNG hạ chuẩn để đủ số lượng. KHÔNG trùng với "grammar" (góc nhìn khác nhau: "grammar" là quy tắc ngữ pháp trọng tâm, "sentence_patterns" là khuôn câu thực dụng — được phép dùng chung 1 câu nguồn nhưng góc nhìn phải khác, không liệt kê lại y hệt). Số lượng: tối thiểu 3, tối đa 8 — tự lọc theo mật độ khuôn thật sự đáng chú ý có trong bài; bài ít khuôn đáng học thì cứ để gần mức tối thiểu, KHÔNG cố nhồi cho đủ số.
 - exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — không ảnh hưởng nội dung câu hỏi, chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra. BẮT BUỘC mọi object trong "exercises" PHẢI có key "grammar_tag" — KHÔNG được bỏ qua key này dưới bất kỳ trường hợp nào (lỗi thật đã gặp: model bỏ hẳn key thay vì ghi null). Giá trị CHỈ có 2 dạng hợp lệ: string khớp NGUYÊN VĂN 1 "name" trong "grammar", HOẶC chính xác giá trị null (không phải chuỗi rỗng, không phải thiếu key) khi câu không gắn điểm ngữ pháp nào.`;
 
@@ -378,6 +393,16 @@ function buildGenerateLessonUserPrompt(data) {
     const avgWordsPerUnit = Math.round(lengthWords / minUnits);
     lengthInstruction = `- Độ dài: viết trong khoảng ${lengthWordsMin}-${lengthWordsMax} từ tiếng Anh (khung CỐ ĐỊNH theo cấp ${data.level}, không phải ước lượng). CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Hệ thống TỰ ĐỘNG TỪ CHỐI nếu ngoài khoảng ${lengthWordsMin}-${lengthWordsMax} — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy nhắm về nửa TRÊN của khoảng chứ đừng viết sát đáy. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ. Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWordsMin}.`;
   }
+  // grammar_focus: CHỈ có khi bài đi theo lộ trình spine (mentor.js::mentor_next_lesson truyền
+  // vào, xem ghi chú "QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC" ở system prompt) — form tự
+  // do (views/createLesson.js gọi trực tiếp KHÔNG qua next_slot) không có trường này.
+  const grammarFocusInstruction =
+    Array.isArray(data.grammar_focus) && data.grammar_focus.length
+      ? `\nĐiểm ngữ pháp trọng tâm BẮT BUỘC (đã khoá theo lộ trình, xem quy tắc riêng ở trên): ${data.grammar_focus
+          .map((g) => `${g.name_vi}${g.formula ? ` (${g.formula})` : ""}`)
+          .join("; ")}`
+      : "";
+
   return `Tạo bài học theo yêu cầu sau:
 
 - Mô tả của người học: ${orNone(data.description)}
@@ -389,7 +414,7 @@ ${lengthInstruction}
 - Ngành nghề: ${orNone(data.industry)}
 - Sản phẩm / Dịch vụ liên quan: ${orNone(data.product)}
 - Tình huống cụ thể: ${orNone(data.situation)}
-- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}
+- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}${grammarFocusInstruction}
 
 Nếu mô tả của người học mâu thuẫn với các trường còn lại (ví dụ mô tả đòi thì quá khứ
 nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho vừa cấp độ.`;
