@@ -260,7 +260,7 @@ export function renderWritingPractice(mount) {
       return `<p class="writing-clean-text">${escapeHtml(c.text)}</p>`;
     }
     const vocabHtml = c.vocab.length
-      ? `<ul class="writing-suggestion-list">${c.vocab.map((v) => `<li><strong>${escapeHtml(v.word)}</strong> — ${escapeHtml(v.meaning)}</li>`).join("")}</ul>`
+      ? `<ul class="writing-suggestion-list">${c.vocab.map((v) => `<li><strong>${escapeHtml(v.word)}</strong>${v.meaning ? ` — ${escapeHtml(v.meaning)}` : ""}</li>`).join("")}</ul>`
       : `<p class="muted">${state.industry ? "Bài mẫu không nổi bật từ chuyên ngành nào riêng." : "Không chọn lĩnh vực nên không có từ chuyên ngành để gợi ý."}</p>`;
     const patternsHtml = c.patterns.length
       ? c.patterns

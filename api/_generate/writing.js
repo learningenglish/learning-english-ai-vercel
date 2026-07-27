@@ -8,12 +8,36 @@
 // DAILY_WRITING_LIMIT bên dưới — tạm thời TẮT enforce trong lúc xây/test, xem
 // WRITING_LIMIT_ENFORCED): generate_writing_task (Bước 1→2: AI giao đề) và grade_writing
 // (Bước 3→4→5: AI chấm — generate-EVERY-TIME, tốn phí thật mỗi lần bấm "Gửi bài viết").
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { SUPABASE_URL } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
+
+// ====== Danh sách chủ đề+thể loại CỐ ĐỊNH (chốt Minh 2026-07-27 lần 3) — THAY HẲN cơ chế "AI
+// tự do chọn thể loại" trước đó (mở nhưng vẫn có thể trôi dạt/không kiểm soát được diện chủ
+// đề). writingTopicPool.json nhóm theo 14 thể loại, mỗi thể loại 8 gợi ý chủ đề (112 mục),
+// đúng tinh thần đã chốt: thực dụng đời sống/công việc, KHÔNG theo khuôn thi cử. Đọc 1 lần lúc
+// module load (danh sách tĩnh, không đổi giữa các lượt gọi) — xem loadJSON() ở
+// curriculum/skin.js cho tiền lệ pattern y hệt (fs.readFileSync + path.join(__dirname,...)).
+const WRITING_TOPIC_POOL_BY_GENRE = JSON.parse(fs.readFileSync(path.join(__dirname, "writingTopicPool.json"), "utf8"));
+const WRITING_TOPIC_POOL = Object.entries(WRITING_TOPIC_POOL_BY_GENRE).flatMap(([genre_vi, hints]) =>
+  hints.map((topic_hint) => ({ genre_vi, topic_hint }))
+);
+// Số mục đưa vào 1 lượt prompt — không gửi cả 112 mục mỗi lần (tốn token vô ích), lấy mẫu ngẫu
+// nhiên 1 tập con đủ đa dạng (trải nhiều thể loại) mỗi lượt, cộng với cơ chế loại thể loại gần
+// đây (xem generate_writing_task) là đủ đảm bảo đa dạng thật qua nhiều lượt gọi liên tiếp.
+const TOPIC_SAMPLE_SIZE = 18;
+
+function sampleTopicPool(pool, size) {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(size, shuffled.length));
+}
 
 function orNone(v) {
   const s = (v ?? "").toString().trim();
@@ -172,35 +196,31 @@ function sanitizeComment(text, fallback) {
   return s;
 }
 
-// ====== PROMPT 1: generate_writing_task (Bước 1→2 — AI giao đề) ======
+// ====== PROMPT 1: generate_writing_task (Bước 1→2 — AI giao nhiệm vụ) ======
 //
-// LỊCH SỬ SỬA THỂ LOẠI (2026-07-27):
-// - Bản đầu: để model "tự chọn thể loại đa dạng" (dù dặn trong prompt + temperature 0.9) hội
-//   tụ gần như LUÔN ra "email công việc" — email vừa được liệt kê ĐẦU TIÊN trong ví dụ, vừa
-//   được nêu tên riêng ở câu quy tắc B1+, model bám lấy ví dụ quen thuộc nhất thay vì thực sự
-//   đa dạng hoá.
-// - Bản 2 (đã THAY): server tự bốc 1 thể loại từ danh sách ĐÓNG 8 mục, ép model theo đúng thể
-//   loại đó — chữa được triệu chứng nhưng Minh chỉ ra đây là "chọn máy móc" theo danh sách
-//   đóng, không phải chủ đề/thể loại THỰC SỰ không giới hạn.
-// - Bản 3 (HIỆN TẠI): model lại được TỰ DO chọn thể loại (không giới hạn ở bất kỳ danh sách
-//   nào) — cơ chế chống lặp là ĐỌC LỊCH SỬ THẬT 3-5 lượt gần nhất của CHÍNH người học đó
-//   (getRecentGenres(), bảng writing_task_requests.genre) và cấm chọn lại thể loại đã dùng gần
-//   đây, thay vì random hoá nhân tạo ở server. Danh sách trong prompt bên dưới CHỈ LÀ VÍ DỤ
-//   MINH HOẠ phạm vi rộng, không phải danh sách để chọn máy móc.
+// LỊCH SỬ SỬA THỂ LOẠI/CHỦ ĐỀ (2026-07-27):
+// - Bản 1: model "tự chọn thể loại đa dạng" hội tụ gần như LUÔN ra "email công việc".
+// - Bản 2: server bốc 1 thể loại từ danh sách ĐÓNG 8 mục ép model theo — Minh chỉ ra đây là
+//   "chọn máy móc", không phải KHÔNG GIỚI HẠN thật.
+// - Bản 3: model lại TỰ DO chọn thể loại, chỉ cấm lặp lịch sử gần đây — sửa được vụ dồn email,
+//   nhưng vẫn có thể trôi dạt chủ đề khó kiểm soát/không đảm bảo tính thực dụng.
+// - Bản 4 (HIỆN TẠI, chốt Minh lần 3): quay lại danh sách ĐÓNG nhưng ĐỦ LỚN (112 mục, xem
+//   WRITING_TOPIC_POOL ở đầu file) — model CHỌN 1 mục có sẵn (không tự bịa chủ đề mới), server
+//   validate lựa chọn đó bằng "chosen_index" (không tin text model echo lại, đúng nguyên tắc đã
+//   áp dụng cho "genre" và "segments"). Cơ chế chống lặp GIỮ NGUYÊN (loại thể loại 3-5 lượt gần
+//   đây khỏi tập mẫu trước khi đưa vào prompt).
 const TASK_SYSTEM_PROMPT = `Bạn là chuyên gia thiết kế đề bài luyện viết tiếng Anh cho người Việt, bám khung CEFR.
 
-NHIỆM VỤ: Giao 1 đề bài viết phù hợp cấp độ CEFR của học viên. Chủ đề và thể loại viết KHÔNG BỊ GIỚI HẠN — bạn tự quyết định thể loại nào phù hợp nhất cho lượt này, miễn tuân đúng các quy tắc dưới đây.
+NHIỆM VỤ: Chọn ĐÚNG 1 mục trong danh sách "CÁC LỰA CHỌN" ở phần user prompt (KHÔNG tự bịa chủ đề/thể loại nào ngoài danh sách), rồi soạn thành 1 nhiệm vụ viết hoàn chỉnh phù hợp cấp độ CEFR của học viên.
 
-QUY TẮC CHỌN THỂ LOẠI:
-- Bạn được TỰ DO chọn bất kỳ thể loại viết THỰC DỤNG nào gắn với đời sống/công việc thật. Ví dụ MINH HOẠ phạm vi rộng (đây CHỈ LÀ VÍ DỤ để hình dung, KHÔNG PHẢI danh sách đóng, KHÔNG bắt buộc chọn trong đây — hoàn toàn có thể chọn thể loại thực dụng khác miễn hợp lý): nghị luận, phân tích, đánh giá/review, kể chuyện, viết thư, báo cáo, email, tin nhắn, mô tả, hướng dẫn, bài đăng mạng xã hội, thư ngỏ, ghi chú, tường thuật sự việc...
-- BẮT BUỘC chọn thể loại KHÁC với các thể loại đã giao GẦN ĐÂY cho CHÍNH người học này — xem danh sách "Thể loại đã giao gần đây" ở dưới, tuyệt đối không chọn lại bất kỳ thể loại nào trong danh sách đó lần này (kể cả khi Lĩnh vực giống nhau).
-- CẤM mô phỏng đề thi: KHÔNG viết theo cấu trúc bài luận thi cử kiểu IELTS Writing Task 2 (không "For and against", không "Advantages and disadvantages", không thư kiến nghị/complaint letter theo khuôn ôn thi chuẩn). Đề bài phải là một TÌNH HUỐNG THỰC DỤNG người học thực sự có thể gặp trong đời sống/công việc, không phải bài tập mô phỏng kỳ thi.
+QUY TẮC CHỌN MỤC:
+- Chọn mục PHÙ HỢP NHẤT với Lĩnh vực đã cho (nếu có) — ưu tiên mục dễ gắn nội dung với lĩnh vực đó nhất trong danh sách (ví dụ lĩnh vực "Nhà hàng - Khách sạn" thì ưu tiên mục về đánh giá/báo cáo/email/mô tả liên quan dịch vụ, ăn uống, lưu trú hơn hẳn mục hoàn toàn không liên quan như "thiết lập điện thoại mới"). Nếu KHÔNG có Lĩnh vực, hoặc không có mục nào đặc biệt phù hợp, chọn tự do.
+- Trả "chosen_index" là SỐ THỨ TỰ (bắt đầu từ 1) của mục bạn chọn trong danh sách.
 
-QUY TẮC KHÁC:
-- Nếu có Lĩnh vực: NỘI DUNG chủ đề phải gắn trực tiếp với lĩnh vực đó (ví dụ lĩnh vực "Nhà hàng - Khách sạn" + thể loại tự chọn là "đánh giá" → đánh giá một trải nghiệm tại nhà hàng/khách sạn) — thể loại vẫn chọn tự do theo 2 quy tắc trên, chỉ nội dung phải bám lĩnh vực.
-- Nếu KHÔNG có Lĩnh vực: chọn 1 chủ đề đời thường phù hợp thể loại đã chọn.
+QUY TẮC SOẠN NHIỆM VỤ TỪ MỤC ĐÃ CHỌN:
+- "topic_en"/"topic_vi": viết đề bài CỤ THỂ dựa trên gợi ý chủ đề của mục đã chọn (KHÔNG chỉ dịch nguyên văn gợi ý — thêm chi tiết/tình huống cụ thể cho sinh động), ĐÚNG thể loại của mục đó.
+- Nếu có Lĩnh vực: nội dung càng cụ thể gắn với lĩnh vực đó càng tốt.
 - Độ khó đề bài (độ PHỨC TẠP yêu cầu, không phải độ dài) phải VỪA SỨC cấp độ: A1/A2 chỉ yêu cầu câu đơn giản, chủ đề gần gũi đời thường; B1 trở lên có thể yêu cầu cấu trúc rõ ràng, nhiều ý hơn.
-- "genre_vi": tên thể loại BẠN vừa chọn, ngắn gọn tiếng Việt (2-4 từ).
 - "goals": 2-4 gạch đầu dòng ngắn (tiếng Việt), mục tiêu CỤ THỂ bài viết cần đạt được (không chung chung kiểu "viết hay").
 - "structure": các bước/phần nên có trong bài, 3-5 phần, MỖI phần có nhãn tiếng Anh ngắn (1-2 từ) + nhãn tiếng Việt giải thích ngắn trong ngoặc.
 - "vocabulary_suggestions": 5-8 từ/cụm từ tiếng Anh HỮU ÍCH để viết đúng chủ đề này, đúng cấp độ, mỗi từ kèm nghĩa tiếng Việt ngắn — đây là GỢI Ý không bắt buộc dùng, không phải danh sách đánh giá.
@@ -210,19 +230,22 @@ QUY TẮC ĐẦU RA: Trả về DUY NHẤT một khối JSON hợp lệ theo sch
 
 SCHEMA JSON:
 {
+  "chosen_index": 1,
   "topic_en": "câu đề bài bằng tiếng Anh, 1 câu ngắn gọn rõ ràng",
   "topic_vi": "dịch/mô tả câu đề bài bằng tiếng Việt",
-  "genre_vi": "tên thể loại bạn vừa chọn, ngắn gọn tiếng Việt",
   "goals": ["mục tiêu 1", "mục tiêu 2"],
   "structure": [{"label": "Greeting", "label_vi": "Lời chào"}],
   "vocabulary_suggestions": [{"word": "delay", "meaning": "sự chậm trễ"}],
   "useful_phrases": [{"phrase": "I'm writing to inform you that...", "meaning": "Dùng để mở đầu email báo tin"}]
 }`;
 
-function buildTaskUserPrompt(level, industry, recentGenres) {
+function buildTaskUserPrompt(level, industry, sampledPool) {
+  const optionsText = sampledPool.map((o, i) => `${i + 1}. [${o.genre_vi}] ${o.topic_hint}`).join("\n");
   return `Cấp độ CEFR của học viên: ${level}
 Lĩnh vực: ${orNone(industry)}
-Thể loại đã giao gần đây cho người học này (KHÔNG được chọn lại bất kỳ thể loại nào trong danh sách này lần này): ${recentGenres.length ? recentGenres.join(", ") : "chưa có lịch sử, được chọn tự do"}`;
+
+CÁC LỰA CHỌN (chọn ĐÚNG 1 mục, trả lại đúng số thứ tự vào "chosen_index"):
+${optionsText}`;
 }
 
 // ====== PROMPT 2: grade_writing (Bước 3→4→5 — AI chấm + đánh dấu) ======
@@ -402,31 +425,38 @@ export async function generate_writing_task(data, ctx) {
   );
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
+  // Loại các thể loại đã giao 3-5 lượt gần đây khỏi tập mẫu TRƯỚC KHI đưa vào prompt — chặn ở
+  // NGUỒN (model không có cơ hội chọn lại dù có muốn) thay vì chỉ dặn+kiểm tra sau, mạnh hơn
+  // hẳn cách "dặn rồi hy vọng" của bản trước.
   const recentGenres = await getRecentGenres(ctx.studentId, 5);
+  const recentGenresNorm = new Set(recentGenres.map((g) => (g || "").trim().toLowerCase()));
+  const eligiblePool = WRITING_TOPIC_POOL.filter((o) => !recentGenresNorm.has(o.genre_vi.trim().toLowerCase()));
+  const sampledPool = sampleTopicPool(eligiblePool.length ? eligiblePool : WRITING_TOPIC_POOL, TOPIC_SAMPLE_SIZE);
 
   function isValidTaskShape(p) {
-    return !!(p?.topic_en && p?.topic_vi && p?.genre_vi && Array.isArray(p.goals) && Array.isArray(p.structure));
-  }
-  // "đã lặp thể loại" so khớp KHÔNG phân biệt hoa/thường + bỏ khoảng trắng thừa — model có thể
-  // viết lại genre_vi hơi khác chữ hoa/thường ("Email công việc" vs "email công việc") nhưng
-  // vẫn là cùng 1 thể loại, phải bắt được cả 2 dạng.
-  function repeatsRecentGenre(genreVi) {
-    const norm = (genreVi || "").trim().toLowerCase();
-    return recentGenres.some((g) => (g || "").trim().toLowerCase() === norm);
+    const idx = Number(p?.chosen_index);
+    return !!(
+      Number.isInteger(idx) &&
+      idx >= 1 &&
+      idx <= sampledPool.length &&
+      p?.topic_en &&
+      p?.topic_vi &&
+      Array.isArray(p.goals) &&
+      Array.isArray(p.structure)
+    );
   }
 
-  // Gọi AI + tự retry TỐI ĐA 1 LẦN nếu model LỠ chọn lại đúng 1 thể loại vừa cấm (dặn trong
-  // prompt là đủ đa số trường hợp, nhưng vẫn cần lưới chắn — model có thể bỏ sót danh sách cấm
-  // dài, giống lý do gradeWithRetry() có retry cho số lượng segments).
+  // Gọi AI + tự retry TỐI ĐA 1 LẦN nếu "chosen_index" thiếu/ngoài phạm vi (lưới chắn, giống
+  // gradeWithRetry() cho số lượng segments).
   let r, parsed;
   for (let attempt = 0; attempt < 2; attempt++) {
     const userPrompt =
       attempt === 0
-        ? buildTaskUserPrompt(data.level, data.industry, recentGenres)
-        : `${buildTaskUserPrompt(data.level, data.industry, recentGenres)}\n\nLƯU Ý: Lượt trước bạn LẶP LẠI 1 thể loại đã bị cấm ở trên — lần này PHẢI chọn thể loại KHÁC HẲN, không trùng bất kỳ thể loại nào trong danh sách "Thể loại đã giao gần đây".`;
+        ? buildTaskUserPrompt(data.level, data.industry, sampledPool)
+        : `${buildTaskUserPrompt(data.level, data.industry, sampledPool)}\n\nLƯU Ý: Lượt trước "chosen_index" bị thiếu hoặc ngoài phạm vi 1-${sampledPool.length} — lần này PHẢI trả về đúng 1 số nguyên trong khoảng đó, ứng với ĐÚNG 1 mục trong danh sách.`;
     r = await generateStructuredJSON({
       maxTokens: 1600, // topic+goals+structure+vocabulary_suggestions+useful_phrases cộng lại ~500-700 token thật, chừa biên an toàn.
-      temperature: 0.9, // thể loại/chủ đề cần đa dạng giữa các lần gọi.
+      temperature: 0.8, // chủ đề CỤ THỂ hoá từ gợi ý cần đa dạng giữa các lần gọi (bản thân việc CHỌN mục đã do sampleTopicPool() đảm bảo ngẫu nhiên, nhiệt độ ở đây chủ yếu ảnh hưởng cách viết topic_en/topic_vi cụ thể).
       messages: [
         { role: "system", content: TASK_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
@@ -434,7 +464,7 @@ export async function generate_writing_task(data, ctx) {
     });
     if (!r.ok) break;
     parsed = r.data;
-    if (isValidTaskShape(parsed) && !repeatsRecentGenre(parsed.genre_vi)) break;
+    if (isValidTaskShape(parsed)) break;
   }
   if (!r.ok) {
     if (r.parseError) console.error("[generate_writing_task] parse error:", r.text?.slice(0, 500));
@@ -444,13 +474,13 @@ export async function generate_writing_task(data, ctx) {
     console.error("[generate_writing_task] invalid shape:", JSON.stringify(parsed).slice(0, 500));
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
-  if (repeatsRecentGenre(parsed.genre_vi)) {
-    console.error("[generate_writing_task] repeated recent genre sau retry:", parsed.genre_vi, "recent:", recentGenres);
-  }
+  // "genre_vi" LUÔN lấy từ mục ĐÃ CHỌN trong sampledPool (nguồn chân lý ở server) — KHÔNG tin
+  // model tự ghi lại tên thể loại, đúng nguyên tắc đã áp dụng cho segments/task ở nơi khác.
+  const chosenEntry = sampledPool[Number(parsed.chosen_index) - 1];
 
   // PHẢI await (không fire-and-forget) — đây là Serverless Function, tiến trình có thể bị
   // đóng băng/dừng NGAY sau khi response được trả về, insert chưa kịp chạy xong sẽ mất đếm/lịch sử.
-  await logWritingTaskRequest(ctx.studentId, parsed.genre_vi);
+  await logWritingTaskRequest(ctx.studentId, chosenEntry.genre_vi);
 
   const [minWords, maxWords] = WRITING_LENGTH_TABLE[data.level] || [90, 150];
   return {
@@ -458,7 +488,7 @@ export async function generate_writing_task(data, ctx) {
       task: {
         topic_en: parsed.topic_en,
         topic_vi: parsed.topic_vi,
-        genre_vi: parsed.genre_vi,
+        genre_vi: chosenEntry.genre_vi,
         goals: parsed.goals,
         structure: parsed.structure,
         vocabulary_suggestions: Array.isArray(parsed.vocabulary_suggestions) ? parsed.vocabulary_suggestions : [],
@@ -536,9 +566,14 @@ export async function grade_writing(data, ctx) {
   // Việc 2 (2026-07-27) — "Bài viết hoàn chỉnh": KHÔNG lưu vào writing_submissions ở đây (bảng
   // đó chỉ phục vụ đếm hạn mức + lịch sử tối giản) — client giữ trong state, CHỈ lưu THẬT khi
   // người học chủ động bấm "Lưu bài hoàn chỉnh" (Việc 3, bảng lưu riêng).
+  // Model đôi lúc trả "clean_rewrite_vocab" là mảng CHUỖI thô thay vì {word,meaning} dù schema
+  // đã ghi rõ — chuẩn hoá phòng thủ ở đây thay vì bắt retry cả lượt chỉ vì lệch format 1 field
+  // phụ (không đáng giá thêm 1 lượt gọi AI ~10s/~3000 token).
   const cleanRewrite = {
     text: parsed.clean_rewrite.trim(),
-    vocab: Array.isArray(parsed.clean_rewrite_vocab) ? parsed.clean_rewrite_vocab : [],
+    vocab: (Array.isArray(parsed.clean_rewrite_vocab) ? parsed.clean_rewrite_vocab : [])
+      .map((v) => (typeof v === "string" ? { word: v, meaning: "" } : { word: v?.word || "", meaning: v?.meaning || "" }))
+      .filter((v) => v.word),
     patterns: Array.isArray(parsed.clean_rewrite_patterns) ? parsed.clean_rewrite_patterns : [],
   };
 
