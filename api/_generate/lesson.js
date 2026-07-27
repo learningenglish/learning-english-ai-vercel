@@ -731,14 +731,22 @@ export async function generate_lesson(data, ctx) {
   });
   if (!r.ok) {
     if (r.parseError) console.error("[generate_lesson] parse error:", r.text?.slice(0, 500));
-    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
+    // TẠM THỜI (chẩn đoán, xoá sau) — xem ghi chú debug field ở khối validate FAIL bên dưới.
+    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502, debug: { parseError: r.parseError, rawText: r.text?.slice(0, 800) } };
   }
   const parsed = r.data;
   capLessonArrays(parsed);
   const validation = validateLessonShape(parsed, { minWords, maxWords, checkDialogueEnding: true });
   if (!validation.valid) {
     console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, `range=[${minWords},${maxWords}]`);
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+    // TẠM THỜI (chẩn đoán bug grammar_focus+A1, 2026-07-27 — XOÁ debug field này sau khi xong,
+    // xem feedback_sandbox_blocks_real_api_keys trong memory: sandbox không xem được server log
+    // qua cách khác lúc này).
+    return {
+      error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.",
+      status: 502,
+      debug: { reason: validation.reason, actualWords: validation.actualWords, minWords, maxWords, grammar: parsed?.grammar },
+    };
   }
 
   const [goalId, skinId] = await Promise.all([
