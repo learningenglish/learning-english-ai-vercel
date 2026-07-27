@@ -24,6 +24,7 @@ import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
 import { showToast } from "../toast.js";
+import { callChatAction } from "../chatApi.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
@@ -52,6 +53,7 @@ export function renderWritingPractice(mount) {
     savedDetailed: false,
     savedClean: false,
     savedReference: false,
+    cleanCoverImage: null, // Item 3 (2026-07-27) — ảnh minh hoạ CHỈ cho Bài viết hoàn chỉnh (khá/giỏi), tải LƯỜI khi mở màn đó, tái dùng pipeline ảnh miễn phí có sẵn (search_lesson_cover_image).
   };
 
   // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
@@ -303,6 +305,7 @@ export function renderWritingPractice(mount) {
   function renderCleanStep() {
     const c = state.grading.clean_rewrite;
     return `
+      ${state.cleanCoverImage ? `<img class="writing-clean-cover" src="${escapeHtml(state.cleanCoverImage)}" alt="" />` : ""}
       <div class="tabs" id="clean-tabs">
         <button type="button" class="tab-btn ${state.cleanTab === "content" ? "active" : ""}" data-tab="content">Nội dung</button>
         <button type="button" class="tab-btn ${state.cleanTab === "vocab-grammar" ? "active" : ""}" data-tab="vocab-grammar">Từ vựng &amp; Ngữ pháp</button>
@@ -433,6 +436,7 @@ export function renderWritingPractice(mount) {
       state.cleanTab = "content";
       state.step = "clean";
       render();
+      fetchCleanCoverImage(); // tải LƯỜI, không chặn chuyển màn (giống fetchAndSaveLessonCover ở lessonApi.js) — chỉ khi mở "Bài viết hoàn chỉnh", KHÔNG áp dụng cho Bài tham khảo.
     });
     mount.querySelector("#view-reference-btn")?.addEventListener("click", () => {
       state.step = "reference";
@@ -457,7 +461,7 @@ export function renderWritingPractice(mount) {
       await saveFavorite({
         kind: "complete",
         variant: "clean_rewrite",
-        content: { text: c.text, vocab: c.vocab, patterns: c.patterns },
+        content: { text: c.text, vocab: c.vocab, patterns: c.patterns, cover_image_url: state.cleanCoverImage || null },
         slotSelector: "#save-clean-slot",
         markSaved: () => (state.savedClean = true),
       });
@@ -488,6 +492,25 @@ export function renderWritingPractice(mount) {
     markSaved();
     showToast("Đã lưu vào Yêu thích.");
     render();
+  }
+
+  // Item 3 (2026-07-27) — ảnh minh hoạ cho "Bài viết hoàn chỉnh", tái dùng ĐÚNG pipeline ảnh
+  // miễn phí có sẵn (Wikimedia/Unsplash/Pexels, action "search_lesson_cover_image" đã dùng cho
+  // ảnh bìa bài học) — KHÔNG thêm action/lượt gọi AI sinh ảnh riêng nào. Không chặn UI (giống
+  // fetchAndSaveLessonCover ở lessonApi.js): gọi RỜI sau khi màn "Bài viết hoàn chỉnh" đã hiện,
+  // không tìm được ảnh thì đơn giản là không có ảnh, không báo lỗi.
+  async function fetchCleanCoverImage() {
+    if (state.cleanCoverImage || !state.task) return; // đã có ảnh (hoặc đã thử) -> không gọi lại
+    try {
+      const res = await callChatAction("search_lesson_cover_image", { title: state.task.topic_en, content_type: "reading" });
+      if (!res.ok) return;
+      const { image } = JSON.parse(res.content);
+      if (!image?.url) return;
+      state.cleanCoverImage = image.url;
+      if (state.step === "clean") render();
+    } catch {
+      // Im lặng — tính năng "cố gắng tốt nhất", không có ảnh thì thôi, không chặn trải nghiệm chính.
+    }
   }
 
   // ====== gọi API ======
@@ -531,6 +554,7 @@ export function renderWritingPractice(mount) {
     state.savedDetailed = false;
     state.savedClean = false;
     state.savedReference = false;
+    state.cleanCoverImage = null;
     state.step = "result";
     render();
   }

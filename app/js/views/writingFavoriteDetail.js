@@ -113,6 +113,7 @@ function renderContent(favorite) {
         .join("")}`
     : "";
   return `
+    ${c.cover_image_url ? `<img class="writing-clean-cover" src="${escapeHtml(c.cover_image_url)}" alt="" />` : ""}
     <div class="card writing-card">
       <p class="writing-clean-text">${escapeHtml(c.text || "")}</p>
       ${vocabHtml}

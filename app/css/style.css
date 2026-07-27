@@ -2231,6 +2231,16 @@ textarea:focus {
   white-space: pre-line;
 }
 
+/* Item 3 — ảnh minh hoạ Bài viết hoàn chỉnh (khá/giỏi), tái dùng pipeline ảnh miễn phí có sẵn */
+.writing-clean-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  background: var(--surface-soft);
+}
+
 .writing-section-title-spaced {
   margin-top: 20px;
 }
