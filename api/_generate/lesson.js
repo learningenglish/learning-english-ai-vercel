@@ -150,10 +150,12 @@ này, tự chọn ngữ pháp trong phạm vi cấp độ như bình thường):
 - Đây là bài đi theo lộ trình học đã định sẵn (spine) — điểm ngữ pháp trọng tâm KHÔNG phải gợi
   ý, mà là ĐIỂM DUY NHẤT bài này PHẢI dạy, đã khoá sẵn theo đúng vị trí trong lộ trình.
 - "content" PHẢI thể hiện RÕ đúng điểm ngữ pháp đó, xuất hiện tối thiểu 1 LẦN THẬT SỰ RÕ RÀNG
-  (không phải nhắc lướt qua) — ĐÂY LÀ MỨC TỐI THIỂU, KHÔNG BẮT BUỘC LẶP NHIỀU LẦN, đặc biệt ở A1/
-  A2: những cấp này length_words vốn CỐ Ý ngắn (xem QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ phần "RIÊNG A1")
-  — TUYỆT ĐỐI KHÔNG viết dài thêm hay thêm câu chỉ để "lặp lại cho chắc" điểm ngữ pháp này, làm
-  vậy sẽ phá vỡ khung độ dài đã quy định. 1 lần dùng rõ ràng, tự nhiên là ĐỦ.
+  (không phải nhắc lướt qua) — không bắt buộc lặp nhiều lần, 1 lần dùng rõ ràng, tự nhiên là đủ.
+- QUAN TRỌNG: yêu cầu này KHÔNG THAY THẾ và KHÔNG LÀM GIẢM NHẸ yêu cầu ĐỘ DÀI đã nêu ở trên —
+  bài VẪN PHẢI đạt đủ khoảng từ yêu cầu (lỗi thật hay gặp là VIẾT THIẾU, không phải viết thừa,
+  xem "QUY TẮC VỀ ĐỘ DÀI"). KHÔNG được cắt ngắn bài hay bỏ bớt câu vì bận tâm tới điểm ngữ pháp
+  trọng tâm — viết ĐỦ NỘI DUNG tự nhiên theo đúng độ dài yêu cầu, đồng thời lồng điểm ngữ pháp
+  trọng tâm vào MỘT CÁCH TỰ NHIÊN trong nội dung đó, không phải đánh đổi cái này lấy cái kia.
 - KHÔNG lái sang điểm ngữ pháp khác cùng cấp độ dù hợp lý về ngữ cảnh (ví dụ được giao trọng
   tâm "Thì hiện tại đơn" thì KHÔNG được viết chính bằng "will"/tương lai dù chủ đề có vẻ hợp —
   đây CHÍNH XÁC là lỗi thật đã xảy ra trước khi có ràng buộc này: bài gắn nhãn A1 nhưng dùng
@@ -403,7 +405,9 @@ function buildGenerateLessonUserPrompt(data) {
     Array.isArray(data.grammar_focus) && data.grammar_focus.length
       ? `\nĐiểm ngữ pháp trọng tâm BẮT BUỘC (đã khoá theo lộ trình, xem quy tắc riêng ở trên): ${data.grammar_focus
           .map((g) => `${g.name_vi}${g.formula ? ` (${g.formula})` : ""}`)
-          .join("; ")}`
+          .join(
+            "; "
+          )}. NHẮC LẠI: vẫn phải viết ĐỦ ${lengthWordsMin}-${lengthWordsMax} từ như yêu cầu độ dài ở trên — đừng viết ngắn hơn chỉ vì đang tập trung vào điểm ngữ pháp này.`
       : "";
 
   return `Tạo bài học theo yêu cầu sau:
