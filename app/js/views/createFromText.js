@@ -1,16 +1,19 @@
 // app/js/views/createFromText.js — màn "Văn bản" (lối tạo bài học nhanh #1 ở màn Bài học),
 // TÁCH RA từ luồng "Tôi có văn bản" trong views/mentorGoal.js (Mentor AI đã tắt UI 2026-07-23,
 // route /mentor-goal không còn đăng ký nên tính năng này bị mồ côi — không ai gọi tới nữa dù
-// backend analyze_user_text vẫn hoạt động bình thường). Hành vi giữ NGUYÊN như cũ (20-3000 từ,
-// analyze_user_text qua createLessonFromText()) — chỉ đổi vỏ ngoài thành 1 màn riêng có nút
-// quay lại, thay vì 1 bước ẩn trong luồng hội thoại nhiều bước.
+// backend analyze_user_text vẫn hoạt động bình thường).
+//
+// SỬA 2026-07-27 (Phần B, "AI tự phân loại trình độ"): BỎ HẲN control chọn cấp độ A1-C1 — AI tự
+// đọc văn bản và tự xác định level (xem api/_generate/lesson.js::ANALYZE_TEXT_SYSTEM_PROMPT mục
+// "TỰ PHÂN LOẠI CẤP ĐỘ"), dùng thẳng làm căn cứ duy nhất cho từ vựng/giải thích/bài tập — không
+// còn "cấp độ người học khai báo" để so sánh, nên bỏ luôn cơ chế level_warning cũ. Sau khi phân
+// tích xong, hiện RÕ badge cấp độ đã xác định NGAY tại đây (không đợi sang màn Bài học chi tiết
+// — màn đó thuộc Phase B-H đang khoá, không đụng) trước khi cho vào xem bài.
 import { navigate } from "../router.js";
 import { createLessonFromText, fetchAndSaveLessonCover } from "../lessonApi.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
-
-const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
@@ -22,10 +25,6 @@ export function renderCreateFromText(mount) {
         <textarea id="paste-text-input" rows="10" placeholder="Dán văn bản tiếng Anh vào đây..."></textarea>
       </label>
       <p class="field-hint" id="paste-wordcount">0 từ (tối thiểu 20, tối đa 3000)</p>
-      <label class="field">
-        <span class="field-question">Cấp độ của bạn</span>
-        <select id="paste-level">${LEVELS.map((l) => `<option value="${l}">${l}</option>`).join("")}</select>
-      </label>
       <div id="paste-result-slot"></div>
       <button type="button" class="btn btn-primary btn-block" id="paste-submit-btn">Phân tích</button>
     </div>
@@ -59,13 +58,22 @@ export function renderCreateFromText(mount) {
     const btn = mount.querySelector("#paste-submit-btn");
     btn.disabled = true;
     resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang phân tích...</div>`;
-    const res = await createLessonFromText(text, mount.querySelector("#paste-level").value);
+    const res = await createLessonFromText(text);
     btn.disabled = false;
     if (!res.ok) {
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra.")}</div>`;
       return;
     }
-    fetchAndSaveLessonCover(res.data.lesson);
-    navigate(`/lesson/${res.data.lesson.id}`);
+    const lesson = res.data.lesson;
+    fetchAndSaveLessonCover(lesson);
+    btn.hidden = true;
+    resultSlot.innerHTML = `
+      <div class="result-panel result-success">
+        <div class="result-title">Đã phân tích xong</div>
+        <p>Cấp độ văn bản (AI tự xác định): <span class="level-pill">${escapeHtml(lesson.level)}</span></p>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="paste-view-lesson-btn">Xem bài học</button>
+    `;
+    mount.querySelector("#paste-view-lesson-btn").addEventListener("click", () => navigate(`/lesson/${lesson.id}`));
   });
 }

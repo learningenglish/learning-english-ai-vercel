@@ -18,8 +18,11 @@
 // { lesson, meta } như hiện tại) — không đụng gì tới UI.
 import { callChatAction } from "./chatApi.js";
 
-export async function createLessonFromText(userText, level) {
-  return callAndParse("analyze_user_text", { user_text: userText, level });
+// "level" KHÔNG còn là tham số (2026-07-27) — bỏ hẳn bước người dùng khai báo cấp độ trước khi
+// phân tích, AI tự đọc văn bản và tự xác định level, trả lại trong lesson.level (xem
+// api/_generate/lesson.js::ANALYZE_TEXT_SYSTEM_PROMPT mục "TỰ PHÂN LOẠI CẤP ĐỘ").
+export async function createLessonFromText(userText) {
+  return callAndParse("analyze_user_text", { user_text: userText });
 }
 
 export async function createLessonFromAI(payload) {

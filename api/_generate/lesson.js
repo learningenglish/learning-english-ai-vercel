@@ -414,17 +414,20 @@ CÁCH CHIA ĐOẠN:
 - Nếu là văn xuôi: content_type = "reading", chia theo đoạn gốc; đoạn nào dài quá 5 câu
   thì được phép tách tại ranh giới câu (không tách giữa câu).
 
-PHÂN TÍCH THEO CẤP ĐỘ NGƯỜI HỌC:
-- Người học khai báo cấp độ của họ. Hãy tự đánh giá cấp độ thực của văn bản (theo CEFR)
-  và ghi vào "detected_level".
-- Chọn từ vựng để đưa vào danh sách "vocabulary" theo nguyên tắc: những từ NGƯỜI HỌC
-  Ở CẤP ĐỘ ĐÓ nhiều khả năng chưa biết. Người học A1 thì gần như mọi từ ngoài nhóm 1000 từ
-  thông dụng đều đáng chọn; người học B2 thì chỉ chọn từ học thuật, thành ngữ, cụm động từ khó.
-- Nếu văn bản vượt cấp độ người học từ 2 bậc trở lên (ví dụ văn bản C1, người học A2),
-  đặt "level_warning" = true và viết một lời khuyên ngắn thân thiện bằng tiếng Việt
-  vào "level_warning_message" (ví dụ: nên học kèm bản dịch từng câu, đừng cố hiểu 100%).
-- Giải thích ngữ pháp và bài tập phải diễn đạt VỪA SỨC cấp độ người học, kể cả khi
-  văn bản khó hơn: giải thích đơn giản, ví dụ bổ sung dùng từ vựng dễ.
+TỰ PHÂN LOẠI CẤP ĐỘ (2026-07-27 — không còn người học khai báo cấp độ trước, đây là bước BẮT
+BUỘC và là CĂN CỨ DUY NHẤT cho toàn bộ phần còn lại của bài, không phải cảnh báo phụ):
+- Đọc kỹ văn bản, tự đánh giá cấp độ CEFR THỰC của chính văn bản đó (dựa độ phức tạp câu, từ
+  vựng, cấu trúc ngữ pháp dùng trong bài — đúng tiêu chí đã dùng để phân cấp A1-C1 ở nơi khác
+  trong hệ thống này), ghi vào "level". Đây là cấp độ CỦA VĂN BẢN, và vì không còn cấp độ người
+  học nào khác để đối chiếu, "level" này ĐƯỢC DÙNG THẲNG làm mức mọi phần còn lại của bài phải
+  vừa sức theo.
+- Chọn từ vựng để đưa vào danh sách "vocabulary" theo nguyên tắc: những từ người học Ở ĐÚNG
+  CẤP ĐỘ VỪA XÁC ĐỊNH nhiều khả năng chưa biết. Cấp A1 thì gần như mọi từ ngoài nhóm 1000 từ
+  thông dụng đều đáng chọn; cấp B2 thì chỉ chọn từ học thuật, thành ngữ, cụm động từ khó.
+- Giải thích ngữ pháp, bản dịch, chú giải và bài tập PHẢI diễn đạt ĐÚNG ĐỘ SÂU tương ứng cấp độ
+  vừa xác định — cấp thấp (A1-A2): giải thích đơn giản, câu ngắn, ví dụ bổ sung dùng từ dễ; cấp
+  cao (B2-C1): được phép giải thích sâu hơn, dùng thuật ngữ ngữ pháp chính xác hơn, ví dụ phức
+  tạp hơn. KHÔNG dùng chung 1 độ sâu giải thích bất kể văn bản dễ hay khó.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo schema dưới đây.
@@ -435,17 +438,14 @@ SCHEMA JSON:
 {
   "title": "tự đặt tên bài bằng tiếng Anh dựa trên nội dung văn bản",
   "title_vi": "tên bài dịch sang tiếng Việt",
-  "level": "cấp độ người học khai báo",
-  "detected_level": "cấp độ CEFR bạn đánh giá cho văn bản",
-  "level_warning": true/false,
-  "level_warning_message": "chỉ có khi level_warning = true",
+  "level": "cấp độ CEFR bạn tự đánh giá cho CHÍNH văn bản này — dùng thẳng làm căn cứ cho mọi phần còn lại của bài",
   "content_type": "dialogue hoặc reading",
   "content": [
     {
       "speaker": "chỉ có với dialogue",
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
       "translation": "bản dịch tiếng Việt",
-      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ người học: cấu trúc đáng chú ý CỦA CHÍNH CÂU NÀY (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, VÌ SAO câu này dùng dạng đó. CẤM khuôn sáo rỗng kiểu 'Thì X trong câu này diễn tả...' lặp lại máy móc — mỗi câu đọc như đang phân tích riêng câu đó. Ngắn gọn, đúng trọng tâm."
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ đã xác định ở 'level': cấu trúc đáng chú ý CỦA CHÍNH CÂU NÀY (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, VÌ SAO câu này dùng dạng đó. CẤM khuôn sáo rỗng kiểu 'Thì X trong câu này diễn tả...' lặp lại máy móc — mỗi câu đọc như đang phân tích riêng câu đó. Ngắn gọn, đúng trọng tâm."
     }
   ],
   "vocabulary": [
@@ -454,7 +454,7 @@ SCHEMA JSON:
       "ipa": "phiên âm IPA",
       "type": "với TỪ ĐƠN: loại từ (noun, verb, adj...). Với CỤM TỪ (word có khoảng trắng): PHẢI chọn ĐÚNG 1 trong 3 nhãn — 'Cụm danh từ', 'Cụm động từ + giới từ (phrasal verb)', hoặc 'N + giới từ + N' — theo đúng cấu trúc thật của cụm, không dùng nhãn khác",
       "meaning": "nghĩa tiếng Việt ĐÚNG THEO NGỮ CẢNH trong bài (không phải nghĩa phổ biến nhất)",
-      "example": "một câu ví dụ mới, đơn giản, vừa cấp độ người học",
+      "example": "một câu ví dụ mới, đơn giản, vừa cấp độ đã xác định ở 'level'",
       "is_specialized": true nếu là thuật ngữ chuyên ngành, false nếu là từ thường
     }
   ],
@@ -462,7 +462,7 @@ SCHEMA JSON:
     {
       "name": "tên điểm ngữ pháp",
       "structure": "công thức",
-      "explanation": "giải thích bằng tiếng Việt, vừa sức cấp độ người học",
+      "explanation": "giải thích bằng tiếng Việt, vừa sức cấp độ đã xác định ở 'level'",
       "example_from_lesson": "trích nguyên văn một câu trong văn bản có dùng điểm này"
     }
   ],
@@ -471,7 +471,7 @@ SCHEMA JSON:
       "pattern": "khuôn câu có chỗ trống, viết tự nhiên (KHÔNG phải công thức trừu tượng kiểu S+V+O)",
       "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong văn bản có dùng khuôn này, không bịa thêm",
       "note": "1 câu tiếng Việt ngắn, nói khuôn này DÙNG ĐỂ LÀM GÌ trong giao tiếp thực tế — KHÔNG giải thích ngữ pháp hàn lâm",
-      "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn này đáng học lại ở ĐÚNG cấp độ người học (không phải cấp độ văn bản) — không mô tả lại nghĩa câu"
+      "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn này đáng học lại ở ĐÚNG cấp độ đã xác định ở 'level' — không mô tả lại nghĩa câu"
     }
   ],
   "exercises": [
@@ -496,18 +496,19 @@ SCHEMA JSON:
 }
 
 SỐ LƯỢNG:
-- vocabulary: 8-15 từ tùy độ dài và độ khó văn bản so với cấp độ người học.
+- vocabulary: 8-15 từ tùy độ dài văn bản và cấp độ đã xác định ở "level".
 - grammar: 1-3 điểm THỰC SỰ xuất hiện trong văn bản, ưu tiên điểm lặp lại nhiều lần nhất.
-- sentence_patterns: quét TOÀN BỘ văn bản (không giới hạn ở câu có điểm ngữ pháp trọng tâm), CHỈ chọn khuôn câu THỰC SỰ đáng học lại để dùng trong giao tiếp (câu hỏi thông dụng, cấu trúc tái dùng được ở nhiều tình huống khác) — bỏ qua câu quá đơn giản không có gì đáng nêu (vd "I like coffee"). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN, không phải bài liệt kê — việc khó không phải "tìm cấu trúc" (câu nào cũng có cấu trúc) mà là biết cái nào ĐÁNG chọn, cái nào KHÔNG. Bắt buộc: (1) khuôn phải VỪA TẦM cấp độ NGƯỜI HỌC (không phải cấp độ văn bản, có thể cao hơn) — không chọn khuôn quá cơ bản mà cấp độ đó chắc chắn đã thấm từ lâu, cũng không chọn khuôn vượt quá xa khiến người học chưa dùng được ngay; (2) "why_worth_it" phải là lý do THẬT — nếu không nghĩ ra lý do thuyết phục cho 1 khuôn, ĐỪNG đưa khuôn đó vào, KHÔNG hạ chuẩn để đủ số lượng. KHÔNG trùng với "grammar". Số lượng: tối thiểu 3, tối đa 8 — tự lọc theo mật độ khuôn thật sự đáng chú ý có trong văn bản; văn bản ít khuôn đáng học thì cứ để gần mức tối thiểu, KHÔNG cố nhồi cho đủ số.
+- sentence_patterns: quét TOÀN BỘ văn bản (không giới hạn ở câu có điểm ngữ pháp trọng tâm), CHỈ chọn khuôn câu THỰC SỰ đáng học lại để dùng trong giao tiếp (câu hỏi thông dụng, cấu trúc tái dùng được ở nhiều tình huống khác) — bỏ qua câu quá đơn giản không có gì đáng nêu (vd "I like coffee"). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN, không phải bài liệt kê — việc khó không phải "tìm cấu trúc" (câu nào cũng có cấu trúc) mà là biết cái nào ĐÁNG chọn, cái nào KHÔNG. Bắt buộc: (1) khuôn phải VỪA TẦM cấp độ đã xác định ở "level" — không chọn khuôn quá cơ bản mà cấp độ đó chắc chắn đã thấm từ lâu, cũng không chọn khuôn vượt quá xa khiến người học chưa dùng được ngay; (2) "why_worth_it" phải là lý do THẬT — nếu không nghĩ ra lý do thuyết phục cho 1 khuôn, ĐỪNG đưa khuôn đó vào, KHÔNG hạ chuẩn để đủ số lượng. KHÔNG trùng với "grammar". Số lượng: tối thiểu 3, tối đa 8 — tự lọc theo mật độ khuôn thật sự đáng chú ý có trong văn bản; văn bản ít khuôn đáng học thì cứ để gần mức tối thiểu, KHÔNG cố nhồi cho đủ số.
 - exercises: tối thiểu 3 trắc nghiệm + 2 điền từ, tất cả bám vào văn bản. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra. BẮT BUỘC mọi object trong "exercises" PHẢI có key "grammar_tag" — KHÔNG được bỏ qua key này dưới bất kỳ trường hợp nào (lỗi thật đã gặp: model bỏ hẳn key thay vì ghi null). Giá trị CHỈ có 2 dạng hợp lệ: string khớp NGUYÊN VĂN 1 "name" trong "grammar", HOẶC chính xác giá trị null (không phải chuỗi rỗng, không phải thiếu key) khi câu không gắn điểm ngữ pháp nào.`;
 
-function buildAnalyzeTextUserPrompt(level, userText) {
+// "level" KHÔNG còn là tham số đầu vào (2026-07-27, bỏ hẳn bước người dùng khai báo cấp độ
+// trước khi phân tích — xem ANALYZE_TEXT_SYSTEM_PROMPT mục "TỰ PHÂN LOẠI CẤP ĐỘ") — model tự
+// đọc văn bản và tự xác định "level" trong JSON trả về, không có gì để so sánh/đối chiếu nữa.
+function buildAnalyzeTextUserPrompt(userText) {
   // Lọc bỏ chuỗi """ khỏi input trước khi chèn — chống prompt injection cơ bản (đúng
   // ghi chú trong docs/prompt-phan-tich-van-ban.md mục "USER PROMPT").
   const safeText = (userText || "").replace(/"""/g, "");
-  return `Cấp độ của tôi: ${level}
-
-Văn bản cần phân tích (giữ nguyên, không sửa):
+  return `Văn bản cần phân tích (giữ nguyên, không sửa):
 """
 ${safeText}
 """`;
@@ -733,7 +734,9 @@ export async function generate_lesson(data, ctx) {
 
 export async function analyze_user_text(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
+  // KHÔNG còn validate "level" đầu vào (2026-07-27) — người dùng không còn khai báo cấp độ
+  // trước khi phân tích, model tự xác định "level" của CHÍNH văn bản, xem ghi chú ở
+  // buildAnalyzeTextUserPrompt()/ANALYZE_TEXT_SYSTEM_PROMPT.
   const wc = wordCount(data.user_text);
   if (wc < 20) return { error: "Văn bản quá ngắn (tối thiểu 20 từ).", status: 400 };
   if (wc > 3000) return { error: "Văn bản quá dài (tối đa 3000 từ), vui lòng chia nhỏ.", status: 400 };
@@ -750,7 +753,7 @@ export async function analyze_user_text(data, ctx) {
     temperature: 0.7,
     messages: [
       { role: "system", content: ANALYZE_TEXT_SYSTEM_PROMPT },
-      { role: "user", content: buildAnalyzeTextUserPrompt(data.level, data.user_text) },
+      { role: "user", content: buildAnalyzeTextUserPrompt(data.user_text) },
     ],
   });
   if (!r.ok) {
