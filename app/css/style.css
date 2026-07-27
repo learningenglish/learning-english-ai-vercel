@@ -18,6 +18,9 @@
   --danger-soft: #fee2e2;
   --success: #22c55e;
   --success-soft: #dcfce7;
+  /* Luyện viết (Bước 5, app/js/views/writingPractice.js) — highlight "câu cần cải thiện":
+     CỐ Ý vàng/be nhạt, KHÔNG dùng đỏ (yêu cầu gốc: "không dùng ngoặc/đỏ, câu này không sai"). */
+  --highlight-bg: rgba(245, 158, 11, 0.22);
   --radius: 18px;
   --radius-sm: 12px;
   --shadow-card: 0 8px 24px rgba(31, 41, 55, 0.08);
@@ -49,6 +52,7 @@
   --danger-soft: rgba(248, 113, 113, 0.16);
   --success: #4ade80;
   --success-soft: rgba(74, 222, 128, 0.16);
+  --highlight-bg: rgba(251, 191, 36, 0.28);
   --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-float: 0 10px 30px rgba(167, 139, 250, 0.3);
   --bg-scene-opacity: 0.25;
@@ -1964,4 +1968,230 @@ textarea:focus {
 .app-toast-visible {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* ===== Luyện viết (app/js/views/writingPractice.js) — 5 bước trong 1 view ===== */
+.writing-task-card,
+.writing-task-recap {
+  margin-bottom: 14px;
+}
+
+.writing-genre-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--purple-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+
+.level-pill {
+  background: var(--surface);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+}
+
+.writing-topic-en {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0 0 6px;
+}
+
+.writing-topic-vi {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.writing-section-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.writing-goals-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.writing-goals-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--success);
+}
+
+.writing-goals-list li span {
+  color: var(--text);
+}
+
+.writing-structure-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.writing-structure-list li {
+  color: var(--text);
+}
+
+.writing-suggestion-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ===== Bước 3 — ô viết + đếm từ + tab hỗ trợ ===== */
+#writing-textarea {
+  min-height: 200px;
+  margin-bottom: 6px;
+}
+
+.writing-support-panel {
+  margin-bottom: 14px;
+}
+
+/* ===== Bước 4 — vòng điểm tổng + thanh điểm 5 tiêu chí ===== */
+.writing-score-card {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.writing-score-ring {
+  --pct: 0;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: conic-gradient(var(--purple) calc(var(--pct) * 1%), var(--surface-soft) 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.writing-score-ring-inner {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.writing-score-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.writing-criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.writing-criteria-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.writing-criteria-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.writing-criteria-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.writing-criteria-bar-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 999px;
+}
+
+.writing-criteria-comment {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+/* ===== Bước 5 — 1 khối văn bản liền mạch với 3 kiểu đánh dấu inline (KHÔNG phải card/dòng
+   riêng cho từng câu — yêu cầu gốc). ===== */
+.writing-annotated-text {
+  margin: 0;
+  line-height: 1.9;
+  font-size: 1rem;
+}
+
+.w-seg-ok {
+  color: var(--text);
+}
+
+/* Câu/cụm SAI thật (không tự nhiên/phi thực tế) — gạch ngang phần sai, thay thế IN ĐẬM ngay
+   sau, KHÔNG dùng ngoặc. */
+.w-seg-unnatural del {
+  color: var(--text-dim);
+  text-decoration-color: var(--danger);
+  text-decoration-thickness: 2px;
+}
+
+.w-seg-unnatural strong {
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* Câu CẦN CẢI THIỆN (không sai) — giữ nguyên câu gốc, KHÔNG gạch ngang, chỉ tô nền vàng/be
+   nhạt để không bỏ sót, bản cải thiện trong ngoặc đơn theo sau, KHÔNG in đậm. */
+.w-seg-improvable mark {
+  background: var(--highlight-bg);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.w-suggestion {
+  color: var(--purple);
+  font-weight: 400;
+}
+
+.writing-notices {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.writing-notice {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  background: var(--surface-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
 }

@@ -19,13 +19,14 @@ import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
 
 // 4 lối tạo bài học nhanh (thay cho luồng Mentor AI nhiều bước đã tắt) — "Văn bản" là tính
 // năng CŨ "Tôi có văn bản" (analyze_user_text) trước đây chỉ vào được qua màn Mentor AI, nay
-// bị mồ côi vì route /mentor-goal đã gỡ; đưa lên đây mới có đường vào lại. "Máy ảnh"/"Luyện
-// viết" CHƯA có backend — bấm vào chỉ báo "sắp ra mắt", không giả vờ hoạt động.
+// bị mồ côi vì route /mentor-goal đã gỡ; đưa lên đây mới có đường vào lại. "Máy ảnh" CHƯA có
+// backend — bấm vào chỉ báo "sắp ra mắt", không giả vờ hoạt động. "Luyện viết" (2026-07-27) có
+// backend + route riêng (/writing, xem views/writingPractice.js) — không còn comingSoon.
 const QUICK_ACTIONS = [
   { id: "text", label: "Văn bản", icon: "file-text", path: "/create-text" },
   { id: "camera", label: "Máy ảnh", icon: "camera", comingSoon: true },
   { id: "ai", label: "AI", icon: "sparkles", path: "/create" },
-  { id: "writing", label: "Luyện viết", icon: "edit-3", comingSoon: true },
+  { id: "writing", label: "Luyện viết", icon: "edit-3", path: "/writing" },
 ];
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
