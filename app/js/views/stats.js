@@ -2,11 +2,13 @@
 // đủ (biểu đồ theo tuần, phân bố theo kỹ năng...) thuộc Phase 4, chưa làm ở đây — người
 // dùng chủ động chọn đưa 1 bản Thống kê tối giản lên sớm cùng lúc đổi nav.
 import { getProfileStats, getStreakDays } from "../db.js";
+import { icon } from "../icons.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
 
 export function renderStats(mount) {
   mount.innerHTML = `
     <div class="screen">
-      <h1 class="screen-title">Thống kê</h1>
+      ${appHeaderHtml(`<span style="color:var(--purple)">${icon("bar-chart", { size: 22 })}</span> Thống kê`)}
       <div class="stats-grid" id="stats-grid">
         <div class="stat-card"><div class="stat-card-value">--</div><div class="stat-card-label">Tổng XP</div></div>
         <div class="stat-card"><div class="stat-card-value">--</div><div class="stat-card-label">Bài đã học</div></div>
@@ -15,6 +17,8 @@ export function renderStats(mount) {
       <p class="muted" id="stats-note"></p>
     </div>
   `;
+  wireAppHeader(mount);
+  loadAppHeaderStats(mount);
   load();
 
   async function load() {

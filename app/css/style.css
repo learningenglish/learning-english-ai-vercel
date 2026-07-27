@@ -68,6 +68,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* "scrollbar-gutter: stable" LUÔN dành sẵn chỗ cho thanh cuộn dọc, kể cả khi trang chưa đủ
+   cao để cần cuộn — nếu không, mỗi lần nội dung đổi chiều cao (vd bấm "Xem tất cả" ở bài học,
+   trang ngắn -> dài làm THANH CUỘN xuất hiện) toàn bộ layout bị ĐẨY LỆCH SANG TRÁI vài pixel
+   (thanh cuộn chiếm mất bề rộng), tạo cảm giác "tiêu đề/bố cục bị nhảy" — bug thật người dùng
+   phát hiện khi chuyển giữa xem từng câu và "Xem tất cả" trên desktop (di động dùng scrollbar
+   overlay nên không lộ, nhưng vẫn nên sửa cho chắc chắn trên mọi thiết bị). */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Màu nền dự phòng CHỈ đặt ở html (vẽ xuống canvas, dưới cùng mọi thứ). body PHẢI trong
    suốt — BUG THẬT đã gặp: đặt nền đặc cho cả body thì body::before (ảnh minh hoạ,
    z-index:-1) bị vẽ ĐÈ vĩnh viễn, vì theo thứ tự vẽ CSS (CSS2.1 Appendix E) phần tử con
@@ -102,7 +112,20 @@ textarea {
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* "100lvh" (large viewport height — kích thước viewport LỚN NHẤT có thể, tức lúc thanh địa
+     chỉ mobile ẩn đi) thay vì dùng "inset:0" (top+bottom:0, tự suy ra chiều cao theo viewport
+     HIỆN TẠI) — yêu cầu người dùng: "hình nền phủ kín, không phủ một phần". Lỗi thật: lúc
+     thanh địa chỉ đang HIỆN (viewport nhỏ hơn), "inset:0" tính chiều cao theo viewport NHỎ đó;
+     khi cuộn làm thanh địa chỉ ẩn đi (viewport giãn lớn ra), lớp nền cố định vẫn giữ nguyên
+     chiều cao cũ (đã tính 1 lần) -> hụt mất 1 dải trống ở đáy màn hình. Đặt sẵn = viewport LỚN
+     NHẤT thì luôn dư ra chứ không bao giờ hụt, phần dư nằm ngoài viewport nhỏ cũng không sao
+     vì position:fixed tự bị viewport hiện tại cắt bớt, không gây cuộn thừa. "100vh" là fallback
+     cho trình duyệt cũ chưa hiểu đơn vị lvh. */
+  height: 100vh;
+  height: 100lvh;
   z-index: -1;
   /* --bg-scene-image set bởi app/js/background.js (đường dẫn TÍNH TỪ index.html) — biến
      mặc định ở đây (tính từ file CSS này) chỉ dùng khi JS chưa kịp chạy/bị chặn. Có thể là
@@ -229,6 +252,19 @@ body::before {
   color: var(--text-dim);
 }
 
+/* Câu hỏi/nhắc dẫn dắt (views/createLesson.js — "Bạn đang ở cấp độ nào?"...) — chữ TO hơn +
+   màu ĐẬM hơn hẳn nhãn field thường (yêu cầu người dùng: "font chữ to và màu đẹp hơn để thân
+   thiện người dùng"), đọc như đang trò chuyện chứ không phải nhãn form khô khan.
+   ".field > .field-question" (không chỉ ".field-question") CỐ Ý — cần độ đặc thù cao hơn
+   ".field > span" ở trên để KHÔNG bị đè ngược lại font-size/color/margin mặc định. */
+.field > .field-question {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
 .field-row {
   display: flex;
   gap: 12px;
@@ -273,6 +309,47 @@ textarea:focus {
 
 .field-hint-error {
   color: var(--danger);
+}
+
+/* ===== "Lần trước: ..." + Giữ nguyên/Điền mới (views/createLesson.js::rememberToggleHtml) —
+   yêu cầu người dùng: nhớ lại lĩnh vực/ngành nghề/mô tả công việc lần tạo bài trước, hỏi rõ
+   giữ hay đổi thay vì âm thầm điền sẵn không giải thích. ===== */
+.remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.remember-hint {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.remember-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.remember-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.remember-btn.active {
+  color: #fff;
+  background: var(--purple);
+  border-color: var(--purple);
 }
 
 .error-text {
@@ -326,26 +403,65 @@ textarea:focus {
   margin: 0 0 20px;
 }
 
-/* ===== Header (avatar + streak + settings) — màn "Bài học" chính ===== */
+/* ===== Header (avatar + streak + settings) — DÙNG CHUNG mọi màn (app/js/header.js) =====
+   min-height = đúng --touch-min (chiều cao avatar) — ĐẢM BẢO hàng header cao ĐỀU NHAU dù bên
+   trái là avatar (44px) hay tiêu đề chữ (~28px ở .app-header-title), tránh "độ cao không đồng
+   bộ, khi cao hơn khi thấp hơn" người dùng phát hiện khi chuyển qua lại giữa các màn. */
 .app-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  min-height: var(--touch-min);
+  margin-bottom: 10px;
 }
 
+/* Bọc nút "<" + tiêu đề CÙNG 1 hàng (yêu cầu người dùng: "đưa lên cao và đồng bộ với các mục
+   khác" — trước đó back nằm riêng 1 hàng phía trên .app-header, đẩy tiêu đề xuống thấp hơn
+   hẳn Yêu thích/Thư viện AI vốn không có back). min-width:0 để tiêu đề dài vẫn truncate/wrap
+   đúng thay vì đẩy tràn header-right ra ngoài. */
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Nút "<" quay lại — KHÔNG nền tròn, KHÔNG chữ (yêu cầu người dùng: "chỉ cần <"), chevron đơn
+   giản như back-nav iOS/Android. */
+.back-chevron {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: var(--touch-min);
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  margin-left: -8px;
+}
+
+/* HÀNG NGANG (không phải cột căn giữa như bản trước) — bản cột cũ khiến bề rộng cột đổi theo
+   độ dài chữ tier ("..." -> "Người mới"/"Explorer"...), mà avatar lại CĂN GIỮA trong cột đó
+   nên bị đẩy lệch trái/phải theo mỗi lần tier đổi — đúng nguyên nhân "icon người dùng nhảy"
+   người dùng phát hiện. Hàng ngang: avatar có vị trí CỐ ĐỊNH bên trái, badge dài/ngắn thế nào
+   cũng chỉ đẩy các phần tử BÊN PHẢI nó dịch chuyển, không ảnh hưởng chính avatar. Đồng thời
+   badge nằm NGANG HÀNG avatar thay vì chiếm thêm 1 dòng bên dưới (yêu cầu người dùng: "để
+   không chiếm không gian bên dưới"). */
 .header-avatar-block {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .header-avatar {
-  width: 64px;
-  height: 64px;
+  /* Thu nhỏ = đúng size nút cài đặt (--touch-min) — trước là 64px, to hơn hẳn icon settings
+     bên phải cùng hàng, mất cân đối (yêu cầu người dùng theo ảnh mẫu). */
+  width: var(--touch-min);
+  height: var(--touch-min);
   border-radius: 50%;
-  padding: 3px;
+  padding: 2px;
   background: var(--gradient-primary);
 }
 
@@ -390,22 +506,33 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* KHÔNG còn nền tròn (yêu cầu người dùng) — icon trơn, màu theo .icon mặc định (currentColor
+   kế thừa từ var(--text) trên body) là đủ tương phản trên nền màn hình sáng. */
 .settings-btn {
   width: var(--touch-min);
   height: var(--touch-min);
-  border-radius: 50%;
-  background: var(--surface);
+  background: none;
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
-  box-shadow: var(--shadow-card);
+  color: var(--text-dim);
+  /* Không còn nền tròn phía sau (yêu cầu người dùng) — drop-shadow giữ icon rõ nét dù đổi
+     sang hình nền tối (vd "Ban đêm") hay sáng, không phụ thuộc màu nền bên dưới. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+/* Tiêu đề màn Yêu thích/Thư viện AI đặt NGAY TRONG .app-header (thay chỗ avatar) — reset hết
+   margin mặc định của .screen-title để canh giữa đẹp cùng hàng với streak/settings bên phải. */
+.app-header-title {
+  margin: 0;
+  font-size: 1.25rem;
 }
 
 /* ===== Search + filter row ===== */
 .search-row {
   display: flex;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .filter-btn {
@@ -451,14 +578,267 @@ textarea:focus {
   color: var(--text-dim);
 }
 
-/* ===== Content-type tabs (Bài đọc / Hội thoại) ===== */
+/* ===== Quick actions (Văn bản / Máy ảnh / AI / Luyện viết) — 4 lối tạo bài học nhanh thay
+   Mentor AI đã tắt, xem views/lessons.js QUICK_ACTIONS. Lưới 4 cột đều nhau, icon trên chữ
+   dưới — giống phong cách "app launcher" quen thuộc (Cake, Duolingo...), dễ quét mắt hơn 1
+   hàng nút dài chữ. ===== */
+/* KHÔNG bọc card/nền/đổ bóng (yêu cầu người dùng: bản đầu 4 thẻ trắng quá to, nặng hình) —
+   chỉ icon tròn nhỏ + chữ, nổi trực tiếp trên nền minh hoạ của màn hình, giống hàng icon lối
+   tắt quen thuộc (Zalo, các app ngân hàng...) hơn là 4 nút bấm rời rạc. */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-size: 0.66rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.quick-action-btn:active {
+  transform: scale(0.94);
+}
+
+.quick-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--purple);
+  background: var(--purple-soft);
+}
+
+.quick-action-label {
+  white-space: nowrap;
+}
+
+/* ===== "BÀI ĐANG ĐỌC" — carousel lướt ngang (views/lessons.js loadContinueSection). Nhãn
+   mục dạng viên thuốc căn giữa, giống ảnh mẫu, tách biệt rõ với danh sách bài học bên dưới. */
+/* Nhãn "Bài đang đọc" ĐỒNG BỘ kiểu tab với .content-tab-btn (Bài đọc/Hội thoại) ngay bên
+   dưới — yêu cầu người dùng: trước là 1 viên thuốc (pill) rời rạc, không cùng "họ" với 2 tab
+   kia. KHÔNG đụng vào .continue-card (giữ nguyên như bản trước đó). */
+.section-label-row {
+  margin-bottom: 10px;
+}
+
+.section-label-tab {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--purple);
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--purple);
+  /* Nhãn này nằm TRỰC TIẾP trên hình nền phong cảnh (không có thẻ/nền riêng) — text-shadow
+     giữ chữ đọc được dù đổi sang hình nền tối/sáng bất kỳ (yêu cầu người dùng: đổi nền không
+     được để chữ lẫn vào nền). */
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+.continue-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  /* Ẩn thanh cuộn ngang (Chrome/Safari) — vẫn cuộn được bằng ngón tay, chỉ giấu thanh xám xấu. */
+  scrollbar-width: none;
+}
+
+.continue-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tỷ lệ 4:3 (yêu cầu người dùng, đồng bộ với .lesson-card-cover bên dưới) thay vì height cố
+   định — flex 0 0 38% -> nhỏ hơn nữa, luôn thấy 2 thẻ trọn + hé thẻ thứ 3. */
+.continue-card {
+  position: relative;
+  flex: 0 0 38%;
+  scroll-snap-align: start;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background-color: var(--surface-soft);
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.continue-card-fallback-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-primary);
+  z-index: 0;
+}
+
+/* Vùng chữ (đáy thẻ) LÀM MỜ ảnh bìa phía sau + phủ tối dần — kiểu "kính mờ" (frosted glass)
+   ĐÚNG CHỖ chữ nằm, chứ không phải 1 góc bất kỳ không liên quan (góc trên-phải bản trước bị
+   người dùng chê "mờ kiểu nghiệp dư" vì không ăn nhập gì với chữ). Nay: mờ + tối CHỈ đúng dải
+   dưới cùng nơi chữ đè lên, ảnh phía trên vẫn SẮC NÉT hoàn toàn — giống cách Netflix/Prime
+   Video làm caption bar cho poster, chuyên nghiệp hơn hẳn 1 vệt mờ vô nghĩa giữa ảnh. */
+.continue-card-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58%;
+  z-index: 1;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 35%, rgba(0, 0, 0, 0.8) 100%);
+}
+
+/* ".fav-btn.continue-card-fav" (2 class) CỐ Ý thay vì chỉ ".continue-card-fav" — selector
+   ".fav-btn" định nghĩa SAU trong file (color: var(--text-dim)) nên nếu cùng độ đặc thù
+   (specificity) sẽ đè ngược màu trắng này, icon tim chìm vào ảnh nền tối. */
+.fav-btn.continue-card-fav {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  background: none;
+  color: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
+.continue-card-fav .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.continue-card-body {
+  position: relative;
+  z-index: 1;
+  padding: 6px 8px 8px;
+  color: #fff;
+  min-width: 0;
+}
+
+/* KHÔNG uppercase/letter-spacing — cùng phong cách chữ thường với .content-text (nội dung
+   bài đọc) thay vì kiểu "chữ hoa dàn hàng" trước đó bị người dùng nhận xét "không khớp font".
+   Toàn app vẫn chỉ 1 font-family duy nhất (--font-main); khác biệt trước là do TEXT-TRANSFORM
+   chứ không phải font, sửa ở đây là đủ. */
+.continue-card-title {
+  font-weight: 700;
+  font-size: 0.78rem;
+  margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.continue-card-sub {
+  color: #ffd7a3;
+  font-weight: 600;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.continue-card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.continue-card-meta .badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.continue-card-progress {
+  position: relative;
+  z-index: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.continue-card-progress span {
+  display: block;
+  height: 100%;
+  background: var(--orange);
+}
+
+/* ===== Card "Lĩnh vực" (màn Thư viện AI, views/lessons.js::renderIndustrySection) — CÙNG
+   size/tỉ lệ 4:3 với .continue-card (yêu cầu người dùng "giống bài đang đọc"), khác là không
+   có ảnh bìa/tim (đại diện 1 NHÓM bài, không phải 1 bài) — chỉ số đếm to + tên lĩnh vực trên
+   nền gradient. "active" (đang lọc theo lĩnh vực này) -> viền trắng nổi bật. ===== */
+.industry-card {
+  flex: 0 0 38%;
+  scroll-snap-align: start;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #fff;
+  text-align: center;
+  padding: 8px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.industry-card.active {
+  border-color: #fff;
+}
+
+.industry-card-count {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.industry-card-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* ===== Content-type tabs (Bài đọc / Hội thoại) — 2 tab CHIA ĐỀU, canh giữa (yêu cầu người
+   dùng: trước lệch hẳn về bên trái vì chỉ rộng đúng bằng chữ + gap cố định). ===== */
 .content-tabs {
   display: flex;
-  gap: 24px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .content-tab-btn {
+  flex: 1;
   background: none;
   border: none;
   padding: 6px 2px 10px;
@@ -468,6 +848,7 @@ textarea:focus {
   border-bottom: 3px solid transparent;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -571,6 +952,13 @@ textarea:focus {
   padding-bottom: 4px;
 }
 
+/* Chip Từ chuyên ngành (views/createLesson.js) — CHỈ 4 lựa chọn sau khi bỏ "Không có"/"50"
+   (yêu cầu người dùng), đủ ngắn để XUỐNG DÒNG thay vì cuộn ngang ("Không xài cuộn ngang"). */
+.filter-row-wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
 .filter-row[hidden] {
   display: none;
 }
@@ -592,26 +980,85 @@ textarea:focus {
   background: var(--purple);
 }
 
+/* ===== Level+số bài (Yêu thích/Thư viện AI) — thay ô tìm kiếm/nút Tìm lọc (yêu cầu người
+   dùng), xem views/lessons.js::renderLevelCountRow(). Badge tròn màu theo level dùng ĐÚNG
+   bảng màu đã có ở .word-popover-level (CEFR: xanh lá A1 -> đỏ C1), để nhất quán màu sắc
+   "level" xuyên suốt app thay vì bịa bảng màu mới. ===== */
+.level-count-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  white-space: nowrap;
+  background: var(--surface);
+  border: none;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+
+.level-count-chip.active {
+  color: #fff;
+  background: var(--purple);
+}
+
+.level-count-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: var(--text-dim);
+}
+
+.level-count-chip-badge[data-level="A1"] { background: #22c55e; }
+.level-count-chip-badge[data-level="A2"] { background: #84cc16; }
+.level-count-chip-badge[data-level="B1"] { background: #3b82f6; }
+.level-count-chip-badge[data-level="B2"] { background: #8b5cf6; }
+.level-count-chip-badge[data-level="C1"] { background: #ef4444; }
+
+.level-count-chip-num {
+  font-weight: 800;
+}
+
 .lessons-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
+/* Thẻ NỀN ĐẶC (var(--surface)) thay vì trong suốt — trên nền minh hoạ phong cảnh phía sau
+   (body::before), chữ trong suốt từng bị lẫn vào bầu trời/cây cối lúc cuộn qua đúng vùng sáng
+   màu (yêu cầu người dùng: "dùng card để chữ không bị trộn vào nền"). Đổi từ list-item viền
+   dưới sang thẻ bo góc + đổ bóng, tách biệt rõ ràng khỏi nền, đồng bộ phong cách với
+   .continue-card/.stat-card/.history-item ở trên. */
 .lesson-card {
   position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  background: transparent;
+  background: var(--surface);
   border: none;
-  border-bottom: 1px solid rgba(230, 233, 240, 0.7);
-  padding: 16px 4px;
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow-card);
   cursor: pointer;
 }
 
+/* Tỷ lệ 4:3 thu nhỏ (yêu cầu người dùng, đồng bộ với .continue-card ở carousel "Bài đang
+   đọc") thay vì ô vuông 84x84 cũ. */
 .lesson-card-cover {
-  width: 84px;
-  height: 84px;
+  position: relative;
+  width: 92px;
+  aspect-ratio: 4 / 3;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -619,8 +1066,23 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
-  box-shadow: var(--shadow-card);
+  font-size: 1.5rem;
+}
+
+/* Icon nhỏ góc dưới-phải của ảnh bìa, cho biết Bài đọc/Hội thoại NGAY CẢ khi đã có ảnh bìa
+   thật che khuất icon placeholder mặc định — quét mắt nhanh hơn khi lướt danh sách dài. */
+.lesson-card-type-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .lesson-card-cover img {
@@ -634,11 +1096,11 @@ textarea:focus {
   min-width: 0;
 }
 
+/* KHÔNG uppercase — cùng kiểu chữ thường với .content-text (nội dung bài đọc thật), tránh
+   cảm giác "2 font khác nhau" dù kỹ thuật vẫn chỉ 1 var(--font-main) (người dùng nhận xét). */
 .lesson-card-title {
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.95rem;
   margin-bottom: 4px;
 }
 
@@ -658,22 +1120,23 @@ textarea:focus {
   font-size: 0.8rem;
 }
 
+/* KHÔNG còn nền tròn trắng phía sau (yêu cầu người dùng) — chỉ icon trơn, dùng drop-shadow
+   thay cho box-shadow/nền để icon vẫn nổi rõ trên mọi nền (thẻ trắng lẫn ảnh bìa carousel). */
 .fav-btn {
   position: absolute;
   top: 10px;
   right: 4px;
   width: var(--touch-min);
   height: var(--touch-min);
-  background: var(--surface);
+  background: none;
   border: none;
-  border-radius: 50%;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: var(--shadow-card);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
   transition: color 0.15s ease, transform 0.1s ease;
 }
 
@@ -699,7 +1162,12 @@ textarea:focus {
 /* ===== Lesson detail ===== */
 .lesson-header-row {
   display: flex;
-  align-items: flex-start;
+  /* "center" thay vì "flex-start" — nút "<" (khối cố định 44px, icon tự căn giữa BÊN TRONG
+     khối đó) và chữ tiêu đề (chiều cao theo font, không phải 44px) không cùng chiều cao, nên
+     "flex-start" (ép cả 2 dính mép TRÊN) làm tâm icon và tâm dòng chữ lệch nhau — đúng lỗi
+     người dùng chỉ ra ("chữ và nút vẫn lệch"). "center" canh theo TÂM của từng phần tử, luôn
+     thẳng hàng bất kể chênh lệch chiều cao. */
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
@@ -709,23 +1177,20 @@ textarea:focus {
   margin: 0;
 }
 
-.lesson-back-btn,
+/* KHÔNG còn nền tròn/đổ bóng (yêu cầu người dùng) — đây chính là chỗ bị BỎ SÓT khi flat hoá
+   .fav-btn/.settings-btn trước đó: nút tim ở màn chi tiết bài dùng class RIÊNG
+   (.lesson-fav-btn, khác .fav-btn của thẻ danh sách) nên không tự động ăn theo, gây lệch hẳn
+   "nặng" (tròn+đổ bóng) so với nút "<" bên cạnh đã flat — đúng thứ người dùng chỉ ra. */
 .lesson-fav-btn {
   flex-shrink: 0;
   width: var(--touch-min);
   height: var(--touch-min);
-  border-radius: 50%;
-  background: var(--surface);
+  background: none;
   border: none;
+  color: var(--text-dim);
   font-size: 1.15rem;
   cursor: pointer;
-  box-shadow: var(--shadow-card);
-}
-
-.lesson-back-btn {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--text);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
 .lesson-header-row .screen-title {
@@ -1368,23 +1833,6 @@ textarea:focus {
   font-size: 1.25rem;
 }
 
-.nav-tab-fab {
-  flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  color: #fff;
-  border: 4px solid var(--bg-fallback);
-  box-shadow: var(--shadow-float);
-  font-size: 1.6rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transform: translateY(-16px);
-  margin: 0 4px;
-}
 
 @media (min-width: 600px) {
   .screen {

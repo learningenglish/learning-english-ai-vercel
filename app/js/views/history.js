@@ -3,14 +3,17 @@ import { navigate } from "../router.js";
 import { getHistory } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
 import { icon } from "../icons.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
 
 export function renderHistory(mount) {
   mount.innerHTML = `
     <div class="screen">
-      <h1 class="screen-title">Lịch sử học</h1>
+      ${appHeaderHtml(`<span style="color:var(--purple)">${icon("clock", { size: 22 })}</span> Lịch sử học`)}
       <div id="history-list" class="history-list"><p class="muted">Đang tải...</p></div>
     </div>
   `;
+  wireAppHeader(mount);
+  loadAppHeaderStats(mount);
   load();
 
   async function load() {

@@ -150,6 +150,13 @@ QUY TẮC VỀ TỪ CHUYÊN NGÀNH:
 - Từ chuyên ngành phải lấy từ Lĩnh vực / Ngành nghề / Sản phẩm được cung cấp. Nếu cả ba đều là "không có" thì bỏ qua RIÊNG yêu cầu chuyên ngành này — "vocabulary" VẪN PHẢI có đủ số lượng theo mục SỐ LƯỢNG bên dưới, chỉ đổi 100% sang từ vựng phổ thông, KHÔNG được để mảng rỗng.
 - Mọi từ chuyên ngành xuất hiện trong bài PHẢI có mặt trong danh sách "vocabulary" của kết quả.
 
+QUY TẮC VỀ CHỦ ĐỀ (form "Tạo bài học" 2026-07-23 bỏ ô nhập Chủ đề — luôn tự sinh):
+- Nếu Chủ đề là "không có" VÀ Lĩnh vực cũng "không có": tự chọn 1 chủ đề giao tiếp hàng ngày
+  thông dụng (chào hỏi, mua sắm, hỏi đường, đặt hàng, gọi món, đi khám bệnh nhẹ...), không cần
+  liên quan chuyên ngành gì.
+- Nếu Chủ đề là "không có" NHƯNG có Lĩnh vực: tự chọn 1 chủ đề PHÙ HỢP với đúng Lĩnh vực đó
+  (không lái sang chủ đề chung chung không liên quan).
+
 QUY TẮC VỀ TÌNH HUỐNG:
 - Nếu người dùng cung cấp Tình huống (khác "không có"): TOÀN BỘ nội dung bài phải diễn ra
   đúng trong tình huống đó — nhân vật, bối cảnh, diễn biến bám sát mô tả, không lái sang
@@ -570,13 +577,18 @@ function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkD
   return { valid: true };
 }
 
-function buildLessonInsertRow(parsed, { userId, source, goalId, skinId, spineSlot }) {
+function buildLessonInsertRow(parsed, { userId, source, goalId, skinId, spineSlot, industry }) {
   return {
     user_id: userId,
     source,
     goal_id: goalId || null,
     skin_id: skinId || null,
     spine_slot: Number.isInteger(spineSlot) ? spineSlot : null,
+    // "Ngành nghề" cụ thể hơn "Lĩnh vực" -> ưu tiên nếu người dùng điền cả 2 ở form Tạo bài
+    // học (views/createLesson.js) — chỉ để NHÓM thẻ ở màn Thư viện AI (2026-07-23,
+    // views/lessons.js::renderIndustrySection), KHÔNG dùng lại để dựng prompt (đã dùng data
+    // gốc cho việc đó ở buildGenerateLessonUserPrompt, không liên quan cột này).
+    industry: industry || null,
     title: parsed.title,
     title_vi: parsed.title_vi,
     level: parsed.level,
@@ -705,7 +717,14 @@ export async function generate_lesson(data, ctx) {
     resolveSkinId(data.skin_id),
   ]);
   const saved = await insertLesson(
-    buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "ai_generated", goalId, skinId, spineSlot: data.spine_slot })
+    buildLessonInsertRow(parsed, {
+      userId: ctx.studentId,
+      source: "ai_generated",
+      goalId,
+      skinId,
+      spineSlot: data.spine_slot,
+      industry: (data.industry || data.field || "").trim() || null,
+    })
   );
   if (!saved) return { error: "Tạo bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 

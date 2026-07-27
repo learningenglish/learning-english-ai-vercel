@@ -53,6 +53,21 @@ export async function listLessons({ filter = "all" } = {}) {
   return restFetch(`lessons?${q}`);
 }
 
+// Màn "Thư viện AI" (bottom nav) — CHỈ bài có lessons.source='ai_generated' (sinh từ form
+// "Tạo bài học" tự nhập, action generate_lesson), KHÁC bài "user_text" (dán sẵn văn bản qua
+// action analyze_user_text, xem views/createFromText.js) — 2 giá trị enum cố định ở
+// api/_generate/lesson.js::buildLessonInsertRow(), luôn được set khi insert nên lọc được
+// chắc chắn, không cần suy luận qua content_type hay goal_id (goal_id chỉ dành riêng cho
+// luồng Mentor AI đã tắt UI, KHÔNG dùng để phân biệt ở đây).
+export async function listAiGeneratedLessons({ filter = "all" } = {}) {
+  let q =
+    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry" +
+    "&source=eq.ai_generated&order=created_at.desc";
+  if (filter === "favorite") q += "&is_favorite=eq.true";
+  if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
+  return restFetch(`lessons?${q}`);
+}
+
 // Lưới thư viện Mentor AI (Đợt 3 mục 6.1) — CHỈ bài có goal_id (sinh từ luồng Mentor), khác
 // listLessons() ở trên vốn trả TOÀN BỘ bài của user bất kể nguồn nào (tab "Bài học" cũ vẫn
 // giữ nguyên hành vi, không lọc theo goal_id).
@@ -63,6 +78,25 @@ export async function listMentorLibraryLessons({ filter = "all" } = {}) {
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
   return restFetch(`lessons?${q}`);
+}
+
+// Màn "Bài học" mới — mục "BÀI ĐANG ĐỌC" (carousel lướt ngang): bài có tiến độ (đã mở, có
+// last_opened_at) nhưng CHƯA hoàn thành (completed_at rỗng), mới mở gần nhất trước. Trả kèm
+// completed_paragraphs/completed_exercises để tính % tiến độ ở lessonCard.js, không cần gọi
+// thêm request nào khác.
+export async function listInProgressLessons({ limit = 6 } = {}) {
+  const rows = await restFetch(
+    "lesson_progress?completed_at=is.null&last_opened_at=not.is.null&order=last_opened_at.desc" +
+      `&limit=${limit}` +
+      "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at)"
+  );
+  return (rows || [])
+    .filter((r) => r.lessons)
+    .map((r) => ({
+      ...r.lessons,
+      progress_page: r.completed_paragraphs || 0,
+      progress_done_exercises: (r.completed_exercises || []).length,
+    }));
 }
 
 export async function listLearningGoals() {

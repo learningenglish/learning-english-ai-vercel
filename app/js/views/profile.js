@@ -4,6 +4,7 @@ import { getProfileStats } from "../db.js";
 import { navigate } from "../router.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
+import { backChevronHtml, wireBackLink } from "../header.js";
 import { getThemePreference, setThemePreference } from "../theme.js";
 import {
   getBackgroundPreference,
@@ -27,7 +28,7 @@ export function renderProfile(mount) {
   const currentBg = getBackgroundPreference();
   mount.innerHTML = `
     <div class="screen">
-      <h1 class="screen-title">Hồ sơ</h1>
+      <div class="app-header-left">${backChevronHtml()}<h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Hồ sơ</h1></div>
       <div class="card profile-card">
         <div class="profile-email">${escapeHtml(session?.user?.email || "")}</div>
         <div id="profile-stats" class="stat-row"><div class="stat-pill muted">Đang tải...</div></div>
@@ -57,6 +58,10 @@ export function renderProfile(mount) {
       <button type="button" class="btn btn-danger btn-block" id="logout-btn">${icon("logout", { size: 18 })} Đăng xuất</button>
     </div>
   `;
+
+  // history.back() — Hồ sơ có thể vào từ CẢ 5 tab chính (nút cài đặt luôn có mặt), quay đúng
+  // về màn vừa đứng thay vì cố định 1 đích đến (giống lesson.js).
+  wireBackLink(mount, () => history.back());
 
   mount.querySelector("#logout-btn").addEventListener("click", () => {
     clearSession();

@@ -12,6 +12,7 @@ import { icon } from "./icons.js";
 import { renderLogin } from "./views/login.js";
 import { renderLessons } from "./views/lessons.js";
 import { renderCreateLesson } from "./views/createLesson.js";
+import { renderCreateFromText } from "./views/createFromText.js";
 import { renderLessonDetail } from "./views/lesson.js";
 import { renderHistory } from "./views/history.js";
 import { renderStats } from "./views/stats.js";
@@ -25,18 +26,28 @@ applyBackground();
 // của Minh) — nút nổi giữa quay lại dẫn thẳng vào form "Tạo bài học" tự nhập (xem
 // views/createLesson.js). Backend mentor.js/mentor-lines/industry_skins/learning_goals VẪN
 // giữ nguyên (không xoá) — chỉ không còn route/nav nào trên UI trỏ tới views/mentor*.js nữa.
+// Nhãn hiển thị đổi theo ảnh mẫu bố cục mới (2026-07-23, quyết định của Minh sau khi hỏi rõ):
+// "Bài học"->"Phổ biến", "Thống kê"->"Tiến trình". "Thư viện AI" (giữa) — 2026-07-23 Minh làm
+// rõ lại: ĐÂY LÀ 1 MÀN DANH SÁCH THẬT (không phải form tạo bài — form đã có lối vào riêng qua
+// icon "AI" ở hàng quick-actions màn Phổ biến, xem views/lessons.js::QUICK_ACTIONS), hiển thị
+// các bài có lessons.source='ai_generated' (sinh từ chính form đó), TÁI DÙNG renderLessons()
+// với params[0]="library" — cùng khung sườn với Phổ biến/Yêu thích nhưng khác nguồn dữ liệu +
+// tiêu đề riêng, không phải mở lại màn Mentor AI đã tắt (mentor.js không có route nào trỏ
+// tới nữa, goal_id KHÔNG được dùng để lọc ở đây). Icon "library" (giá sách).
 const NAV_TABS = [
-  { path: "/lessons", label: "Bài học", icon: "book" },
+  { path: "/lessons", label: "Phổ biến", icon: "book" },
   { path: "/favorites", label: "Yêu thích", icon: "heart" },
-  { path: "/create", label: "Tạo bài học", icon: "plus", fab: true },
+  { path: "/ai-library", label: "Thư viện AI", icon: "library" },
   { path: "/history", label: "Lịch sử", icon: "clock" },
-  { path: "/stats", label: "Thống kê", icon: "bar-chart" },
+  { path: "/stats", label: "Tiến trình", icon: "bar-chart" },
 ];
 
 registerRoute("/login", renderLogin);
 registerRoute("/lessons", renderLessons);
 registerRoute("/favorites", (mount) => renderLessons(mount, ["favorite"]));
+registerRoute("/ai-library", (mount) => renderLessons(mount, ["library"]));
 registerRoute("/create", renderCreateLesson);
+registerRoute("/create-text", renderCreateFromText);
 registerRoute("/lesson", renderLessonDetail);
 registerRoute("/history", renderHistory);
 registerRoute("/stats", renderStats);
@@ -76,9 +87,6 @@ function renderBottomNav(activePath) {
   // sáng đúng tab "Yêu thích" thay vì "Bài học" khi đang đứng ở đó.
   nav.innerHTML = NAV_TABS.map((tab) => {
     const isActive = activePath === tab.path;
-    if (tab.fab) {
-      return `<button type="button" class="nav-tab-fab" data-path="${tab.path}" aria-label="${tab.label}">${icon(tab.icon, { size: 24, strokeWidth: 2.25 })}</button>`;
-    }
     const isFavoriteActive = isActive && tab.path === "/favorites";
     return `
       <button type="button" class="nav-tab ${isActive ? "active" : ""}" data-path="${tab.path}">

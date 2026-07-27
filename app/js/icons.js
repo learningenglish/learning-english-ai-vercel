@@ -7,7 +7,12 @@ const PATHS = {
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   "message-circle":
     '<path d="M21 11.5a8.38 8.38 0 0 1-1.9 5.4 8.5 8.5 0 0 1-9.6 2.9L3 21l1.4-4.2A8.5 8.5 0 1 1 21 11.5z"/>',
-  heart: '<path d="M12 21s-7.5-4.6-10-9.5C.5 8 2 4 6 4c2 0 3.5 1 4 2 .5-1 2-2 4-2 4 0 5.5 4 4 7.5C19.5 16.4 12 21 12 21z"/>',
+  // Path chuẩn (Feather/Lucide "heart") — path tự vẽ trước đó có điểm nối không khớp, tạo
+  // vết "mẻ" nhỏ ở đáy tim khi zoom/stroke dày (người dùng phát hiện qua ảnh thật). Path này
+  // đã được kiểm chứng rộng rãi, đường cong khép kín liền mạch, không còn vết mẻ.
+  heart:
+    '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>',
+  library: '<path d="M4 4v16"/><path d="M8 8v12"/><path d="M12 6v14"/><path d="M16 6l4 14"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
   "bar-chart": '<path d="M4 20V10"/><path d="M12 20V4"/><path d="M20 20v-7"/>',
   plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
@@ -46,6 +51,11 @@ const PATHS = {
   "dollar-sign": '<path d="M12 2v20"/><path d="M17 6.5c0-1.9-2.2-3.5-5-3.5S7 4.6 7 6.5 9.2 10 12 10s5 1.6 5 3.5-2.2 3.5-5 3.5-5-1.6-5-3.5"/>',
   briefcase: '<rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M2.5 13h19"/>',
   bookmark: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z"/>',
+  camera:
+    '<path d="M4 8h3l1.6-2.4A2 2 0 0 1 10.3 4.5h3.4a2 2 0 0 1 1.7 1.1L17 8h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  "edit-3": '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  "file-text":
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/>',
   // Mentor AI (Đợt 3) — nút (+) đổi từ "plus" thuần sang icon riêng biệt với "compass" (đã
   // dùng cho tier badge ở màn Bài học, tránh trùng icon 2 nơi khác nghĩa nhau).
   sparkles:

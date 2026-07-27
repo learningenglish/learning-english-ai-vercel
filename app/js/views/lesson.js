@@ -9,6 +9,7 @@ import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported } from "../tts.js";
 import { icon } from "../icons.js";
 import { showToast } from "../toast.js";
+import { backChevronHtml, wireBackLink } from "../header.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
@@ -136,7 +137,7 @@ export async function renderLessonDetail(mount, params) {
   mount.innerHTML = `
     <div class="screen">
       <div class="lesson-header-row">
-        <button type="button" class="lesson-back-btn" id="lesson-back-btn" aria-label="Quay lại">${icon("arrow-left", { size: 20 })}</button>
+        ${backChevronHtml()}
         <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
         <button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>
       </div>
@@ -150,7 +151,7 @@ export async function renderLessonDetail(mount, params) {
     </div>
   `;
 
-  mount.querySelector("#lesson-back-btn").addEventListener("click", () => {
+  wireBackLink(mount, () => {
     ttsPlayer.stop();
     // history.back() thay vì navigate cố định "/lessons" — quay đúng về chỗ đã vào bài
     // (Bài học / Yêu thích / Lịch sử đều dẫn tới đây), hash router hoạt động đúng với
