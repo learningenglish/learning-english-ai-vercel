@@ -388,6 +388,13 @@ export function renderWritingPractice(mount) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
+  // TẤT CẢ việc cập nhật audioElapsedSec/audioPlayStartedAt/timer/UI khi trạng thái phát đổi
+  // GOM VỀ 1 CHỖ DUY NHẤT (onStateChange) — tránh 2 nơi tự tính lệch nhau. Phân biệt "phát xong
+  // hết" với "tạm dừng giữa chừng" bằng THỜI GIAN ƯỚC LƯỢNG đã trôi qua so với tổng thời lượng
+  // ước lượng (KHÔNG dùng itemIndex/wordOffset của tts.js để suy luận — với danh sách 1 phần tử
+  // duy nhất, itemIndex luôn là 0 và wordOffset không tự cập nhật liên tục trong lúc đọc, nên
+  // "wordOffset===0" KHÔNG phân biệt được pause sớm với đọc xong — lỗi thật phát hiện khi tự
+  // rà lại logic trước khi triển khai).
   function ensureAudioPlayer() {
     if (ttsPlayer) return;
     const text = state.grading?.clean_rewrite?.text || "";
@@ -397,15 +404,21 @@ export function renderWritingPractice(mount) {
     audioPlayStartedAt = null;
     ttsPlayer = createPlayer({
       onStateChange: (s) => {
-        if (!s.playing) stopAudioProgressTimer();
         const btn = mount.querySelector("#clean-audio-playpause");
         if (btn) btn.innerHTML = icon(s.playing ? "pause" : "play", { size: 18 });
-        if (!s.playing && s.itemIndex >= s.items.length - 1 && s.wordOffset === 0) {
-          // Phát xong hết (goToItem() vượt quá items.length tự đặt playing=false) -> coi như
-          // kết thúc, đưa progress về đầu để bấm Play lại là nghe lại từ đầu.
-          audioElapsedSec = 0;
-          updateAudioProgressUI();
+        if (s.playing) {
+          audioPlayStartedAt = Date.now();
+          startAudioProgressTimer();
+          return;
         }
+        stopAudioProgressTimer();
+        updateCurrentElapsed();
+        audioPlayStartedAt = null;
+        // Ước lượng đã trôi gần/hết tổng thời lượng -> coi như phát xong hết, về đầu để bấm
+        // Play lại là nghe từ đầu. CÒN THIẾU nhiều so với tổng -> chỉ là tạm dừng, giữ nguyên vị
+        // trí (KHÔNG reset về 0).
+        if (audioElapsedSec >= audioTotalSec - 1) audioElapsedSec = 0;
+        updateAudioProgressUI();
       },
     });
     ttsPlayer.load([{ text }], 0);
@@ -441,14 +454,12 @@ export function renderWritingPractice(mount) {
     audioProgressTimer = null;
   }
 
+  // onStateChange (đăng ký ở ensureAudioPlayer) lo hết phần cập nhật elapsed/timer/UI khi
+  // playing đổi — hàm này chỉ cần gọi playPause(), không tự tính toán gì thêm (tránh 2 nơi tự
+  // suy ra cùng 1 trạng thái rồi lệch nhau).
   function toggleAudioPlayPause() {
     ensureAudioPlayer();
-    const wasPlaying = ttsPlayer.getState().playing;
-    if (!wasPlaying) audioPlayStartedAt = Date.now();
-    else updateCurrentElapsed();
     ttsPlayer.playPause();
-    if (!wasPlaying) startAudioProgressTimer();
-    else audioPlayStartedAt = null;
   }
 
   // Tua bằng CÁCH DUY NHẤT tts.js hỗ trợ (skip(giây lệch), xem ghi chú "GIỚI HẠN THẬT" đầu
