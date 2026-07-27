@@ -263,7 +263,7 @@ QUY TẮC "clean_rewrite" (bài viết hoàn chỉnh — bài MẪU chuyên nghi
 - Trả về liền mạch dạng văn xuôi bình thường — KHÔNG chèn bất kỳ ký hiệu đánh dấu nào (không gạch ngang, không in đậm, không ngoặc chú thích).
 
 QUY TẮC "clean_rewrite_vocab" (chỉ liệt kê khi có Lĩnh vực chuyên ngành, để mảng rỗng nếu không có):
-- CHỈ liệt kê từ/cụm từ CHUYÊN NGÀNH thực sự XUẤT HIỆN trong "clean_rewrite" — không liệt kê từ vựng phổ thông. NẾU "industry_vocab_gap" = true, mảng này KHÔNG ĐƯỢC RỖNG (phải khớp với các từ chuyên ngành bạn vừa chèn vào theo quy tắc trên).
+- CHỈ liệt kê từ/cụm từ CHUYÊN NGÀNH thực sự XUẤT HIỆN trong "clean_rewrite" — không liệt kê từ vựng phổ thông. Phép thử: một người học tiếng Anh BÌNH THƯỜNG (không làm trong lĩnh vực này) có khả năng CHƯA từng gặp từ/cụm này không? Nếu KHÔNG (từ đó ai học tiếng Anh cũng biết, vd "spacious", "excellent", "assistance") thì KHÔNG được liệt kê, dù nghe "hay" hay "nâng cấp" tới đâu — chỉ liệt kê thuật ngữ THẬT SỰ đặc trưng của lĩnh vực đó. NẾU "industry_vocab_gap" = true, mảng này KHÔNG ĐƯỢC RỖNG (phải khớp với các từ chuyên ngành bạn vừa chèn vào theo quy tắc trên).
 
 QUY TẮC "clean_rewrite_patterns" (CHỌN LỌC — dùng ĐÚNG tinh thần chọn "sentence_patterns" của bài học thông thường, KHÔNG liệt kê tràn lan):
 - CHỈ chọn cấu trúc/khuôn câu THỰC SỰ đáng học lại, PHẢI xuất hiện nguyên văn trong "clean_rewrite", KHÁC cách viết gốc của học viên, ĐÚNG TẦM cấp độ CEFR đã cho (không quá cơ bản, không quá xa tầm). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN — "why_worth_it" phải là lý do THẬT, nếu không nghĩ ra lý do thuyết phục thì BỎ QUA khuôn đó, KHÔNG hạ chuẩn để đủ số lượng. Số lượng: 2-5 mục — bài ít cấu trúc đáng chú ý thì cứ để 2, không cố nhồi.
