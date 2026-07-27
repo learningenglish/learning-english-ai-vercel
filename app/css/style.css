@@ -2310,3 +2310,68 @@ textarea:focus {
   font-size: 0.78rem;
   margin: 4px 0 0;
 }
+
+/* ===== Item 6 — Play/Pause + dải tiến trình cho "Bài viết hoàn chỉnh" (thay icon loa đơn
+   giản), CHỈ ở màn Luyện viết — không đụng thanh audio có sẵn ở màn Bài học chi tiết. ===== */
+.audio-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 14px;
+}
+
+.audio-play-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--gradient-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.audio-progress-track {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.audio-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  pointer-events: none;
+}
+
+.audio-progress-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--purple);
+  box-shadow: 0 0 0 2px var(--surface);
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  cursor: grab;
+}
+
+.audio-time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}

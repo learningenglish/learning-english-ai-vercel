@@ -25,6 +25,7 @@ import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
 import { showToast } from "../toast.js";
 import { callChatAction } from "../chatApi.js";
+import { createPlayer, isTTSSupported } from "../tts.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
@@ -60,6 +61,20 @@ export function renderWritingPractice(mount) {
   // — render() gọi lại nhiều lần mỗi khi đổi bước, nếu không cache header sẽ nhảy về "--"/"..."
   // mỗi lần đổi bước dù đã tải xong trước đó (đúng bug đã gặp ở createLesson.js).
   let headerCache = {};
+
+  // Item 6 (2026-07-27) — nút Play/Pause + dải tiến trình cho "Bài viết hoàn chỉnh", CHỈ ở màn
+  // này (KHÔNG đụng thanh audio có sẵn ở màn Bài học chi tiết — thuộc Phase B-H, đang khoá).
+  // Dùng LẠI ĐÚNG engine phát (createPlayer() trong tts.js, Web Speech — chưa đổi sang TTS chất
+  // lượng cao, việc đó giao riêng đợt sau) — chỉ xây UI điều khiển mới, không sửa tts.js.
+  // "elapsedSec"/"playStartedAt" tự ước lượng thời gian đã phát (Web Speech không có sự kiện
+  // tiến trình đáng tin cậy đa trình duyệt) — tua bằng cách gọi player.skip(giây lệch), đúng cơ
+  // chế "tua = cắt lại câu từ vị trí ước lượng" đã ghi chú sẵn trong tts.js, không phát minh cơ
+  // chế mới.
+  let ttsPlayer = null;
+  let audioProgressTimer = null;
+  let audioElapsedSec = 0;
+  let audioPlayStartedAt = null;
+  let audioTotalSec = 0;
 
   render();
   loadAppHeaderStats(mount).then((r) => {
@@ -306,6 +321,7 @@ export function renderWritingPractice(mount) {
     const c = state.grading.clean_rewrite;
     return `
       ${state.cleanCoverImage ? `<img class="writing-clean-cover" src="${escapeHtml(state.cleanCoverImage)}" alt="" />` : ""}
+      ${state.cleanTab === "content" && isTTSSupported() ? renderAudioPlayerHtml() : ""}
       <div class="tabs" id="clean-tabs">
         <button type="button" class="tab-btn ${state.cleanTab === "content" ? "active" : ""}" data-tab="content">Nội dung</button>
         <button type="button" class="tab-btn ${state.cleanTab === "vocab-grammar" ? "active" : ""}" data-tab="vocab-grammar">Từ vựng &amp; Ngữ pháp</button>
@@ -348,6 +364,162 @@ export function renderWritingPractice(mount) {
     `;
   }
 
+  // ====== Item 6: nút Play/Pause + dải tiến trình cho "Bài viết hoàn chỉnh" ======
+  const WORDS_PER_SECOND = 2.3; // khớp WORDS_PER_SECOND_AT_RATE_1 trong tts.js — dùng lại đúng hằng số ước lượng, không tự bịa số khác.
+
+  function renderAudioPlayerHtml() {
+    const playing = ttsPlayer?.getState().playing || false;
+    return `
+      <div class="audio-player" id="clean-audio-player">
+        <button type="button" class="audio-play-btn" id="clean-audio-playpause" aria-label="${playing ? "Tạm dừng" : "Phát"}">
+          ${icon(playing ? "pause" : "play", { size: 18 })}
+        </button>
+        <div class="audio-progress-track" id="clean-audio-track">
+          <div class="audio-progress-fill" id="clean-audio-fill" style="width:${audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0}%"></div>
+          <div class="audio-progress-handle" id="clean-audio-handle" style="left:${audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0}%"></div>
+        </div>
+        <span class="audio-time muted" id="clean-audio-time">${formatAudioTime(audioElapsedSec)}/${formatAudioTime(audioTotalSec)}</span>
+      </div>
+    `;
+  }
+
+  function formatAudioTime(sec) {
+    const s = Math.max(0, Math.round(sec));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+
+  function ensureAudioPlayer() {
+    if (ttsPlayer) return;
+    const text = state.grading?.clean_rewrite?.text || "";
+    const totalWords = text.split(/\s+/).filter(Boolean).length;
+    audioTotalSec = totalWords / WORDS_PER_SECOND;
+    audioElapsedSec = 0;
+    audioPlayStartedAt = null;
+    ttsPlayer = createPlayer({
+      onStateChange: (s) => {
+        if (!s.playing) stopAudioProgressTimer();
+        const btn = mount.querySelector("#clean-audio-playpause");
+        if (btn) btn.innerHTML = icon(s.playing ? "pause" : "play", { size: 18 });
+        if (!s.playing && s.itemIndex >= s.items.length - 1 && s.wordOffset === 0) {
+          // Phát xong hết (goToItem() vượt quá items.length tự đặt playing=false) -> coi như
+          // kết thúc, đưa progress về đầu để bấm Play lại là nghe lại từ đầu.
+          audioElapsedSec = 0;
+          updateAudioProgressUI();
+        }
+      },
+    });
+    ttsPlayer.load([{ text }], 0);
+  }
+
+  function updateCurrentElapsed() {
+    if (audioPlayStartedAt) {
+      audioElapsedSec = Math.min(audioTotalSec, audioElapsedSec + (Date.now() - audioPlayStartedAt) / 1000);
+      audioPlayStartedAt = Date.now();
+    }
+  }
+
+  function updateAudioProgressUI() {
+    const fill = mount.querySelector("#clean-audio-fill");
+    const handle = mount.querySelector("#clean-audio-handle");
+    const time = mount.querySelector("#clean-audio-time");
+    const pct = audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0;
+    if (fill) fill.style.width = `${pct}%`;
+    if (handle) handle.style.left = `${pct}%`;
+    if (time) time.textContent = `${formatAudioTime(audioElapsedSec)}/${formatAudioTime(audioTotalSec)}`;
+  }
+
+  function startAudioProgressTimer() {
+    stopAudioProgressTimer();
+    audioProgressTimer = setInterval(() => {
+      updateCurrentElapsed();
+      updateAudioProgressUI();
+    }, 250);
+  }
+
+  function stopAudioProgressTimer() {
+    if (audioProgressTimer) clearInterval(audioProgressTimer);
+    audioProgressTimer = null;
+  }
+
+  function toggleAudioPlayPause() {
+    ensureAudioPlayer();
+    const wasPlaying = ttsPlayer.getState().playing;
+    if (!wasPlaying) audioPlayStartedAt = Date.now();
+    else updateCurrentElapsed();
+    ttsPlayer.playPause();
+    if (!wasPlaying) startAudioProgressTimer();
+    else audioPlayStartedAt = null;
+  }
+
+  // Tua bằng CÁCH DUY NHẤT tts.js hỗ trợ (skip(giây lệch), xem ghi chú "GIỚI HẠN THẬT" đầu
+  // tts.js) — tính lệch giữa vị trí hiện tại (ước lượng) và vị trí muốn tới, không phát minh cơ
+  // chế seek mới trong tts.js.
+  function seekAudioToFraction(fraction) {
+    ensureAudioPlayer();
+    updateCurrentElapsed();
+    const targetSec = Math.max(0, Math.min(audioTotalSec, fraction * audioTotalSec));
+    const deltaSec = targetSec - audioElapsedSec;
+    ttsPlayer.skip(deltaSec);
+    audioElapsedSec = targetSec;
+    audioPlayStartedAt = ttsPlayer.getState().playing ? Date.now() : null;
+    updateAudioProgressUI();
+  }
+
+  // 2 listener gắn ở "window" (không phải ở #clean-audio-handle) vì cần bắt được pointermove/up
+  // NGAY CẢ khi con trỏ trượt ra ngoài track lúc kéo — nhưng "window" KHÔNG bị dọn tự động khi
+  // #clean-audio-player bị thay DOM (render() dựng lại toàn bộ HTML mỗi lần đổi bước) — PHẢI tự
+  // gỡ listener CŨ trước khi gắn listener MỚI mỗi lần wireAudioPlayer() chạy lại, nếu không rò
+  // rỉ thêm 1 cặp listener mỗi lần người dùng mở lại màn "Bài viết hoàn chỉnh".
+  let audioDragMoveHandler = null;
+  let audioDragUpHandler = null;
+
+  function wireAudioPlayer() {
+    const player = mount.querySelector("#clean-audio-player");
+    if (audioDragMoveHandler) window.removeEventListener("pointermove", audioDragMoveHandler);
+    if (audioDragUpHandler) window.removeEventListener("pointerup", audioDragUpHandler);
+    audioDragMoveHandler = null;
+    audioDragUpHandler = null;
+    if (!player) return;
+    mount.querySelector("#clean-audio-playpause").addEventListener("click", toggleAudioPlayPause);
+    const track = mount.querySelector("#clean-audio-track");
+    const fractionFromEvent = (e) => {
+      const rect = track.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+    track.addEventListener("click", (e) => seekAudioToFraction(fractionFromEvent(e)));
+    const handle = mount.querySelector("#clean-audio-handle");
+    let dragging = false;
+    handle.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      e.preventDefault();
+    });
+    audioDragMoveHandler = (e) => {
+      if (!dragging) return;
+      const pct = fractionFromEvent(e) * 100;
+      handle.style.left = `${pct}%`;
+      mount.querySelector("#clean-audio-fill").style.width = `${pct}%`; // hiển thị mượt trong lúc kéo, chưa thật sự tua tới khi thả tay
+    };
+    audioDragUpHandler = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      seekAudioToFraction(fractionFromEvent(e));
+    };
+    window.addEventListener("pointermove", audioDragMoveHandler);
+    window.addEventListener("pointerup", audioDragUpHandler);
+  }
+
+  function stopAudioIfAny() {
+    if (audioDragMoveHandler) window.removeEventListener("pointermove", audioDragMoveHandler);
+    if (audioDragUpHandler) window.removeEventListener("pointerup", audioDragUpHandler);
+    audioDragMoveHandler = null;
+    audioDragUpHandler = null;
+    if (!ttsPlayer) return;
+    ttsPlayer.stop();
+    stopAudioProgressTimer();
+    audioPlayStartedAt = null;
+  }
+
   // ====== wiring ======
   function wire() {
     wireAppHeader(mount);
@@ -362,6 +534,7 @@ export function renderWritingPractice(mount) {
         state.step = "result";
         render();
       } else if (state.step === "clean" || state.step === "reference") {
+        stopAudioIfAny();
         state.step = "detail";
         render();
       } else {
@@ -449,11 +622,24 @@ export function renderWritingPractice(mount) {
   }
 
   function wireCleanStep() {
+    wireAudioPlayer(); // chỉ tồn tại khi cleanTab==="content" && isTTSSupported(), xem renderCleanStep()
     mount.querySelectorAll("#clean-tabs .tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.cleanTab = btn.dataset.tab;
         mount.querySelectorAll("#clean-tabs .tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
         mount.querySelector("#clean-panel").innerHTML = renderCleanPanel();
+        // Đổi tab KHÔNG render() lại toàn Bước (giữ nguyên #clean-audio-player DOM ngoài
+        // #clean-panel, đúng chỗ nó đứng) — chỉ ẩn/hiện + tạm dừng phát khi rời tab "Nội dung"
+        // (nghe tiếp trong lúc xem tab khác dễ gây hiểu lầm "đang đọc phần nào").
+        const player = mount.querySelector("#clean-audio-player");
+        if (player) {
+          if (state.cleanTab !== "content") {
+            if (ttsPlayer?.getState().playing) toggleAudioPlayPause();
+            player.hidden = true;
+          } else {
+            player.hidden = false;
+          }
+        }
       });
     });
     mount.querySelector("#save-clean-btn").addEventListener("click", async () => {
@@ -467,6 +653,7 @@ export function renderWritingPractice(mount) {
       });
     });
     mount.querySelector("#back-to-detail-btn").addEventListener("click", () => {
+      stopAudioIfAny();
       state.step = "detail";
       render();
     });
@@ -558,4 +745,9 @@ export function renderWritingPractice(mount) {
     state.step = "result";
     render();
   }
+
+  // router.js gọi hàm trả về này (nếu có) TRƯỚC khi vẽ màn kế tiếp — dừng phát nếu người dùng
+  // rời khỏi /writing hẳn trong lúc "Bài viết hoàn chỉnh" đang đọc to, tránh giọng đọc "ma" tiếp
+  // tục chạy nền không còn control nào để tắt.
+  return stopAudioIfAny;
 }
