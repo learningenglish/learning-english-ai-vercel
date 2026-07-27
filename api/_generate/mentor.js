@@ -696,10 +696,17 @@ export async function mentor_next_lesson(data, ctx) {
   // gọi thêm ensureSkinLevel() TRƯỚC generate_lesson, nên nếu retry vô điều kiện, tổng số lượt
   // AI tuần tự trong 1 request có thể lên tới 3 (sinh da + 2 lượt generate_lesson) — quan sát
   // thật: 1 request timeout hẳn ở Vercel (504 "FUNCTION_INVOCATION_TIMEOUT", lỗi mù mờ hơn hẳn
-  // 502 "dữ liệu không hợp lệ" bình thường). 30s là mốc an toàn: 1 lượt generate_lesson ~15-25s
-  // thật đo được, còn dư đủ cho 1 lượt nữa mà không chạm trần.
+  // 502 "dữ liệu không hợp lệ" bình thường).
+  // NGƯỠNG HẠ 30s -> 10s (2026-07-27, phát hiện khi test Phần A next_slot thật): đo lại thời
+  // gian generate_lesson B1/dialogue THẬT lúc này ~40-45s (không còn ~15-25s như ghi chú cũ ở
+  // trên — model/mạng chậm hơn từ lúc đó), nên "còn 30s" KHÔNG CÒN đủ an toàn cho 1 lượt thử lại
+  // trọn vẹn nữa — quan sát thật: lượt đầu fail ở ~dưới 30s, cho phép retry, lượt 2 mất thêm
+  // ~40-45s, TỔNG vượt hẳn trần 60s -> Vercel tự giết tiến trình (504), người dùng thấy lỗi mù
+  // mờ hơn hẳn 502 bình thường. 10s là mốc AN TOÀN mới dựa trên số đo thật: chỉ retry khi lượt
+  // đầu fail RẤT NHANH (bất thường, thường là lỗi parse/format chứ không phải chờ đủ generate),
+  // còn dư ~50s cho lượt 2 chạy trọn vẹn.
   let result = await generate_lesson(genLessonInput, ctx);
-  if (result.error && result.status === 502 && Date.now() - requestStartedAt < 30000) {
+  if (result.error && result.status === 502 && Date.now() - requestStartedAt < 10000) {
     console.log("[MENTOR_AI_CALL] generate_lesson (next_slot) retry 1x sau lỗi:", result.error);
     result = await generate_lesson(genLessonInput, ctx);
   }
