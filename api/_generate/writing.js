@@ -253,16 +253,17 @@ QUY TẮC 2 THÔNG BÁO TỔNG QUAN (chỉ nêu HIỆN TƯỢNG, KHÔNG giải t
 - "structure_too_simple": true nếu PHẦN LỚN câu trong bài dùng cấu trúc ngữ pháp thấp hơn rõ rệt so với cấp độ CEFR đã cho; false nếu không.
 
 QUY TẮC "clean_rewrite" (bài viết hoàn chỉnh — bài MẪU chuyên nghiệp để học viên đối chiếu):
-- Viết lại HOÀN TOÀN bài viết dựa ĐÚNG trên nội dung/ý học viên đã viết — KHÔNG đổi ý, KHÔNG thêm ý mới ngoài những gì học viên đã đề cập, KHÔNG bớt ý đã có. Chỉ nâng cấp CÁCH DIỄN ĐẠT.
+- Viết lại HOÀN TOÀN bài viết dựa ĐÚNG trên nội dung/ý học viên đã viết — KHÔNG đổi ý, KHÔNG thêm ý mới ngoài những gì học viên đã đề cập, KHÔNG bớt ý đã có, chỉ nâng cấp CÁCH DIỄN ĐẠT.
+- GIỮ NGUYÊN đúng BỐI CẢNH/SỰ VIỆC/ĐỐI TƯỢNG cụ thể học viên đã kể (ví dụ bài gốc kể về một chỗ Ở/khách sạn thì bài viết lại VẪN PHẢI về chỗ ở/khách sạn đó) — TUYỆT ĐỐI KHÔNG tự đổi sang đối tượng/tình huống khác dù nó có vẻ khớp thể loại đề bài hơn (ví dụ KHÔNG được biến "chỗ ở tôi từng ngủ lại" thành "nhà hàng tôi từng ăn" chỉ vì đề bài yêu cầu thể loại đánh giá nhà hàng — nếu học viên viết lạc đề, đó là điều PHẢN ÁNH ĐÚNG thực tế bài làm, không phải lỗi để bạn tự sửa bằng cách đổi nội dung).
 - Sửa hết mọi câu đã đánh dấu "unnatural" (dùng đúng bản "replacement"), áp dụng bản "suggestion" cho mọi câu "improvable" (KHÔNG giữ lại cách viết gốc chưa tối ưu của câu đó).
-- NẾU có Lĩnh vực chuyên ngành: chèn TỰ NHIÊN một vài từ/cụm từ chuyên ngành phù hợp vào đúng chỗ hợp lý trong bài (đặc biệt nếu "industry_vocab_gap" = true, tức bài gốc còn thiếu).
+- NẾU có Lĩnh vực chuyên ngành VÀ "industry_vocab_gap" = true: BẮT BUỘC chèn TỰ NHIÊN ít nhất 2-4 từ/cụm từ CHUYÊN NGÀNH THẬT SỰ (không phải từ chung chung như "place", "staff", "food", "room" — phải là thuật ngữ chuyên ngành cụ thể, ví dụ lĩnh vực Nhà hàng - Khách sạn: "front desk", "check-in/check-out", "amenities", "concierge", "housekeeping", "room service") vào đúng chỗ hợp lý, KHÔNG gượng ép, VẪN đúng bối cảnh học viên đã kể (xem quy tắc GIỮ NGUYÊN BỐI CẢNH ở trên). Nếu "industry_vocab_gap" = false (bài gốc đã đủ từ chuyên ngành) thì không cần thêm gì, giữ nguyên mức dùng đã có.
 - Ngữ pháp, cấu trúc câu ĐÚNG TẦM cấp độ CEFR đã cho — không quá đơn giản (dưới tầm cấp độ), không quá phức tạp (vượt tầm cấp độ).
-- Vẫn phải bám đúng mục tiêu ("goals") và thể loại đã giao ban đầu.
+- Vẫn phải bám đúng mục tiêu ("goals") của đề bài đã giao.
 - Đây là bài viết như người bản xứ thành thạo, đúng cấp độ sẽ viết — KHÔNG lặp lại lỗi hay cách diễn đạt còn hạn chế của bản gốc.
 - Trả về liền mạch dạng văn xuôi bình thường — KHÔNG chèn bất kỳ ký hiệu đánh dấu nào (không gạch ngang, không in đậm, không ngoặc chú thích).
 
 QUY TẮC "clean_rewrite_vocab" (chỉ liệt kê khi có Lĩnh vực chuyên ngành, để mảng rỗng nếu không có):
-- CHỈ liệt kê từ/cụm từ CHUYÊN NGÀNH thực sự XUẤT HIỆN trong "clean_rewrite" — không liệt kê từ vựng phổ thông.
+- CHỈ liệt kê từ/cụm từ CHUYÊN NGÀNH thực sự XUẤT HIỆN trong "clean_rewrite" — không liệt kê từ vựng phổ thông. NẾU "industry_vocab_gap" = true, mảng này KHÔNG ĐƯỢC RỖNG (phải khớp với các từ chuyên ngành bạn vừa chèn vào theo quy tắc trên).
 
 QUY TẮC "clean_rewrite_patterns" (CHỌN LỌC — dùng ĐÚNG tinh thần chọn "sentence_patterns" của bài học thông thường, KHÔNG liệt kê tràn lan):
 - CHỈ chọn cấu trúc/khuôn câu THỰC SỰ đáng học lại, PHẢI xuất hiện nguyên văn trong "clean_rewrite", KHÁC cách viết gốc của học viên, ĐÚNG TẦM cấp độ CEFR đã cho (không quá cơ bản, không quá xa tầm). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN — "why_worth_it" phải là lý do THẬT, nếu không nghĩ ra lý do thuyết phục thì BỎ QUA khuôn đó, KHÔNG hạ chuẩn để đủ số lượng. Số lượng: 2-5 mục — bài ít cấu trúc đáng chú ý thì cứ để 2, không cố nhồi.
