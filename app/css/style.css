@@ -2074,9 +2074,20 @@ textarea:focus {
 /* ===== Bước 4 — vòng điểm tổng + thanh điểm 5 tiêu chí ===== */
 .writing-score-card {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   padding: 24px;
   margin-bottom: 16px;
+}
+
+.writing-tier-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--purple);
+  background: var(--purple-soft);
+  padding: 4px 14px;
+  border-radius: 999px;
 }
 
 .writing-score-ring {
