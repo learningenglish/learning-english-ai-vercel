@@ -151,37 +151,60 @@ function sanitizeComment(text, fallback) {
   return s;
 }
 
+// ====== Thể loại — CHỌN Ở SERVER (không để model tự chọn) ======
+// BUG THẬT phát hiện qua phản hồi Minh 2026-07-27: để model "tự chọn thể loại đa dạng" (dù đã
+// dặn trong prompt + temperature 0.9) hội tụ gần như LUÔN ra "email công việc" — "email" vừa
+// được liệt kê ĐẦU TIÊN trong danh sách ví dụ, vừa được nêu tên riêng ở câu quy tắc B1+, model
+// bám lấy ví dụ đầu tiên/quen thuộc nhất trong phân bố huấn luyện thay vì thực sự đa dạng hoá.
+// SỬA: server tự BỐC 1 thể loại ngẫu nhiên mỗi lượt gọi, coi là THAM SỐ BẮT BUỘC đưa vào
+// prompt (model không còn quyền tự chọn) — đảm bảo đa dạng THẬT bằng cơ chế xác định, không lệ
+// thuộc "hy vọng" model tự đa dạng hoá.
+const GENRE_POOL = [
+  { label: "Email công việc", hint: "báo tin, xin lỗi, đề xuất, hoặc phàn nàn trong công việc" },
+  { label: "Thư cho bạn", hint: "thư hoặc tin nhắn không trang trọng gửi bạn bè/người thân" },
+  { label: "Đoạn văn miêu tả", hint: "miêu tả một người, nơi chốn, đồ vật, hoặc trải nghiệm" },
+  { label: "Kể lại sự việc", hint: "kể lại một sự việc/trải nghiệm đã xảy ra, có diễn biến" },
+  { label: "Bài đánh giá", hint: "đánh giá ngắn một sản phẩm, dịch vụ, hoặc địa điểm" },
+  { label: "Nêu ý kiến", hint: "nêu ý kiến cá nhân về một chủ đề quen thuộc, có lý do" },
+  { label: "Tin nhắn/ghi chú", hint: "một tin nhắn hoặc ghi chú ngắn, dặn dò/báo lại thông tin" },
+  { label: "So sánh lựa chọn", hint: "so sánh 2 sự vật hoặc lựa chọn quen thuộc" },
+];
+
+function pickRandomGenre() {
+  return GENRE_POOL[Math.floor(Math.random() * GENRE_POOL.length)];
+}
+
 // ====== PROMPT 1: generate_writing_task (Bước 1→2 — AI giao đề) ======
 const TASK_SYSTEM_PROMPT = `Bạn là chuyên gia thiết kế đề bài luyện viết tiếng Anh cho người Việt, bám khung CEFR.
 
-NHIỆM VỤ: Giao 1 đề bài viết phù hợp cấp độ CEFR của học viên.
+NHIỆM VỤ: Giao 1 đề bài viết phù hợp cấp độ CEFR của học viên, ĐÚNG thể loại đã được chỉ định sẵn (xem "Thể loại bắt buộc" ở dưới — KHÔNG được tự đổi sang thể loại khác).
 
 QUY TẮC:
-- Nếu có Lĩnh vực: đề bài PHẢI liên quan trực tiếp tới lĩnh vực đó (ví dụ lĩnh vực "Nhà hàng - Khách sạn" → viết email/đoạn văn liên quan công việc khách sạn), không lái sang chủ đề chung chung không liên quan.
-- Nếu KHÔNG có Lĩnh vực: tự chọn 1 chủ đề viết thường gặp, đa dạng giữa các lần gọi (email công việc, đoạn văn miêu tả, thư cho bạn, đánh giá sản phẩm, kể lại một sự việc, viết tin nhắn...).
-- Độ khó đề bài (độ PHỨC TẠP yêu cầu, không phải độ dài) phải VỪA SỨC cấp độ: A1/A2 chỉ yêu cầu câu đơn giản, chủ đề gần gũi đời thường (giới thiệu bản thân, tin nhắn ngắn, mô tả đồ vật quen thuộc); B1 trở lên có thể yêu cầu email/đoạn văn có cấu trúc rõ ràng, nhiều ý hơn.
+- Đề bài PHẢI đúng thể loại bắt buộc đã cho, viết chủ đề cụ thể phù hợp thể loại đó (không chỉ lặp lại tên thể loại chung chung).
+- Nếu có Lĩnh vực: chủ đề PHẢI liên quan trực tiếp tới lĩnh vực đó (ví dụ lĩnh vực "Nhà hàng - Khách sạn" + thể loại "Bài đánh giá" → đánh giá một trải nghiệm tại nhà hàng/khách sạn), không lái sang chủ đề chung chung không liên quan.
+- Nếu KHÔNG có Lĩnh vực: tự chọn 1 chủ đề đời thường phù hợp thể loại đã cho.
+- Độ khó đề bài (độ PHỨC TẠP yêu cầu, không phải độ dài) phải VỪA SỨC cấp độ: A1/A2 chỉ yêu cầu câu đơn giản, chủ đề gần gũi đời thường; B1 trở lên có thể yêu cầu cấu trúc rõ ràng, nhiều ý hơn.
 - "goals": 2-4 gạch đầu dòng ngắn (tiếng Việt), mục tiêu CỤ THỂ bài viết cần đạt được (không chung chung kiểu "viết hay").
 - "structure": các bước/phần nên có trong bài, 3-5 phần, MỖI phần có nhãn tiếng Anh ngắn (1-2 từ) + nhãn tiếng Việt giải thích ngắn trong ngoặc.
-- "genre_vi": tên thể loại ngắn gọn tiếng Việt (vd "Email công việc", "Đoạn văn miêu tả", "Thư cho bạn", "Bài đánh giá sản phẩm").
 - "vocabulary_suggestions": 5-8 từ/cụm từ tiếng Anh HỮU ÍCH để viết đúng chủ đề này, đúng cấp độ, mỗi từ kèm nghĩa tiếng Việt ngắn — đây là GỢI Ý không bắt buộc dùng, không phải danh sách đánh giá.
 - "useful_phrases": 4-6 cụm/mẫu câu tiếng Anh THÔNG DỤNG phù hợp thể loại + chủ đề này (vd mở đầu email, câu chuyển ý...), đúng cấp độ, mỗi cụm kèm nghĩa/công dụng ngắn tiếng Việt.
 
-QUY TẮC ĐẦU RA: Trả về DUY NHẤT một khối JSON hợp lệ theo schema. Không lời chào, không giải thích, không bọc trong dấu \`\`\`.
+QUY TẮC ĐẦU RA: Trả về DUY NHẤT một khối JSON hợp lệ theo schema (KHÔNG có trường thể loại — thể loại đã cố định sẵn, không cần trả lại). Không lời chào, không giải thích, không bọc trong dấu \`\`\`.
 
 SCHEMA JSON:
 {
-  "topic_en": "câu đề bài bằng tiếng Anh, 1 câu ngắn gọn rõ ràng",
+  "topic_en": "câu đề bài bằng tiếng Anh, 1 câu ngắn gọn rõ ràng, ĐÚNG thể loại bắt buộc",
   "topic_vi": "dịch/mô tả câu đề bài bằng tiếng Việt",
-  "genre_vi": "tên thể loại ngắn gọn tiếng Việt",
   "goals": ["mục tiêu 1", "mục tiêu 2"],
   "structure": [{"label": "Greeting", "label_vi": "Lời chào"}],
   "vocabulary_suggestions": [{"word": "delay", "meaning": "sự chậm trễ"}],
   "useful_phrases": [{"phrase": "I'm writing to inform you that...", "meaning": "Dùng để mở đầu email báo tin"}]
 }`;
 
-function buildTaskUserPrompt(level, industry) {
+function buildTaskUserPrompt(level, industry, genre) {
   return `Cấp độ CEFR của học viên: ${level}
-Lĩnh vực: ${orNone(industry)}`;
+Lĩnh vực: ${orNone(industry)}
+Thể loại bắt buộc: ${genre.label} (${genre.hint}) — PHẢI viết đề bài đúng thể loại này, không tự đổi.`;
 }
 
 // ====== PROMPT 2: grade_writing (Bước 3→4→5 — AI chấm + đánh dấu) ======
@@ -337,12 +360,13 @@ export async function generate_writing_task(data, ctx) {
   );
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
+  const genre = pickRandomGenre(); // đa dạng thể loại QUYẾT ĐỊNH ở server, xem ghi chú GENRE_POOL — không để model tự chọn.
   const r = await generateStructuredJSON({
     maxTokens: 1600, // topic+goals+structure+vocabulary_suggestions+useful_phrases cộng lại ~500-700 token thật, chừa biên an toàn.
-    temperature: 0.9, // đề bài cần ĐA DẠNG giữa các lần gọi (không có Lĩnh vực -> AI tự chọn chủ đề) — nhiệt độ cao hơn generate_lesson (0.7) cố ý.
+    temperature: 0.9, // chủ đề CỤ THỂ trong thể loại đã cho vẫn cần đa dạng giữa các lần gọi.
     messages: [
       { role: "system", content: TASK_SYSTEM_PROMPT },
-      { role: "user", content: buildTaskUserPrompt(data.level, data.industry) },
+      { role: "user", content: buildTaskUserPrompt(data.level, data.industry, genre) },
     ],
   });
   if (!r.ok) {
@@ -365,7 +389,7 @@ export async function generate_writing_task(data, ctx) {
       task: {
         topic_en: parsed.topic_en,
         topic_vi: parsed.topic_vi,
-        genre_vi: parsed.genre_vi || "",
+        genre_vi: genre.label, // do SERVER quyết định (xem genre = pickRandomGenre() ở trên), không lấy từ model.
         goals: parsed.goals,
         structure: parsed.structure,
         vocabulary_suggestions: Array.isArray(parsed.vocabulary_suggestions) ? parsed.vocabulary_suggestions : [],
