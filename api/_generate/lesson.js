@@ -149,8 +149,11 @@ QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC (2026-07-27 — ch�
 này, tự chọn ngữ pháp trong phạm vi cấp độ như bình thường):
 - Đây là bài đi theo lộ trình học đã định sẵn (spine) — điểm ngữ pháp trọng tâm KHÔNG phải gợi
   ý, mà là ĐIỂM DUY NHẤT bài này PHẢI dạy, đã khoá sẵn theo đúng vị trí trong lộ trình.
-- "content" PHẢI thể hiện RÕ RÀNG, LẶP LẠI TỰ NHIÊN đúng điểm ngữ pháp đó (không chỉ xuất hiện
-  1 lần cho có) — đây là trọng tâm chính bài học dạy, không phải 1 chi tiết phụ.
+- "content" PHẢI thể hiện RÕ đúng điểm ngữ pháp đó, xuất hiện tối thiểu 1 LẦN THẬT SỰ RÕ RÀNG
+  (không phải nhắc lướt qua) — ĐÂY LÀ MỨC TỐI THIỂU, KHÔNG BẮT BUỘC LẶP NHIỀU LẦN, đặc biệt ở A1/
+  A2: những cấp này length_words vốn CỐ Ý ngắn (xem QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ phần "RIÊNG A1")
+  — TUYỆT ĐỐI KHÔNG viết dài thêm hay thêm câu chỉ để "lặp lại cho chắc" điểm ngữ pháp này, làm
+  vậy sẽ phá vỡ khung độ dài đã quy định. 1 lần dùng rõ ràng, tự nhiên là ĐỦ.
 - KHÔNG lái sang điểm ngữ pháp khác cùng cấp độ dù hợp lý về ngữ cảnh (ví dụ được giao trọng
   tâm "Thì hiện tại đơn" thì KHÔNG được viết chính bằng "will"/tương lai dù chủ đề có vẻ hợp —
   đây CHÍNH XÁC là lỗi thật đã xảy ra trước khi có ràng buộc này: bài gắn nhãn A1 nhưng dùng
