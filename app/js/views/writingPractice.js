@@ -15,7 +15,9 @@
 // - Bước "Chi tiết bài viết" (Bước 5) KHÁC HẲN cách trình bày "Sửa lỗi" dạng danh sách bullet
 //   của mock — dựng lại thành 1 khối văn bản liền mạch với đánh dấu inline, đúng yêu cầu gốc
 //   (xem annotatedBlockHtml() bên dưới), KHÔNG làm theo mẫu "mỗi câu 1 dòng gạch đầu dòng".
-// - "Xem bài viết hoàn chỉnh" (bản đã sửa sạch) — ĐỂ BACKLOG (yêu cầu gốc cho phép), chưa làm.
+// - "Xem bài viết hoàn chỉnh" (Bước 5, 2 tab Nội dung/Từ vựng+Ngữ pháp) — ĐÃ LÀM 2026-07-27
+//   (Việc 2), gộp vào CÙNG 1 lượt gọi grade_writing (không tách action riêng), xem
+//   api/_generate/writing.js::GRADE_SYSTEM_PROMPT phần "clean_rewrite".
 import { navigate } from "../router.js";
 import { generateWritingTask, gradeWriting } from "../writingApi.js";
 import { escapeHtml, countWords } from "../utils.js";
@@ -26,10 +28,11 @@ const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
 const STEP_TITLES = {
   setup: `${icon("edit-3", { size: 22 })} Luyện viết`,
-  task: `${icon("edit-3", { size: 22 })} Đề bài`,
+  task: `${icon("edit-3", { size: 22 })} Nhiệm vụ`,
   write: `${icon("edit-3", { size: 22 })} Viết bài`,
   result: `${icon("edit-3", { size: 22 })} Kết quả`,
   detail: `${icon("edit-3", { size: 22 })} Chi tiết bài viết`,
+  clean: `${icon("sparkles", { size: 22 })} Bài viết hoàn chỉnh`,
 };
 
 export function renderWritingPractice(mount) {
@@ -42,7 +45,8 @@ export function renderWritingPractice(mount) {
     targetWordsMax: 0,
     text: "",
     supportTab: "structure",
-    grading: null, // { overall_score, criteria, strengths, segments, notices }
+    grading: null, // { overall_score, criteria, strengths, segments, notices, clean_rewrite: { text, vocab, patterns } }
+    cleanTab: "content",
   };
 
   // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
@@ -68,7 +72,9 @@ export function renderWritingPractice(mount) {
             ? renderWriteStep()
             : state.step === "result"
             ? renderResultStep()
-            : renderDetailStep()
+            : state.step === "detail"
+            ? renderDetailStep()
+            : renderCleanStep()
         }
       </div>
     `;
@@ -91,7 +97,7 @@ export function renderWritingPractice(mount) {
       </label>
 
       <div id="setup-result-slot"></div>
-      <button type="button" class="btn btn-primary btn-block" id="setup-submit-btn">AI giao đề bài</button>
+      <button type="button" class="btn btn-primary btn-block" id="setup-submit-btn">AI giao nhiệm vụ</button>
     `;
   }
 
@@ -99,20 +105,20 @@ export function renderWritingPractice(mount) {
   function renderTaskStep() {
     const t = state.task;
     return `
-      <div class="card writing-task-card">
-        <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Đề bài")} <span class="level-pill">${state.level}</span></div>
+      <div class="card writing-card writing-task-card">
+        <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Nhiệm vụ")} <span class="level-pill">${state.level}</span></div>
         <p class="writing-topic-en">${escapeHtml(t.topic_en)}</p>
         <p class="writing-topic-vi muted">${escapeHtml(t.topic_vi)}</p>
       </div>
 
-      <div class="card">
+      <div class="card writing-card">
         <div class="writing-section-title">Mục tiêu bài viết</div>
         <ul class="writing-goals-list">
           ${t.goals.map((g) => `<li>${icon("check-circle", { size: 16 })} <span>${escapeHtml(g)}</span></li>`).join("")}
         </ul>
       </div>
 
-      <div class="card">
+      <div class="card writing-card">
         <div class="writing-section-title">Cấu trúc gợi ý</div>
         <ol class="writing-structure-list">
           ${t.structure.map((s) => `<li><strong>${escapeHtml(s.label)}</strong> <span class="muted">${s.label_vi ? `(${escapeHtml(s.label_vi)})` : ""}</span></li>`).join("")}
@@ -120,8 +126,10 @@ export function renderWritingPractice(mount) {
       </div>
 
       <div id="task-result-slot"></div>
-      <button type="button" class="btn btn-ghost btn-block" id="task-reroll-btn">Đổi đề khác</button>
-      <button type="button" class="btn btn-primary btn-block" id="task-start-btn">Bắt đầu viết</button>
+      <div class="director-card-actions">
+        <button type="button" class="btn btn-ghost btn-block" id="task-reroll-btn">Đổi đề khác</button>
+        <button type="button" class="btn btn-primary btn-block" id="task-start-btn">Bắt đầu viết</button>
+      </div>
     `;
   }
 
@@ -131,7 +139,7 @@ export function renderWritingPractice(mount) {
     const n = countWords(state.text);
     return `
       <div class="card writing-task-recap">
-        <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Đề bài")} <span class="level-pill">${state.level}</span></div>
+        <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Nhiệm vụ")} <span class="level-pill">${state.level}</span></div>
         <p class="writing-topic-en">${escapeHtml(t.topic_en)}</p>
       </div>
 
@@ -195,8 +203,10 @@ export function renderWritingPractice(mount) {
         <p>${escapeHtml(g.strengths)}</p>
       </div>
 
-      <button type="button" class="btn btn-ghost btn-block" id="view-detail-btn">Xem chi tiết bài viết</button>
-      <button type="button" class="btn btn-primary btn-block" id="finish-writing-btn">Hoàn tất</button>
+      <div class="director-card-actions">
+        <button type="button" class="btn btn-ghost btn-block" id="view-detail-btn">Xem chi tiết bài viết</button>
+        <button type="button" class="btn btn-primary btn-block" id="finish-writing-btn">Hoàn tất</button>
+      </div>
     `;
   }
 
@@ -204,11 +214,14 @@ export function renderWritingPractice(mount) {
   function renderDetailStep() {
     const g = state.grading;
     return `
-      <div class="card">
+      <div class="card writing-card">
         <p class="writing-annotated-text">${annotatedBlockHtml(g.segments)}</p>
       </div>
       ${g.notices.length ? `<div class="writing-notices">${g.notices.map((n) => `<p class="writing-notice">${escapeHtml(n)}</p>`).join("")}</div>` : ""}
-      <button type="button" class="btn btn-ghost btn-block" id="back-to-result-btn">Quay lại kết quả</button>
+      <div class="director-card-actions">
+        <button type="button" class="btn btn-ghost btn-block" id="view-clean-btn">${icon("sparkles", { size: 18 })} Xem bài viết hoàn chỉnh</button>
+        <button type="button" class="btn btn-ghost btn-block" id="back-to-result-btn">Quay lại kết quả</button>
+      </div>
     `;
   }
 
@@ -226,6 +239,50 @@ export function renderWritingPractice(mount) {
       .join(" ");
   }
 
+  // ====== Bước 5 phụ: "Xem bài viết hoàn chỉnh" — 2 tab Nội dung / Từ vựng+Ngữ pháp (Việc 2,
+  // 2026-07-27). Bài mẫu chuyên nghiệp AI viết lại dựa ĐÚNG ý người học đã viết, không phải
+  // bản đối chiếu lỗi như Bước 5 chính — hiển thị SẠCH, không ký hiệu đánh dấu gì. ======
+  function renderCleanStep() {
+    const c = state.grading.clean_rewrite;
+    return `
+      <div class="tabs" id="clean-tabs">
+        <button type="button" class="tab-btn ${state.cleanTab === "content" ? "active" : ""}" data-tab="content">Nội dung</button>
+        <button type="button" class="tab-btn ${state.cleanTab === "vocab-grammar" ? "active" : ""}" data-tab="vocab-grammar">Từ vựng &amp; Ngữ pháp</button>
+      </div>
+      <div class="card writing-card" id="clean-panel">${renderCleanPanel()}</div>
+      <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-btn">Quay lại chi tiết</button>
+    `;
+  }
+
+  function renderCleanPanel() {
+    const c = state.grading.clean_rewrite;
+    if (state.cleanTab === "content") {
+      return `<p class="writing-clean-text">${escapeHtml(c.text)}</p>`;
+    }
+    const vocabHtml = c.vocab.length
+      ? `<ul class="writing-suggestion-list">${c.vocab.map((v) => `<li><strong>${escapeHtml(v.word)}</strong> — ${escapeHtml(v.meaning)}</li>`).join("")}</ul>`
+      : `<p class="muted">${state.industry ? "Bài mẫu không nổi bật từ chuyên ngành nào riêng." : "Không chọn lĩnh vực nên không có từ chuyên ngành để gợi ý."}</p>`;
+    const patternsHtml = c.patterns.length
+      ? c.patterns
+          .map(
+            (p) => `
+        <div class="writing-pattern-row">
+          <div class="writing-pattern-structure">${escapeHtml(p.structure)}</div>
+          <p class="writing-pattern-example">“${escapeHtml(p.example)}”</p>
+          <p class="writing-pattern-note muted">${escapeHtml(p.note || "")}</p>
+        </div>
+      `
+          )
+          .join("")
+      : `<p class="muted">Bài mẫu không có cấu trúc nào nổi bật hơn hẳn cách viết gốc của bạn.</p>`;
+    return `
+      <div class="writing-section-title">Từ vựng chuyên ngành đã dùng</div>
+      ${vocabHtml}
+      <div class="writing-section-title writing-section-title-spaced">Cấu trúc đáng chú ý</div>
+      ${patternsHtml}
+    `;
+  }
+
   // ====== wiring ======
   function wire() {
     wireAppHeader(mount);
@@ -239,6 +296,9 @@ export function renderWritingPractice(mount) {
       } else if (state.step === "detail") {
         state.step = "result";
         render();
+      } else if (state.step === "clean") {
+        state.step = "detail";
+        render();
       } else {
         navigate("/lessons");
       }
@@ -248,7 +308,8 @@ export function renderWritingPractice(mount) {
     else if (state.step === "task") wireTaskStep();
     else if (state.step === "write") wireWriteStep();
     else if (state.step === "result") wireResultStep();
-    else wireDetailStep();
+    else if (state.step === "detail") wireDetailStep();
+    else wireCleanStep();
   }
 
   function wireSetupStep() {
@@ -296,8 +357,27 @@ export function renderWritingPractice(mount) {
   }
 
   function wireDetailStep() {
+    mount.querySelector("#view-clean-btn").addEventListener("click", () => {
+      state.cleanTab = "content";
+      state.step = "clean";
+      render();
+    });
     mount.querySelector("#back-to-result-btn").addEventListener("click", () => {
       state.step = "result";
+      render();
+    });
+  }
+
+  function wireCleanStep() {
+    mount.querySelectorAll("#clean-tabs .tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.cleanTab = btn.dataset.tab;
+        mount.querySelectorAll("#clean-tabs .tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        mount.querySelector("#clean-panel").innerHTML = renderCleanPanel();
+      });
+    });
+    mount.querySelector("#back-to-detail-btn").addEventListener("click", () => {
+      state.step = "detail";
       render();
     });
   }
@@ -307,7 +387,7 @@ export function renderWritingPractice(mount) {
     const resultSlot = mount.querySelector(state.step === "setup" ? "#setup-result-slot" : "#task-result-slot");
     const submitBtns = mount.querySelectorAll("#setup-submit-btn, #task-reroll-btn, #task-start-btn");
     submitBtns.forEach((b) => b && (b.disabled = true));
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> AI đang chuẩn bị đề bài...</div>`;
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> AI đang chọn nhiệm vụ...</div>`;
 
     const res = await generateWritingTask(state.level, state.industry);
     submitBtns.forEach((b) => b && (b.disabled = false));

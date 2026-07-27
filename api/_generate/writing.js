@@ -252,6 +252,21 @@ QUY TẮC 2 THÔNG BÁO TỔNG QUAN (chỉ nêu HIỆN TƯỢNG, KHÔNG giải t
 - "industry_vocab_gap": true nếu CÓ lĩnh vực chuyên ngành được giao NHƯNG bài viết dùng rất ít hoặc không dùng từ chuyên ngành đó; false nếu không có lĩnh vực hoặc bài đã dùng đủ.
 - "structure_too_simple": true nếu PHẦN LỚN câu trong bài dùng cấu trúc ngữ pháp thấp hơn rõ rệt so với cấp độ CEFR đã cho; false nếu không.
 
+QUY TẮC "clean_rewrite" (bài viết hoàn chỉnh — bài MẪU chuyên nghiệp để học viên đối chiếu):
+- Viết lại HOÀN TOÀN bài viết dựa ĐÚNG trên nội dung/ý học viên đã viết — KHÔNG đổi ý, KHÔNG thêm ý mới ngoài những gì học viên đã đề cập, KHÔNG bớt ý đã có. Chỉ nâng cấp CÁCH DIỄN ĐẠT.
+- Sửa hết mọi câu đã đánh dấu "unnatural" (dùng đúng bản "replacement"), áp dụng bản "suggestion" cho mọi câu "improvable" (KHÔNG giữ lại cách viết gốc chưa tối ưu của câu đó).
+- NẾU có Lĩnh vực chuyên ngành: chèn TỰ NHIÊN một vài từ/cụm từ chuyên ngành phù hợp vào đúng chỗ hợp lý trong bài (đặc biệt nếu "industry_vocab_gap" = true, tức bài gốc còn thiếu).
+- Ngữ pháp, cấu trúc câu ĐÚNG TẦM cấp độ CEFR đã cho — không quá đơn giản (dưới tầm cấp độ), không quá phức tạp (vượt tầm cấp độ).
+- Vẫn phải bám đúng mục tiêu ("goals") và thể loại đã giao ban đầu.
+- Đây là bài viết như người bản xứ thành thạo, đúng cấp độ sẽ viết — KHÔNG lặp lại lỗi hay cách diễn đạt còn hạn chế của bản gốc.
+- Trả về liền mạch dạng văn xuôi bình thường — KHÔNG chèn bất kỳ ký hiệu đánh dấu nào (không gạch ngang, không in đậm, không ngoặc chú thích).
+
+QUY TẮC "clean_rewrite_vocab" (chỉ liệt kê khi có Lĩnh vực chuyên ngành, để mảng rỗng nếu không có):
+- CHỈ liệt kê từ/cụm từ CHUYÊN NGÀNH thực sự XUẤT HIỆN trong "clean_rewrite" — không liệt kê từ vựng phổ thông.
+
+QUY TẮC "clean_rewrite_patterns" (CHỌN LỌC — dùng ĐÚNG tinh thần chọn "sentence_patterns" của bài học thông thường, KHÔNG liệt kê tràn lan):
+- CHỈ chọn cấu trúc/khuôn câu THỰC SỰ đáng học lại, PHẢI xuất hiện nguyên văn trong "clean_rewrite", KHÁC cách viết gốc của học viên, ĐÚNG TẦM cấp độ CEFR đã cho (không quá cơ bản, không quá xa tầm). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN — "why_worth_it" phải là lý do THẬT, nếu không nghĩ ra lý do thuyết phục thì BỎ QUA khuôn đó, KHÔNG hạ chuẩn để đủ số lượng. Số lượng: 2-5 mục — bài ít cấu trúc đáng chú ý thì cứ để 2, không cố nhồi.
+
 QUY TẮC ĐẦU RA: Trả về DUY NHẤT một khối JSON hợp lệ theo schema. Không lời chào, không giải thích ngoài JSON, không bọc trong dấu \`\`\`. "strengths": 1-2 câu tiếng Việt nhận xét tổng quan điểm mạnh của bài (đúng QUY TẮC NGÔN TỪ ở trên).
 
 SCHEMA JSON:
@@ -268,7 +283,12 @@ SCHEMA JSON:
     {"text": "nguyên văn câu 1", "issue_type": "ok|unnatural|improvable", "replacement": "chỉ có khi unnatural", "suggestion": "chỉ có khi improvable"}
   ],
   "industry_vocab_gap": false,
-  "structure_too_simple": false
+  "structure_too_simple": false,
+  "clean_rewrite": "bản viết lại hoàn chỉnh, liền mạch, không ký hiệu đánh dấu",
+  "clean_rewrite_vocab": [{"word": "delay", "meaning": "sự chậm trễ"}],
+  "clean_rewrite_patterns": [
+    {"structure": "I would like to request...", "example": "trích NGUYÊN VĂN câu chứa cấu trúc này từ clean_rewrite", "note": "1 câu tiếng Việt: dùng để làm gì trong giao tiếp thực tế", "why_worth_it": "1 câu tiếng Việt: tại sao đáng học lại ở đúng cấp độ này"}
+  ]
 }`;
 
 function buildGradeUserPrompt({ level, industry, task, sentences }) {
@@ -307,6 +327,9 @@ function isValidGradeShape(parsed, expectedSentenceCount) {
   if (!parsed.criteria.every((c) => Number.isFinite(c?.score))) return false;
   if (!Array.isArray(parsed.segments) || parsed.segments.length !== expectedSentenceCount) return false;
   if (!parsed.segments.every((s) => ["ok", "unnatural", "improvable"].includes(s?.issue_type))) return false;
+  if (typeof parsed.clean_rewrite !== "string" || !parsed.clean_rewrite.trim()) return false;
+  if (parsed.clean_rewrite_vocab !== undefined && !Array.isArray(parsed.clean_rewrite_vocab)) return false;
+  if (parsed.clean_rewrite_patterns !== undefined && !Array.isArray(parsed.clean_rewrite_patterns)) return false;
   return true;
 }
 
@@ -322,7 +345,7 @@ async function gradeWithRetry({ level, industry, task, sentences }) {
         ? basePrompt
         : `${basePrompt}\n\nLƯU Ý: Lượt trước bạn trả về SAI số phần tử "segments" — lần này PHẢI trả về ĐÚNG ${sentences.length} phần tử, không hơn không kém, khớp đúng thứ tự ${sentences.length} câu đã cho ở trên.`;
     const r = await generateStructuredJSON({
-      maxTokens: 4800, // bài dài (~600 từ, ~40 câu) x (text+replacement/suggestion+comment mỗi câu) cộng lại có thể vượt 4000, chừa biên an toàn.
+      maxTokens: 5800, // + clean_rewrite (~ bằng độ dài bài gốc) + clean_rewrite_vocab/patterns — nâng từ 4800 (2026-07-27, thêm Việc 2), gần trần MAX_TOKENS_CAP=6000 (aiProvider.js) — xem báo cáo thời gian/token thật trước khi cân nhắc tách lượt gọi riêng.
       temperature: 0.5,
       messages: [
         { role: "system", content: GRADE_SYSTEM_PROMPT },
@@ -509,6 +532,15 @@ export async function grade_writing(data, ctx) {
     notices.push(`Phần lớn câu trong bài đang ở cấu trúc đơn giản hơn trình độ ${data.level} bạn đã chọn.`);
   }
 
+  // Việc 2 (2026-07-27) — "Bài viết hoàn chỉnh": KHÔNG lưu vào writing_submissions ở đây (bảng
+  // đó chỉ phục vụ đếm hạn mức + lịch sử tối giản) — client giữ trong state, CHỈ lưu THẬT khi
+  // người học chủ động bấm "Lưu bài hoàn chỉnh" (Việc 3, bảng lưu riêng).
+  const cleanRewrite = {
+    text: parsed.clean_rewrite.trim(),
+    vocab: Array.isArray(parsed.clean_rewrite_vocab) ? parsed.clean_rewrite_vocab : [],
+    patterns: Array.isArray(parsed.clean_rewrite_patterns) ? parsed.clean_rewrite_patterns : [],
+  };
+
   const saved = await insertWritingSubmission({
     user_id: ctx.studentId,
     level: data.level,
@@ -530,6 +562,7 @@ export async function grade_writing(data, ctx) {
       strengths,
       segments,
       notices,
+      clean_rewrite: cleanRewrite,
       meta: buildMeta(r),
     }),
   };

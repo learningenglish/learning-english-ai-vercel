@@ -1971,6 +1971,12 @@ textarea:focus {
 }
 
 /* ===== Luyện viết (app/js/views/writingPractice.js) — 5 bước trong 1 view ===== */
+/* BUG THẬT phát hiện qua ảnh chụp thật (2026-07-27): 2 thẻ ".card" trần (Mục tiêu/Cấu trúc ở
+   Bước Nhiệm vụ, khối văn bản ở Bước Chi tiết) không có margin riêng nên DÍNH SÁT vào nhau —
+   ".card" gốc (style.css dùng chung toàn app) không tự có margin-bottom. Class DÙNG CHUNG này
+   đảm bảo MỌI thẻ ".card" trong Luyện viết đều cách đều nhau, không cần nhớ thêm margin riêng
+   cho từng thẻ mới sau này. */
+.writing-card,
 .writing-task-card,
 .writing-task-recap {
   margin-bottom: 14px;
@@ -2181,7 +2187,7 @@ textarea:focus {
 }
 
 .writing-notices {
-  margin-top: 14px;
+  margin: 14px 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2194,4 +2200,44 @@ textarea:focus {
   background: var(--surface-soft);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
+}
+
+/* ===== "Xem bài viết hoàn chỉnh" (Việc 2, 2026-07-27) — 2 tab Nội dung/Từ vựng+Ngữ pháp ===== */
+.writing-clean-text {
+  margin: 0;
+  line-height: 1.9;
+  font-size: 1rem;
+  white-space: pre-line;
+}
+
+.writing-section-title-spaced {
+  margin-top: 20px;
+}
+
+.writing-pattern-row {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.writing-pattern-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.writing-pattern-structure {
+  font-weight: 700;
+  color: var(--purple);
+  margin-bottom: 4px;
+}
+
+.writing-pattern-example {
+  margin: 0 0 4px;
+  font-style: italic;
+}
+
+.writing-pattern-note {
+  margin: 0;
+  font-size: 0.85rem;
 }
