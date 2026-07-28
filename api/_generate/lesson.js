@@ -746,9 +746,10 @@ async function insertLesson(row) {
 // 1 LƯỢT gọi AI + parse + validate cho generate_lesson — tách riêng (2026-07-28, "Tạo bài học
 // phải luôn ra bài") để generate_lesson() có thể gọi lại với target KHÁC trên lượt retry (xem
 // bên dưới), không lặp lại nguyên khối code.
-async function callAndValidateLesson(data, targetLengthWords, minWords, maxWords) {
+async function callAndValidateLesson(data, targetLengthWords, minWords, maxWords, tier) {
   const genData = { ...data, length_words: targetLengthWords, length_words_min: minWords, length_words_max: maxWords };
   const r = await generateStructuredJSON({
+    tier,
     maxTokens: 6000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng 4000->6000 (2026-07-23):
     // C1 "long" (500-600 từ, xem LEVEL_LENGTH_TABLE) bị cắt giữa JSON ở 4000, parse fail.
     temperature: 0.7,
@@ -792,42 +793,33 @@ export async function generate_lesson(data, ctx) {
   // định, B1+ theo data.length_tier ("short"/"medium"/"long", mặc định "medium").
   const [minWords, maxWords] = resolveLengthRange(data.level, data.length_tier);
 
-  // TỰ ĐỘNG THỬ LẠI TRONG CHÍNH generate_lesson (2026-07-28, "Tạo bài học phải luôn ra bài" —
-  // đo tỷ lệ lỗi thật: A1/A2 100% (16/16), B1 ~75%, B2/C1 GẦN NHƯ LUÔN THIẾU TỪ dù target cao
-  // đến đâu — actualWords THẬT ở B2/C1 quan sát được luôn quanh ~220-350 từ BẤT KỂ target
-  // 340-490, cho thấy đây là TRẦN NĂNG LỰC THẬT của model ở mật độ nội dung này (content +
-  // vocabulary + grammar + exercises trong CÙNG 1 lượt JSON), không phải may rủi ngẫu nhiên đơn
-  // thuần — retry với ĐÚNG target cũ gần như vô ích). Lượt 2 (nếu cần) ĐỔI CHIẾN LƯỢC theo đúng
-  // lý do lỗi: undershoot -> hạ target xuống SÁT ĐÁY khoảng (mục tiêu dễ đạt nhất trong khoảng
-  // CEFR hợp lệ, không phải mục tiêu "đẹp" nữa — thà bài hơi ngắn còn hơn thất bại hẳn); lỗi khác
-  // (parse/JSON hỏng) -> thử lại NGUYÊN VẸN (thường là trục trặc thoáng qua). Giới hạn 2 lượt
-  // TRONG hàm này (không hơn) — canh thời gian còn lại so với trần 60s của Vercel
-  // (vercel.json maxDuration) để KHÔNG bắt đầu lượt 2 nếu không còn đủ thời gian chạy trọn vẹn;
-  // lớp NGOÀI (mentor_next_lesson/createLesson.js) tự retry thêm ở lượt gọi HTTP MỚI (ngân sách
-  // 60s mới tinh) nếu lượt này vẫn thất bại — 2 lớp bổ sung nhau, không thay thế nhau.
+  // TỰ ĐỘNG THỬ LẠI (2026-07-28, "Tạo bài học phải luôn ra bài" — đo tỷ lệ lỗi thật qua nhiều
+  // đợt: A1/A2 100%, B1 ~65-75%, B2/C1 GẦN NHƯ LUÔN THẤT BẠI (0/8, 0/7 hai đợt test riêng) dù
+  // target cao đến đâu. LỘ RA THÊM khi đo per-attempt: 1 lượt gọi B2/C1 đơn lẻ đã mất ~27-40s —
+  // với trần 60s của Vercel, KHÔNG CÒN ĐỦ THỜI GIAN cho 1 lượt retry TRỌN VẸN thứ 2 trong CÙNG
+  // request (retry nội bộ dưới đây coi như KHÔNG BAO GIỜ chạy được cho B2/C1 — đã tự kiểm bằng
+  // debug field, elapsed đã 27000-31000ms trước khi tới được điểm quyết định retry). Tức lượt
+  // gọi nội bộ 2 dưới đây CHỈ thực sự hữu ích cho A1/A2/B1 (attempt nhanh, còn thời gian) — với
+  // B2/C1, cửa duy nhất là lớp NGOÀI (client tự gọi lại — mỗi lượt 1 request MỚI, ngân sách 60s
+  // MỚI TINH, xem createLesson.js) VÀ đổi tier sang "strong" ở lượt gọi lại đó (data.model_tier
+  // — model mạnh hơn nhiều khả năng vượt được trần năng lực nội dung dày mà model rẻ không đạt
+  // được dù thử bao nhiêu lần với model CŨ).
+  const tier = data.model_tier === "strong" ? "strong" : "default";
   const attemptStartedAt = Date.now();
   const firstTarget = pickTargetLengthWords(minWords, maxWords);
-  let result = await callAndValidateLesson(data, firstTarget, minWords, maxWords);
-  // TEMP DEBUG (2026-07-28, xác nhận retry có chạy + kết quả từng lượt) — XOÁ sau khi xong.
-  const debugAttempts = [{ reason: result.reason, actualWords: result.actualWords, target: firstTarget }];
+  let result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
 
-  let retried = false;
   if (!result.ok && Date.now() - attemptStartedAt < 25000) {
-    retried = true;
     const retryTarget =
       result.reason === "word_count_out_of_range" && result.actualWords < minWords
         ? Math.round(minWords + (maxWords - minWords) * 0.1)
         : firstTarget;
-    console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `firstTarget=${firstTarget}`, `retryTarget=${retryTarget}`);
-    result = await callAndValidateLesson(data, retryTarget, minWords, maxWords);
-    debugAttempts.push({ reason: result.reason, actualWords: result.actualWords, target: retryTarget });
+    console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `firstTarget=${firstTarget}`, `retryTarget=${retryTarget}`, `tier=${tier}`);
+    result = await callAndValidateLesson(data, retryTarget, minWords, maxWords, tier);
   }
 
   if (!result.ok) {
-    return {
-      error: `AI trả về dữ liệu không hợp lệ, vui lòng thử lại. [DEBUG retried=${retried} elapsed=${Date.now() - attemptStartedAt} attempts=${JSON.stringify(debugAttempts)}]`,
-      status: 502,
-    };
+    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
   const parsed = result.parsed;
 

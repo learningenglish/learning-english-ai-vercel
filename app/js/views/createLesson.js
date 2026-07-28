@@ -396,16 +396,17 @@ export function renderCreateLesson(mount) {
     }
 
     // Thử lại TỰ ĐỘNG ở tầng client (2026-07-28, "Tạo bài học phải luôn ra bài" — mỗi lượt ở đây
-    // là 1 request HTTP MỚI, ngân sách 60s MỚI TINH cho server, khác hẳn retry NỘI BỘ trong
-    // generate_lesson/mentor_next_lesson vốn bị giới hạn trong CÙNG 1 request) — người dùng
-    // KHÔNG thấy lỗi kỹ thuật thẳng trừ khi CẢ 3 lượt đều thất bại (đo tỷ lệ lỗi thật: B2/C1 có
-    // lúc gần như luôn thiếu từ 1 lượt đơn, nhưng qua 3 lượt độc lập — mỗi lượt server lại tự
-    // thử lại nội bộ với chiến lược khác nhau — xác suất trắng tay cả 3×2=6 lượt AI thấp hơn hẳn).
+    // là 1 request HTTP MỚI, ngân sách 60s MỚI TINH cho server). Đo tỷ lệ lỗi thật phát hiện: 1
+    // lượt gọi B2/C1 đơn lẻ đã mất ~27-40s — KHÔNG còn đủ thời gian cho retry NỘI BỘ trong CÙNG
+    // request (generate_lesson) chạy trọn vẹn ở 2 cấp này, nên retry ở TẦNG NÀY (fresh request)
+    // là cửa DUY NHẤT thật sự hữu ích cho B2/C1. Từ lượt thứ 2 trở đi, CHUYỂN SANG model mạnh
+    // hơn (useStrongModel — xem generate_lesson trong lesson.js) thay vì chỉ lặp lại y hệt lượt
+    // đầu với cùng model rẻ (đo thật: model rẻ gần như luôn hụt từ ở B2/C1 dù thử bao nhiêu lần).
     const MAX_CLIENT_ATTEMPTS = 3;
     let res;
     for (let attempt = 1; attempt <= MAX_CLIENT_ATTEMPTS; attempt++) {
       setProgress(attempt === 1 ? "AI đang soạn bài theo lộ trình..." : `AI đang thử soạn lại bài (lần ${attempt}/${MAX_CLIENT_ATTEMPTS})...`);
-      res = await generateNextLessonForGoal(goalResult.goalId);
+      res = await generateNextLessonForGoal(goalResult.goalId, attempt > 1);
       // Chỉ retry lỗi 502 (AI sinh bài thất bại — CÓ THỂ khác kết quả ở lượt sau). Lỗi khác (403
       // hết hạn mức, 400 lộ trình đã dừng...) sẽ KHÔNG đổi dù thử lại bao nhiêu lần — dừng ngay,
       // đỡ tốn thời gian người dùng chờ vô ích.

@@ -33,9 +33,12 @@ export async function createGoal(occupationProfile, rawKeywords, level) {
   return callAndParse("mentor_create_goal", { occupation_profile: occupationProfile, raw_keywords: rawKeywords, level: level || null });
 }
 
-// AI CALL #2 — sinh 1 bài học thật cho mục tiêu (đợt tiếp theo hoặc bài đầu tiên).
-export async function generateNextLessonForGoal(goalId) {
-  return callAndParse("mentor_next_lesson", { goal_id: goalId });
+// AI CALL #2 — sinh 1 bài học thật cho mục tiêu (đợt tiếp theo hoặc bài đầu tiên). "useStrongModel"
+// (2026-07-28, "Tạo bài học phải luôn ra bài") — createLesson.js tự bật ở lượt RETRY (sau khi
+// lượt đầu model rẻ thất bại), model mạnh hơn nhiều khả năng vượt được các cấp/độ dài mà model
+// rẻ hay hụt (đo thật: B2/C1 gần như luôn thất bại với model mặc định).
+export async function generateNextLessonForGoal(goalId, useStrongModel) {
+  return callAndParse("mentor_next_lesson", { goal_id: goalId, use_strong_model: !!useStrongModel });
 }
 
 // Không gọi AI — "Bạn cứ để tôi tự chọn giúp" ở Bước 1 khi input rỗng (mục 3.3/3.4 Đợt 3).

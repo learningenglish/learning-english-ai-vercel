@@ -749,6 +749,10 @@ export async function mentor_next_lesson(data, ctx) {
     skin_id: skinId,
     spine_slot: slot.slot,
     grammar_focus: buildGrammarFocus(slot.grammar),
+    // "Tạo bài học phải luôn ra bài" (2026-07-28) — client tự gọi lại mentor_next_lesson với
+    // use_strong_model=true ở lượt thử lại (createLesson.js), sau khi lượt đầu (model rẻ) thất
+    // bại — xem chú thích trong generate_lesson()/lesson.js.
+    model_tier: data.use_strong_model ? "strong" : "default",
   };
   // 2026-07-28 ("Tạo bài học phải luôn ra bài" — sửa lại toàn bộ): generate_lesson() giờ TỰ
   // RETRY BÊN TRONG NÓ (tới 2 lượt, có canh thời gian, ĐỔI target khi retry theo đúng lý do lỗi
