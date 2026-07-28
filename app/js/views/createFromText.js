@@ -24,7 +24,7 @@ export function renderCreateFromText(mount) {
         <span class="field-question">Dán văn bản của bạn</span>
         <textarea id="paste-text-input" rows="10" placeholder="Dán văn bản tiếng Anh vào đây..."></textarea>
       </label>
-      <p class="field-hint" id="paste-wordcount">0 từ (tối thiểu 20, tối đa 3000)</p>
+      <p class="field-hint" id="paste-wordcount">0 từ (tối thiểu 20, tối đa 600)</p>
       <div id="paste-result-slot"></div>
       <button type="button" class="btn btn-primary btn-block" id="paste-submit-btn">Phân tích</button>
     </div>
@@ -34,14 +34,20 @@ export function renderCreateFromText(mount) {
   wireAppHeader(mount);
   loadAppHeaderStats(mount);
 
+  // Mốc 600 từ (2026-07-28, chốt với Minh — thay 3000 cũ) — chặn NGAY ở UI trước khi gửi AI:
+  // nút "Phân tích" tự vô hiệu hoá khi ngoài khoảng, không phải chỉ báo lỗi SAU khi bấm.
+  const MAX_WORDS = 600;
   const textarea = mount.querySelector("#paste-text-input");
   const wc = mount.querySelector("#paste-wordcount");
+  const submitBtn = mount.querySelector("#paste-submit-btn");
   textarea.addEventListener("input", () => {
     const n = countWords(textarea.value);
-    const outOfRange = n < 20 || n > 3000;
-    wc.textContent = `${n} từ` + (n < 20 ? " (tối thiểu 20 từ)" : n > 3000 ? " (tối đa 3000 từ, chia nhỏ ra)" : "");
+    const outOfRange = n < 20 || n > MAX_WORDS;
+    wc.textContent = `${n} từ` + (n < 20 ? " (tối thiểu 20 từ)" : n > MAX_WORDS ? ` (tối đa ${MAX_WORDS} từ, chia nhỏ ra)` : "");
     wc.classList.toggle("field-hint-error", outOfRange);
+    submitBtn.disabled = outOfRange;
   });
+  submitBtn.disabled = true; // rỗng lúc đầu (0 từ) -> dưới ngưỡng tối thiểu, khoá sẵn cho khớp
 
   mount.querySelector("#paste-submit-btn").addEventListener("click", async () => {
     const text = textarea.value;
@@ -51,8 +57,8 @@ export function renderCreateFromText(mount) {
       resultSlot.innerHTML = `<div class="result-panel result-error">Văn bản quá ngắn (tối thiểu 20 từ).</div>`;
       return;
     }
-    if (n > 3000) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">Văn bản quá dài (tối đa 3000 từ), vui lòng chia nhỏ.</div>`;
+    if (n > MAX_WORDS) {
+      resultSlot.innerHTML = `<div class="result-panel result-error">Văn bản quá dài (tối đa ${MAX_WORDS} từ), vui lòng chia nhỏ.</div>`;
       return;
     }
     const btn = mount.querySelector("#paste-submit-btn");

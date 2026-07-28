@@ -102,6 +102,60 @@ function wordCount(text) {
   return (text || "").trim().split(/\s+/).filter(Boolean).length;
 }
 
+// Mốc tham chiếu 600 từ (2026-07-28, chốt với Minh — thay 3000 cũ) cho "Tôi có văn bản": văn
+// bản dài hơn nên chia nhỏ, đọc/phân tích 1 lượt hợp lý hơn hẳn ở quy mô này.
+const MAX_TEXT_ANALYSIS_WORDS = 600;
+
+// "Cầu chì vô hình" chống script cho "Tôi có văn bản" (2026-07-28, chốt với Minh) — ĐỘC LẬP
+// hoàn toàn với DAILY_LESSON_LIMIT (generate_lesson) — dán+phân tích văn bản có sẵn là thao tác
+// NHẸ hơn hẳn tự soạn bài mới, không nên dùng chung 1 hạn mức 10/ngày với generate_lesson (sẽ
+// làm cạn suất "Tạo bài học" chỉ vì dùng "Tôi có văn bản" vài lần). KHÔNG hiện số này ở UI —
+// chỉ để chặn script/bot lạm dụng, người dùng thường không bao giờ chạm ngưỡng.
+const DAILY_TEXT_ANALYSIS_LIMIT = 40;
+
+async function checkDailyTextAnalysisLimit(studentId) {
+  try {
+    const studentRes = await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=plan`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!studentRes.ok) {
+      console.error("checkDailyTextAnalysisLimit (plan lookup) error:", studentRes.status);
+      return { allowed: false, message: "Không kiểm tra được hạn mức phân tích văn bản, thử lại sau." };
+    }
+    const student = (await studentRes.json())?.[0];
+    if (!student) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
+    if (student.plan !== "pro") return { allowed: false, message: "Tính năng phân tích văn bản chỉ dành cho gói Pro." };
+
+    const sinceISO = startOfTodayVN().toISOString();
+    const countRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/lessons?user_id=eq.${studentId}&source=eq.user_text&created_at=gte.${sinceISO}&select=id`,
+      {
+        method: "HEAD",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          Prefer: "count=exact",
+        },
+      }
+    );
+    if (!countRes.ok) {
+      console.error("checkDailyTextAnalysisLimit (count) error:", countRes.status);
+      return { allowed: false, message: "Không kiểm tra được hạn mức phân tích văn bản, thử lại sau." };
+    }
+    const used = Number((countRes.headers.get("content-range") || "").split("/")[1] || 0);
+    if (used >= DAILY_TEXT_ANALYSIS_LIMIT) {
+      // Thông báo CHUNG CHUNG, không lộ con số cụ thể (đúng tinh thần "cầu chì vô hình") — nếu
+      // 1 người dùng thật sự chạm ngưỡng này (40 lượt/ngày), khả năng cao là script chứ không
+      // phải dùng tay, không cần giải thích chi tiết.
+      return { allowed: false, message: "Đã dùng hết hạn mức phân tích văn bản hôm nay, quay lại vào ngày mai." };
+    }
+    return { allowed: true, used };
+  } catch (e) {
+    console.error("checkDailyTextAnalysisLimit error:", e);
+    return { allowed: false, message: "Không kiểm tra được hạn mức phân tích văn bản, thử lại sau." };
+  }
+}
+
 // Trường nâng cao rỗng -> "không có" (đúng quy ước 2 file prompt: field/industry/
 // product/situation đều thuộc "Tùy chọn nâng cao" ở form. "Ngữ pháp trọng tâm" đã bỏ khỏi
 // form — chọn Cấp độ CEFR là đủ đảm bảo đúng phạm vi ngữ pháp, không cần chọn thêm).
@@ -849,10 +903,17 @@ export async function analyze_user_text(data, ctx) {
   // buildAnalyzeTextUserPrompt()/ANALYZE_TEXT_SYSTEM_PROMPT.
   const wc = wordCount(data.user_text);
   if (wc < 20) return { error: "Văn bản quá ngắn (tối thiểu 20 từ).", status: 400 };
-  if (wc > 3000) return { error: "Văn bản quá dài (tối đa 3000 từ), vui lòng chia nhỏ.", status: 400 };
+  // 3000 -> 600 (2026-07-28, chốt với Minh) — mốc tham chiếu thật cho 1 bài phân tích hợp lý,
+  // văn bản dài hơn nên chia nhỏ. UI (createFromText.js) đã chặn TRƯỚC khi gửi lên đây — kiểm
+  // lại ở server để không phụ thuộc hoàn toàn vào client (phòng gọi thẳng action, bỏ qua UI).
+  if (wc > MAX_TEXT_ANALYSIS_WORDS) {
+    return { error: `Văn bản quá dài (tối đa ${MAX_TEXT_ANALYSIS_WORDS} từ), vui lòng chia nhỏ.`, status: 400 };
+  }
 
-  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
-  const limitCheck = await checkDailyLessonLimit(ctx.studentId);
+  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật. Cầu chì
+  // RIÊNG cho tính năng này (KHÔNG dùng chung DAILY_LESSON_LIMIT của generate_lesson) — xem
+  // checkDailyTextAnalysisLimit().
+  const limitCheck = await checkDailyTextAnalysisLimit(ctx.studentId);
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
   // (b) Gọi AI + parse + validate.
