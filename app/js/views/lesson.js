@@ -334,6 +334,10 @@ export async function renderLessonDetail(mount, params) {
     const spans = computeInteractiveSpans(sentence, lesson.vocabulary || []);
     const seen = new Set();
     spans.forEach((s) => {
+      // "s.entry" (2026-07-28) — từ/cụm này ĐÃ có nghĩa sẵn trong lesson.vocabulary (sinh cùng
+      // lúc tạo bài), showWordTooltip() dùng thẳng KHÔNG cần cache API này — khỏi tốn 1 lượt AI
+      // để prefetch cho những trường hợp không bao giờ đọc tới.
+      if (s.entry) return;
       const key = `${s.text.toLowerCase()}|${sentence}`;
       if (seen.has(key) || wordLookupCache.has(key)) return;
       seen.add(key);
@@ -428,14 +432,22 @@ export async function renderLessonDetail(mount, params) {
     if (volSlider) volSlider.value = String(s.volume);
   }
 
+  // "spans" tính lại NGUYÊN VẸN bằng computeInteractiveSpans() (2026-07-28, sửa lỗi tooltip xoay
+  // vòng chờ trước khi ra nghĩa) — ĐÚNG hàm dùng để render các span [data-token-idx] ở trên nên
+  // thứ tự khớp 1-1 theo index, cho phép lấy lại "entry" (mục lesson.vocabulary đã sinh SẴN lúc
+  // tạo bài — word/meaning/type/example) mà renderInteractiveHtml() vốn đã tính nhưng không
+  // truyền tiếp xuống đây. Có "entry" -> hiện tooltip NGAY, không gọi AI/không qua cache.
   function wireInteractiveWords(container, sentence, genderHint) {
+    const spans = computeInteractiveSpans(sentence, lesson.vocabulary || []);
     container.querySelectorAll("[data-token-idx]").forEach((span) => {
+      const idx = Number(span.dataset.tokenIdx);
       const word = span.textContent;
+      const entry = spans[idx]?.entry || null;
       // CHỈ trigger bằng click/chạm — hiện NGAY, không delay (đó là lỗi trước: chờ 250ms).
       // KHÔNG trigger bằng mouseenter nữa: chuột chỉ LƯỚT NGANG QUA từ (vd đang di chuyển
       // tới nút khác) cũng đủ kích hoạt tra từ, gây gọi AI thừa và tooltip bị đè lẫn nhau
       // giữa từ vừa lướt qua và từ vừa bấm.
-      const trigger = () => showWordTooltip(span, word, sentence, genderHint);
+      const trigger = () => showWordTooltip(span, word, sentence, genderHint, entry);
       span.addEventListener("click", (e) => {
         e.stopPropagation();
         trigger();
@@ -446,9 +458,17 @@ export async function renderLessonDetail(mount, params) {
   // Tooltip TỐI GIẢN: level (màu theo cấp độ) + từ + nghĩa + cụm từ đi kèm (nếu có) + icon
   // loa đọc từ/cụm đó (đúng giọng nhân vật của câu chứa từ này) — không giải thích, không
   // ví dụ, không lưu ý.
-  async function showWordTooltip(anchorEl, word, sentence, genderHint) {
+  //
+  // "vocabEntry" (2026-07-28, sửa lỗi tooltip xoay vòng chờ trước khi ra nghĩa — Minh phát
+  // hiện thật): trước đây MỌI lượt bấm từ đều đi qua wordLookupCache/API dù từ đó đã CÓ SẴN
+  // nghĩa trong lesson.vocabulary (sinh cùng lúc tạo bài, không tốn thêm gì) — chỉ đỡ nhờ
+  // prefetchWordLookups() chạy NỀN khi hiện câu, nhưng vẫn có khoảng hở đua (bấm quá nhanh
+  // trước khi prefetch xong, hoặc ở chế độ "Xem tất cả" không prefetch) khiến tooltip vẫn phải
+  // hiện spinner chờ. Có "vocabEntry" (từ computeInteractiveSpans(), khớp ĐÚNG mục vocabulary
+  // của bài) -> dùng THẲNG, hiện NGAY LẬP TỨC, không đụng cache/API/spinner gì cả.
+  async function showWordTooltip(anchorEl, word, sentence, genderHint, vocabEntry) {
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
-    let data = wordLookupCache.get(cacheKey);
+    let data = vocabEntry ? { level: lesson.level, meaning: vocabEntry.meaning } : wordLookupCache.get(cacheKey);
 
     // Bình thường đã có sẵn trong cache nhờ prefetchWordLookups() chạy nền khi hiện câu này
     // -> tooltip hiện NGAY, không cần bước "Đang tra...". Chỉ khi cache thật sự chưa có
