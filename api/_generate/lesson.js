@@ -973,7 +973,7 @@ export async function debug_web_search_test(data, ctx) {
       { role: "user", content: "Tìm 1 tin thời sự quốc tế mới nhất hôm nay hoặc hôm qua." },
     ],
   });
-  return { content: JSON.stringify({ ok: r.ok, data: r.data, model: r.model, error: r.error, debugRawStatus: r.debugRawStatus, debugRaw: r.debugRaw }) };
+  return { content: JSON.stringify({ ok: r.ok, data: r.data, model: r.model, error: r.error, text: r.text, debugRawStatus: r.debugRawStatus, debugRaw: r.debugRaw }) };
 }
 
 // ============================================================
