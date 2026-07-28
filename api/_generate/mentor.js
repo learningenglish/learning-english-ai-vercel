@@ -695,6 +695,11 @@ export async function mentor_next_lesson(data, ctx) {
   const goalRows = await restGet(`learning_goals?id=eq.${data.goal_id}&user_id=eq.${ctx.studentId}&select=*`);
   const goal = goalRows?.[0];
   if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
+  // Chặn ở SERVER, không chỉ dựa vào client luôn gửi đúng goal active (2026-07-28, "giới hạn 5
+  // lĩnh vực + Thư mục AI" mục 2.4: "next_slot KHÔNG sinh bài mới cho goal đã archived") — trước
+  // đây hàm này không kiểm status, chỉ AN TOÀN nhờ createLesson.js luôn tự truy vấn lại goal
+  // 'active' mới nhất trước khi gọi (xem resolveGoalId), không phải ràng buộc thật ở đây.
+  if (goal.status !== "active") return { error: "Lộ trình này đã dừng, không thể tạo thêm bài cho lộ trình này.", status: 400 };
 
   const level = goal.level || DEFAULT_LEVEL_WHEN_UNSET;
   const isGeneral = goal.occupation_profile?.is_general === true;
