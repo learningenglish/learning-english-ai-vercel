@@ -16,6 +16,7 @@ import {
   mentor_mark_pronoun_asked,
   mentor_set_pronoun_style,
   mentor_get_transient_line,
+  debug_skin_level_topics,
 } from "./_generate/mentor.js";
 
 /**
@@ -1307,6 +1308,7 @@ const ACTIONS = {
   mentor_mark_pronoun_asked,
   mentor_set_pronoun_style,
   mentor_get_transient_line,
+  debug_skin_level_topics,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —
