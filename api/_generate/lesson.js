@@ -956,26 +956,6 @@ function buildMeta(r) {
   return { usage: r.usage || null, openai_duration_ms: r.durationMs, model: r.model };
 }
 
-// TEMP DEBUG (2026-07-28, xác nhận tool web_search có trả kết quả THẬT không trước khi thiết
-// kế "Tin tức tự sinh" dựa vào nó) — XOÁ sau khi xác nhận xong.
-export async function debug_web_search_test(data, ctx) {
-  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  const r = await generateStructuredJSON({
-    tier: "default",
-    maxTokens: 1000,
-    temperature: 0.3,
-    webSearch: true,
-    messages: [
-      {
-        role: "system",
-        content: `Bạn có công cụ tìm kiếm web. Tìm 1 tin tức THẬT, CỤ THỂ, xảy ra trong 24-48 giờ gần đây (không phải tin cũ/chung chung). Trả JSON: {"found_real_news": true/false, "headline": "...", "source_name": "...", "date_mentioned": "...", "summary_2_sentences": "..."}`,
-      },
-      { role: "user", content: "Tìm 1 tin thời sự quốc tế mới nhất hôm nay hoặc hôm qua." },
-    ],
-  });
-  return { content: JSON.stringify({ ok: r.ok, data: r.data, model: r.model, error: r.error, text: r.text, debugRawStatus: r.debugRawStatus, debugRaw: r.debugRaw }) };
-}
-
 // ============================================================
 // NỢ KỸ THUẬT:
 // 1. Không tự động sinh ảnh bìa (cover_image_url luôn null khi tạo) — logic
