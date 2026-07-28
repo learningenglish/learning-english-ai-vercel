@@ -793,6 +793,24 @@ export async function mentor_get_pronoun_state(data, ctx) {
   };
 }
 
+// TEMP DEBUG (2026-07-28, diagnose "mạch chủ đề" 502 bug) — gọi thẳng generateLevelTopics,
+// bỏ qua industry_skins/DB, để soi raw output. XOÁ sau khi hết cần.
+export async function debug_skin_level_topics(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const goalRows = await restGet(`learning_goals?id=eq.${data.goal_id}&user_id=eq.${ctx.studentId}&select=*`);
+  const goal = goalRows?.[0];
+  if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
+  const level = data.level || goal.level || "A1";
+  const result = await generateLevelTopics({
+    occupationProfile: goal.occupation_profile,
+    level,
+    requiredCounts: requiredCountsByLevel()[level],
+    skinGeneralForLevel: loadSkinGeneral()[level] || {},
+    spineSlots: loadCurriculumSpine()[level] || [],
+  });
+  return { content: JSON.stringify(result) };
+}
+
 // Đánh dấu "đã hiện màn" — gọi ngay khi màn nghi thức MOUNT (không đợi người dùng bấm gì), đúng
 // nghĩa "hỏi đúng 1 lần" = hiện đúng 1 lần, không phải "chọn đúng 1 lần".
 export async function mentor_mark_pronoun_asked(data, ctx) {
