@@ -43,6 +43,13 @@ export async function autoCreateGoal() {
   return callAndParse("mentor_auto_goal", {});
 }
 
+// Không gọi AI — "Tạo lộ trình mới" (khoá chip + xác nhận đổi lộ trình, 2026-07-28): chuyển
+// TOÀN BỘ bài học của (các) mục tiêu 'active' hiện tại vào Yêu thích rồi archive mục tiêu đó,
+// KHÔNG xoá gì. Gọi TRƯỚC khi mở luồng chọn ngành mới (createLesson.js).
+export async function switchGoal() {
+  return callAndParse("mentor_switch_goal", {});
+}
+
 // ====== Màn nghi thức xưng hô (mục 3.2/3.4 điểm 1 Đợt 3) ======
 
 export async function getPronounState() {

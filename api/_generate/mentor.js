@@ -727,6 +727,49 @@ export async function mentor_next_lesson(data, ctx) {
 }
 
 // ============================================================
+// ĐỔI LỘ TRÌNH (2026-07-28, "Khoá chip + xác nhận đổi lộ trình") — người dùng ĐANG có 1 (hoặc
+// nhiều, phòng hờ dữ liệu lệch) mục tiêu 'active', bấm icon khoá trên createLesson.js -> xác
+// nhận đổi -> gọi action này TRƯỚC KHI mở luồng chọn ngành mới. Nguyên tắc bắt buộc (trả phí,
+// không được mất dữ liệu): KHÔNG xoá gì — chỉ (1) đánh dấu is_favorite=true toàn bộ lessons
+// thuộc (các) goal cũ, (2) chuyển goal cũ sang status='archived' (next_slot sẽ không thấy nữa vì
+// mọi truy vấn đều lọc status=eq.active). Client KHÔNG có quyền UPDATE learning_goals (xem
+// 020_mentor_ai.sql, không có policy INSERT/UPDATE cho authenticated) nên bắt buộc qua service
+// role ở đây, không thể làm thẳng từ createLesson.js.
+export async function mentor_switch_goal(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+
+  const activeGoals = await restGet(`learning_goals?user_id=eq.${ctx.studentId}&status=eq.active&select=id`);
+  const goalIds = (activeGoals || []).map((g) => g.id);
+  if (!goalIds.length) return { content: JSON.stringify({ archived_goal_ids: [], favorited_lessons: 0 }) };
+  const idList = goalIds.join(",");
+
+  // Đánh dấu Yêu thích TRƯỚC khi archive goal — nếu bước archive bên dưới lỗi giữa chừng, lượt
+  // gọi lại sau (idempotent, PATCH is_favorite=true lần 2 vô hại) vẫn không mất bài nào.
+  const favRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?goal_id=in.(${idList})`, {
+    method: "PATCH",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({ is_favorite: true }),
+  });
+  if (!favRes.ok) {
+    console.error("mentor.js mentor_switch_goal favorite error:", favRes.status, await favRes.text().catch(() => ""));
+    return { error: "Không thể lưu bài học cũ vào Yêu thích, vui lòng thử lại.", status: 502 };
+  }
+  const favoritedRows = await favRes.json().catch(() => []);
+
+  const archiveRes = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals?id=in.(${idList})`, {
+    method: "PATCH",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "archived" }),
+  });
+  if (!archiveRes.ok) {
+    console.error("mentor.js mentor_switch_goal archive error:", archiveRes.status, await archiveRes.text().catch(() => ""));
+    return { error: "Không thể chuyển lộ trình cũ, vui lòng thử lại.", status: 502 };
+  }
+  for (const goalId of goalIds) logMentorEvent(ctx.studentId, "goal_archived", { goal_id: goalId });
+  return { content: JSON.stringify({ archived_goal_ids: goalIds, favorited_lessons: favoritedRows.length }) };
+}
+
+// ============================================================
 // MÀN NGHI THỨC XƯNG HÔ (mục 3.2/3.4 điểm 1 Đợt 3) — hỏi ĐÚNG 1 LẦN/user, đầu tiên khi chạm
 // Mentor. KHÔNG có "để Mentor tự chọn giúp" ở màn này (đã chốt với Minh 2026-07-21) — người
 // dùng phải TỰ chọn 1 trong 4 chip; không chọn (điều hướng đi chỗ khác) thì mặc định 'toi_ban'

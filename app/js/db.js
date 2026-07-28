@@ -110,7 +110,7 @@ export async function listLearningGoals() {
 // UI) — hàm CHỦ Ý MỚI thay vì sửa hàm cũ, tránh đụng code đường (dead nhưng chưa xoá) đó.
 export async function getActiveLearningGoal() {
   const rows = await restFetch(
-    "learning_goals?select=id,raw_keywords,level,occupation_profile,lesson_count&status=eq.active&order=created_at.desc&limit=1"
+    "learning_goals?select=id,title,raw_keywords,level,occupation_profile,lesson_count&status=eq.active&order=created_at.desc&limit=1"
   );
   return rows?.[0] || null;
 }

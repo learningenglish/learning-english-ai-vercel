@@ -60,6 +60,9 @@ const PATHS = {
   // dùng cho tier badge ở màn Bài học, tránh trùng icon 2 nơi khác nghĩa nhau).
   sparkles:
     '<path d="M12 3l1.8 4.8L18.5 9.5l-4.7 1.7L12 16l-1.8-4.8-4.7-1.7 4.7-1.7z"/><path d="M5 16l.9 2.3L8 19l-2.1.7L5 22l-.9-2.3L2 19l2.1-.7z"/><path d="M19 14l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8L16.5 16.5l1.8-.7z"/>',
+  // "Khoá chip + xác nhận đổi lộ trình" (2026-07-28) — thay 2 chip Cấp độ/Loại nội dung khi
+  // đang bám 1 lộ trình có sẵn, xem views/createLesson.js.
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 };
 
 // "name": tên icon trong PATHS ở trên. "size"/"strokeWidth": tuỳ biến kích thước hiển thị.
