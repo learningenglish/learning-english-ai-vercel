@@ -77,3 +77,63 @@ export async function add_vocab_word(data, ctx) {
     return { error: "Không lưu được từ vừa tra.", status: 502 };
   }
 }
+
+// Bản dành cho "news_lessons" (2026-07-29, prefetch cả bài lúc mở — xem views/lesson.js) —
+// KHÔNG có "user_id" để lọc quyền sở hữu (bảng này công khai, dùng chung mọi tài khoản, xem
+// supabase/029_news_lessons.sql: không có policy insert/update cho authenticated, chỉ service
+// role/cron được ghi) — action này CHÍNH LÀ đường ghi duy nhất cho phép người dùng đã đăng nhập
+// bổ sung vào "vocabulary" của 1 bài Tin tức. Cắt bớt độ dài "word"/"meaning" (phòng hờ, nội
+// dung này hiển thị CHO MỌI người xem cùng bài, khác "lessons" cá nhân chỉ ảnh hưởng dữ liệu
+// của chính người đó).
+export async function add_news_vocab_word(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id || !data.word) return { error: "Thiếu 'lesson_id' hoặc 'word'.", status: 400 };
+
+  try {
+    const selectRes = await fetch(`${SUPABASE_URL}/rest/v1/news_lessons?id=eq.${encodeURIComponent(data.lesson_id)}&select=vocabulary`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!selectRes.ok) {
+      console.error("add_news_vocab_word select error:", selectRes.status, await selectRes.text());
+      return { error: "Không lưu được từ vừa tra.", status: 502 };
+    }
+    const rows = await selectRes.json();
+    if (!rows?.[0]) return { error: "Không tìm thấy bài học.", status: 404 };
+
+    const vocabulary = Array.isArray(rows[0].vocabulary) ? rows[0].vocabulary : [];
+    const targetKey = normalize(data.word);
+    if (vocabulary.some((w) => normalize(w.word) === targetKey)) {
+      return { content: JSON.stringify({ ok: true, added: false }) };
+    }
+
+    const entry = {
+      word: (data.word || "").slice(0, 100),
+      meaning: (data.meaning || "").slice(0, 300),
+      ipa: "",
+      type: "",
+      example: "",
+      is_specialized: false,
+      source: "user_lookup",
+    };
+    vocabulary.push(entry);
+
+    const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/news_lessons?id=eq.${encodeURIComponent(data.lesson_id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ vocabulary }),
+    });
+    if (!patchRes.ok) {
+      console.error("add_news_vocab_word patch error:", patchRes.status, await patchRes.text());
+      return { error: "Không lưu được từ vừa tra.", status: 502 };
+    }
+    return { content: JSON.stringify({ ok: true, added: true, entry }) };
+  } catch (e) {
+    console.error("add_news_vocab_word error:", e);
+    return { error: "Không lưu được từ vừa tra.", status: 502 };
+  }
+}

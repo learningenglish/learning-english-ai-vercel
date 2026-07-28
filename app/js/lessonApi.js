@@ -39,14 +39,18 @@ async function callAndParse(action, payload) {
   }
 }
 
-// Người học bấm tra 1 từ/cụm trong bài (word_lookup) -> tự thêm vào bảng Từ vựng của bài,
-// nhóm "Đã tra" (xem VOCAB_VIEWS trong views/lesson.js) — lưu THẬT vào lesson.vocabulary
-// (không chỉ hiện tạm trong phiên xem), để lần sau mở lại bài vẫn còn. Fire-and-forget như
-// fetchAndSaveLessonCover bên dưới — lỗi mạng ở bước lưu không nên làm hỏng trải nghiệm tra
-// từ (tooltip đã hiện xong trước khi hàm này được gọi).
-export async function addLookedUpWord(lessonId, word, lookup) {
+// Tra 1 từ/cụm trong bài (word_lookup, dù do người dùng bấm hay do prefetchAllLessonWords()
+// chạy nền — xem views/lesson.js) -> tự thêm vào bảng Từ vựng của bài, nhóm "Đã tra" (xem
+// VOCAB_VIEWS trong views/lesson.js) — lưu THẬT vào vocabulary (không chỉ hiện tạm trong phiên
+// xem), để LẦN SAU mở lại bài (kể cả người khác, với bài Tin tức dùng chung) vẫn có sẵn, không
+// tốn lượt AI tra lại — đây là điều kiện để "prefetch cả bài lúc mở" không lặp lại chi phí AI
+// mỗi lần mở bài (2026-07-29). Fire-and-forget như fetchAndSaveLessonCover bên dưới — lỗi mạng
+// ở bước lưu không nên làm hỏng trải nghiệm tra từ (tooltip đã hiện xong trước khi gọi hàm này).
+// "isNews" — bài Tin tức (news_lessons, KHÔNG user_id, dùng chung mọi tài khoản) phải ghi qua
+// action RIÊNG (add_news_vocab_word, không lọc theo chủ sở hữu), xem api/_generate/vocab.js.
+export async function addLookedUpWord(lessonId, word, lookup, isNews) {
   try {
-    await callChatAction("add_vocab_word", {
+    await callChatAction(isNews ? "add_news_vocab_word" : "add_vocab_word", {
       lesson_id: lessonId,
       word,
       meaning: lookup?.meaning || "",

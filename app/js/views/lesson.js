@@ -293,7 +293,6 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         `;
         body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(idx - 1));
         body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(idx + 1));
-        if (item?.text) prefetchWordLookups(item.text);
       }
 
       body.querySelectorAll(".content-text").forEach((el) => {
@@ -332,38 +331,83 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     }
   }
 
-  // Tra trước (nền, không chặn UI) toàn bộ từ trong CÂU ĐANG HIỂN THỊ — để khi người học
-  // bấm vào 1 từ, dữ liệu đã có sẵn trong cache và tooltip hiện ra NGAY, không cần chờ gọi
-  // AI lúc bấm (đó là lý do có "Đang tra..." trước đây). CHỈ áp dụng cho chế độ "Từng câu"
-  // (gọi từ nhánh else ở trên) — chế độ "Xem tất cả" có thể chứa hàng chục câu, tra trước
-  // hết sẽ tốn quá nhiều lượt gọi AI so với số từ người học thực sự bấm.
-  function prefetchWordLookups(sentence) {
-    // Dùng ĐÚNG computeInteractiveSpans() để tra trước theo từng ĐƠN VỊ BẤM ĐƯỢC thật sự
-    // (cụm đã gộp thành 1 khối, hoặc từ đơn lẻ) — không tra trước RIÊNG từng từ trong 1 cụm
-    // (vd "give"/"up" tách rời), vì lúc bấm span đã gộp gửi ĐÚNG chuỗi cụm ("give up") làm
-    // "word", tra rời sẽ tạo cache-key khác không bao giờ dùng tới (vừa sai vừa tốn thêm lượt AI).
-    const spans = computeInteractiveSpans(sentence, lesson.vocabulary || []);
-    const seen = new Set();
-    spans.forEach((s) => {
-      // "s.entry" (2026-07-28) — từ/cụm này ĐÃ có nghĩa sẵn trong lesson.vocabulary (sinh cùng
-      // lúc tạo bài), showWordTooltip() dùng thẳng KHÔNG cần cache API này — khỏi tốn 1 lượt AI
-      // để prefetch cho những trường hợp không bao giờ đọc tới.
-      if (s.entry) return;
-      const key = `${s.text.toLowerCase()}|${sentence}`;
-      if (seen.has(key) || wordLookupCache.has(key)) return;
-      seen.add(key);
-      callChatAction("word_lookup", { word: s.text, sentence })
-        .then((res) => {
-          if (!res.ok) return;
-          try {
-            wordLookupCache.set(key, JSON.parse(res.content));
-          } catch {
-            // Bỏ qua — tra lỗi thì lúc bấm sẽ tự fetch lại (nhánh cache-miss trong showWordTooltip).
-          }
-        })
-        .catch(() => {});
-    });
+  // Tra trước TOÀN BỘ từ trong CẢ BÀI (mọi trang, không chỉ trang/câu đang xem, không chỉ chế
+  // độ "Từng câu") ngay khi mở bài (2026-07-29, yêu cầu người dùng: "không chấp nhận treo vài
+  // giây, đảm bảo 100% click vào hiện ngay" — trước đó chỉ prefetch câu đang xem ở chế độ
+  // "Từng câu", "Xem tất cả" hoàn toàn không prefetch nên MỌI lần bấm đều phải chờ gọi AI).
+  // Gọi ĐÚNG 1 LẦN lúc mount (bên dưới), không phụ thuộc tab/trang đang mở.
+  //
+  // "pendingLookups": key -> Promise, GẮN NGAY khi lên lịch tra (kể cả chưa thật sự gọi AI, xem
+  // hàng đợi giới hạn song song bên dưới) — để showWordTooltip() LUÔN tìm thấy đúng promise đang
+  // chờ mà DÙNG LẠI, không tự tạo 1 lượt gọi AI trùng lặp cho cùng 1 từ dù bấm sớm hơn lúc
+  // prefetch thật sự xong. Giới hạn tối đa 4 lượt gọi AI song song (MAX_CONCURRENT_PREFETCH) —
+  // 1 bài có thể có vài chục từ chưa biết, gọi hết cùng lúc dễ đụng rate limit OpenAI/kéo dài
+  // thời gian phản hồi chung (xem rủi ro đã ghi nhận về nhiều người dùng đồng thời).
+  const pendingLookups = new Map();
+  const MAX_CONCURRENT_PREFETCH = 4;
+  let activePrefetchCount = 0;
+  const prefetchQueue = [];
+
+  function runPrefetchQueue() {
+    while (activePrefetchCount < MAX_CONCURRENT_PREFETCH && prefetchQueue.length) {
+      const job = prefetchQueue.shift();
+      activePrefetchCount += 1;
+      job().finally(() => {
+        activePrefetchCount -= 1;
+        runPrefetchQueue();
+      });
+    }
   }
+
+  // Dùng ĐÚNG computeInteractiveSpans() để tra trước theo từng ĐƠN VỊ BẤM ĐƯỢC thật sự (cụm đã
+  // gộp thành 1 khối, hoặc từ đơn lẻ) — không tra rời từng từ trong 1 cụm (vd "give"/"up" tách
+  // rời), vì lúc bấm span đã gộp gửi ĐÚNG chuỗi cụm ("give up") làm "word", tra rời sẽ tạo
+  // cache-key khác không bao giờ dùng tới (vừa sai vừa tốn thêm lượt AI).
+  function scheduleLookup(word, sentence) {
+    const key = `${word.toLowerCase()}|${sentence}`;
+    if (wordLookupCache.has(key) || pendingLookups.has(key)) return;
+    let resolveFn;
+    const promise = new Promise((resolve) => {
+      resolveFn = resolve;
+    });
+    pendingLookups.set(key, promise);
+    prefetchQueue.push(async () => {
+      const res = await callChatAction("word_lookup", { word, sentence }).catch(() => ({ ok: false }));
+      let data = null;
+      if (res.ok) {
+        try {
+          data = JSON.parse(res.content);
+        } catch {
+          data = null;
+        }
+      }
+      if (data) {
+        wordLookupCache.set(key, data);
+        persistLookedUpWord(word, data);
+      }
+      resolveFn(data);
+    });
+    return promise;
+  }
+
+  function prefetchAllLessonWords() {
+    (lesson.content || []).forEach((item) => {
+      if (!item?.text) return;
+      computeInteractiveSpans(item.text, lesson.vocabulary || []).forEach((s) => {
+        // "s.entry" — từ/cụm này ĐÃ có nghĩa sẵn trong lesson.vocabulary (sinh cùng lúc tạo bài
+        // hoặc đã có người tra/lưu trước đó), showWordTooltip() dùng thẳng KHÔNG cần gọi AI.
+        if (s.entry) return;
+        scheduleLookup(s.text, item.text);
+      });
+    });
+    runPrefetchQueue();
+  }
+
+  // Gọi ĐÚNG 1 LẦN ở đây, NGAY SAU khi màn đã vẽ xong lần đầu (renderPanel() ở trên) — chạy NỀN,
+  // không chặn hiển thị nội dung. KHÔNG gọi lại mỗi khi đổi tab/trang/chế độ xem: cache/
+  // pendingLookups đã bao trọn CẢ bài ngay từ đầu, mọi trang/chế độ xem sau này chỉ đọc lại
+  // đúng 1 bộ cache này.
+  prefetchAllLessonWords();
 
   function contentActionsHtml(idx) {
     if (!ttsSupported) {
@@ -470,38 +514,47 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // loa đọc từ/cụm đó (đúng giọng nhân vật của câu chứa từ này) — không giải thích, không
   // ví dụ, không lưu ý.
   //
-  // "vocabEntry" (2026-07-28, sửa lỗi tooltip xoay vòng chờ trước khi ra nghĩa — Minh phát
-  // hiện thật): trước đây MỌI lượt bấm từ đều đi qua wordLookupCache/API dù từ đó đã CÓ SẴN
-  // nghĩa trong lesson.vocabulary (sinh cùng lúc tạo bài, không tốn thêm gì) — chỉ đỡ nhờ
-  // prefetchWordLookups() chạy NỀN khi hiện câu, nhưng vẫn có khoảng hở đua (bấm quá nhanh
-  // trước khi prefetch xong, hoặc ở chế độ "Xem tất cả" không prefetch) khiến tooltip vẫn phải
-  // hiện spinner chờ. Có "vocabEntry" (từ computeInteractiveSpans(), khớp ĐÚNG mục vocabulary
-  // của bài) -> dùng THẲNG, hiện NGAY LẬP TỨC, không đụng cache/API/spinner gì cả.
+  // "vocabEntry" (2026-07-28, sửa lỗi tooltip xoay vòng chờ trước khi ra nghĩa) — từ/cụm này ĐÃ
+  // có nghĩa sẵn trong lesson.vocabulary (từ computeInteractiveSpans(), sinh cùng lúc tạo bài
+  // hoặc đã có người tra/lưu trước đó) -> dùng THẲNG, hiện NGAY LẬP TỨC, không đụng cache/API/
+  // spinner gì cả.
+  //
+  // KHÔNG "vocabEntry" (2026-07-29, "đảm bảo 100% click vào hiện ngay") — prefetchAllLessonWords()
+  // đã lên lịch tra TOÀN BỘ từ của cả bài NGAY khi mở bài (không chỉ câu đang xem), nên hầu như
+  // luôn đã CÓ SẴN trong wordLookupCache hoặc ít nhất đang có 1 Promise trong pendingLookups —
+  // DÙNG LẠI đúng promise đó (KHÔNG tự tạo 1 lượt gọi AI trùng lặp) thay vì tự bắn 1 request mới
+  // như bản cũ. Chỉ khi cả 2 đều không có (trường hợp cực hiếm — từ mới do renderInteractiveHtml/
+  // prefetchAllLessonWords lệch nhau) mới tự gọi API riêng làm phương án cuối.
   async function showWordTooltip(anchorEl, word, sentence, genderHint, vocabEntry) {
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
     let data = vocabEntry ? { level: lesson.level, meaning: vocabEntry.meaning } : wordLookupCache.get(cacheKey);
 
-    // Bình thường đã có sẵn trong cache nhờ prefetchWordLookups() chạy nền khi hiện câu này
-    // -> tooltip hiện NGAY, không cần bước "Đang tra...". Chỉ khi cache thật sự chưa có
-    // (vd bấm quá nhanh trước khi prefetch xong) mới hiện spinner KHÔNG CHỮ chờ kết quả.
     if (!data) {
       showPopoverHtml(anchorEl, `<div class="word-popover-loading"><span class="spinner spinner-sm"></span></div>`);
-      const res = await callChatAction("word_lookup", { word, sentence });
-      if (res.ok) {
-        try {
-          data = JSON.parse(res.content);
-        } catch {
-          data = null;
+      const pending = pendingLookups.get(cacheKey);
+      if (pending) {
+        data = await pending;
+      } else {
+        const res = await callChatAction("word_lookup", { word, sentence });
+        if (res.ok) {
+          try {
+            data = JSON.parse(res.content);
+          } catch {
+            data = null;
+          }
+        }
+        if (data) {
+          wordLookupCache.set(cacheKey, data);
+          persistLookedUpWord(word, data);
         }
       }
-      if (data) wordLookupCache.set(cacheKey, data);
     }
 
     if (!data || !CEFR_LEVELS.includes(data.level)) {
       showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
       return;
     }
-    rememberLookedUpWord(word, data);
+    persistLookedUpWord(word, data);
     showPopoverHtml(
       anchorEl,
       `
@@ -520,10 +573,14 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     });
   }
 
-  // Tra 1 từ/cụm xong -> tự thêm vào bảng Từ vựng của bài (nhóm "Đã tra", xem VOCAB_VIEWS
-  // trong renderVocabularyTab) — cập nhật NGAY trong bộ nhớ (không cần tải lại trang mới
-  // thấy) + lưu thật xuống DB (fire-and-forget qua lessonApi.js) để lần sau mở lại bài vẫn còn.
-  function rememberLookedUpWord(word, data) {
+  // Tra 1 từ/cụm xong (dù do người dùng bấm hay do prefetchAllLessonWords() chạy nền) -> tự
+  // thêm vào bảng Từ vựng của bài (nhóm "Đã tra", xem VOCAB_VIEWS trong renderVocabularyTab) —
+  // cập nhật NGAY trong bộ nhớ (để computeInteractiveSpans() sau đó tự thấy "s.entry", không
+  // cần chờ gọi AI lại trong CÙNG phiên xem) + lưu thật xuống DB (fire-and-forget qua
+  // lessonApi.js, "isNews" chọn đúng bảng — xem addLookedUpWord/add_news_vocab_word) để LẦN SAU
+  // mở lại bài (kể cả người dùng KHÁC, với bài Tin tức dùng chung) vẫn có sẵn, không cần tra
+  // lại AI — đây là điều kiện để "prefetch cả bài" không lặp lại chi phí AI mỗi lần mở bài.
+  function persistLookedUpWord(word, data) {
     const key = word.trim().toLowerCase();
     const exists = (lesson.vocabulary || []).some((w) => (w.word || "").trim().toLowerCase() === key);
     if (exists) return;
@@ -537,7 +594,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       is_specialized: false,
       source: "user_lookup",
     });
-    addLookedUpWord(lesson.id, word, data);
+    addLookedUpWord(lesson.id, word, data, isNews);
   }
 
   // ====== Tab Từ vựng ======
@@ -837,7 +894,7 @@ function tokenizeWords(text) {
 // (learning-english-ai/render/render-interactive.js: khớp cụm DÀI NHẤT trước, các token đã
 // dùng cho 1 cụm thì không dùng lại cho cụm khác). Từ còn lại (không thuộc cụm nào) vẫn bấm
 // riêng từng từ như cũ. Dùng CHUNG cho dựng HTML (renderInteractiveHtml) lẫn tra trước
-// (prefetchWordLookups) để chỉ có 1 nơi định nghĩa "thế nào là khớp cụm".
+// (prefetchAllLessonWords) để chỉ có 1 nơi định nghĩa "thế nào là khớp cụm".
 function computeInteractiveSpans(text, vocabulary) {
   const { tokens } = tokenizeWords(text);
   if (!tokens.length) return [];

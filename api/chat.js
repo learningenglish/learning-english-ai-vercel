@@ -3,7 +3,7 @@ import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
 import { generate_writing_task, grade_writing, save_writing_favorite } from "./_generate/writing.js";
 import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
-import { add_vocab_word } from "./_generate/vocab.js";
+import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
 import {
   mentor_get_action,
   mentor_check_goal_gate,
@@ -1293,8 +1293,9 @@ const ACTIONS = {
   search_lesson_cover_image,
   set_lesson_cover_image,
   // Người học bấm tra 1 từ trong bài -> tự thêm vào "vocabulary" của bài đó (nhóm "Đã tra"),
-  // xem api/_generate/vocab.js.
+  // xem api/_generate/vocab.js. Bản "_news" ghi vào news_lessons (công khai, không user_id).
   add_vocab_word,
+  add_news_vocab_word,
 
   // Mentor AI (Đợt 3) — thay luồng "Tạo nội dung" cũ, xem api/_generate/mentor.js. Tách lớp
   // Quyết định/Lời thoại NGAY TRONG module đó — 5 action dưới đây chỉ là điểm vào, không tự
