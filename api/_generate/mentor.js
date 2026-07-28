@@ -579,7 +579,14 @@ async function getOrCreateIndustrySkin(occupationProfile) {
 // lượt này, đúng mục 3 yêu cầu gốc.
 async function ensureSkinLevel(skinRow, level, occupationProfile) {
   if (skinRow.levels?.[level] && skinRow.level_status?.[level] === "ok") {
-    return { ok: true, frames: skinRow.levels[level] };
+    // "story_chains" (2026-07-28) — lưu vĩnh viễn kèm frames dưới dạng {frames, story_chains}
+    // thay vì thẳng frames dict như trước. TƯƠNG THÍCH DỮ LIỆU CŨ (industry_skins sinh trước
+    // ngày này): stored KHÔNG có field "frames" lồng bên trong -> coi CẢ object đó LÀ frames
+    // (đúng shape cũ), story_chains rỗng — KHÔNG cần sinh lại các gói cũ (tốn chi phí, không
+    // bắt buộc theo yêu cầu gốc).
+    const stored = skinRow.levels[level];
+    const frames = stored?.frames || stored;
+    return { ok: true, frames, storyChains: stored?.story_chains || [] };
   }
   console.log("[MENTOR_AI_CALL] skin_level_generation", { skinId: skinRow.id, occupationKey: skinRow.occupation_key, level });
   const result = await generateLevelTopics({
@@ -591,7 +598,9 @@ async function ensureSkinLevel(skinRow, level, occupationProfile) {
     // vị trí nào liền kề vị trí nào mà nhóm chủ đề lớn, xem LEVEL_SYSTEM_PROMPT trong skin.js.
     spineSlots: loadCurriculumSpine()[level] || [],
   });
-  const updatedLevels = result.ok ? { ...skinRow.levels, [level]: result.frames } : skinRow.levels;
+  const updatedLevels = result.ok
+    ? { ...skinRow.levels, [level]: { frames: result.frames, story_chains: result.story_chains || [] } }
+    : skinRow.levels;
   const updatedStatus = { ...skinRow.level_status, [level]: result.ok ? "ok" : "failed" };
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${skinRow.id}`, {
@@ -602,7 +611,7 @@ async function ensureSkinLevel(skinRow, level, occupationProfile) {
   } catch (e) {
     console.error("ensureSkinLevel PATCH error:", e);
   }
-  return result.ok ? { ok: true, frames: result.frames } : { ok: false };
+  return result.ok ? { ok: true, frames: result.frames, storyChains: result.story_chains || [] } : { ok: false };
 }
 
 // Lỗi thật đã gặp (2026-07-27, Minh phát hiện): bài gắn nhãn A1 nhưng dùng "will" (tương lai)

@@ -260,28 +260,62 @@ cấp làm nguồn. Quy tắc thích nghi:
   trong CÙNG 1 "mạch chủ đề" (xem mục MẠCH CHỦ ĐỀ LIÊN TỤC bên dưới) — lúc đó KHÔNG cần khác
   nhau rõ rệt, thậm chí NÊN là 2 góc nhìn/khoảnh khắc của CÙNG một tình huống/nhân vật/địa điểm.
 
-MẠCH CHỦ ĐỀ LIÊN TỤC (bắt buộc): user prompt sẽ cho bạn ĐÚNG THỨ TỰ các bài học sẽ diễn ra trong
-cấp độ này (mục "THỨ TỰ BÀI HỌC"), mỗi dòng 1 vị trí = 1 bài, kèm khung tình huống của vị trí đó.
-Coi danh sách này là 1 chuỗi "chương truyện" tuần tự — với MỖI biến thể "topic" bạn sinh ra, hãy
-gán nó cho ĐÚNG 1 vị trí cụ thể trong danh sách (dùng số thứ tự vị trí để tự đối chiếu, không cần
-ghi số đó vào JSON đầu ra — chỉ cần ĐÚNG THỨ TỰ mảng biến thể của từng khung khớp với thứ tự các
-vị trí của khung đó xuất hiện trong danh sách, đọc từ trên xuống). Nhóm các vị trí LIÊN TIẾP
-(thường 2-3 vị trí, có thể dao động, không bắt buộc bằng nhau) — dù cùng khung hay khác khung —
-thành 1 CHỦ ĐỀ LỚN DUY NHẤT có mạch truyện: mở đầu ở vị trí đầu chuỗi, phát triển/diễn biến thêm
-ở (các) vị trí giữa, có kết quả/kết thúc rõ ràng ở vị trí cuối chuỗi (vd cùng 1 nhân vật/khách
-hàng/công ty/địa điểm xuyên suốt cả chuỗi). Hết 1 chuỗi thì CHUYỂN HẲN sang 1 câu chuyện khác cho
-chuỗi vị trí tiếp theo — không dùng lại nhân vật/bối cảnh của chuỗi trước (để tránh học viên thấy
-mọi bài giống 1 series bất tận). Chuỗi có thể GỘP nhiều khung khác nhau (mỗi khung vẫn phải đúng
-chức năng giao tiếp riêng của nó — KHÔNG đổi khung để hợp câu chuyện) hoặc chỉ 1 khung lặp 2 lần
-liên tiếp — cả 2 dạng đều hợp lệ.
+MẠCH CHỦ ĐỀ LIÊN TỤC — QUY TRÌNH BẮT BUỘC 2 BƯỚC, ĐÚNG THỨ TỰ (sửa 2026-07-28 sau khi phát hiện
+lỗi thật: chỉ nhắc "phải nối mạch" chung chung không đủ, model từng để 2 bài cùng chuỗi nói về 2
+NHÂN VẬT khác nhau — "hỏi về đồng nghiệp thân thiết" rồi sang "nói về bạn cùng lớp" — đọc thì có
+vẻ cùng chủ đề nhưng KHÔNG phải cùng 1 câu chuyện). User prompt cho bạn ĐÚNG THỨ TỰ các bài học
+sẽ diễn ra trong cấp độ này (mục "THỨ TỰ BÀI HỌC"), mỗi dòng 1 vị trí = 1 bài, kèm khung tình
+huống của vị trí đó — TUYỆT ĐỐI KHÔNG được viết bất kỳ "topic" nào trước khi hoàn thành BƯỚC 1
+dưới đây.
+
+BƯỚC 1 — DỰNG "story_chains" (khung câu chuyện) TRƯỚC, cho TỪNG chuỗi: chia danh sách vị trí
+thành các chuỗi VỊ TRÍ LIÊN TIẾP (thường 2-3 vị trí, có thể dao động, không bắt buộc bằng nhau —
+dù cùng khung hay khác khung đều gộp được, mỗi khung trong chuỗi vẫn phải đúng chức năng giao
+tiếp riêng của nó, KHÔNG đổi khung để hợp câu chuyện). Với MỖI chuỗi, viết ra ĐỦ 3 phần, CỤ THỂ
+(không viết chung chung):
+- "character": nhân vật chính của chuỗi — TÊN RIÊNG hoặc VAI TRÒ CỤ THỂ (vd "một khách hàng tên
+  Lan", "đồng nghiệp mới tên Minh") — PHẢI GIỮ NGUYÊN, không đổi, ở MỌI vị trí trong chuỗi đó.
+- "setting": bối cảnh/không gian cụ thể (địa điểm + tình huống nền, vd "quầy pha chế của quán cà
+  phê vào ca sáng") — PHẢI GIỮ NGUYÊN, không đổi, ở MỌI vị trí trong chuỗi đó.
+- "arc": 1-2 câu mô tả mạch diễn biến CỦA CẢ CHUỖI — vị trí đầu MỞ ĐẦU câu chuyện, vị trí giữa
+  (nếu có) PHÁT TRIỂN TIẾP NỐI TRỰC TIẾP (không phải chuyện mới), vị trí cuối có KẾT QUẢ/KẾT
+  THÚC rõ ràng. Đây PHẢI là 1 CÂU CHUYỆN DUY NHẤT chảy xuyên suốt cả chuỗi, KHÔNG PHẢI 2-3 câu
+  chuyện tách rời chỉ tình cờ cùng 1 chủ đề chung chung.
+Hết 1 chuỗi thì CHUYỂN HẲN sang nhân vật/bối cảnh khác cho chuỗi tiếp theo (không dùng lại nhân
+vật/bối cảnh của chuỗi trước — tránh cảm giác 1 series bất tận xuyên suốt cả level).
+
+BƯỚC 2 — SAU KHI ĐÃ CÓ story_chains, MỚI viết "topic" cho từng vị trí: mỗi topic PHẢI nhắc TRỰC
+TIẾP đến ĐÚNG "character" + "setting" của đúng chuỗi chứa vị trí đó (gắn kèm "chain_id" của chuỗi
+đó) — KHÔNG được tự ý đổi sang nhân vật/bối cảnh khác dù vẫn cùng khung tình huống trừu tượng.
+LỖI CẤM cụ thể (đối chiếu lỗi thật đã bắt được): vị trí 1 trong 1 chuỗi viết "hỏi về đồng nghiệp
+thân thiết" rồi vị trí 2 CÙNG chuỗi đó lại viết "nói về bạn cùng lớp" — đây là 2 NHÂN VẬT khác
+nhau dù cùng khung "người thân thuộc", SAI. ĐÚNG phải là: cả 2 vị trí CÙNG xoay quanh 1 người cụ
+thể đã chốt ở "character" của chuỗi (vd cả 2 vị trí đều nói về "đồng nghiệp tên Minh" — vị trí 1
+hỏi thông tin cơ bản về Minh, vị trí 2 tiếp tục nói về sở thích của CHÍNH Minh đó).
+- Mỗi khung cần ÍT NHẤT số biến thể ghi trong "required_count" của khung đó (có thể sinh dư 1-2
+  cho an toàn, không được ít hơn). CÁC BIẾN THỂ TRONG CÙNG 1 KHUNG PHẢI KHÁC NHAU RÕ RỆT — không
+  lặp lại cùng 1 câu chuyện/bối cảnh dưới cách diễn đạt khác, để học viên không thấy 2 bài liền
+  nhau giống hệt nhau dù đổi vài từ. NGOẠI LỆ DUY NHẤT: 2 lần xuất hiện của CÙNG 1 khung nằm
+  trong CÙNG 1 chuỗi (cùng "chain_id") — lúc đó KHÔNG cần khác nhau rõ rệt, PHẢI cùng 1 nhân
+  vật/bối cảnh như quy định ở trên, chỉ khác góc nhìn/khoảnh khắc trong câu chuyện.
 
 ĐẦU RA: CHỈ trả JSON hợp lệ theo đúng khuôn dưới đây, không thêm chữ nào ngoài JSON, không bọc
 markdown code fence:
 
 {
   "level": "<mã level của lượt này, vd A1>",
+  "story_chains": [
+    {
+      "chain_id": 1,
+      "start_position": <số thứ tự vị trí đầu chuỗi, theo mục THỨ TỰ BÀI HỌC>,
+      "end_position": <số thứ tự vị trí cuối chuỗi>,
+      "character": "<nhân vật chính, cụ thể>",
+      "setting": "<bối cảnh/không gian, cụ thể>",
+      "arc": "<mạch diễn biến mở đầu -> phát triển -> kết thúc>"
+    }
+  ],
   "frames": {
-    "<frame_key>": [ { "topic": "<chủ đề cụ thể đúng ngành, tiếng Việt, ngắn gọn kiểu tên chủ đề bài học>", "fallback": false } ]
+    "<frame_key>": [ { "topic": "<chủ đề cụ thể đúng ngành, tiếng Việt, ngắn gọn kiểu tên chủ đề bài học, PHẢI nhắc tới character+setting của chain_id tương ứng>", "fallback": false, "chain_id": <đúng chain_id của chuỗi chứa vị trí này> } ]
   }
 }
 
@@ -290,7 +324,9 @@ này — không tự thêm/bớt/đổi tên key, không lẫn frame_key của l
 frame_key PHẢI theo ĐÚNG THỨ TỰ các vị trí của khung đó trong mục "THỨ TỰ BÀI HỌC" (phần tử đầu =
 vị trí đầu tiên khung đó xuất hiện, phần tử 2 = vị trí kế tiếp khung đó xuất hiện, v.v. — nếu sinh
 dư biến thể so với required_count, các phần tử dư thêm vào CUỐI mảng, không phá thứ tự các phần
-tử đã khớp vị trí).`;
+tử đã khớp vị trí). "story_chains" PHẢI phủ HẾT mọi vị trí trong mục "THỨ TỰ BÀI HỌC" (không bỏ
+sót vị trí nào ngoài mọi chuỗi), các "start_position"/"end_position" của các chuỗi liên tiếp
+không chồng lấn nhau.`;
 
 function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots }) {
   const interlocutorsLine = occupationProfile.interlocutors
@@ -348,6 +384,18 @@ function validateLevelPayload(level, data, frames, requiredCounts) {
       seen.add(t);
     }
   }
+  // "story_chains" (2026-07-28, "mạch chủ đề" bước 1 bắt buộc) — CHỈ kiểm cấu trúc tối thiểu
+  // (mảng không rỗng, đủ 3 trường cốt lõi mỗi chuỗi), KHÔNG kiểm nội dung topic có THẬT SỰ nhắc
+  // đúng character/setting hay không (việc đó cần đọc hiểu tự nhiên, không kiểm bằng code được
+  // đáng tin cậy — dựa vào prompt + soát bằng mắt lúc nghiệm thu, xem ghi chú Việc 3 trước đó về
+  // rủi ro validate quá chặt làm tăng tỷ lệ fail oan).
+  const chains = Array.isArray(data?.story_chains) ? data.story_chains : [];
+  if (!chains.length) {
+    problems.push("thiếu story_chains (bước 1 bắt buộc của mạch chủ đề)");
+  } else {
+    const badChain = chains.find((c) => !c || !String(c.character || "").trim() || !String(c.setting || "").trim() || !String(c.arc || "").trim());
+    if (badChain) problems.push("story_chains có mục thiếu character/setting/arc");
+  }
   return problems;
 }
 
@@ -379,7 +427,19 @@ export async function generateLevelTopics({ occupationProfile, level, requiredCo
       continue;
     }
     const problems = validateLevelPayload(level, result.data, frames, requiredCounts);
-    if (!problems.length) return { ok: true, level, frames: result.data.frames, attempts: attempt, ...lastTelemetry };
+    if (!problems.length) {
+      return {
+        ok: true,
+        level,
+        frames: result.data.frames,
+        // "story_chains" (2026-07-28) — khung nhân vật/bối cảnh/mạch diễn biến đã chốt cho mỗi
+        // chuỗi 2-3 slot, LƯU LẠI cùng frames (không chỉ tồn tại tạm trong lượt gọi này) để có
+        // thể kiểm tra lại/debug sau, xem ensureSkinLevel() trong mentor.js cho nơi lưu vĩnh viễn.
+        story_chains: result.data.story_chains || [],
+        attempts: attempt,
+        ...lastTelemetry,
+      };
+    }
     lastProblems = problems;
   }
   return { ok: false, level, problems: lastProblems, attempts: MAX_SKIN_LEVEL_ATTEMPTS, ...lastTelemetry };
