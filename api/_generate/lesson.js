@@ -382,15 +382,20 @@ function resolveLengthRange(level, lengthTier) {
 // không giống cách người viết thật không bao giờ canh đúng 1 độ dài mỗi lần. Random hoá điểm
 // nhắm MỖI LẦN GỌI (dùng để tính số lượt thoại/số đoạn cơ học bên dưới, KHÔNG đổi khoảng
 // min/max CEFR hiển thị cho model — bảng đó vẫn là khung tham chiếu duy nhất, không đổi).
-// Giới hạn vùng chọn ở [min+15%khoảng, max-15%khoảng] (không chọn sát 2 biên) — lỗi thật đo
-// được TỪ TRƯỚC TỚI GIỜ luôn là VIẾT THIẾU chứ chưa từng viết thừa, nên nhắm sát biên dưới rất
-// dễ khiến bài đó rơi khỏi khoảng hợp lệ; nhắm sát biên trên thì an toàn hơn nhưng vẫn chừa biên
-// để không mất hẳn ý nghĩa "dao động" nếu bài đó thực tế viết dư thêm chút.
+// LỆCH HẲN vùng chọn về nửa TRÊN [min+30%khoảng, max] (KHÔNG đối xứng — sửa 2026-07-28 sau khi
+// test thật lộ undershoot nặng: A1 dialogue 2 mẫu random tới gần đáy khoảng đều ra bài CHỈ 53-55
+// từ, dưới cả sàn CHÍNH THỨC 60; B1 reading 1 mẫu random gần đáy ra 143/191; C1 reading random
+// gần đáy ra 280/454 — GẦN NHƯ THIẾU HẲN 40-60%, không phải lệch nhẹ). Lý do kỹ thuật: model có
+// thiên lệch viết thiếu MỘT CHIỀU đã ghi nhận nhất quán qua RẤT NHIỀU lần đo trong toàn bộ lịch
+// sử file này ("lỗi thật đo được LUÔN LÀ VIẾT THIẾU, chưa từng gặp viết thừa") — random hoá ĐỐI
+// XỨNG quanh khoảng (bản đầu tiên, đã bỏ) coi undershoot và overshoot như rủi ro ngang nhau, SAI
+// với thực tế đo được. Giữ vùng chọn LỆCH vào nửa trên (30%-100% của khoảng, không chỉ 1 điểm
+// giữa cố định như bản CŨ TRƯỚC 2026-07-28) — vẫn tạo dao động thật giữa các bài (không còn luôn
+// đúng 1 con số), nhưng không còn random tới vùng đáy vốn đã biết trước là rủi ro cao.
 function pickTargetLengthWords(minWords, maxWords) {
   const range = maxWords - minWords;
-  const low = minWords + range * 0.15;
-  const high = maxWords - range * 0.15;
-  return Math.round(low + Math.random() * (high - low));
+  const low = minWords + range * 0.3;
+  return Math.round(low + Math.random() * (maxWords - low));
 }
 
 // Biên nới lỏng cho VALIDATOR (không đổi khoảng hiển thị cho model, chỉ nới NGƯỠNG TỪ CHỐI) —
