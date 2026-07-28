@@ -43,7 +43,7 @@ const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 // (2 request gần như đồng thời cùng đọc thấy còn 1 suất) có thể khiến 1 ngày có 11 bài thay
 // vì tối đa 10 — CHẤP NHẬN được cho MVP (không phải hệ thống thanh toán, không cần RPC
 // "for update" như credit cũ).
-const DAILY_LESSON_LIMIT = 60; // TEMP nâng để test "mạch chủ đề liên tục" (2026-07-28) — HẠ LẠI 10 trước merge/khi ngừng test.
+const DAILY_LESSON_LIMIT = 10;
 const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè
 
 // Trả về thời điểm UTC tương ứng với 00:00:00 hôm nay theo giờ VN (dùng làm mốc "gte" khi
@@ -772,11 +772,7 @@ export async function generate_lesson(data, ctx) {
   });
   if (!r.ok) {
     if (r.parseError) console.error("[generate_lesson] parse error:", r.text?.slice(0, 500));
-    // TEMP DEBUG (2026-07-28) — xem chú thích khối debug dưới, cùng đợt gỡ.
-    return {
-      error: `${r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại."} [DEBUG r.ok=false parseError=${!!r.parseError} status=${r.status} target=${targetLengthWords}]`,
-      status: r.status || 502,
-    };
+    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
   }
   const parsed = r.data;
   capLessonArrays(parsed);
@@ -791,12 +787,7 @@ export async function generate_lesson(data, ctx) {
       `cefr_range=[${minWords},${maxWords}]`,
       `validate_range=[${validateMin},${validateMax}]`
     );
-    // TEMP DEBUG (2026-07-28, diagnose Việc 2 "độ dài tự nhiên" fail rate) — lộ lý do thật ra
-    // response để soi không cần vercel logs (không đáng tin trong sandbox này). XOÁ sau khi xong.
-    return {
-      error: `AI trả về dữ liệu không hợp lệ, vui lòng thử lại. [DEBUG ${validation.reason} actual=${validation.actualWords} target=${targetLengthWords} cefr=[${minWords},${maxWords}] validate=[${validateMin},${validateMax}]]`,
-      status: 502,
-    };
+    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
   const [goalId, skinId] = await Promise.all([
