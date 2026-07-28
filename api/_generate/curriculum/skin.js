@@ -404,7 +404,11 @@ async function callLevelOnce({ occupationProfile, level, frames, requiredCounts,
     { role: "system", content: LEVEL_SYSTEM_PROMPT },
     { role: "user", content: buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots }) },
   ];
-  const r = await generateStructuredJSON({ tier: SKIN_MODEL_TIER, temperature: 0.7, maxTokens: 3500, messages });
+  // maxTokens 3500->6000 (2026-07-28, trần cứng MAX_TOKENS_CAP của aiProvider.js): thêm
+  // "story_chains" + "chain_id" trên mỗi topic (mạch chủ đề, xem LEVEL_SYSTEM_PROMPT) làm JSON
+  // dài hơn hẳn — lỗi thật đo được: A1 (89 slot) bị CẮT GIỮA JSON ở đúng 3500 completion tokens
+  // (parse fail cả 2 lần thử), không phải lỗi nội dung.
+  const r = await generateStructuredJSON({ tier: SKIN_MODEL_TIER, temperature: 0.7, maxTokens: 6000, messages });
   const telemetry = { model: r.model, usage: r.usage, durationMs: r.durationMs };
   return r.ok ? { ok: true, data: r.data, ...telemetry } : { ok: false, parseError: !!r.parseError, ...telemetry };
 }
