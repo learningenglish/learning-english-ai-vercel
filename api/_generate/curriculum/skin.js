@@ -413,18 +413,58 @@ async function callLevelOnce({ occupationProfile, level, frames, requiredCounts,
   return r.ok ? { ok: true, data: r.data, ...telemetry } : { ok: false, parseError: !!r.parseError, ...telemetry };
 }
 
-// Gọi lại RIÊNG lượt B của 1 level khi gãy — cap MAX_SKIN_LEVEL_ATTEMPTS, đúng mục 10.
+function requiredCountsForSlots(slots) {
+  const counts = {};
+  for (const s of slots) counts[s.situation_frame_key] = (counts[s.situation_frame_key] || 0) + 1;
+  return counts;
+}
+
+// SINH DẦN TỪNG CHUNK KHI CẦN (2026-07-28, sửa lỗi thật LẦN 2 — bản đầu tiên trong ngày gọi Lượt
+// B TUẦN TỰ cho HẾT mọi chunk của 1 level ngay trong request đầu tiên: dù từng lượt gọi riêng lẻ
+// đủ nhanh, TỔNG thời gian nhiều lượt cộng dồn vẫn vượt hẳn trần 60s của Vercel — đo được thật
+// FUNCTION_INVOCATION_TIMEOUT, A1/A2/B1/B2 đều ~80-89 slot nên không phải ca hiếm). Sửa đúng gốc
+// bằng cách áp dụng NGUYÊN TẮC LƯỜI đã dùng cho cấp LEVEL (industry_skins chỉ sinh level nào
+// ĐANG CẦN, xem ensureSkinChunk trong mentor.js) xuống thêm 1 tầng: CHỈ sinh CHUNK (~20 vị trí
+// liên tiếp) chứa đúng slot đang cần cho bài SẮP TẠO, không sinh trước cả level. Slot ở chunk
+// khác tự sinh chunk của NÓ khi tới lượt (next_lesson gọi kế tiếp) — vẫn CHỈ 1 lượt gọi AI/chunk
+// suốt đời (dùng chung theo ngành, cache vĩnh viễn), không sinh lại khi đã có.
+export const SKIN_CHUNK_SIZE = 20;
+
+export function chunkIndexForSlot(slotIndex) {
+  return Math.floor(slotIndex / SKIN_CHUNK_SIZE);
+}
+
+// occurrenceIndex trả về ở đây là CỤC BỘ TRONG CHUNK (đếm số lần frameKey xuất hiện tính từ ĐẦU
+// CHUNK, không phải từ đầu level) — PHẢI khớp đúng cách frames[frameKey] của 1 chunk được sinh
+// (generateSkinChunk chỉ yêu cầu đủ biến thể cho các lần frameKey xuất hiện TRONG chunk đó, xem
+// requiredCountsForSlots), khác hẳn ý nghĩa cũ (occurrence tính từ đầu LEVEL) trước khi chunk hoá.
+export function localOccurrenceInChunk(spineLevelSlots, slotIndex) {
+  const slot = spineLevelSlots[slotIndex];
+  const chunkIndex = chunkIndexForSlot(slotIndex);
+  const chunkStart = chunkIndex * SKIN_CHUNK_SIZE;
+  const chunkSlots = spineLevelSlots.slice(chunkStart, chunkStart + SKIN_CHUNK_SIZE);
+  const localIndex = slotIndex - chunkStart;
+  const occurrenceIndex =
+    chunkSlots.slice(0, localIndex + 1).filter((s) => s.situation_frame_key === slot.situation_frame_key).length - 1;
+  return { chunkIndex, occurrenceIndex };
+}
+
+// Sinh Lượt B cho ĐÚNG 1 CHUNK (~20 vị trí liên tiếp) của 1 level — đơn vị lười nhỏ nhất. Cap
+// MAX_SKIN_LEVEL_ATTEMPTS, đúng mục 10 gốc (retry riêng khi gãy, không tính lượt ngoài trần).
 // "model"/"usage"/"durationMs" ở output là của LƯỢT GỌI CUỐI, giống generateOccupationProfile.
-// "spineSlots" (2026-07-28, "mạch chủ đề liên tục") = curriculum_spine.json levels[level] ĐÚNG
-// THỨ TỰ — optional (caller cũ chưa truyền thì bằng undefined, buildLevelUserPrompt tự bỏ qua
-// mục "THỨ TỰ BÀI HỌC", coi như trước đây) để không ép mọi call site cũ (nếu có script test cũ)
-// phải sửa theo.
-export async function generateLevelTopics({ occupationProfile, level, requiredCounts, skinGeneralForLevel, spineSlots }) {
-  const frames = SITUATION_FRAMES[level];
+export async function generateSkinChunk({ occupationProfile, level, spineLevelSlots, chunkIndex, skinGeneralForLevel }) {
+  const chunkStart = chunkIndex * SKIN_CHUNK_SIZE;
+  const chunkSlots = spineLevelSlots.slice(chunkStart, chunkStart + SKIN_CHUNK_SIZE);
+  if (!chunkSlots.length) return { ok: false, level, chunkIndex, problems: [`chunkIndex ${chunkIndex} ngoài phạm vi level ${level}`] };
+
+  const chunkFrameKeys = new Set(chunkSlots.map((s) => s.situation_frame_key));
+  const frames = SITUATION_FRAMES[level].filter((f) => chunkFrameKeys.has(f.key));
+  const requiredCounts = requiredCountsForSlots(chunkSlots);
+
   let lastProblems = ["chưa gọi lần nào"];
   let lastTelemetry = {};
   for (let attempt = 1; attempt <= MAX_SKIN_LEVEL_ATTEMPTS; attempt++) {
-    const result = await callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots });
+    const result = await callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots: chunkSlots });
     lastTelemetry = { model: result.model, usage: result.usage, durationMs: result.durationMs };
     if (!result.ok || result.parseError) {
       lastProblems = ["gọi API hoặc parse JSON thất bại"];
@@ -435,10 +475,8 @@ export async function generateLevelTopics({ occupationProfile, level, requiredCo
       return {
         ok: true,
         level,
+        chunkIndex,
         frames: result.data.frames,
-        // "story_chains" (2026-07-28) — khung nhân vật/bối cảnh/mạch diễn biến đã chốt cho mỗi
-        // chuỗi 2-3 slot, LƯU LẠI cùng frames (không chỉ tồn tại tạm trong lượt gọi này) để có
-        // thể kiểm tra lại/debug sau, xem ensureSkinLevel() trong mentor.js cho nơi lưu vĩnh viễn.
         story_chains: result.data.story_chains || [],
         attempts: attempt,
         ...lastTelemetry,
@@ -446,50 +484,5 @@ export async function generateLevelTopics({ occupationProfile, level, requiredCo
     }
     lastProblems = problems;
   }
-  return { ok: false, level, problems: lastProblems, attempts: MAX_SKIN_LEVEL_ATTEMPTS, ...lastTelemetry };
-}
-
-// ====== Điều phối toàn bộ 6 lượt gọi (mục 0 + mục 10) ======
-//
-// Gọi generateOccupationProfile() trước, đợi UI hiện màn xác nhận + người dùng bấm "Bắt đầu
-// học" rồi mới gọi generateLevelTopicsForAllLevels() — 2 hàm TÁCH RIÊNG (không gộp thành 1 hàm
-// generateSkin() duy nhất) để khớp đúng luồng chẻ lượt: lượt chân dung phải xong và hiện màn
-// xác nhận cho người dùng TRƯỚC KHI 5 lượt level bắt đầu, không phải gọi liền tù tì.
-
-export async function generateLevelTopicsForAllLevels(occupationProfile) {
-  const requiredCounts = requiredCountsByLevel();
-  const skinGeneral = loadSkinGeneral();
-  const spine = loadCurriculumSpine();
-  const levels = {};
-  const levelRetries = {};
-  for (const level of LEVELS) {
-    const r = await generateLevelTopics({
-      occupationProfile,
-      level,
-      requiredCounts: requiredCounts[level],
-      skinGeneralForLevel: skinGeneral[level] || {},
-      spineSlots: spine[level] || [],
-    });
-    if (!r.ok) {
-      return { status: "level_generation_failed", level, problems: r.problems };
-    }
-    levels[level] = r.frames;
-    levelRetries[level] = r.attempts - 1;
-  }
-  return { status: "ok", levels, levelRetries };
-}
-
-// Ghép kết quả Lượt A + Lượt B thành 1 file da hoàn chỉnh, kèm generation_meta do CODE tự ghi
-// (không phải model trả về) — đúng khuôn cuối mục 10.
-export function assembleSkin({ industryKeywords, profileResult, levelResult }) {
-  return {
-    industry_keywords: industryKeywords,
-    occupation_profile: profileResult.data.occupation_profile,
-    generation_meta: {
-      web_search_used: profileResult.webSearchUsed,
-      profile_call_attempts: profileResult.attempts,
-      level_call_retries: levelResult.levelRetries,
-    },
-    levels: levelResult.levels,
-  };
+  return { ok: false, level, chunkIndex, problems: lastProblems, attempts: MAX_SKIN_LEVEL_ATTEMPTS, ...lastTelemetry };
 }

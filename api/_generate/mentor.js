@@ -17,10 +17,12 @@
 // điểm 2 dưới đây 2026-07-22 khi nối Lượt B của skin.js vào next_slot, chốt với Minh):
 //   1. mentor_infer_goal() -> generateOccupationProfile() (skin.js, TÁI DÙNG NGUYÊN VẸN,
 //      không sửa 1 dòng nào trong skin.js).
-//   2. ensureSkinLevel() -> generateLevelTopics() (skin.js, TÁI DÙNG NGUYÊN VẸN) — CHỈ gọi
-//      khi industry_skins CHƯA có sẵn level đang cần (dùng chung theo ngành, xem
-//      supabase/023_industry_skins.sql), 1 lượt/(ngành, level) rồi lưu lại vĩnh viễn cho mọi
-//      user cùng ngành sau này — KHÔNG gọi lại mỗi lần next_slot.
+//   2. ensureSkinChunk() -> generateSkinChunk() (skin.js, TÁI DÙNG NGUYÊN VẸN) — CHỈ gọi khi
+//      industry_skins CHƯA có sẵn CHUNK (~20 vị trí liên tiếp, SKIN_CHUNK_SIZE) đang cần (dùng
+//      chung theo ngành, xem supabase/023_industry_skins.sql), 1 lượt/(ngành, level, chunk) rồi
+//      lưu lại vĩnh viễn cho mọi user cùng ngành sau này — KHÔNG gọi lại mỗi lần next_slot. Đơn
+//      vị lười là CHUNK chứ không phải LEVEL (2026-07-28, sửa sau khi phát hiện 1 lượt gọi cho
+//      CẢ level ~80-89 slot vượt trần 60s Vercel — xem chú thích đầy đủ tại ensureSkinChunk()).
 //   3. mentor_next_lesson() -> generate_lesson() (lesson.js, TÁI DÙNG NGUYÊN VẸN action đã
 //      duyệt, chỉ truyền thêm data.goal_id/skin_id/spine_slot — xem resolveOwnedGoalId()/
 //      resolveSkinId() trong lesson.js).
@@ -29,8 +31,8 @@
 import { SUPABASE_URL } from "./_shared.js";
 import {
   generateOccupationProfile,
-  generateLevelTopics,
-  requiredCountsByLevel,
+  generateSkinChunk,
+  localOccurrenceInChunk,
   loadSkinGeneral,
   loadCurriculumSpine,
   normalizeOccupationKey,
@@ -525,17 +527,16 @@ export async function mentor_auto_goal(data, ctx) {
 // dùng ở lượt đầu (biết trước, chấp nhận cho MVP — lên cấp/mở rộng nội dung là việc sau).
 // ============================================================
 
-// slot đang cần + "đây là lần thứ mấy khung này xuất hiện tính từ đầu level" (occurrenceIndex)
-// — 1 khung (situation_frame_key) có thể xuất hiện ở NHIỀU slot khác nhau trong level (vd
-// "meeting_intro" ở cả slot 1 lẫn slot 5), mỗi lần xuất hiện cần 1 BIẾN THỂ chủ đề KHÁC NHAU
-// trong mảng topics[frame_key] mà Lượt B đã sinh (đúng "required_count" = số lần khung xuất
-// hiện, xem requiredCountsByLevel trong skin.js).
+// slot đang cần + chunkIndex (2026-07-28, "sinh dần từng chunk" — xem SKIN_CHUNK_SIZE trong
+// skin.js) + "đây là lần thứ mấy khung này xuất hiện tính từ ĐẦU CHUNK" (occurrenceIndex, CỤC
+// BỘ TRONG CHUNK, KHÔNG phải từ đầu level nữa — đổi ý nghĩa so với trước khi chunk hoá, vì
+// industry_skins giờ sinh dần theo chunk ~20 vị trí, mỗi chunk chỉ có đủ biến thể cho các lần
+// khung xuất hiện TRONG chunk đó, xem generateSkinChunk trong skin.js).
 function findSpineSlot(spineLevelSlots, lessonCount) {
   const slotIndex = lessonCount % spineLevelSlots.length;
   const slot = spineLevelSlots[slotIndex];
-  const occurrenceIndex =
-    spineLevelSlots.slice(0, slotIndex + 1).filter((s) => s.situation_frame_key === slot.situation_frame_key).length - 1;
-  return { slot, occurrenceIndex };
+  const { chunkIndex, occurrenceIndex } = localOccurrenceInChunk(spineLevelSlots, slotIndex);
+  return { slot, occurrenceIndex, chunkIndex };
 }
 
 // "frames" là 1 trong 2 dạng: da lĩnh vực THẬT (industry_skins.levels[level], mỗi biến thể là
@@ -574,42 +575,45 @@ async function getOrCreateIndustrySkin(occupationProfile) {
 
 // AI CALL #2/3 (mục 5 Đợt 3, xem đầu file) — CHỈ gọi khi industry_skins CHƯA có sẵn level đang
 // cần. Sinh xong 1 lần thì lưu vĩnh viễn, mọi user cùng ngành sau này dùng thẳng không gọi AI
-// lại. Thất bại (hết MAX_SKIN_LEVEL_ATTEMPTS bên trong generateLevelTopics của skin.js) -> trả
+// lại. Thất bại (hết MAX_SKIN_LEVEL_ATTEMPTS bên trong generateSkinChunk của skin.js) -> trả
 // ok:false, KHÔNG chặn tạo bài — caller tự rơi về da Tổng quát (skin_general.json) cho ĐÚNG
 // lượt này, đúng mục 3 yêu cầu gốc.
-async function ensureSkinLevel(skinRow, level, occupationProfile) {
-  if (skinRow.levels?.[level] && skinRow.level_status?.[level] === "ok") {
-    // "story_chains" (2026-07-28) — lưu vĩnh viễn kèm frames dưới dạng {frames, story_chains}
-    // thay vì thẳng frames dict như trước. TƯƠNG THÍCH DỮ LIỆU CŨ (industry_skins sinh trước
-    // ngày này): stored KHÔNG có field "frames" lồng bên trong -> coi CẢ object đó LÀ frames
-    // (đúng shape cũ), story_chains rỗng — KHÔNG cần sinh lại các gói cũ (tốn chi phí, không
-    // bắt buộc theo yêu cầu gốc).
-    const stored = skinRow.levels[level];
-    const frames = stored?.frames || stored;
-    return { ok: true, frames, storyChains: stored?.story_chains || [] };
-  }
-  console.log("[MENTOR_AI_CALL] skin_level_generation", { skinId: skinRow.id, occupationKey: skinRow.occupation_key, level });
-  const result = await generateLevelTopics({
+//
+// ĐƠN VỊ LƯỜI GIỜ LÀ CHUNK, KHÔNG PHẢI LEVEL (2026-07-28, sửa lỗi thật: 1 lượt gọi cho CẢ level
+// A1/A2/B1/B2 (~80-89 slot) + schema "story_chains" mới vượt hẳn trần 60s Vercel, đo được thật
+// FUNCTION_INVOCATION_TIMEOUT — kể cả khi CHIA nhỏ thành nhiều lượt gọi rồi GỌI HẾT tuần tự
+// trong CÙNG 1 request vẫn vượt trần vì cộng dồn thời gian nhiều lượt). industry_skins.levels giờ
+// lưu `{ [level]: { chunks: { [chunkIndex]: {frames, story_chains} } } }` — CHỈ sinh đúng
+// chunkIndex đang cần cho slot sắp tạo bài, KHÔNG sinh trước cả level. TƯƠNG THÍCH DỮ LIỆU CŨ:
+// hàng industry_skins sinh trước ngày này không có `.chunks` -> luôn miss cache, tự sinh lại
+// CHUNK đang cần (không phải cả level) khi gặp — chấp nhận được, không bắt buộc migrate.
+async function ensureSkinChunk(skinRow, level, occupationProfile, chunkIndex, spineLevelSlots) {
+  const stored = skinRow.levels?.[level]?.chunks?.[chunkIndex];
+  if (stored) return { ok: true, frames: stored.frames, storyChains: stored.story_chains || [] };
+
+  console.log("[MENTOR_AI_CALL] skin_chunk_generation", { skinId: skinRow.id, occupationKey: skinRow.occupation_key, level, chunkIndex });
+  const result = await generateSkinChunk({
     occupationProfile,
     level,
-    requiredCounts: requiredCountsByLevel()[level],
+    spineLevelSlots,
+    chunkIndex,
     skinGeneralForLevel: loadSkinGeneral()[level] || {},
-    // "mạch chủ đề liên tục" (2026-07-28) — spineSlots ĐÚNG THỨ TỰ để generateLevelTopics biết
-    // vị trí nào liền kề vị trí nào mà nhóm chủ đề lớn, xem LEVEL_SYSTEM_PROMPT trong skin.js.
-    spineSlots: loadCurriculumSpine()[level] || [],
   });
-  const updatedLevels = result.ok
-    ? { ...skinRow.levels, [level]: { frames: result.frames, story_chains: result.story_chains || [] } }
-    : skinRow.levels;
-  const updatedStatus = { ...skinRow.level_status, [level]: result.ok ? "ok" : "failed" };
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${skinRow.id}`, {
-      method: "PATCH",
-      headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
-      body: JSON.stringify({ levels: updatedLevels, level_status: updatedStatus, updated_at: new Date().toISOString() }),
-    });
-  } catch (e) {
-    console.error("ensureSkinLevel PATCH error:", e);
+  if (result.ok) {
+    const existingLevel = skinRow.levels?.[level] || {};
+    const updatedLevels = {
+      ...skinRow.levels,
+      [level]: { ...existingLevel, chunks: { ...(existingLevel.chunks || {}), [chunkIndex]: { frames: result.frames, story_chains: result.story_chains || [] } } },
+    };
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${skinRow.id}`, {
+        method: "PATCH",
+        headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify({ levels: updatedLevels, updated_at: new Date().toISOString() }),
+      });
+    } catch (e) {
+      console.error("ensureSkinChunk PATCH error:", e);
+    }
   }
   return result.ok ? { ok: true, frames: result.frames, storyChains: result.story_chains || [] } : { ok: false };
 }
@@ -652,7 +656,7 @@ export async function mentor_next_lesson(data, ctx) {
   const isGeneral = goal.occupation_profile?.is_general === true;
   const spineLevels = loadCurriculumSpine();
   const spineLevelSlots = spineLevels[level] || spineLevels[DEFAULT_LEVEL_WHEN_UNSET];
-  const { slot, occurrenceIndex } = findSpineSlot(spineLevelSlots, goal.lesson_count);
+  const { slot, occurrenceIndex, chunkIndex } = findSpineSlot(spineLevelSlots, goal.lesson_count);
   const generalFramesForLevel = loadSkinGeneral()[level] || loadSkinGeneral()[DEFAULT_LEVEL_WHEN_UNSET];
 
   let topic, industry, termDensity, skinId;
@@ -663,9 +667,9 @@ export async function mentor_next_lesson(data, ctx) {
     skinId = null;
   } else {
     const skinRow = await getOrCreateIndustrySkin(goal.occupation_profile);
-    const levelResult = skinRow ? await ensureSkinLevel(skinRow, level, goal.occupation_profile) : { ok: false };
-    if (levelResult.ok) {
-      topic = topicFromFrames(levelResult.frames, slot.situation_frame_key, occurrenceIndex);
+    const chunkResult = skinRow ? await ensureSkinChunk(skinRow, level, goal.occupation_profile, chunkIndex, spineLevelSlots) : { ok: false };
+    if (chunkResult.ok) {
+      topic = topicFromFrames(chunkResult.frames, slot.situation_frame_key, occurrenceIndex);
       skinId = topic ? skinRow.id : null;
     }
     // Da ngành CHƯA có (chưa tạo được hàng, sinh level thất bại, hoặc thiếu đúng khung này) ->
@@ -802,20 +806,21 @@ export async function mentor_get_pronoun_state(data, ctx) {
   };
 }
 
-// TEMP DEBUG (2026-07-28, xác nhận story_chains) — gọi thẳng generateLevelTopics, bỏ qua
-// industry_skins/DB, để soi raw output. XOÁ sau khi hết cần.
+// TEMP DEBUG (2026-07-28, xác nhận story_chains + chunk hoá) — gọi thẳng generateSkinChunk, bỏ
+// qua industry_skins/DB, để soi raw output. XOÁ sau khi hết cần.
 export async function debug_skin_level_topics(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const goalRows = await restGet(`learning_goals?id=eq.${data.goal_id}&user_id=eq.${ctx.studentId}&select=*`);
   const goal = goalRows?.[0];
   if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
   const level = data.level || goal.level || "A1";
-  const result = await generateLevelTopics({
+  const chunkIndex = data.chunk_index || 0;
+  const result = await generateSkinChunk({
     occupationProfile: goal.occupation_profile,
     level,
-    requiredCounts: requiredCountsByLevel()[level],
+    spineLevelSlots: loadCurriculumSpine()[level] || [],
+    chunkIndex,
     skinGeneralForLevel: loadSkinGeneral()[level] || {},
-    spineSlots: loadCurriculumSpine()[level] || [],
   });
   return { content: JSON.stringify(result) };
 }
