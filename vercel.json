@@ -3,10 +3,16 @@
     "api/chat.js": {
       "maxDuration": 60,
       "includeFiles": "api/_generate/**/*.json"
+    },
+    "api/cron/generate-news.js": {
+      "maxDuration": 300
     }
   },
   "rewrites": [
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/", "destination": "/app/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/cron/generate-news", "schedule": "0 22 * * *" }
   ]
 }

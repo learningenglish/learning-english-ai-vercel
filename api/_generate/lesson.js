@@ -422,7 +422,10 @@ const VALID_LENGTH_TIERS = ["short", "medium", "long"];
 // Trả về [min, max] THẬT dùng cho prompt + validate — A1/A2 LUÔN dùng mức cố định (bỏ qua
 // lengthTier nếu caller có gửi), B1+ dùng lengthTier (mặc định "medium" nếu thiếu/sai giá trị,
 // đúng lựa chọn tự động của next_slot — luồng này không hỏi người dùng chọn độ dài).
-function resolveLengthRange(level, lengthTier) {
+// Export (2026-07-28, "Tin tức tự sinh") — news.js tái dùng ĐÚNG cơ chế tính khoảng độ dài +
+// điểm nhắm ngẫu nhiên đã kiểm chứng thật hôm nay (xem callAndValidateLesson bên dưới, cũng
+// export), thay vì tự viết lại 1 bản logic riêng dễ lệch/thiếu test.
+export function resolveLengthRange(level, lengthTier) {
   const entry = LEVEL_LENGTH_TABLE[level];
   if (!entry) return [180, 230]; // phòng hờ, level đã validate hợp lệ trước đó nên không nên tới đây
   if (entry.fixed) return entry.fixed;
@@ -446,7 +449,7 @@ function resolveLengthRange(level, lengthTier) {
 // với thực tế đo được. Giữ vùng chọn LỆCH vào nửa trên (30%-100% của khoảng, không chỉ 1 điểm
 // giữa cố định như bản CŨ TRƯỚC 2026-07-28) — vẫn tạo dao động thật giữa các bài (không còn luôn
 // đúng 1 con số), nhưng không còn random tới vùng đáy vốn đã biết trước là rủi ro cao.
-function pickTargetLengthWords(minWords, maxWords) {
+export function pickTargetLengthWords(minWords, maxWords) {
   const range = maxWords - minWords;
   const low = minWords + range * 0.3;
   return Math.round(low + Math.random() * (maxWords - low));
@@ -799,8 +802,10 @@ async function insertLesson(row) {
 // mentors) nên không mở action này cho Mentor ở MVP.
 // 1 LƯỢT gọi AI + parse + validate cho generate_lesson — tách riêng (2026-07-28, "Tạo bài học
 // phải luôn ra bài") để generate_lesson() có thể gọi lại với target KHÁC trên lượt retry (xem
-// bên dưới), không lặp lại nguyên khối code.
-async function callAndValidateLesson(data, targetLengthWords, minWords, maxWords, tier) {
+// bên dưới), không lặp lại nguyên khối code. Export (cùng ngày, "Tin tức tự sinh") — news.js tái
+// dùng THẲNG hàm này (đúng prompt/validate/retry-target-adaptive đã kiểm chứng thật) thay vì tự
+// viết lại — chỉ khác nơi INSERT kết quả (news_lessons, không phải lessons cá nhân của user).
+export async function callAndValidateLesson(data, targetLengthWords, minWords, maxWords, tier) {
   const genData = { ...data, length_words: targetLengthWords, length_words_min: minWords, length_words_max: maxWords };
   const r = await generateStructuredJSON({
     tier,
