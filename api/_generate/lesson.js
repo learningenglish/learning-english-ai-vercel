@@ -43,7 +43,7 @@ const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 // (2 request gần như đồng thời cùng đọc thấy còn 1 suất) có thể khiến 1 ngày có 11 bài thay
 // vì tối đa 10 — CHẤP NHẬN được cho MVP (không phải hệ thống thanh toán, không cần RPC
 // "for update" như credit cũ).
-const DAILY_LESSON_LIMIT = 10;
+const DAILY_LESSON_LIMIT = 80; // TEMP nâng để đo tỷ lệ lỗi generate_lesson thật (2026-07-28) — HẠ LẠI 10 trước khi ngừng test.
 const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè
 
 // Trả về thời điểm UTC tương ứng với 00:00:00 hôm nay theo giờ VN (dùng làm mốc "gte" khi
@@ -772,7 +772,11 @@ export async function generate_lesson(data, ctx) {
   });
   if (!r.ok) {
     if (r.parseError) console.error("[generate_lesson] parse error:", r.text?.slice(0, 500));
-    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
+    // TEMP DEBUG (2026-07-28, đo tỷ lệ lỗi thật generate_lesson) — lộ lý do ra response, XOÁ sau khi xong.
+    return {
+      error: `${r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại."} [DEBUG r.ok=false parseError=${!!r.parseError}]`,
+      status: r.status || 502,
+    };
   }
   const parsed = r.data;
   capLessonArrays(parsed);
@@ -787,7 +791,11 @@ export async function generate_lesson(data, ctx) {
       `cefr_range=[${minWords},${maxWords}]`,
       `validate_range=[${validateMin},${validateMax}]`
     );
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+    // TEMP DEBUG (2026-07-28) — cùng đợt gỡ với khối phía trên.
+    return {
+      error: `AI trả về dữ liệu không hợp lệ, vui lòng thử lại. [DEBUG ${validation.reason} actual=${validation.actualWords} target=${targetLengthWords} range=[${validateMin},${validateMax}]]`,
+      status: 502,
+    };
   }
 
   const [goalId, skinId] = await Promise.all([
