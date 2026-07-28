@@ -691,7 +691,6 @@ function buildGrammarFocus(slotGrammar) {
 // đúng slot spine) trước khi gọi — xem khối comment "NỐI DA LĨNH VỰC" ở trên.
 export async function mentor_next_lesson(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  const requestStartedAt = Date.now();
   const goalRows = await restGet(`learning_goals?id=eq.${data.goal_id}&user_id=eq.${ctx.studentId}&select=*`);
   const goal = goalRows?.[0];
   if (!goal) return { error: "Không tìm thấy mục tiêu.", status: 404 };
@@ -751,30 +750,17 @@ export async function mentor_next_lesson(data, ctx) {
     spine_slot: slot.slot,
     grammar_focus: buildGrammarFocus(slot.grammar),
   };
-  // generate_lesson() KHÔNG tự retry (lỗi thật đã biết: model đôi khi lệch số từ >25% ở dialogue
-  // 200 từ, đặc biệt hay gặp — chưa có cơ chế leo thang model, xem project_ai_model_routing_spec
-  // trong memory, CHƯA xây, KHÔNG thuộc phạm vi ở đây). Thử lại 1 LẦN CÙNG model khi lỗi CHÍNH XÁC
-  // là "dữ liệu AI không hợp lệ" (status 502) — đủ để giảm hẳn tỷ lệ fail người dùng thấy, không
-  // phải giải pháp gốc. Lỗi khác (hết hạn mức, lỗi mạng...) KHÔNG retry, trả thẳng cho người dùng.
-  // CHỈ retry nếu còn ĐỦ thời gian trong trần maxDuration=60s của api/chat.js (vercel.json) —
-  // LỖI THẬT đã gặp khi nối da lĩnh vực (2026-07-22): lượt ĐẦU TIÊN của 1 ngành mới còn phải
-  // gọi thêm ensureSkinLevel() TRƯỚC generate_lesson, nên nếu retry vô điều kiện, tổng số lượt
-  // AI tuần tự trong 1 request có thể lên tới 3 (sinh da + 2 lượt generate_lesson) — quan sát
-  // thật: 1 request timeout hẳn ở Vercel (504 "FUNCTION_INVOCATION_TIMEOUT", lỗi mù mờ hơn hẳn
-  // 502 "dữ liệu không hợp lệ" bình thường).
-  // NGƯỠNG HẠ 30s -> 10s (2026-07-27, phát hiện khi test Phần A next_slot thật): đo lại thời
-  // gian generate_lesson B1/dialogue THẬT lúc này ~40-45s (không còn ~15-25s như ghi chú cũ ở
-  // trên — model/mạng chậm hơn từ lúc đó), nên "còn 30s" KHÔNG CÒN đủ an toàn cho 1 lượt thử lại
-  // trọn vẹn nữa — quan sát thật: lượt đầu fail ở ~dưới 30s, cho phép retry, lượt 2 mất thêm
-  // ~40-45s, TỔNG vượt hẳn trần 60s -> Vercel tự giết tiến trình (504), người dùng thấy lỗi mù
-  // mờ hơn hẳn 502 bình thường. 10s là mốc AN TOÀN mới dựa trên số đo thật: chỉ retry khi lượt
-  // đầu fail RẤT NHANH (bất thường, thường là lỗi parse/format chứ không phải chờ đủ generate),
-  // còn dư ~50s cho lượt 2 chạy trọn vẹn.
-  let result = await generate_lesson(genLessonInput, ctx);
-  if (result.error && result.status === 502 && Date.now() - requestStartedAt < 10000) {
-    console.log("[MENTOR_AI_CALL] generate_lesson (next_slot) retry 1x sau lỗi:", result.error);
-    result = await generate_lesson(genLessonInput, ctx);
-  }
+  // 2026-07-28 ("Tạo bài học phải luôn ra bài" — sửa lại toàn bộ): generate_lesson() giờ TỰ
+  // RETRY BÊN TRONG NÓ (tới 2 lượt, có canh thời gian, ĐỔI target khi retry theo đúng lý do lỗi
+  // — xem callAndValidateLesson()/generate_lesson() trong lesson.js), thay hẳn cơ chế retry mù ở
+  // ĐÂY (1 lượt, KHÔNG đổi gì giữa 2 lần thử — gần như vô ích với lỗi THIẾU TỪ mang tính hệ
+  // thống ở B2/C1, xem lý do đo được trong lesson.js). Gọi retry Ở CẢ 2 TẦNG (lesson.js bên
+  // trong + createLesson.js ở tầng CLIENT, mỗi lượt client là 1 request HTTP MỚI với ngân sách
+  // 60s mới tinh) mới đủ — KHÔNG retry thêm ở tầng NÀY nữa để tránh cộng dồn 3+ lượt AI tuần tự
+  // trong CÙNG 1 request (rủi ro thật: request timeout ở Vercel, lỗi mù mờ hơn hẳn 502 bình
+  // thường — xem ensureSkinChunk() phía trên, vốn CŨNG có thể tốn thời gian nếu skin đang sinh
+  // chunk mới, cộng dồn với 2 lượt generate_lesson nội bộ đã đủ sát trần 60s rồi).
+  const result = await generate_lesson(genLessonInput, ctx);
   if (result.error) return result;
 
   // Tăng bộ đếm HIỂN THỊ ("x/y bài") — không phải hạn mức chặn (đọc ghi chú NỢ KỸ THUẬT trong

@@ -395,11 +395,30 @@ export function renderCreateLesson(mount) {
       return;
     }
 
-    setProgress("AI đang soạn bài theo lộ trình...");
-    const res = await generateNextLessonForGoal(goalResult.goalId);
+    // Thử lại TỰ ĐỘNG ở tầng client (2026-07-28, "Tạo bài học phải luôn ra bài" — mỗi lượt ở đây
+    // là 1 request HTTP MỚI, ngân sách 60s MỚI TINH cho server, khác hẳn retry NỘI BỘ trong
+    // generate_lesson/mentor_next_lesson vốn bị giới hạn trong CÙNG 1 request) — người dùng
+    // KHÔNG thấy lỗi kỹ thuật thẳng trừ khi CẢ 3 lượt đều thất bại (đo tỷ lệ lỗi thật: B2/C1 có
+    // lúc gần như luôn thiếu từ 1 lượt đơn, nhưng qua 3 lượt độc lập — mỗi lượt server lại tự
+    // thử lại nội bộ với chiến lược khác nhau — xác suất trắng tay cả 3×2=6 lượt AI thấp hơn hẳn).
+    const MAX_CLIENT_ATTEMPTS = 3;
+    let res;
+    for (let attempt = 1; attempt <= MAX_CLIENT_ATTEMPTS; attempt++) {
+      setProgress(attempt === 1 ? "AI đang soạn bài theo lộ trình..." : `AI đang thử soạn lại bài (lần ${attempt}/${MAX_CLIENT_ATTEMPTS})...`);
+      res = await generateNextLessonForGoal(goalResult.goalId);
+      // Chỉ retry lỗi 502 (AI sinh bài thất bại — CÓ THỂ khác kết quả ở lượt sau). Lỗi khác (403
+      // hết hạn mức, 400 lộ trình đã dừng...) sẽ KHÔNG đổi dù thử lại bao nhiêu lần — dừng ngay,
+      // đỡ tốn thời gian người dùng chờ vô ích.
+      if (res.ok || res.status !== 502) break;
+    }
     btn.disabled = false;
     if (!res.ok) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
+      // status 502 = "AI trả về dữ liệu không hợp lệ" (lỗi kỹ thuật của LƯỢT SINH BÀI, thứ đang
+      // thử retry ở trên) -> thay bằng câu dễ hiểu, không lộ thuật ngữ kỹ thuật. Các status khác
+      // (403 hết hạn mức/hết lượt lĩnh vực, 400 lộ trình đã dừng...) đã có message tiếng Việt rõ
+      // ràng sẵn từ backend — hiện thẳng, không phải lỗi kỹ thuật cần che.
+      const friendlyError = res.status === 502 ? "Không thể tạo bài lúc này, vui lòng thử lại sau ít phút." : res.error;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(friendlyError)}</div>`;
       return;
     }
     // Nhớ lại cho lần tạo bài KẾ TIẾP (yêu cầu người dùng) — CHỈ lưu sau khi tạo bài THÀNH

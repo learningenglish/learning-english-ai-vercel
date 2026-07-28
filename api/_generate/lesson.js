@@ -743,24 +743,11 @@ async function insertLesson(row) {
 // ====== ACTIONS xuất ra cho chat.js đăng ký vào ACTIONS map ======
 // Chỉ Student mới được dùng — Mentor có mô hình credit khác (cột "credits" riêng ở bảng
 // mentors) nên không mở action này cho Mentor ở MVP.
-export async function generate_lesson(data, ctx) {
-  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
-  if (!VALID_CONTENT_TYPES.includes(data.content_type)) return { error: "Thiếu hoặc sai 'content_type'.", status: 400 };
-
-  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
-  const limitCheck = await checkDailyLessonLimit(ctx.studentId);
-  if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
-
-  // Lấy khoảng độ dài THẬT theo bảng cấp CEFR (xem LEVEL_LENGTH_TABLE) — A1/A2 luôn 1 mức cố
-  // định, B1+ theo data.length_tier ("short"/"medium"/"long", mặc định "medium"). Dùng CÙNG 1
-  // khoảng đã nắn cho cả prompt lẫn validate bên dưới, không đọc lại data.length_words/length_tier
-  // gốc ở đâu khác trong hàm này.
-  const [minWords, maxWords] = resolveLengthRange(data.level, data.length_tier);
-  const targetLengthWords = pickTargetLengthWords(minWords, maxWords);
+// 1 LƯỢT gọi AI + parse + validate cho generate_lesson — tách riêng (2026-07-28, "Tạo bài học
+// phải luôn ra bài") để generate_lesson() có thể gọi lại với target KHÁC trên lượt retry (xem
+// bên dưới), không lặp lại nguyên khối code.
+async function callAndValidateLesson(data, targetLengthWords, minWords, maxWords) {
   const genData = { ...data, length_words: targetLengthWords, length_words_min: minWords, length_words_max: maxWords };
-
-  // (b) Gọi AI + parse + validate.
   const r = await generateStructuredJSON({
     maxTokens: 6000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng 4000->6000 (2026-07-23):
     // C1 "long" (500-600 từ, xem LEVEL_LENGTH_TABLE) bị cắt giữa JSON ở 4000, parse fail.
@@ -772,11 +759,7 @@ export async function generate_lesson(data, ctx) {
   });
   if (!r.ok) {
     if (r.parseError) console.error("[generate_lesson] parse error:", r.text?.slice(0, 500));
-    // TEMP DEBUG (2026-07-28, đo tỷ lệ lỗi thật generate_lesson) — lộ lý do ra response, XOÁ sau khi xong.
-    return {
-      error: `${r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại."} [DEBUG r.ok=false parseError=${!!r.parseError}]`,
-      status: r.status || 502,
-    };
+    return { ok: false, reason: "call_or_parse_failed" };
   }
   const parsed = r.data;
   capLessonArrays(parsed);
@@ -791,12 +774,54 @@ export async function generate_lesson(data, ctx) {
       `cefr_range=[${minWords},${maxWords}]`,
       `validate_range=[${validateMin},${validateMax}]`
     );
-    // TEMP DEBUG (2026-07-28) — cùng đợt gỡ với khối phía trên.
-    return {
-      error: `AI trả về dữ liệu không hợp lệ, vui lòng thử lại. [DEBUG ${validation.reason} actual=${validation.actualWords} target=${targetLengthWords} range=[${validateMin},${validateMax}]]`,
-      status: 502,
-    };
+    return { ok: false, reason: validation.reason, actualWords: validation.actualWords };
   }
+  return { ok: true, parsed, meta: buildMeta(r) };
+}
+
+export async function generate_lesson(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
+  if (!VALID_CONTENT_TYPES.includes(data.content_type)) return { error: "Thiếu hoặc sai 'content_type'.", status: 400 };
+
+  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
+  const limitCheck = await checkDailyLessonLimit(ctx.studentId);
+  if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
+
+  // Lấy khoảng độ dài THẬT theo bảng cấp CEFR (xem LEVEL_LENGTH_TABLE) — A1/A2 luôn 1 mức cố
+  // định, B1+ theo data.length_tier ("short"/"medium"/"long", mặc định "medium").
+  const [minWords, maxWords] = resolveLengthRange(data.level, data.length_tier);
+
+  // TỰ ĐỘNG THỬ LẠI TRONG CHÍNH generate_lesson (2026-07-28, "Tạo bài học phải luôn ra bài" —
+  // đo tỷ lệ lỗi thật: A1/A2 100% (16/16), B1 ~75%, B2/C1 GẦN NHƯ LUÔN THIẾU TỪ dù target cao
+  // đến đâu — actualWords THẬT ở B2/C1 quan sát được luôn quanh ~220-350 từ BẤT KỂ target
+  // 340-490, cho thấy đây là TRẦN NĂNG LỰC THẬT của model ở mật độ nội dung này (content +
+  // vocabulary + grammar + exercises trong CÙNG 1 lượt JSON), không phải may rủi ngẫu nhiên đơn
+  // thuần — retry với ĐÚNG target cũ gần như vô ích). Lượt 2 (nếu cần) ĐỔI CHIẾN LƯỢC theo đúng
+  // lý do lỗi: undershoot -> hạ target xuống SÁT ĐÁY khoảng (mục tiêu dễ đạt nhất trong khoảng
+  // CEFR hợp lệ, không phải mục tiêu "đẹp" nữa — thà bài hơi ngắn còn hơn thất bại hẳn); lỗi khác
+  // (parse/JSON hỏng) -> thử lại NGUYÊN VẸN (thường là trục trặc thoáng qua). Giới hạn 2 lượt
+  // TRONG hàm này (không hơn) — canh thời gian còn lại so với trần 60s của Vercel
+  // (vercel.json maxDuration) để KHÔNG bắt đầu lượt 2 nếu không còn đủ thời gian chạy trọn vẹn;
+  // lớp NGOÀI (mentor_next_lesson/createLesson.js) tự retry thêm ở lượt gọi HTTP MỚI (ngân sách
+  // 60s mới tinh) nếu lượt này vẫn thất bại — 2 lớp bổ sung nhau, không thay thế nhau.
+  const attemptStartedAt = Date.now();
+  const firstTarget = pickTargetLengthWords(minWords, maxWords);
+  let result = await callAndValidateLesson(data, firstTarget, minWords, maxWords);
+
+  if (!result.ok && Date.now() - attemptStartedAt < 25000) {
+    const retryTarget =
+      result.reason === "word_count_out_of_range" && result.actualWords < minWords
+        ? Math.round(minWords + (maxWords - minWords) * 0.1)
+        : firstTarget;
+    console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `firstTarget=${firstTarget}`, `retryTarget=${retryTarget}`);
+    result = await callAndValidateLesson(data, retryTarget, minWords, maxWords);
+  }
+
+  if (!result.ok) {
+    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+  }
+  const parsed = result.parsed;
 
   const [goalId, skinId] = await Promise.all([
     resolveOwnedGoalId(data.goal_id, ctx.studentId),
@@ -814,7 +839,7 @@ export async function generate_lesson(data, ctx) {
   );
   if (!saved) return { error: "Tạo bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
-  return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };
+  return { content: JSON.stringify({ lesson: saved, meta: result.meta }) };
 }
 
 export async function analyze_user_text(data, ctx) {
