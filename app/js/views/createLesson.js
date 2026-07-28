@@ -26,16 +26,30 @@
 // SỬA LẠI CÙNG NGÀY, LẦN 2 ("khôi phục hiển thị chọn lĩnh vực tự do" — Minh phản hồi sau khi
 // test thật: giới hạn 5 lĩnh vực CHỈ là giới hạn PHÂN LOẠI trong Thư mục AI, KHÔNG PHẢI giới hạn
 // SINH BÀI — đang ở lĩnh vực nào vẫn sinh bài bình thường ở lĩnh vực đó, người dùng phải đổi
-// được lĩnh vực tự do bất cứ lúc nào, không cần khoá/modal xác nhận): bỏ hẳn khoá chip + modal —
-// form luôn hiện đầy đủ như trước khi có mục tiêu. Đủ 5/5 -> "Tuỳ chọn nâng cao" đổi ô nhập tự do
-// thành DANH SÁCH 5 lĩnh vực đã tạo (chip), CHỌN LẠI 1 trong 5 đó KHÔNG tốn thêm lượt (không
-// insert dòng mới, chỉ archive goal active khác rồi kích hoạt lại — xem mentor_select_goal trong
-// api/_generate/mentor.js). Gõ lại ĐÚNG tên 1 lĩnh vực đã có (khi CHƯA đủ 5) cũng tự nhận ra và
-// chọn lại thay vì tạo trùng, xem findExistingGoalByText() bên dưới. "Giao tiếp tổng quát" (bỏ
-// trống form) không tính vào giới hạn 5, luôn tạo/tiếp tục tự do.
+// được lĩnh vực tự do bất cứ lúc nào, không cần khoá/modal xác nhận): bỏ hẳn khoá chip + modal.
+// Đủ 5/5 -> Tuỳ chọn nâng cao đổi ô nhập tự do thành DANH SÁCH 5 lĩnh vực đã tạo (chip), CHỌN
+// LẠI 1 trong 5 đó KHÔNG tốn thêm lượt (không insert dòng mới, chỉ archive goal active khác rồi
+// kích hoạt lại — xem mentor_select_goal trong api/_generate/mentor.js). Gõ lại ĐÚNG tên 1 lĩnh
+// vực đã có (khi CHƯA đủ 5) cũng tự nhận ra và chọn lại thay vì tạo trùng, xem
+// findExistingGoalByText() bên dưới. "Giao tiếp tổng quát" (bỏ trống form) không tính vào giới
+// hạn 5, luôn tạo/tiếp tục tự do.
+//
+// SỬA LẠI LẦN 3 (2026-07-29, Minh test thật trên điện thoại, phản hồi cụ thể): "form luôn hiện
+// đầy đủ" ở trên đi QUÁ XA — khi ĐÃ có 1 lĩnh vực đang hoạt động, Minh muốn lại đúng giao diện
+// GỌN cũ: 1 dòng "Bạn đang ở lĩnh vực X (đổi)" + nút "Tạo bài học tiếp" (bấm là sinh bài NGAY
+// theo đúng lộ trình đang có, không cần chọn gì thêm — level/loại nội dung/lĩnh vực khi ĐANG
+// TIẾP TỤC 1 mục tiêu vốn dĩ KHÔNG được dùng tới, xem mentor_next_lesson trong
+// api/_generate/mentor.js: content_type luôn lấy từ spine slot, KHÔNG phải state.content_type).
+// Toàn bộ form đầy đủ (chip Cấp độ/Loại nội dung + Tuỳ chọn nâng cao) giờ CHỈ hiện khi CHƯA có
+// mục tiêu nào (lần đầu) HOẶC bấm "(đổi)" (xem isCompact()/compactGoalHtml()/fullFormHtml()
+// bên dưới) — KHÔNG còn modal/gate nào, "(đổi)" chỉ đơn thuần hiện lại form, bấm "Huỷ" quay về
+// đúng dòng gọn ban đầu mà KHÔNG gửi gì lên server.
 import { navigate } from "../router.js";
 import { fetchAndSaveLessonCover } from "../lessonApi.js";
 import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, getGoalUsage, listGoals, selectGoal } from "../mentorApi.js";
+// getActiveLearningGoal() dùng ở CẢ 2 chỗ: tải sẵn lúc mount (quyết định hiện dòng gọn hay form
+// đầy đủ, xem isCompact()) VÀ đọc lại TRỰC TIẾP trong resolveGoalId() lúc submit (không dùng
+// state.activeGoal đã tải trước đó — tránh dữ liệu cũ nếu người dùng để màn mở lâu).
 import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
@@ -94,6 +108,13 @@ export function renderCreateLesson(mount) {
     // id lĩnh vực người dùng vừa bấm chọn lại (chip, khi đủ 5/5) — ưu tiên cao nhất trong
     // resolveGoalId(), ghi đè field/industry đang gõ dở nếu có.
     selectedGoalId: null,
+    // "Bạn đang ở lĩnh vực X (đổi)" (2026-07-29) — goalLoaded=false lúc đầu (đang hỏi Supabase)
+    // để KHÔNG đoán bừa hiện dòng gọn hay form đầy đủ, tránh nháy UI (xem isCompact()).
+    // changingGoal=true sau khi bấm "(đổi)" -> ép hiện form đầy đủ dù activeGoal vẫn còn, bấm
+    // "Huỷ" trả lại false — KHÔNG gọi API nào ở 2 bước này, thuần hiển thị.
+    goalLoaded: false,
+    activeGoal: null,
+    changingGoal: false,
   };
   // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
   // — render() gọi lại nhiều lần mỗi khi đổi chip (cấp độ/loại nội dung...), nếu không cache
@@ -104,15 +125,19 @@ export function renderCreateLesson(mount) {
   loadAppHeaderStats(mount).then((r) => {
     if (r) headerCache = { streakText: r.streak, tierText: r.tier };
   });
-  Promise.all([getGoalUsage(), listGoals()])
-    .then(([usageRes, goalsRes]) => {
+  Promise.all([getActiveLearningGoal(), getGoalUsage(), listGoals()])
+    .then(([goal, usageRes, goalsRes]) => {
+      state.goalLoaded = true;
+      state.activeGoal = goal;
       if (usageRes.ok) state.goalUsage = usageRes.data;
       state.goals = goalsRes.ok ? goalsRes.data.goals : [];
       render();
     })
     .catch(() => {
       // Lỗi mạng lúc CHỈ ĐỌC trạng thái/danh sách lĩnh vực — không nên chặn hẳn việc tạo bài (ô
-      // nhập tự do vẫn dùng được, chỉ là chưa hiện được chip chọn lại nếu đang đủ 5/5 cho tới F5).
+      // nhập tự do vẫn dùng được, chỉ là chưa hiện được chip chọn lại nếu đang đủ 5/5 cho tới F5,
+      // và tạm coi như "chưa có mục tiêu" nên hiện form đầy đủ thay vì dòng gọn).
+      state.goalLoaded = true;
       state.goals = state.goals || [];
       render();
     });
@@ -147,21 +172,42 @@ export function renderCreateLesson(mount) {
     return !!state.goalUsage && state.goalUsage.used >= state.goalUsage.max;
   }
 
+  // Đang có 1 mục tiêu hoạt động VÀ chưa bấm "(đổi)" -> hiện dòng gọn (compactGoalHtml()) thay
+  // vì cả form (2026-07-29, Minh: "thích giao diện Bạn đang ở lĩnh vực... (đổi), tạo bài học
+  // tiếp"). Lúc goalLoaded=false (đang hỏi Supabase), coi như CHƯA có mục tiêu để không tự
+  // đoán/nháy UI sai — form đầy đủ hiện tạm vài trăm ms đầu, không phải dòng gọn.
+  function isCompact() {
+    return state.goalLoaded && !!state.activeGoal && !state.changingGoal;
+  }
+
+  function compactGoalHtml() {
+    return `
+      <div class="current-goal-row">
+        <span>Bạn đang ở lĩnh vực <strong>${escapeHtml(state.activeGoal.title)}</strong></span>
+        <button type="button" class="link-btn" id="change-goal-btn">(đổi)</button>
+      </div>
+    `;
+  }
+
   function industryFieldsHtml() {
     if (limitReached()) {
-      const usageLine = state.goalUsage ? `Đã dùng hết ${state.goalUsage.used}/${state.goalUsage.max} lĩnh vực chuyên ngành.` : "";
+      // Số "đã dùng" có thể VƯỢT 5 (dữ liệu cũ từ trước khi giới hạn có hiệu lực, xem
+      // countLifetimeIndustryGoals trong mentor.js không lùi ngày) — hiện "8/5" là con số ĐÚNG
+      // nhưng gây hiểu lầm "giới hạn tính sai" (Minh phản hồi thật) nên bỏ hẳn số "đã dùng",
+      // chỉ nói rõ giới hạn (max) — không cần chính xác tuyệt đối cho người dùng thấy.
       if (state.goals === null) {
-        return `<p class="field-hint">${escapeHtml(usageLine)} Đang tải danh sách...</p>`;
+        return `<p class="field-hint">Bạn đã đạt giới hạn ${state.goalUsage.max} lĩnh vực chuyên ngành. Đang tải danh sách...</p>`;
       }
       return `
         <label class="field">
-          <span class="field-question">${escapeHtml(usageLine)} Chọn lại 1 lĩnh vực đã tạo để tiếp tục:</span>
+          <span class="field-question">Bạn đã đạt giới hạn ${state.goalUsage.max} lĩnh vực chuyên ngành.</span>
         </label>
-        <div class="filter-row filter-row-wrap">
+        <p class="field-hint">Chọn một lĩnh vực đã tạo để tiếp tục khám phá.</p>
+        <div class="goal-chip-list">
           ${state.goals
             .map(
               (g) =>
-                `<button type="button" class="filter-chip goal-chip ${state.selectedGoalId === g.id ? "active" : ""}" data-goal-id="${g.id}">${escapeHtml(g.title)}</button>`
+                `<button type="button" class="goal-pick-btn ${state.selectedGoalId === g.id ? "active" : ""}" data-goal-id="${g.id}">${escapeHtml(g.title)}</button>`
             )
             .join("")}
         </div>
@@ -196,16 +242,27 @@ export function renderCreateLesson(mount) {
     `;
   }
 
+  // Form đầy đủ (chip Cấp độ/Loại nội dung + Tuỳ chọn nâng cao) — CHỈ dùng khi CHƯA có mục tiêu
+  // nào (lần đầu) hoặc đang "(đổi)". Có "activeGoal" -> thêm nút "Huỷ" quay lại dòng gọn, KHÔNG
+  // gửi gì lên server (chỉ đổi UI).
+  function fullFormHtml() {
+    return `
+      ${levelAndContentTypeHtml()}
+      ${advancedOptionsHtml()}
+      ${state.activeGoal ? `<button type="button" class="btn btn-ghost btn-block" id="cancel-change-goal-btn">Huỷ, tiếp tục lĩnh vực hiện tại</button>` : ""}
+    `;
+  }
+
   function render() {
+    const compact = isCompact();
     mount.innerHTML = `
       <div class="screen">
         ${appHeaderHtml(`${icon("library", { size: 22 })} Tạo bài học`, headerCache, { showBack: true })}
 
-        ${levelAndContentTypeHtml()}
-        ${advancedOptionsHtml()}
+        ${compact ? compactGoalHtml() : fullFormHtml()}
 
         <div id="create-result-slot"></div>
-        <button type="button" class="btn btn-primary btn-block" id="create-submit-btn">Tạo bài học</button>
+        <button type="button" class="btn btn-primary btn-block" id="create-submit-btn">${compact ? "Tạo bài học tiếp" : "Tạo bài học"}</button>
       </div>
     `;
     wire();
@@ -271,12 +328,23 @@ export function renderCreateLesson(mount) {
 
     // Chip chọn lại 1 lĩnh vực đã tạo (chỉ hiện khi đủ 5/5, xem industryFieldsHtml()) — bấm lại
     // chip đang chọn -> bỏ chọn (giống các chip lọc khác trong app).
-    mount.querySelectorAll(".goal-chip").forEach((chip) => {
+    mount.querySelectorAll(".goal-pick-btn").forEach((chip) => {
       chip.addEventListener("click", () => {
         const id = chip.dataset.goalId;
         state.selectedGoalId = state.selectedGoalId === id ? null : id;
         render();
       });
+    });
+
+    // "(đổi)" ở dòng gọn / "Huỷ" ở form đầy đủ (2026-07-29) — THUẦN đổi UI, không gọi API nào.
+    mount.querySelector("#change-goal-btn")?.addEventListener("click", () => {
+      state.changingGoal = true;
+      render();
+    });
+    mount.querySelector("#cancel-change-goal-btn")?.addEventListener("click", () => {
+      state.changingGoal = false;
+      state.selectedGoalId = null;
+      render();
     });
   }
 
@@ -358,7 +426,11 @@ export function renderCreateLesson(mount) {
     };
     setProgress("Đang xác định lộ trình...");
 
-    const goalResult = await resolveGoalId(setProgress);
+    // "Tạo bài học tiếp" (dòng gọn, đang có mục tiêu hoạt động VÀ chưa bấm "(đổi)") -> đi THẲNG
+    // tới mục tiêu đang hoạt động, KHÔNG qua resolveGoalId() — cố tình BỎ QUA field/industry
+    // đang nhớ trong localStorage (có thể còn sót giá trị từ lượt TẠO MỚI trước đó, không liên
+    // quan gì tới lượt "tiếp tục" này, lỡ đọc nhầm sẽ vô tình đổi sang lĩnh vực khác).
+    const goalResult = isCompact() ? { ok: true, goalId: state.activeGoal.id } : await resolveGoalId(setProgress);
     if (!goalResult.ok) {
       btn.disabled = false;
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(goalResult.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;

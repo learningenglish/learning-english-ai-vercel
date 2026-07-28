@@ -380,6 +380,64 @@ textarea:focus {
   margin-bottom: 8px;
 }
 
+/* "Bạn đang ở lĩnh vực X (đổi)" (2026-07-29, views/createLesson.js) — dòng gọn thay cho cả form
+   khi đang có 1 mục tiêu hoạt động. */
+.current-goal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  margin-bottom: 14px;
+}
+
+.link-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--purple);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Danh sách lĩnh vực đã tạo (2026-07-29, "8/5 chọn lại") — MỖI lĩnh vực 1 hàng riêng, chữ được
+   XUỐNG DÒNG tự nhiên (khác hẳn .filter-chip vốn "white-space:nowrap", chỉ hợp nhãn ngắn như
+   level/"Tất cả" — tên lĩnh vực dài kiểu "Anh văn chuyên ngành Wedding & Event Photographer"
+   tràn hẳn ra ngoài màn hình nếu dùng lại .filter-chip, bug thật Minh bắt được). */
+.goal-chip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.goal-pick-btn {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  padding: 10px 14px;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.goal-pick-btn.active {
+  color: #fff;
+  background: var(--purple);
+  border-color: var(--purple);
+}
+
 /* ===== Cards ===== */
 .card {
   background: var(--surface);
