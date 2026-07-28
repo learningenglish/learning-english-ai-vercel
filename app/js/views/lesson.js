@@ -152,7 +152,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
         ${isNews ? "" : `<button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>`}
       </div>
-      <div class="tabs" role="tablist">
+      <div class="tabs sticky-tabs" role="tablist">
         <button type="button" class="tab-btn active" data-tab="content">Nội dung</button>
         <button type="button" class="tab-btn" data-tab="vocabulary">Từ vựng</button>
         <button type="button" class="tab-btn" data-tab="grammar">Ngữ pháp</button>

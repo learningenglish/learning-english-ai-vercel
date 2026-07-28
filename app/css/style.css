@@ -380,85 +380,6 @@ textarea:focus {
   margin-bottom: 8px;
 }
 
-/* "Khoá chip + xác nhận đổi lộ trình" (2026-07-28, views/createLesson.js) — thay 2 hàng chip
-   Cấp độ/Loại nội dung khi đang bám 1 lộ trình có sẵn (chip lúc đó không có tác dụng thật, xem
-   ghi chú resolveGoalId trong createLesson.js). */
-.goal-lock-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-soft);
-  color: var(--text-dim);
-  font-size: 0.9rem;
-  text-align: left;
-  margin-bottom: 14px;
-  cursor: pointer;
-}
-
-.goal-lock-row .icon {
-  flex-shrink: 0;
-  color: var(--purple);
-}
-
-.goal-lock-row strong {
-  color: var(--text);
-}
-
-/* Hộp thoại xác nhận đổi lộ trình — modal đơn giản, dùng chung màu/khoảng cách với .card. */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 18, 25, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 300;
-}
-
-.modal-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 22px;
-  max-width: 420px;
-  width: 100%;
-  box-shadow: var(--shadow-card);
-}
-
-.modal-card h3 {
-  margin: 0 0 12px;
-  font-size: 1.05rem;
-  color: var(--text);
-}
-
-.modal-card p {
-  margin: 0 0 12px;
-  color: var(--text-dim);
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-
-.modal-card p:last-of-type {
-  margin-bottom: 18px;
-}
-
-.modal-card strong {
-  color: var(--text);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.modal-actions .btn {
-  flex: 1;
-}
-
 /* ===== Cards ===== */
 .card {
   background: var(--surface);
@@ -936,6 +857,20 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
+/* Ghim tab bar Ở TRÊN CÙNG khi cuộn (2026-07-28, yêu cầu người dùng: "kéo lên, giữ lại tab Bài
+   đọc và Hội thoại trên cao") — CHỈ gắn thêm ở đúng nơi có ý nghĩa tab bar CẤP TRANG (đầu màn
+   Phổ biến/Yêu thích/Thư viện AI, đầu màn Bài học chi tiết), KHÔNG áp dụng chung cho MỌI ".tabs"
+   — writingPractice.js dùng lại đúng class ".tabs"/".tab-btn" cho 2 cụm tab NẰM GIỮA trang (dưới
+   textarea/kết quả chấm), ghim những cụm đó sẽ trôi nổi sai chỗ không liên quan gì tới nội dung
+   đang xem. #view không cuộn riêng (toàn trang cuộn ở document), nên "top:0" ghim đúng mép trên
+   viewport thật.  Nền đặc (var(--surface)) để nội dung cuộn bên dưới không xuyên qua. */
+.sticky-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface);
+}
+
 .content-tab-btn {
   flex: 1;
   background: none;
@@ -1217,6 +1152,15 @@ textarea:focus {
   gap: 8px;
   align-items: center;
   font-size: 0.8rem;
+}
+
+/* Nhãn lĩnh vực/chuyên mục cạnh ngày tạo (2026-07-28, "bỏ toggle Của tôi/Tin tức") — co lại +
+   ellipsis khi tên dài, không đẩy vỡ hàng .lesson-card-meta trên thẻ hẹp. */
+.lesson-card-industry {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* KHÔNG còn nền tròn trắng phía sau (yêu cầu người dùng) — chỉ icon trơn, dùng drop-shadow

@@ -31,9 +31,6 @@ const QUICK_ACTIONS = [
 ];
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
-// "Tin tức" (2026-07-28) — mục con MỚI dưới tab Phổ biến (mode "main" CHỈ), PHẢI khớp CHÍNH XÁC
-// danh sách check constraint "category" trong supabase/029_news_lessons.sql.
-const NEWS_CATEGORIES = ["Kinh tế", "Công nghệ", "Thể thao", "Sức khỏe", "Khoa học", "Giải trí", "Xã hội", "Môi trường"];
 
 export function renderLessons(mount, params) {
   const mode = params?.[0] === "favorite" || params?.[0] === "library" ? params[0] : "main";
@@ -42,11 +39,6 @@ export function renderLessons(mount, params) {
     level: "all",
     industry: null,
     search: "",
-    // "section" (2026-07-28) — CHỈ có ý nghĩa ở mode "main": "personal" (mặc định, bài của
-    // chính người dùng) hay "news" (Tin tức tự sinh hàng ngày, công khai). Đổi mục con KHÔNG
-    // đụng gì tới mode "favorite"/"library" — 2 route đó không có khái niệm Tin tức.
-    section: "personal",
-    newsCategory: null,
   };
   // goalId -> 'active'|'archived' (2026-07-28) — CHỈ dùng ở mode "library" để gắn nhãn "Đã dừng"
   // cho nhóm lĩnh vực, xem isIndustryGroupArchived()/loadGoalStatuses() bên dưới.
@@ -69,17 +61,6 @@ export function renderLessons(mount, params) {
       ${appHeaderHtml(headerTitleHtml)}
 
       ${
-        mode === "main"
-          ? `
-      <div class="filter-row" id="section-toggle-row">
-        <button type="button" class="filter-chip active" data-section="personal">Của tôi</button>
-        <button type="button" class="filter-chip" data-section="news">${icon("compass", { size: 14 })} Tin tức</button>
-      </div>
-      `
-          : ""
-      }
-
-      ${
         mode === "library"
           ? `
       <div id="industry-section" hidden>
@@ -90,7 +71,6 @@ export function renderLessons(mount, params) {
           : mode === "favorite"
           ? ""
           : `
-      <div id="personal-only-section">
       <div class="quick-actions">
         ${QUICK_ACTIONS.map(
           (a) => `
@@ -105,14 +85,6 @@ export function renderLessons(mount, params) {
       <div id="continue-section" hidden>
         <div class="section-label-row"><span class="section-label-tab">Bài đang đọc</span></div>
         <div id="continue-scroll" class="continue-scroll"></div>
-      </div>
-      </div>
-
-      <div id="news-category-section" hidden>
-        <div class="section-label-row"><span class="section-label-tab">Lĩnh vực tin tức</span></div>
-        <div class="filter-row filter-row-wrap" id="news-category-row">
-          ${NEWS_CATEGORIES.map((c) => `<button type="button" class="filter-chip" data-news-category="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("")}
-        </div>
       </div>
       `
       }
@@ -139,10 +111,10 @@ export function renderLessons(mount, params) {
             `<div class="filter-row" id="level-count-row"></div>`
       }
 
-      <div class="content-tabs" role="tablist">
+      <div class="content-tabs sticky-tabs" role="tablist">
         <button type="button" class="content-tab-btn active" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
         <button type="button" class="content-tab-btn" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
-        ${mode === "favorite" ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>` : ""}
+        ${mode === "favorite" || mode === "library" ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>` : ""}
       </div>
 
       <div id="lessons-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
@@ -150,33 +122,6 @@ export function renderLessons(mount, params) {
   `;
 
   wireAppHeader(mount);
-
-  // "Tin tức" (2026-07-28) — toggle ẩn/hiện 2 khối riêng (quick-actions/"Bài đang đọc" CHỈ cho
-  // "Của tôi", chip lĩnh vực CHỈ cho "Tin tức") thay vì rebuild lại toàn bộ mount.innerHTML —
-  // content-tabs/search-row/level-filter-row DÙNG CHUNG cho cả 2 mục con (renderList() tự đọc
-  // đúng nguồn dữ liệu theo state.section).
-  mount.querySelectorAll("#section-toggle-row .filter-chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      mount.querySelectorAll("#section-toggle-row .filter-chip").forEach((c) => c.classList.remove("active"));
-      chip.classList.add("active");
-      state.section = chip.dataset.section;
-      const personalOnly = mount.querySelector("#personal-only-section");
-      const newsOnly = mount.querySelector("#news-category-section");
-      if (personalOnly) personalOnly.hidden = state.section !== "personal";
-      if (newsOnly) newsOnly.hidden = state.section !== "news";
-      renderList();
-    });
-  });
-  mount.querySelectorAll("#news-category-row .filter-chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const name = chip.dataset.newsCategory;
-      const nowActive = !chip.classList.contains("active");
-      mount.querySelectorAll("#news-category-row .filter-chip").forEach((c) => c.classList.remove("active"));
-      if (nowActive) chip.classList.add("active"); // bấm lại chip đang chọn -> bỏ lọc
-      state.newsCategory = nowActive ? name : null;
-      renderList();
-    });
-  });
 
   mount.querySelectorAll(".quick-action-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -345,37 +290,13 @@ export function renderLessons(mount, params) {
   async function renderList() {
     const listEl = mount.querySelector("#lessons-list");
     listEl.innerHTML = `<p class="muted">Đang tải...</p>`;
-    // Tab "Bài viết" (chỉ ở Yêu thích, Việc 3/Item 7 — 2026-07-27) — nguồn dữ liệu HOÀN TOÀN
-    // khác (writing_favorites, không phải lessons), tự thoát sớm khỏi luồng lessons bên dưới,
-    // không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).
-    if (mode === "favorite" && state.contentType === "writing") {
+    // Tab "Bài viết" (Yêu thích + Thư viện AI, Việc 3/Item 7 — 2026-07-27) — nguồn dữ liệu HOÀN
+    // TOÀN khác (writing_favorites, không phải lessons), tự thoát sớm khỏi luồng lessons bên
+    // dưới, không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).
+    if ((mode === "favorite" || mode === "library") && state.contentType === "writing") {
       const row = mount.querySelector("#level-count-row");
       if (row) row.innerHTML = "";
       return renderWritingFavoritesList(listEl);
-    }
-    // "Tin tức" (2026-07-28) — mục con RIÊNG dưới "main", nguồn dữ liệu news_lessons (public,
-    // không user_id) — tách hẳn khỏi nhánh personal/favorite/library bên dưới, KHÔNG lọc theo
-    // "industry"/level-count-row (dùng content-tabs + level-filter-row + search CHUNG, xem trên).
-    const isNews = mode === "main" && state.section === "news";
-    if (isNews) {
-      try {
-        let newsLessons = await listNewsLessons({ filter: state.contentType, category: state.newsCategory });
-        if (state.level !== "all") newsLessons = newsLessons.filter((l) => l.level === state.level);
-        if (state.search) {
-          newsLessons = newsLessons.filter(
-            (l) => (l.title_vi || l.title || "").toLowerCase().includes(state.search) || (l.situation || "").toLowerCase().includes(state.search)
-          );
-        }
-        if (!newsLessons.length) {
-          listEl.innerHTML = `<p class="muted">Chưa có tin tức nào ${state.newsCategory ? `ở lĩnh vực "${escapeHtml(state.newsCategory)}"` : "phù hợp"}.</p>`;
-          return;
-        }
-        listEl.innerHTML = newsLessons.map((l) => lessonCardHtml(l, { hideFavorite: true })).join("");
-        wireLessonCards(listEl, { onOpen: (id) => navigate(`/news-lesson/${id}`) });
-      } catch {
-        listEl.innerHTML = `<p class="error-text">Không tải được tin tức.</p>`;
-      }
-      return;
     }
     try {
       // 3 nguồn dữ liệu khác nhau theo mode — CÙNG áp dụng tiếp bộ lọc cấp độ/tìm kiếm/tab
@@ -383,12 +304,22 @@ export function renderLessons(mount, params) {
       let lessons;
       if (mode === "library") {
         lessons = await listAiGeneratedLessons({ filter: state.contentType });
+      } else if (mode === "favorite") {
+        lessons = await listLessons({ filter: "favorite" });
+        lessons = lessons.filter((l) => l.content_type === state.contentType);
       } else {
-        const filter = mode === "favorite" ? "favorite" : state.contentType;
-        lessons = await listLessons({ filter });
-        if (mode === "favorite" && state.contentType) {
-          lessons = lessons.filter((l) => l.content_type === state.contentType);
-        }
+        // Phổ biến (2026-07-28, "bỏ toggle Của tôi/Tin tức"): bài của người dùng + Tin tức tự
+        // sinh công khai hiện CHUNG 1 danh sách, sắp mới nhất trước — không còn mục con riêng,
+        // phân biệt bằng lĩnh vực/chuyên mục cạnh ngày tạo trên thẻ (xem lessonCardHtml()).
+        // "_source" gắn tạm để onOpen()/hideFavorite bên dưới biết mở đúng route/ẩn nút tim cho
+        // bài Tin tức (không thuộc user_id nào, không PATCH is_favorite được).
+        const [personal, news] = await Promise.all([
+          listLessons({ filter: state.contentType }),
+          listNewsLessons({ filter: state.contentType }).catch(() => []),
+        ]);
+        lessons = [...personal.map((l) => ({ ...l, _source: "personal" })), ...news.map((l) => ({ ...l, _source: "news" }))].sort(
+          (a, b) => new Date(b.created_at || b.published_at) - new Date(a.created_at || a.published_at)
+        );
       }
       // Yêu thích/Thư viện AI: hàng chip Level+số bài TÍNH TRÊN "lessons" TRƯỚC khi lọc theo
       // level (nếu tính sau thì bấm 1 level là các level khác biến mất luôn, không còn số để
@@ -418,9 +349,12 @@ export function renderLessons(mount, params) {
         listEl.innerHTML = `<p class="muted">${emptyText}</p>`;
         return;
       }
-      listEl.innerHTML = lessons.map((l) => lessonCardHtml(l)).join("");
+      listEl.innerHTML = lessons.map((l) => lessonCardHtml(l, { hideFavorite: l._source === "news" })).join("");
       wireLessonCards(listEl, {
-        onOpen: (id) => navigate(`/lesson/${id}`),
+        onOpen: (id) => {
+          const item = lessons.find((l) => String(l.id) === String(id));
+          navigate(item?._source === "news" ? `/news-lesson/${id}` : `/lesson/${id}`);
+        },
         onToggleFavorite: async (id, nextFav) => {
           await setLessonFavorite(id, nextFav);
           if (mode === "favorite") renderList(); // đang ở tab Yêu thích -> bỏ tim thì phải biến mất khỏi danh sách

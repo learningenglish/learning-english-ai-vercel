@@ -492,6 +492,12 @@ async function insertLearningGoal(studentId, profile, rawKeywords, level) {
       return { limitReached: true, used, max: MAX_LIFETIME_INDUSTRY_GOALS };
     }
   }
+  // Tạo lĩnh vực MỚI luôn thay thế goal đang hoạt động hiện tại (2026-07-28, "khôi phục hiển thị
+  // chọn lĩnh vực tự do" — trước đây bước archive này bắt buộc đi qua modal xác nhận riêng của
+  // UI/mentor_switch_goal TRƯỚC KHI cho phép điền lĩnh vực mới; giờ form luôn hiện sẵn nên phải
+  // tự archive NGAY TẠI ĐÂY, không dựa vào bước riêng nào ở client nữa).
+  const archived = await archiveOtherActiveGoals(studentId, null);
+  if (archived === null) return null;
   const display = buildGoalConfirmationDisplay(profile);
   const validLevel = VALID_LEVELS.includes(level) ? level : null;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals`, {
@@ -793,12 +799,15 @@ export async function mentor_next_lesson(data, ctx) {
 // UI tự đọc learning_goals.status qua goal_id để hiện nhãn "Đã dừng", xem lessons.js. Client
 // KHÔNG có quyền UPDATE learning_goals (020_mentor_ai.sql, không có policy INSERT/UPDATE cho
 // authenticated) nên bắt buộc qua service role ở đây, không thể làm thẳng từ createLesson.js.
-export async function mentor_switch_goal(data, ctx) {
-  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-
-  const activeGoals = await restGet(`learning_goals?user_id=eq.${ctx.studentId}&status=eq.active&select=id`);
+// Archive (các) goal 'active' hiện tại của user, TRỪ "exceptGoalId" nếu có (dùng khi kích hoạt
+// lại 1 goal cũ — không tự archive chính nó). Trả null nếu lỗi ghi DB (caller tự quyết định
+// thông báo gì), trả mảng id đã archive (rỗng nếu không có gì cần archive) nếu thành công.
+async function archiveOtherActiveGoals(studentId, exceptGoalId) {
+  let q = `learning_goals?user_id=eq.${studentId}&status=eq.active&select=id`;
+  if (exceptGoalId) q += `&id=neq.${exceptGoalId}`;
+  const activeGoals = await restGet(q);
   const goalIds = (activeGoals || []).map((g) => g.id);
-  if (!goalIds.length) return { content: JSON.stringify({ archived_goal_ids: [] }) };
+  if (!goalIds.length) return [];
   const idList = goalIds.join(",");
 
   const archiveRes = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals?id=in.(${idList})`, {
@@ -807,11 +816,65 @@ export async function mentor_switch_goal(data, ctx) {
     body: JSON.stringify({ status: "archived" }),
   });
   if (!archiveRes.ok) {
-    console.error("mentor.js mentor_switch_goal archive error:", archiveRes.status, await archiveRes.text().catch(() => ""));
-    return { error: "Không thể chuyển lộ trình cũ, vui lòng thử lại.", status: 502 };
+    console.error("mentor.js archiveOtherActiveGoals error:", archiveRes.status, await archiveRes.text().catch(() => ""));
+    return null;
   }
-  for (const goalId of goalIds) logMentorEvent(ctx.studentId, "goal_archived", { goal_id: goalId });
-  return { content: JSON.stringify({ archived_goal_ids: goalIds }) };
+  for (const goalId of goalIds) logMentorEvent(studentId, "goal_archived", { goal_id: goalId });
+  return goalIds;
+}
+
+export async function mentor_switch_goal(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const archived = await archiveOtherActiveGoals(ctx.studentId, null);
+  if (archived === null) return { error: "Không thể chuyển lộ trình cũ, vui lòng thử lại.", status: 502 };
+  return { content: JSON.stringify({ archived_goal_ids: archived }) };
+}
+
+// Liệt kê TẤT CẢ lĩnh vực chuyên ngành đã từng tạo (2026-07-28, "khôi phục hiển thị chọn lĩnh
+// vực tự do" — dùng cho form "Tạo bài học" hiện lại các lĩnh vực đã dùng khi đã đủ 5/5, cho phép
+// người dùng CHỌN LẠI thay vì gõ tự do). KHÔNG trả "Giao tiếp tổng quát" (is_general) — lĩnh vực
+// đó không tính vào giới hạn 5 và không cần chọn lại (rơi về tự động khi bỏ trống form).
+export async function mentor_list_goals(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const rows = await restGet(
+    `learning_goals?user_id=eq.${ctx.studentId}&order=created_at.desc&select=id,title,raw_keywords,level,status,occupation_profile`
+  );
+  const goals = (rows || [])
+    .filter((g) => !g.occupation_profile?.is_general)
+    .map((g) => ({ id: g.id, title: g.title, raw_keywords: g.raw_keywords, level: g.level, status: g.status }));
+  return { content: JSON.stringify({ goals }) };
+}
+
+// Chọn lại 1 lĩnh vực ĐÃ TỪNG tạo trước đó làm mục tiêu đang hoạt động (2026-07-28) — KHÔNG tốn
+// lượt AI/KHÔNG tính vào giới hạn 5 (không insert dòng mới), chỉ archive (các) goal active khác
+// rồi kích hoạt lại đúng goal_id được chọn. next_slot của goal đó tiếp tục đúng chỗ đã dừng
+// (lesson_count không đổi).
+export async function mentor_select_goal(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const goalId = data.goal_id;
+  if (!goalId) return { error: "Thiếu lĩnh vực cần chọn.", status: 400 };
+  const rows = await restGet(`learning_goals?id=eq.${goalId}&user_id=eq.${ctx.studentId}&select=*`);
+  const goal = rows?.[0];
+  if (!goal) return { error: "Không tìm thấy lĩnh vực này.", status: 404 };
+
+  const archived = await archiveOtherActiveGoals(ctx.studentId, goalId);
+  if (archived === null) return { error: "Không thể chuyển lĩnh vực, vui lòng thử lại.", status: 502 };
+
+  if (goal.status !== "active") {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals?id=eq.${goalId}`, {
+      method: "PATCH",
+      headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ status: "active" }),
+    });
+    if (!r.ok) {
+      console.error("mentor.js mentor_select_goal reactivate error:", r.status, await r.text().catch(() => ""));
+      return { error: "Không thể chuyển lĩnh vực, vui lòng thử lại.", status: 502 };
+    }
+    const updated = await r.json();
+    if (updated?.[0]) Object.assign(goal, updated[0]);
+  }
+  logMentorEvent(ctx.studentId, "goal_reactivated", { goal_id: goal.id });
+  return { content: JSON.stringify({ goal }) };
 }
 
 // ============================================================

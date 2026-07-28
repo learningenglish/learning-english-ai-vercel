@@ -19,6 +19,11 @@ export function lessonCardExcerpt(l) {
 export function lessonCardHtml(l, { hideFavorite = false } = {}) {
   const excerpt = lessonCardExcerpt(l);
   const dateVal = l.created_at || l.published_at;
+  // Nhãn lĩnh vực cạnh ngày tạo (2026-07-28, "bỏ toggle Của tôi/Tin tức") — bài cá nhân dùng
+  // lessons.industry (điền ở form "Tạo bài học"), bài Tin tức dùng news_lessons.category (8
+  // chuyên mục cố định, xem NEWS_CATEGORIES trong api/_generate/news.js) — cùng 1 vị trí hiển
+  // thị, không cần biết nguồn nào đang render.
+  const industryVal = l.industry || l.category || "";
   return `
     <div class="lesson-card" data-id="${l.id}">
       <div class="lesson-card-cover">${
@@ -31,6 +36,7 @@ export function lessonCardHtml(l, { hideFavorite = false } = {}) {
         ${excerpt ? `<div class="lesson-card-sub">${escapeHtml(excerpt)}</div>` : ""}
         <div class="lesson-card-meta">
           <span class="badge">${escapeHtml(l.level)}</span>
+          ${industryVal ? `<span class="muted lesson-card-industry">${escapeHtml(industryVal)}</span>` : ""}
           ${dateVal ? `<span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(dateVal)}</span>` : ""}
         </div>
       </div>

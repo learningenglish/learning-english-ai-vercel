@@ -60,6 +60,18 @@ export async function getGoalUsage() {
   return callAndParse("mentor_get_goal_usage", {});
 }
 
+// Không gọi AI — liệt kê các lĩnh vực chuyên ngành đã từng tạo (createLesson.js dùng để hiện lại
+// dạng chip chọn khi đã đủ 5/5, xem mentor_list_goals trong api/_generate/mentor.js).
+export async function listGoals() {
+  return callAndParse("mentor_list_goals", {});
+}
+
+// Không gọi AI — chọn lại 1 lĩnh vực đã tạo trước đó làm mục tiêu đang hoạt động, KHÔNG tốn lượt
+// trong giới hạn 5 (không tạo goal mới), xem mentor_select_goal trong api/_generate/mentor.js.
+export async function selectGoal(goalId) {
+  return callAndParse("mentor_select_goal", { goal_id: goalId });
+}
+
 // ====== Màn nghi thức xưng hô (mục 3.2/3.4 điểm 1 Đợt 3) ======
 
 export async function getPronounState() {
