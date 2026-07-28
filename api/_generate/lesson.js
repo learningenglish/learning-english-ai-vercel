@@ -767,7 +767,11 @@ export async function generate_lesson(data, ctx) {
   });
   if (!r.ok) {
     if (r.parseError) console.error("[generate_lesson] parse error:", r.text?.slice(0, 500));
-    return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
+    // TEMP DEBUG (2026-07-28) — xem chú thích khối debug dưới, cùng đợt gỡ.
+    return {
+      error: `${r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại."} [DEBUG r.ok=false parseError=${!!r.parseError} status=${r.status} target=${targetLengthWords}]`,
+      status: r.status || 502,
+    };
   }
   const parsed = r.data;
   capLessonArrays(parsed);
@@ -782,7 +786,12 @@ export async function generate_lesson(data, ctx) {
       `cefr_range=[${minWords},${maxWords}]`,
       `validate_range=[${validateMin},${validateMax}]`
     );
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+    // TEMP DEBUG (2026-07-28, diagnose Việc 2 "độ dài tự nhiên" fail rate) — lộ lý do thật ra
+    // response để soi không cần vercel logs (không đáng tin trong sandbox này). XOÁ sau khi xong.
+    return {
+      error: `AI trả về dữ liệu không hợp lệ, vui lòng thử lại. [DEBUG ${validation.reason} actual=${validation.actualWords} target=${targetLengthWords} cefr=[${minWords},${maxWords}] validate=[${validateMin},${validateMax}]]`,
+      status: 502,
+    };
   }
 
   const [goalId, skinId] = await Promise.all([
