@@ -24,11 +24,17 @@
 // thật lúc đó, xem resolveGoalId() bên dưới — submit() chỉ dùng chúng để TẠO mục tiêu MỚI) được
 // thay bằng 1 hàng "đang khoá" + Tuỳ chọn nâng cao bị ẩn hẳn — tránh hiểu lầm "đổi chip/điền lại
 // ngành là đổi được ngay" trong khi thực chất đang bị bỏ qua. Muốn đổi PHẢI đi qua modal xác
-// nhận (goal cũ -> archived, bài cũ -> Yêu thích, KHÔNG xoá gì, xem mentor_switch_goal trong
-// api/_generate/mentor.js) rồi mới mở lại đúng luồng chọn ngành như khi CHƯA có mục tiêu nào.
+// nhận (goal cũ -> archived, KHÔNG xoá gì, xem mentor_switch_goal trong api/_generate/mentor.js)
+// rồi mới mở lại đúng luồng chọn ngành như khi CHƯA có mục tiêu nào.
+//
+// SỬA LẠI CÙNG NGÀY (bản CUỐI, thay thiết kế "chuyển vào Yêu thích" ở trên): bài học của goal cũ
+// KHÔNG chuyển đi đâu cả — vẫn nằm nguyên vị trí trong Thư mục AI theo lĩnh vực (không đụng Yêu
+// thích). Thêm giới hạn 5 lĩnh vực chuyên ngành TRỌN ĐỜI (không tính "Giao tiếp tổng quát") —
+// modal hiện đúng số lượt còn lại, hết lượt thì đổi hẳn sang thông báo hết hạn mức + chỉ có nút
+// Đóng, xem confirmModalHtml()/mentor_get_goal_usage trong mentorApi.js.
 import { navigate } from "../router.js";
 import { fetchAndSaveLessonCover } from "../lessonApi.js";
-import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, switchGoal } from "../mentorApi.js";
+import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, switchGoal, getGoalUsage } from "../mentorApi.js";
 import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
@@ -87,6 +93,9 @@ export function renderCreateLesson(mount) {
     confirmOpen: false,
     switching: false,
     switchError: "",
+    // Giới hạn 5 lĩnh vực trọn đời (2026-07-28) — {used, max}, tải cùng lúc với activeGoal để
+    // modal biết ngay có còn lượt hay không mà không cần đợi người dùng bấm thử.
+    goalUsage: null,
   };
   // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
   // — render() gọi lại nhiều lần mỗi khi đổi chip (cấp độ/loại nội dung...), nếu không cache
@@ -97,10 +106,11 @@ export function renderCreateLesson(mount) {
   loadAppHeaderStats(mount).then((r) => {
     if (r) headerCache = { streakText: r.streak, tierText: r.tier };
   });
-  getActiveLearningGoal()
-    .then((goal) => {
+  Promise.all([getActiveLearningGoal(), getGoalUsage()])
+    .then(([goal, usageRes]) => {
       state.goalLoaded = true;
       state.activeGoal = goal;
+      if (usageRes.ok) state.goalUsage = usageRes.data;
       render();
     })
     .catch(() => {
@@ -175,14 +185,38 @@ export function renderCreateLesson(mount) {
     `;
   }
 
+  // Hết lượt = goalUsage đã tải thành công VÀ used>=max. Lỗi tải goalUsage (null) -> coi như
+  // "chưa chắc hết lượt", hiện modal bình thường (backend vẫn chặn thật ở mentor_infer_goal nếu
+  // sai, xem submit()/resolveGoalId() — modal chỉ là lớp hiển thị sớm, không phải chốt chặn duy
+  // nhất).
+  function limitReached() {
+    return !!state.goalUsage && state.goalUsage.used >= state.goalUsage.max;
+  }
+
   function confirmModalHtml() {
     if (!state.confirmOpen || !state.activeGoal) return "";
+    if (limitReached()) {
+      return `
+        <div class="modal-overlay" id="switch-goal-overlay">
+          <div class="modal-card">
+            <p>Thư mục AI chỉ lưu tối đa 0${state.goalUsage.max} lĩnh vực chuyên ngành.</p>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-primary" id="switch-goal-cancel">Đóng</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    const usageLine = state.goalUsage
+      ? `<p class="field-hint">Còn ${state.goalUsage.max - state.goalUsage.used}/${state.goalUsage.max} lượt tạo lĩnh vực chuyên ngành.</p>`
+      : "";
     return `
       <div class="modal-overlay" id="switch-goal-overlay">
         <div class="modal-card">
           <h3>Bạn đã có một lộ trình cho <strong>${escapeHtml(state.activeGoal.title)}</strong></h3>
-          <p>AI đang tạo bài học theo lộ trình này. Nếu tạo lộ trình mới, các bài học hiện tại sẽ được <strong>CHUYỂN VÀO MỤC YÊU THÍCH</strong> để bạn giữ lại và học riêng — không bị xoá. AI sẽ ngừng tạo bài tiếp theo cho lộ trình cũ.</p>
+          <p>AI đang tạo bài học theo lộ trình này. Nếu tạo lộ trình mới, các bài học hiện tại vẫn được lưu trong <strong>Thư mục AI</strong>, phân loại theo lĩnh vực <strong>${escapeHtml(state.activeGoal.title)}</strong>. AI sẽ ngừng tạo bài tiếp theo cho lộ trình cũ.</p>
           <p>Bạn có chắc muốn tạo lộ trình mới không?</p>
+          ${usageLine}
           ${state.switchError ? `<p class="field-hint-error">${escapeHtml(state.switchError)}</p>` : ""}
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" id="switch-goal-cancel" ${state.switching ? "disabled" : ""}>Hủy</button>
@@ -280,9 +314,10 @@ export function renderCreateLesson(mount) {
     mount.querySelector("#switch-goal-confirm")?.addEventListener("click", confirmSwitchGoal);
   }
 
-  // "Tạo lộ trình mới" trong modal — gọi mentor_switch_goal (archive goal cũ + favorite bài cũ,
-  // KHÔNG xoá gì, xem api/_generate/mentor.js), rồi mở lại đúng luồng chọn ngành như khi CHƯA
-  // có mục tiêu nào (unlocked=true -> advancedOptionsHtml() tự render <details open>).
+  // "Tạo lộ trình mới" trong modal — gọi mentor_switch_goal (archive goal cũ, bài cũ GIỮ NGUYÊN
+  // vị trí trong Thư mục AI, KHÔNG xoá/chuyển gì, xem api/_generate/mentor.js), rồi mở lại đúng
+  // luồng chọn ngành như khi CHƯA có mục tiêu nào (unlocked=true -> advancedOptionsHtml() tự
+  // render <details open>).
   async function confirmSwitchGoal() {
     state.switching = true;
     state.switchError = "";

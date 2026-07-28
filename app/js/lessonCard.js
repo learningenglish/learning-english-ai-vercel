@@ -66,9 +66,13 @@ export function continueCardHtml(l) {
 // (yêu cầu người dùng "giống bài đang đọc") nhưng không có ảnh bìa/tim (đây là 1 NHÓM bài,
 // không phải 1 bài cụ thể) — chỉ tên lĩnh vực + số bài, nền gradient tím-hồng sẵn có của app.
 // "active" -> đang được chọn làm bộ lọc (viền trắng nổi bật), xem views/lessons.js::state.industry.
-export function industryCardHtml(name, count, active) {
+// "archived" (2026-07-28, "giới hạn 5 lĩnh vực + Thư mục AI") -> nhóm này thuộc 1 learning_goals
+// đã archived (người dùng đã đổi sang lộ trình khác) — gắn nhãn "Đã dừng" để phân biệt với lĩnh
+// vực đang active, KHÔNG ẩn/xoá gì, bài vẫn xem/lọc được bình thường.
+export function industryCardHtml(name, count, active, archived) {
   return `
     <div class="industry-card ${active ? "active" : ""}" data-industry="${escapeHtml(name)}">
+      ${archived ? `<span class="industry-card-archived-badge">Đã dừng</span>` : ""}
       <div class="industry-card-count">${count}</div>
       <div class="industry-card-name">${escapeHtml(name)}</div>
     </div>

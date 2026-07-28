@@ -61,11 +61,20 @@ export async function listLessons({ filter = "all" } = {}) {
 // luồng Mentor AI đã tắt UI, KHÔNG dùng để phân biệt ở đây).
 export async function listAiGeneratedLessons({ filter = "all" } = {}) {
   let q =
-    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry" +
+    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry,goal_id" +
     "&source=eq.ai_generated&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
   return restFetch(`lessons?${q}`);
+}
+
+// Nhãn "Đã dừng" cho nhóm lĩnh vực trong Thư mục AI (2026-07-28, "giới hạn 5 lĩnh vực + Thư mục
+// AI") — đọc status của TOÀN BỘ learning_goals của user (active lẫn archived), views/lessons.js
+// tự đối chiếu qua lessons.goal_id để biết 1 nhóm lĩnh vực có đang "đã dừng" hay không. Chỉ
+// id+status (đủ dùng, không cần thêm field), số dòng nhỏ (giới hạn 5 lĩnh vực trọn đời + vài
+// dòng "Giao tiếp tổng quát").
+export async function listGoalStatuses() {
+  return restFetch("learning_goals?select=id,status&order=created_at.desc");
 }
 
 // Lưới thư viện Mentor AI (Đợt 3 mục 6.1) — CHỈ bài có goal_id (sinh từ luồng Mentor), khác

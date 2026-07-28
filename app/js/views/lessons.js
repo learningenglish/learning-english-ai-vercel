@@ -11,7 +11,7 @@
 // - Dòng phụ màu cam = lessons.situation (bảng "lessons" hiện KHÔNG lưu cột "chủ đề" riêng
 //   — trường "topic" chỉ dùng để dựng prompt lúc tạo bài, không persist).
 import { navigate } from "../router.js";
-import { listLessons, listAiGeneratedLessons, listInProgressLessons, setLessonFavorite, listWritingFavorites } from "../db.js";
+import { listLessons, listAiGeneratedLessons, listInProgressLessons, setLessonFavorite, listWritingFavorites, listGoalStatuses } from "../db.js";
 import { icon } from "../icons.js";
 import { lessonCardHtml, continueCardHtml, industryCardHtml, wireLessonCards } from "../lessonCard.js";
 import { showToast } from "../toast.js";
@@ -40,6 +40,9 @@ export function renderLessons(mount, params) {
     industry: null,
     search: "",
   };
+  // goalId -> 'active'|'archived' (2026-07-28) — CHỈ dùng ở mode "library" để gắn nhãn "Đã dừng"
+  // cho nhóm lĩnh vực, xem isIndustryGroupArchived()/loadGoalStatuses() bên dưới.
+  let goalStatusMap = new Map();
 
   // Yêu thích/Thư viện AI: BỎ icon người dùng (avatar+badge) — thay bằng CHÍNH tên màn hình,
   // đặt NGAY TRONG hàng app-header (không phải <h1> rời bên dưới) để đứng đúng vị trí avatar
@@ -169,7 +172,21 @@ export function renderLessons(mount, params) {
 
   loadAppHeaderStats(mount);
   if (mode === "main") loadContinueSection();
+  if (mode === "library") loadGoalStatuses();
   renderList();
+
+  // Nhãn "Đã dừng" (xem isIndustryGroupArchived()) — tải 1 lần lúc mount, render lại danh sách
+  // khi xong (goalStatusMap rỗng lúc renderList() lần đầu chạy trước đó -> chưa gắn nhãn nào,
+  // tự bổ sung ngay khi tải xong, không cần người dùng thao tác gì thêm).
+  async function loadGoalStatuses() {
+    try {
+      const rows = await listGoalStatuses();
+      goalStatusMap = new Map(rows.map((g) => [g.id, g.status]));
+      renderList();
+    } catch {
+      // Không tải được -> giữ Map rỗng, đơn giản là chưa gắn nhãn cho tới F5 — không chặn màn.
+    }
+  }
 
   // NẰM TRONG renderLessons (đóng gói cùng "mount") thay vì hàm rời cấp module như bản đầu —
   // dùng chung closure "mount"/"navigate" với renderList() bên dưới.
@@ -233,13 +250,24 @@ export function renderLessons(mount, params) {
   // học" — ô "Ngành nghề" ưu tiên, rớt về "Lĩnh vực" nếu chỉ điền 1 trong 2, xem
   // api/_generate/lesson.js::generate_lesson). CHỈ hiện khi có TỪ 2 LĨNH VỰC KHÁC NHAU trở
   // lên (đúng yêu cầu) — 1 lĩnh vực duy nhất thì nhóm vô nghĩa, ẩn hẳn mục này đi.
+  // "Đã dừng" (2026-07-28, "giới hạn 5 lĩnh vực + Thư mục AI") — 1 nhóm lĩnh vực archived khi CÓ
+  // ít nhất 1 bài biết goal_id (qua goalStatusMap) VÀ KHÔNG bài nào trong nhóm còn goal 'active'
+  // — mơ hồ (chưa biết) thì mặc định KHÔNG gắn nhãn, tránh gắn nhầm "Đã dừng" cho lĩnh vực còn
+  // hoạt động.
+  function isIndustryGroupArchived(groupLessons) {
+    const statuses = groupLessons.map((l) => l.goal_id && goalStatusMap.get(l.goal_id)).filter(Boolean);
+    if (!statuses.length) return false;
+    return statuses.every((s) => s === "archived");
+  }
+
   function renderIndustrySection(lessons) {
     const section = mount.querySelector("#industry-section");
     if (!section) return;
     const groups = new Map();
     lessons.forEach((l) => {
       const key = l.industry || "Chưa phân loại";
-      groups.set(key, (groups.get(key) || 0) + 1);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(l);
     });
     if (groups.size < 2) {
       section.hidden = true;
@@ -247,7 +275,7 @@ export function renderLessons(mount, params) {
     }
     const scroll = section.querySelector("#industry-scroll");
     scroll.innerHTML = Array.from(groups.entries())
-      .map(([name, count]) => industryCardHtml(name, count, state.industry === name))
+      .map(([name, groupLessons]) => industryCardHtml(name, groupLessons.length, state.industry === name, isIndustryGroupArchived(groupLessons)))
       .join("");
     scroll.querySelectorAll(".industry-card").forEach((card) => {
       card.addEventListener("click", () => {

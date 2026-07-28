@@ -419,6 +419,15 @@ export async function mentor_infer_goal(data, ctx) {
   const rawText = (data.raw_text || "").trim();
   if (!rawText) return { error: "Thiếu nội dung mục tiêu.", status: 400 };
 
+  // Chặn TRƯỚC khi gọi AI (2026-07-28, giới hạn 5 lĩnh vực trọn đời) — lượt này LUÔN dẫn tới 1
+  // lĩnh vực chuyên ngành thật (KHÔNG phải "Giao tiếp tổng quát", nhánh đó đi qua mentor_auto_goal
+  // riêng), nên biết chắc sẽ bị chặn ở insertLearningGoal() phía sau — không đáng tốn 1 lượt AI
+  // thật (suy luận chân dung nghề) chỉ để rồi bị từ chối lúc lưu.
+  const used = await countLifetimeIndustryGoals(ctx.studentId);
+  if (used >= MAX_LIFETIME_INDUSTRY_GOALS) {
+    return { error: `Bạn đã dùng hết ${MAX_LIFETIME_INDUSTRY_GOALS} lượt tạo lĩnh vực chuyên ngành.`, status: 403 };
+  }
+
   console.log("[MENTOR_AI_CALL] profile_inference", { studentId: ctx.studentId });
   // 3 từ khoá field/industry/product của skin.js gộp thành 1 đoạn trả lời tự do của người dùng
   // ở Bước 1 (shared.invite_goal trong kho, KHÔNG phải form 3 ô riêng như "Tạo bài học" cũ) —
@@ -462,7 +471,27 @@ function buildGoalConfirmationDisplay(profile) {
   return buildConfirmationDisplay(profile);
 }
 
+// GIỚI HẠN 5 LĨNH VỰC TRỌN ĐỜI (2026-07-28, thay hẳn thiết kế "chuyển vào Yêu thích" — xem
+// mentor_switch_goal bên dưới) — đếm learning_goals KHÁC NHAU đã TỪNG tạo (kể cả archived,
+// KHÔNG reset theo ngày/tháng), KHÔNG tính "Giao tiếp tổng quát" (is_general). Số lượng nhỏ (tối
+// đa vài chục dòng/user) nên fetch hết rồi lọc bằng JS — tránh vật lộn cú pháp filter jsonb path
+// của PostgREST trong URL (occupation_profile->>is_general), không đáng cho quy mô dữ liệu này.
+const MAX_LIFETIME_INDUSTRY_GOALS = 5;
+
+async function countLifetimeIndustryGoals(studentId) {
+  const rows = await restGet(`learning_goals?user_id=eq.${studentId}&select=occupation_profile`);
+  return (rows || []).filter((r) => !r.occupation_profile?.is_general).length;
+}
+
 async function insertLearningGoal(studentId, profile, rawKeywords, level) {
+  // Chỉ đếm/chặn khi TẠO LĨNH VỰC CHUYÊN NGÀNH THẬT — "Giao tiếp tổng quát" (is_general) không
+  // tính vào giới hạn, tạo tự do không giới hạn.
+  if (!profile?.is_general) {
+    const used = await countLifetimeIndustryGoals(studentId);
+    if (used >= MAX_LIFETIME_INDUSTRY_GOALS) {
+      return { limitReached: true, used, max: MAX_LIFETIME_INDUSTRY_GOALS };
+    }
+  }
   const display = buildGoalConfirmationDisplay(profile);
   const validLevel = VALID_LEVELS.includes(level) ? level : null;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals`, {
@@ -495,6 +524,9 @@ export async function mentor_create_goal(data, ctx) {
   const profile = data.occupation_profile;
   if (!profile?.merged_occupation && !profile?.is_general) return { error: "Thiếu chân dung nghề.", status: 400 };
   const result = await insertLearningGoal(ctx.studentId, profile, data.raw_keywords, data.level);
+  if (result?.limitReached) {
+    return { error: `Bạn đã dùng hết ${result.max} lượt tạo lĩnh vực chuyên ngành.`, status: 403 };
+  }
   if (!result) return { error: "Tạo mục tiêu thất bại, vui lòng thử lại.", status: 502 };
   return { content: JSON.stringify(result) };
 }
@@ -512,8 +544,20 @@ export async function mentor_auto_goal(data, ctx) {
   const prior = rows?.[0];
   const profile = prior?.occupation_profile || GENERAL_OCCUPATION_PROFILE;
   const result = await insertLearningGoal(ctx.studentId, profile, prior?.raw_keywords, prior?.level);
+  if (result?.limitReached) {
+    return { error: `Bạn đã dùng hết ${result.max} lượt tạo lĩnh vực chuyên ngành.`, status: 403 };
+  }
   if (!result) return { error: "Tạo mục tiêu thất bại, vui lòng thử lại.", status: 502 };
   return { content: JSON.stringify(result) };
+}
+
+// Đọc SỐ LƯỢT còn lại (X/5) — KHÔNG gọi AI, dùng cho UI hiện đúng số trong hộp thoại xác nhận
+// đổi lộ trình + khoá nút "Tạo lộ trình mới" khi đã hết, TRƯỚC KHI người dùng thật sự bấm tạo
+// (tránh phải bấm thử mới biết hết lượt).
+export async function mentor_get_goal_usage(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const used = await countLifetimeIndustryGoals(ctx.studentId);
+  return { content: JSON.stringify({ used, max: MAX_LIFETIME_INDUSTRY_GOALS }) };
 }
 
 // ============================================================
@@ -743,34 +787,24 @@ export async function mentor_next_lesson(data, ctx) {
 }
 
 // ============================================================
-// ĐỔI LỘ TRÌNH (2026-07-28, "Khoá chip + xác nhận đổi lộ trình") — người dùng ĐANG có 1 (hoặc
-// nhiều, phòng hờ dữ liệu lệch) mục tiêu 'active', bấm icon khoá trên createLesson.js -> xác
-// nhận đổi -> gọi action này TRƯỚC KHI mở luồng chọn ngành mới. Nguyên tắc bắt buộc (trả phí,
-// không được mất dữ liệu): KHÔNG xoá gì — chỉ (1) đánh dấu is_favorite=true toàn bộ lessons
-// thuộc (các) goal cũ, (2) chuyển goal cũ sang status='archived' (next_slot sẽ không thấy nữa vì
-// mọi truy vấn đều lọc status=eq.active). Client KHÔNG có quyền UPDATE learning_goals (xem
-// 020_mentor_ai.sql, không có policy INSERT/UPDATE cho authenticated) nên bắt buộc qua service
-// role ở đây, không thể làm thẳng từ createLesson.js.
+// ĐỔI LỘ TRÌNH (2026-07-28, "Khoá chip + xác nhận đổi lộ trình" — SỬA LẠI cùng ngày, thay hẳn
+// bản đầu "chuyển vào Yêu thích": bản CUỐI là "giữ nguyên vị trí trong Thư mục AI + archive").
+// Người dùng ĐANG có 1 (hoặc nhiều, phòng hờ dữ liệu lệch) mục tiêu 'active', bấm icon khoá trên
+// createLesson.js -> xác nhận đổi -> gọi action này TRƯỚC KHI mở luồng chọn ngành mới. Nguyên
+// tắc bắt buộc (trả phí, không được mất dữ liệu): KHÔNG xoá gì, KHÔNG đụng is_favorite/Yêu thích
+// — CHỈ chuyển (các) goal cũ sang status='archived' (next_slot không thấy nữa vì mọi truy vấn
+// đều lọc status=eq.active). Bài học của goal cũ GIỮ NGUYÊN goal_id/vị trí hiện tại trong Thư
+// mục AI (app/js/views/lessons.js nhóm theo lessons.industry, KHÔNG đổi gì ở bảng "lessons") —
+// UI tự đọc learning_goals.status qua goal_id để hiện nhãn "Đã dừng", xem lessons.js. Client
+// KHÔNG có quyền UPDATE learning_goals (020_mentor_ai.sql, không có policy INSERT/UPDATE cho
+// authenticated) nên bắt buộc qua service role ở đây, không thể làm thẳng từ createLesson.js.
 export async function mentor_switch_goal(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
 
   const activeGoals = await restGet(`learning_goals?user_id=eq.${ctx.studentId}&status=eq.active&select=id`);
   const goalIds = (activeGoals || []).map((g) => g.id);
-  if (!goalIds.length) return { content: JSON.stringify({ archived_goal_ids: [], favorited_lessons: 0 }) };
+  if (!goalIds.length) return { content: JSON.stringify({ archived_goal_ids: [] }) };
   const idList = goalIds.join(",");
-
-  // Đánh dấu Yêu thích TRƯỚC khi archive goal — nếu bước archive bên dưới lỗi giữa chừng, lượt
-  // gọi lại sau (idempotent, PATCH is_favorite=true lần 2 vô hại) vẫn không mất bài nào.
-  const favRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?goal_id=in.(${idList})`, {
-    method: "PATCH",
-    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" },
-    body: JSON.stringify({ is_favorite: true }),
-  });
-  if (!favRes.ok) {
-    console.error("mentor.js mentor_switch_goal favorite error:", favRes.status, await favRes.text().catch(() => ""));
-    return { error: "Không thể lưu bài học cũ vào Yêu thích, vui lòng thử lại.", status: 502 };
-  }
-  const favoritedRows = await favRes.json().catch(() => []);
 
   const archiveRes = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals?id=in.(${idList})`, {
     method: "PATCH",
@@ -782,7 +816,7 @@ export async function mentor_switch_goal(data, ctx) {
     return { error: "Không thể chuyển lộ trình cũ, vui lòng thử lại.", status: 502 };
   }
   for (const goalId of goalIds) logMentorEvent(ctx.studentId, "goal_archived", { goal_id: goalId });
-  return { content: JSON.stringify({ archived_goal_ids: goalIds, favorited_lessons: favoritedRows.length }) };
+  return { content: JSON.stringify({ archived_goal_ids: goalIds }) };
 }
 
 // ============================================================

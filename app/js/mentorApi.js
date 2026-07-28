@@ -43,11 +43,18 @@ export async function autoCreateGoal() {
   return callAndParse("mentor_auto_goal", {});
 }
 
-// Không gọi AI — "Tạo lộ trình mới" (khoá chip + xác nhận đổi lộ trình, 2026-07-28): chuyển
-// TOÀN BỘ bài học của (các) mục tiêu 'active' hiện tại vào Yêu thích rồi archive mục tiêu đó,
-// KHÔNG xoá gì. Gọi TRƯỚC khi mở luồng chọn ngành mới (createLesson.js).
+// Không gọi AI — "Tạo lộ trình mới" (khoá chip + xác nhận đổi lộ trình, 2026-07-28 — bản CUỐI,
+// thay bản "chuyển vào Yêu thích" đầu ngày): archive (các) mục tiêu 'active' hiện tại, KHÔNG xoá
+// gì, bài học GIỮ NGUYÊN vị trí trong Thư mục AI (không đụng Yêu thích). Gọi TRƯỚC khi mở luồng
+// chọn ngành mới (createLesson.js).
 export async function switchGoal() {
   return callAndParse("mentor_switch_goal", {});
+}
+
+// Không gọi AI — số lượt tạo lĩnh vực chuyên ngành đã dùng/tối đa (giới hạn TRỌN ĐỜI, 2026-07-28)
+// — dùng để hiện "X/5" trong hộp thoại xác nhận đổi lộ trình TRƯỚC khi người dùng thật sự bấm.
+export async function getGoalUsage() {
+  return callAndParse("mentor_get_goal_usage", {});
 }
 
 // ====== Màn nghi thức xưng hô (mục 3.2/3.4 điểm 1 Đợt 3) ======

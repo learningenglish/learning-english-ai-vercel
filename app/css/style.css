@@ -875,6 +875,7 @@ textarea:focus {
    có ảnh bìa/tim (đại diện 1 NHÓM bài, không phải 1 bài) — chỉ số đếm to + tên lĩnh vực trên
    nền gradient. "active" (đang lọc theo lĩnh vực này) -> viền trắng nổi bật. ===== */
 .industry-card {
+  position: relative;
   flex: 0 0 38%;
   scroll-snap-align: start;
   aspect-ratio: 4 / 3;
@@ -896,6 +897,21 @@ textarea:focus {
 
 .industry-card.active {
   border-color: #fff;
+}
+
+/* "Đã dừng" (2026-07-28) — lĩnh vực đã archived qua "Tạo lộ trình mới", KHÔNG ẩn/xoá gì, chỉ
+   gắn nhãn để phân biệt với lĩnh vực đang active. */
+.industry-card-archived-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .industry-card-count {
