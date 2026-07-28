@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
+import { generate_lesson, analyze_user_text, debug_web_search_test } from "./_generate/lesson.js";
 import { generate_writing_task, grade_writing, save_writing_favorite } from "./_generate/writing.js";
 import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
@@ -1276,6 +1276,7 @@ const ACTIONS = {
   // tự deploy thành endpoint riêng né qua gate JWT/CORS bên dưới — xem chú thích đầu file đó.
   generate_lesson,
   analyze_user_text,
+  debug_web_search_test,
   // Luyện viết (2026-07-27) — AI giao đề + AI chấm bài, xem api/_generate/writing.js. Độc
   // lập hoàn toàn với luồng Lesson-first, không đụng gì tới generate_lesson/analyze_user_text.
   generate_writing_task,
