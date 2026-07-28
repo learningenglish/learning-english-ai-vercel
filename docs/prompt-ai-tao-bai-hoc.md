@@ -205,9 +205,24 @@ SỐ LƯỢNG:
 
 ## 3. USER PROMPT (dựng từ form mỗi lần bấm Tạo)
 
-Dòng "Độ dài"/"Cấu trúc hội thoại" tách theo content_type — xem lịch sử 3 lần sửa ở cuối mục này.
-"reading" giữ nguyên cách CŨ (tổng số từ). "dialogue" đổi hẳn sang cách MỚI (N lượt + khoảng
-từ/lượt) từ 2026-07-21, đã kiểm chứng bằng dữ liệu thật (xem bảng cuối mục).
+Dòng "Độ dài"/"Cấu trúc hội thoại" tách theo content_type — xem lịch sử sửa ở cuối mục này.
+
+**SỬA 2026-07-23 (khác bản dưới, chưa cập nhật lại trước đây):** "reading" KHÔNG còn dùng
+±15%/±25% tự do — thay bằng `LEVEL_LENGTH_TABLE` cố định theo cấp CEFR (A1/A2 1 mức duy nhất,
+B1+ có short/medium/long), validate cứng theo `[min,max]` của bảng đó, không còn tính theo %.
+
+**SỬA 2026-07-28 ("độ dài tự nhiên hơn", yêu cầu người dùng — xem
+yeu-cau-mach-chu-de-va-do-dai-tu-nhien.md Việc 2):** `{LENGTH_WORDS}` KHÔNG còn luôn là trung
+điểm cố định của `[min,max]` — mỗi lượt gọi random hoá 1 điểm nhắm khác nhau trong khoảng (giữa
+70% ở giữa, tránh sát 2 biên — xem `pickTargetLengthWords` trong lesson.js), để các bài liên
+tiếp cùng cấp/tier không luôn dài xấp xỉ nhau. `{TURN_MIN}-{TURN_MAX}`/khung reading VẪN hiển thị
+đúng khung CEFR cố định `[min,max]` (không đổi) — chỉ bỏ câu "ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng"
+(vốn ép mọi bài về cùng 1 mốc), thay bằng "hướng tới khoảng {LENGTH_WORDS} từ, không cần khớp
+tuyệt đối" bám theo điểm nhắm đã random hoá. VALIDATOR nới lỏng biên ±12% NGOÀI khung CEFR chính
+thức (`graceExpandRange` trong lesson.js, KHÔNG đổi khung hiển thị cho model) — bù dao động tự
+nhiên quanh điểm nhắm ngẫu nhiên, tránh từ chối oan những bài lệch nhẹ khỏi khung nhưng vẫn hợp
+lý. Quy tắc "khi phân vân thì viết dư hơn thiếu" GIỮ NGUYÊN (vẫn đúng thực tế đo được — model
+chưa từng viết thừa) — chỉ không còn ép CHÍNH XÁC 1 mốc cố định mỗi lần.
 
 ```
 Tạo bài học theo yêu cầu sau:
@@ -216,8 +231,8 @@ Tạo bài học theo yêu cầu sau:
 - Cấp độ: {LEVEL}
 - Chủ đề: {TOPIC}
 - Loại nội dung: {CONTENT_TYPE}
-- [NẾU dialogue] Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG {TURN_COUNT} lượt thoại ({TURN_COUNT} phần tử trong "content"). MỖI LƯỢT dài khoảng {TURN_MIN}-{TURN_MAX} từ tiếng Anh — ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng này (tức {UPPER_HALF_MIN}-{TURN_MAX} từ/lượt), KHÔNG mặc định viết ở đáy khoảng dù đáy vẫn hợp lệ về lý thuyết — số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rất rõ, nên phải CHỦ ĐỘNG nhắm cao hơn để bù, không viết theo bản năng "vừa đủ chạm sàn". Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu — nếu bạn viết đúng {TURN_COUNT} lượt, mỗi lượt trong khoảng {UPPER_HALF_MIN}-{TURN_MAX} từ, tổng cả bài sẽ tự động ra khoảng {LENGTH_WORDS} từ. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn {TURN_MIN} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn {TURN_MAX} từ để bù lại — tổng thể vẫn phải đạt đủ {TURN_COUNT} lượt.
-- [NẾU reading] Độ dài: khoảng {LENGTH_WORDS} từ tiếng Anh. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Cho phép lệch ±15% khi tự ước lượng, hệ thống chấp nhận tới ±25% rồi TỰ ĐỘNG TỪ CHỐI nếu lệch hơn — lỗi thật đo được LUÔN LÀ VIẾT THIẾU, nên khi phân vân hãy viết DÀI HƠN. CẦN khoảng {MIN_UNITS} câu/đoạn ở cấp {LEVEL} để đạt đủ (đã tính kèm biên an toàn) — ví dụ: {MIN_UNITS} đơn vị × ~{AVG_WORDS_PER_UNIT} từ/đơn vị ≈ {LENGTH_WORDS} từ. Đừng dừng sớm hơn {MIN_UNITS} đơn vị nếu tổng từ chưa tới {LENGTH_WORDS}.
+- [NẾU dialogue] Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG {TURN_COUNT} lượt thoại ({TURN_COUNT} phần tử trong "content"), hướng tới TỔNG khoảng {LENGTH_WORDS} từ cho cả bài — con số này đổi MỖI BÀI (không phải hằng số cố định), nên KHÔNG cần khớp tuyệt đối, chỉ cần loanh quanh mức đó. MỖI LƯỢT dài khoảng {TURN_MIN}-{TURN_MAX} từ tiếng Anh — đây là khoảng TỰ NHIÊN của 1 lượt thoại thật ở cấp {LEVEL}, không phải khoảng phải bám sát: có lượt RẤT NGẮN (1-4 từ, vd "Sure.", "Of course.", "Really?") xen giữa các lượt dài hơn là ĐÚNG với hội thoại thật, không phải lỗi cần tránh — ưu tiên cảm giác hội thoại tự nhiên hơn việc mọi lượt na ná độ dài nhau. Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu. Số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rõ rệt (chưa từng gặp viết thừa) — nên KHI PHÂN VÂN giữa viết dài hay ngắn 1 lượt, nghiêng về phía dài hơn một chút, đừng viết theo bản năng "vừa đủ chạm sàn". KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation.
+- [NẾU reading] Độ dài: hướng tới khoảng {LENGTH_WORDS} từ tiếng Anh cho cả bài (con số này đổi MỖI BÀI trong khung chung {LENGTH_WORDS_MIN}-{LENGTH_WORDS_MAX} từ của cấp {LEVEL} — KHÔNG cần khớp tuyệt đối, đây là điểm nhắm chứ không phải đích chính xác). CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Số liệu thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy nhắm cao hơn một chút chứ đừng viết sát đáy khung {LENGTH_WORDS_MIN} từ. CẦN khoảng {MIN_UNITS} câu/đoạn ở cấp {LEVEL} để đạt đủ (đã tính kèm biên an toàn) — ví dụ: {MIN_UNITS} đơn vị × ~{AVG_WORDS_PER_UNIT} từ/đơn vị ≈ {LENGTH_WORDS} từ.
 - Lĩnh vực: {FIELD}
 - Ngành nghề: {INDUSTRY}
 - Sản phẩm / Dịch vụ liên quan: {PRODUCT}
@@ -229,14 +244,14 @@ nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho 
 ```
 
 **Công thức tính (dialogue)** — xem `DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL` / `DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL` trong lesson.js:
+- `{LENGTH_WORDS}` = `pickTargetLengthWords(min, max)` của `LEVEL_LENGTH_TABLE[LEVEL]` — random hoá MỖI LƯỢT GỌI (2026-07-28), không còn trung điểm cố định.
 - `{TURN_COUNT}` = round(LENGTH_WORDS ÷ trung bình khoảng CƠ SỞ theo cấp) — khoảng cơ sở: A1:[5,9], A2:[6,11], B1:[8,15], B2:[10,18], C1:[12,22] từ/lượt (dùng để TÍNH SỐ LƯỢT, không phải để hiển thị).
-- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32]. **A1 RIÊNG (hiệu chỉnh 2026-07-22): [5,8]**, gần khoảng cơ sở chứ không đẩy cao — khoảng [9,14] cũ được đo khi length_words A1 còn ~200, sau khi hạ xuống mức thấp (xem "Bảng độ dài theo cấp CEFR" ở trên) giữ nguyên [9,14] gây THỪA (đo thật: target 90 → hội tụ ~119-130). Đã đo lại [5,8] bằng dữ liệu thật (6/6 đạt validator ở target 50-90) — B2/C1 CHƯA đo (target tăng mạnh so với 200 cũ), kiểm khi có dịp.
-- `{UPPER_HALF_MIN}` = round((TURN_MIN + TURN_MAX) / 2) — mốc "nửa trên" model được yêu cầu ưu tiên.
+- `{TURN_MIN}-{TURN_MAX}` = khoảng HIỂN THỊ cho model viết, ĐẨY CAO hơn khoảng cơ sở để bù thiên lệch neo-đáy đã đo: A2:[11,16], B1:[14,22], B2:[17,26], C1:[21,32]. **A1 RIÊNG (hiệu chỉnh 2026-07-22): [5,8]**, gần khoảng cơ sở chứ không đẩy cao — khoảng [9,14] cũ được đo khi length_words A1 còn ~200, sau khi hạ xuống mức thấp (xem "Bảng độ dài theo cấp CEFR" ở trên) giữ nguyên [9,14] gây THỪA (đo thật: target 90 → hội tụ ~119-130). Đã đo lại [5,8] bằng dữ liệu thật (6/6 đạt validator ở target 50-90) — B2/C1 CHƯA đo (target tăng mạnh so với 200 cũ), kiểm khi có dịp. Khoảng này KHÔNG đổi theo Việc "độ dài tự nhiên hơn" (chỉ bỏ câu ép "nửa trên", khoảng TỰ THÂN giữ nguyên).
 
 **Lịch sử 3 lần sửa "dialogue hụt từ" (2026-07-21, GIỮ LẠI để không lặp lại các hướng đã thử và thất bại):**
 1. *Làm rõ cách đếm + tăng biên an toàn tổng số* (vẫn ra đề theo TỔNG): KHÔNG hiệu quả — model vẫn hội tụ ~104-137/200 từ, gần như y hệt trước khi sửa (93-137/200). Kết luận: model không tự cộng tổng qua nhiều lượt tốt, dù đã nói rõ cách đếm.
 2. *Đổi sang ra đề THEO CẤU TRÚC* (N lượt cụ thể + khoảng từ/lượt, khoảng CHƯA đẩy cao): số LƯỢT bám khá sát (18/17/14 lượt thật so với 18 yêu cầu) nhưng ĐỘ DÀI mỗi lượt neo sát ĐÁY khoảng cho (đo: TB 8.3 từ/lượt trên khoảng 8-15, một số lượt còn dưới cả đáy) → tổng vẫn hụt (96/141/170 trên 200, chỉ 1/3 đạt validator).
-3. *Đẩy khoảng hiển thị cao hơn hẳn + yêu cầu tường minh ưu tiên nửa trên* (kiến trúc CHỐT, đang dùng): B1/200 từ đạt 191/215/220 trên 200 (3/3 đạt validator ±25%, không còn thiên lệch một chiều). Đã kiểm chứng thêm ở 2 điểm biên A1/C1 (200 từ) — xem log commit lesson.js ngày 2026-07-21 để biết số liệu cụ thể nếu cần đối chiếu lại.
+3. *Đẩy khoảng hiển thị cao hơn hẳn + yêu cầu tường minh ưu tiên nửa trên* (kiến trúc dùng 2026-07-21 → 2026-07-27): B1/200 từ đạt 191/215/220 trên 200 (3/3 đạt validator ±25%, không còn thiên lệch một chiều). Đã kiểm chứng thêm ở 2 điểm biên A1/C1 (200 từ) — xem log commit lesson.js ngày 2026-07-21 để biết số liệu cụ thể nếu cần đối chiếu lại. **2026-07-28: bỏ câu ép "nửa trên" (xem SỬA 2026-07-28 ở trên) — khoảng TURN_MIN-TURN_MAX của bước 3 này vẫn giữ, chỉ đổi CÁCH DIỄN ĐẠT mục tiêu (điểm nhắm ngẫu nhiên thay vì luôn nửa trên cố định).**
 
 ---
 

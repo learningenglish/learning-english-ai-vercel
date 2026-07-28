@@ -376,13 +376,46 @@ function resolveLengthRange(level, lengthTier) {
   return entry[tier];
 }
 
+// "Độ dài tự nhiên hơn" (2026-07-28, yêu cầu người dùng — xem
+// yeu-cau-mach-chu-de-va-do-dai-tu-nhien.md Việc 2): TRƯỚC ĐÂY mọi bài cùng level+tier đều nhắm
+// ĐÚNG 1 điểm cố định (trung điểm khoảng CEFR), khiến các bài liên tiếp dài gần như y hệt nhau —
+// không giống cách người viết thật không bao giờ canh đúng 1 độ dài mỗi lần. Random hoá điểm
+// nhắm MỖI LẦN GỌI (dùng để tính số lượt thoại/số đoạn cơ học bên dưới, KHÔNG đổi khoảng
+// min/max CEFR hiển thị cho model — bảng đó vẫn là khung tham chiếu duy nhất, không đổi).
+// Giới hạn vùng chọn ở [min+15%khoảng, max-15%khoảng] (không chọn sát 2 biên) — lỗi thật đo
+// được TỪ TRƯỚC TỚI GIỜ luôn là VIẾT THIẾU chứ chưa từng viết thừa, nên nhắm sát biên dưới rất
+// dễ khiến bài đó rơi khỏi khoảng hợp lệ; nhắm sát biên trên thì an toàn hơn nhưng vẫn chừa biên
+// để không mất hẳn ý nghĩa "dao động" nếu bài đó thực tế viết dư thêm chút.
+function pickTargetLengthWords(minWords, maxWords) {
+  const range = maxWords - minWords;
+  const low = minWords + range * 0.15;
+  const high = maxWords - range * 0.15;
+  return Math.round(low + Math.random() * (high - low));
+}
+
+// Biên nới lỏng cho VALIDATOR (không đổi khoảng hiển thị cho model, chỉ nới NGƯỠNG TỪ CHỐI) —
+// vì giờ mỗi bài nhắm 1 điểm ngẫu nhiên khác nhau trong khoảng thay vì luôn nhắm 1 điểm cố định
+// có biên an toàn dựng sẵn (trước đây hay "nhắm nửa trên" để chắc chắn đạt sàn), dao động tự
+// nhiên quanh điểm nhắm ngẫu nhiên đó có thể lệch nhẹ ra ngoài khoảng CEFR chính thức mà vẫn là
+// bài TỐT, không nên bị từ chối cứng. 12% mỗi đầu là mức vừa phải: đủ cho dao động tự nhiên
+// (vd A1 60-90 -> vùng chấp nhận thật ~53-101), không đủ rộng để A1 lạc sang vùng A2.
+const LENGTH_VALIDATE_GRACE_PERCENT = 0.12;
+
+function graceExpandRange(minWords, maxWords) {
+  return [Math.round(minWords * (1 - LENGTH_VALIDATE_GRACE_PERCENT)), Math.round(maxWords * (1 + LENGTH_VALIDATE_GRACE_PERCENT))];
+}
+
 function buildGenerateLessonUserPrompt(data) {
   const contentTypeVi = data.content_type === "dialogue" ? "hội thoại" : "bài đọc";
   const unitLabel = data.content_type === "dialogue" ? "lượt thoại" : "câu/đoạn";
   const termDensity = data.term_density === undefined || data.term_density === null || data.term_density === ""
     ? 0
     : data.term_density;
-  const lengthWords = data.length_words || 200; // trung điểm khoảng đã nắn — dùng để TÍNH CƠ HỌC (số lượt/đơn vị), band thật hiển thị cho model là length_words_min/max bên dưới.
+  // "lengthWords" giờ là 1 ĐIỂM NHẮM NGẪU NHIÊN HOÁ mỗi lượt gọi (pickTargetLengthWords, KHÔNG
+  // còn luôn là trung điểm cố định — 2026-07-28 "độ dài tự nhiên hơn") dùng để TÍNH CƠ HỌC (số
+  // lượt/đơn vị) cho ĐÚNG LƯỢT NÀY; "lengthWordsMin/Max" vẫn là khung CEFR CHÍNH THỨC không đổi
+  // theo cấp (LEVEL_LENGTH_TABLE), hiển thị cho model như khung tham chiếu ngoài cùng.
+  const lengthWords = data.length_words || 200;
   const lengthWordsMin = data.length_words_min || Math.round(lengthWords * 0.85);
   const lengthWordsMax = data.length_words_max || Math.round(lengthWords * 1.15);
   const isDialogue = data.content_type === "dialogue";
@@ -391,12 +424,11 @@ function buildGenerateLessonUserPrompt(data) {
     const [basisMin, basisMax] = DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL[data.level] || [8, 15];
     const turnCount = Math.max(6, Math.round(lengthWords / ((basisMin + basisMax) / 2)));
     const [turnMin, turnMax] = DIALOGUE_TURN_RANGE_DISPLAY_BY_LEVEL[data.level] || [basisMin, basisMax];
-    const upperHalfMin = Math.round((turnMin + turnMax) / 2);
-    lengthInstruction = `- Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"). MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — ƯU TIÊN VIẾT Ở NỬA TRÊN của khoảng này (tức ${upperHalfMin}-${turnMax} từ/lượt), KHÔNG mặc định viết ở đáy khoảng dù đáy vẫn hợp lệ về lý thuyết — số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rất rõ, nên phải CHỦ ĐỘNG nhắm cao hơn để bù, không viết theo bản năng "vừa đủ chạm sàn". Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu — nếu bạn viết đúng ${turnCount} lượt, mỗi lượt trong khoảng ${upperHalfMin}-${turnMax} từ, tổng cả bài sẽ tự động rơi vào khoảng ${lengthWordsMin}-${lengthWordsMax} từ yêu cầu (xem QUY TẮC VỀ ĐỘ DÀI). KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation. Nếu 1 lượt nào đó phải ngắn hơn ${turnMin} từ vì lý do tự nhiên (vd "Sure.", "Of course."), lượt NGAY SAU hoặc NGAY TRƯỚC đó phải dài hơn ${turnMax} từ để bù lại — tổng thể vẫn phải đạt đủ ${turnCount} lượt.`;
+    lengthInstruction = `- Cấu trúc hội thoại (yêu cầu CƠ HỌC, đếm được cho từng phần tử): viết ĐÚNG ${turnCount} lượt thoại (${turnCount} phần tử trong "content"), hướng tới TỔNG khoảng ${lengthWords} từ cho cả bài — con số này đổi MỖI BÀI (không phải hằng số cố định), nên KHÔNG cần khớp tuyệt đối, chỉ cần loanh quanh mức đó. MỖI LƯỢT dài khoảng ${turnMin}-${turnMax} từ tiếng Anh — đây là khoảng TỰ NHIÊN của 1 lượt thoại thật ở cấp ${data.level}, không phải khoảng phải bám sát: có lượt RẤT NGẮN (1-4 từ, vd "Sure.", "Of course.", "Really?") xen giữa các lượt dài hơn là ĐÚNG với hội thoại thật, không phải lỗi cần tránh — ưu tiên cảm giác hội thoại tự nhiên hơn việc mọi lượt na ná độ dài nhau. Đếm riêng từng lượt, không phải cộng dồn cả bài trong đầu. Số liệu thật đo được cho thấy xu hướng viết ngắn hơn yêu cầu rõ rệt (chưa từng gặp viết thừa) — nên KHI PHÂN VÂN giữa viết dài hay ngắn 1 lượt, nghiêng về phía dài hơn một chút, đừng viết theo bản năng "vừa đủ chạm sàn". KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation.`;
   } else {
     const minUnits = suggestedUnitCount(data.level, lengthWords, data.content_type);
     const avgWordsPerUnit = Math.round(lengthWords / minUnits);
-    lengthInstruction = `- Độ dài: viết trong khoảng ${lengthWordsMin}-${lengthWordsMax} từ tiếng Anh (khung CỐ ĐỊNH theo cấp ${data.level}, không phải ước lượng). CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Hệ thống TỰ ĐỘNG TỪ CHỐI nếu ngoài khoảng ${lengthWordsMin}-${lengthWordsMax} — lỗi thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy nhắm về nửa TRÊN của khoảng chứ đừng viết sát đáy. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ. Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWordsMin}.`;
+    lengthInstruction = `- Độ dài: hướng tới khoảng ${lengthWords} từ tiếng Anh cho cả bài (con số này đổi MỖI BÀI trong khung chung ${lengthWordsMin}-${lengthWordsMax} từ của cấp ${data.level} — KHÔNG cần khớp tuyệt đối, đây là điểm nhắm chứ không phải đích chính xác). CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Số liệu thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy nhắm cao hơn một chút chứ đừng viết sát đáy khung ${lengthWordsMin} từ. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ.`;
   }
   // grammar_focus: CHỈ có khi bài đi theo lộ trình spine (mentor.js::mentor_next_lesson truyền
   // vào, xem ghi chú "QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC" ở system prompt) — form tự
@@ -720,7 +752,7 @@ export async function generate_lesson(data, ctx) {
   // khoảng đã nắn cho cả prompt lẫn validate bên dưới, không đọc lại data.length_words/length_tier
   // gốc ở đâu khác trong hàm này.
   const [minWords, maxWords] = resolveLengthRange(data.level, data.length_tier);
-  const targetLengthWords = Math.round((minWords + maxWords) / 2);
+  const targetLengthWords = pickTargetLengthWords(minWords, maxWords);
   const genData = { ...data, length_words: targetLengthWords, length_words_min: minWords, length_words_max: maxWords };
 
   // (b) Gọi AI + parse + validate.
@@ -739,9 +771,17 @@ export async function generate_lesson(data, ctx) {
   }
   const parsed = r.data;
   capLessonArrays(parsed);
-  const validation = validateLessonShape(parsed, { minWords, maxWords, checkDialogueEnding: true });
+  const [validateMin, validateMax] = graceExpandRange(minWords, maxWords);
+  const validation = validateLessonShape(parsed, { minWords: validateMin, maxWords: validateMax, checkDialogueEnding: true });
   if (!validation.valid) {
-    console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, `range=[${minWords},${maxWords}]`);
+    console.error(
+      "[generate_lesson] validate FAIL:",
+      validation.reason,
+      validation.actualWords,
+      `target=${targetLengthWords}`,
+      `cefr_range=[${minWords},${maxWords}]`,
+      `validate_range=[${validateMin},${validateMax}]`
+    );
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
