@@ -587,6 +587,9 @@ async function ensureSkinLevel(skinRow, level, occupationProfile) {
     level,
     requiredCounts: requiredCountsByLevel()[level],
     skinGeneralForLevel: loadSkinGeneral()[level] || {},
+    // "mạch chủ đề liên tục" (2026-07-28) — spineSlots ĐÚNG THỨ TỰ để generateLevelTopics biết
+    // vị trí nào liền kề vị trí nào mà nhóm chủ đề lớn, xem LEVEL_SYSTEM_PROMPT trong skin.js.
+    spineSlots: loadCurriculumSpine()[level] || [],
   });
   const updatedLevels = result.ok ? { ...skinRow.levels, [level]: result.frames } : skinRow.levels;
   const updatedStatus = { ...skinRow.level_status, [level]: result.ok ? "ok" : "failed" };

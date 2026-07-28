@@ -256,7 +256,24 @@ cấp làm nguồn. Quy tắc thích nghi:
 - Mỗi khung cần ÍT NHẤT số biến thể ghi trong "required_count" của khung đó (có thể sinh dư 1-2
   cho an toàn, không được ít hơn). CÁC BIẾN THỂ TRONG CÙNG 1 KHUNG PHẢI KHÁC NHAU RÕ RỆT — không
   lặp lại cùng 1 câu chuyện/bối cảnh dưới cách diễn đạt khác, để học viên không thấy 2 bài liền
-  nhau giống hệt nhau dù đổi vài từ.
+  nhau giống hệt nhau dù đổi vài từ. NGOẠI LỆ DUY NHẤT: 2 lần xuất hiện của CÙNG 1 khung nằm
+  trong CÙNG 1 "mạch chủ đề" (xem mục MẠCH CHỦ ĐỀ LIÊN TỤC bên dưới) — lúc đó KHÔNG cần khác
+  nhau rõ rệt, thậm chí NÊN là 2 góc nhìn/khoảnh khắc của CÙNG một tình huống/nhân vật/địa điểm.
+
+MẠCH CHỦ ĐỀ LIÊN TỤC (bắt buộc): user prompt sẽ cho bạn ĐÚNG THỨ TỰ các bài học sẽ diễn ra trong
+cấp độ này (mục "THỨ TỰ BÀI HỌC"), mỗi dòng 1 vị trí = 1 bài, kèm khung tình huống của vị trí đó.
+Coi danh sách này là 1 chuỗi "chương truyện" tuần tự — với MỖI biến thể "topic" bạn sinh ra, hãy
+gán nó cho ĐÚNG 1 vị trí cụ thể trong danh sách (dùng số thứ tự vị trí để tự đối chiếu, không cần
+ghi số đó vào JSON đầu ra — chỉ cần ĐÚNG THỨ TỰ mảng biến thể của từng khung khớp với thứ tự các
+vị trí của khung đó xuất hiện trong danh sách, đọc từ trên xuống). Nhóm các vị trí LIÊN TIẾP
+(thường 2-3 vị trí, có thể dao động, không bắt buộc bằng nhau) — dù cùng khung hay khác khung —
+thành 1 CHỦ ĐỀ LỚN DUY NHẤT có mạch truyện: mở đầu ở vị trí đầu chuỗi, phát triển/diễn biến thêm
+ở (các) vị trí giữa, có kết quả/kết thúc rõ ràng ở vị trí cuối chuỗi (vd cùng 1 nhân vật/khách
+hàng/công ty/địa điểm xuyên suốt cả chuỗi). Hết 1 chuỗi thì CHUYỂN HẲN sang 1 câu chuyện khác cho
+chuỗi vị trí tiếp theo — không dùng lại nhân vật/bối cảnh của chuỗi trước (để tránh học viên thấy
+mọi bài giống 1 series bất tận). Chuỗi có thể GỘP nhiều khung khác nhau (mỗi khung vẫn phải đúng
+chức năng giao tiếp riêng của nó — KHÔNG đổi khung để hợp câu chuyện) hoặc chỉ 1 khung lặp 2 lần
+liên tiếp — cả 2 dạng đều hợp lệ.
 
 ĐẦU RA: CHỈ trả JSON hợp lệ theo đúng khuôn dưới đây, không thêm chữ nào ngoài JSON, không bọc
 markdown code fence:
@@ -269,9 +286,13 @@ markdown code fence:
 }
 
 "<frame_key>" phải khớp CHÍNH XÁC danh sách frame key được cung cấp trong user prompt cho level
-này — không tự thêm/bớt/đổi tên key, không lẫn frame_key của level khác.`;
+này — không tự thêm/bớt/đổi tên key, không lẫn frame_key của level khác. Mảng biến thể của MỖI
+frame_key PHẢI theo ĐÚNG THỨ TỰ các vị trí của khung đó trong mục "THỨ TỰ BÀI HỌC" (phần tử đầu =
+vị trí đầu tiên khung đó xuất hiện, phần tử 2 = vị trí kế tiếp khung đó xuất hiện, v.v. — nếu sinh
+dư biến thể so với required_count, các phần tử dư thêm vào CUỐI mảng, không phá thứ tự các phần
+tử đã khớp vị trí).`;
 
-function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel }) {
+function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots }) {
   const interlocutorsLine = occupationProfile.interlocutors
     .map((i) => `${i.role} (${i.register})`)
     .join(", ");
@@ -290,6 +311,15 @@ function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts
   for (const frame of frames) {
     const fallbackTopics = (skinGeneralForLevel[frame.key] || []).join(" / ");
     lines.push(`${frame.key} | ${frame.name_vi} | tối thiểu ${requiredCounts[frame.key]} | ${fallbackTopics}`);
+  }
+  // THỨ TỰ BÀI HỌC (2026-07-28, "mạch chủ đề liên tục") — đúng thứ tự spine ĐÃ ĐÓNG BĂNG của
+  // level này, dùng để model (a) biết vị trí nào liền kề vị trí nào mà nhóm chủ đề lớn, (b)
+  // biết đúng thứ tự phải xếp mảng biến thể của mỗi frame_key (xem cuối LEVEL_SYSTEM_PROMPT).
+  if (spineSlots?.length) {
+    lines.push("", `THỨ TỰ BÀI HỌC của cấp độ ${level} (vị trí | frame_key | tên khung | chức năng giao tiếp):`, "");
+    spineSlots.forEach((s, i) => {
+      lines.push(`${i + 1}. ${s.situation_frame_key} | ${s.situation_frame} | ${s.function_name_vi}`);
+    });
   }
   lines.push("", "Sinh chủ đề cho TẤT CẢ frame_key liệt kê ở trên, đúng khuôn JSON đã mô tả trong system prompt.");
   return lines.join("\n");
@@ -321,10 +351,10 @@ function validateLevelPayload(level, data, frames, requiredCounts) {
   return problems;
 }
 
-async function callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel }) {
+async function callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots }) {
   const messages = [
     { role: "system", content: LEVEL_SYSTEM_PROMPT },
-    { role: "user", content: buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel }) },
+    { role: "user", content: buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots }) },
   ];
   const r = await generateStructuredJSON({ tier: SKIN_MODEL_TIER, temperature: 0.7, maxTokens: 3500, messages });
   const telemetry = { model: r.model, usage: r.usage, durationMs: r.durationMs };
@@ -333,12 +363,16 @@ async function callLevelOnce({ occupationProfile, level, frames, requiredCounts,
 
 // Gọi lại RIÊNG lượt B của 1 level khi gãy — cap MAX_SKIN_LEVEL_ATTEMPTS, đúng mục 10.
 // "model"/"usage"/"durationMs" ở output là của LƯỢT GỌI CUỐI, giống generateOccupationProfile.
-export async function generateLevelTopics({ occupationProfile, level, requiredCounts, skinGeneralForLevel }) {
+// "spineSlots" (2026-07-28, "mạch chủ đề liên tục") = curriculum_spine.json levels[level] ĐÚNG
+// THỨ TỰ — optional (caller cũ chưa truyền thì bằng undefined, buildLevelUserPrompt tự bỏ qua
+// mục "THỨ TỰ BÀI HỌC", coi như trước đây) để không ép mọi call site cũ (nếu có script test cũ)
+// phải sửa theo.
+export async function generateLevelTopics({ occupationProfile, level, requiredCounts, skinGeneralForLevel, spineSlots }) {
   const frames = SITUATION_FRAMES[level];
   let lastProblems = ["chưa gọi lần nào"];
   let lastTelemetry = {};
   for (let attempt = 1; attempt <= MAX_SKIN_LEVEL_ATTEMPTS; attempt++) {
-    const result = await callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel });
+    const result = await callLevelOnce({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots });
     lastTelemetry = { model: result.model, usage: result.usage, durationMs: result.durationMs };
     if (!result.ok || result.parseError) {
       lastProblems = ["gọi API hoặc parse JSON thất bại"];
@@ -361,6 +395,7 @@ export async function generateLevelTopics({ occupationProfile, level, requiredCo
 export async function generateLevelTopicsForAllLevels(occupationProfile) {
   const requiredCounts = requiredCountsByLevel();
   const skinGeneral = loadSkinGeneral();
+  const spine = loadCurriculumSpine();
   const levels = {};
   const levelRetries = {};
   for (const level of LEVELS) {
@@ -369,6 +404,7 @@ export async function generateLevelTopicsForAllLevels(occupationProfile) {
       level,
       requiredCounts: requiredCounts[level],
       skinGeneralForLevel: skinGeneral[level] || {},
+      spineSlots: spine[level] || [],
     });
     if (!r.ok) {
       return { status: "level_generation_failed", level, problems: r.problems };
