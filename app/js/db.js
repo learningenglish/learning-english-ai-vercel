@@ -136,6 +136,21 @@ export async function setLessonFavorite(id, isFavorite) {
   });
 }
 
+// "Tin tức" (2026-07-28, mục con dưới Phổ biến) — bảng RIÊNG "news_lessons" (migration 029,
+// public-read, KHÔNG user_id) — 2 hàm CHỦ Ý TÁCH khỏi listLessons()/getLessonById() ở trên
+// (khác bảng hẳn, không phải chỉ khác filter) để không lẫn lộn 2 nguồn dữ liệu.
+export async function listNewsLessons({ filter = "all", category = null } = {}) {
+  let q = "select=id,title,title_vi,level,content_type,situation,content,category,cover_image_url,published_at&order=published_at.desc";
+  if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
+  if (category) q += `&category=eq.${encodeURIComponent(category)}`;
+  return restFetch(`news_lessons?${q}`);
+}
+
+export async function getNewsLessonById(id) {
+  const rows = await restFetch(`news_lessons?id=eq.${encodeURIComponent(id)}&select=*`);
+  return rows?.[0] || null;
+}
+
 // Tab "Bài viết" trong Yêu thích (Việc 3/Item 7, 2026-07-27) — đọc trực tiếp qua RLS "select
 // own" (giống listLessons() ở trên), GHI (lưu mới) bắt buộc qua action save_writing_favorite
 // trong api/_generate/writing.js (service role), xem supabase/028_writing_favorites.sql.

@@ -2,7 +2,7 @@
 // (kiến trúc Lesson-first). "Hỏi AI" (word_lookup, sentence_tip) là action lẻ, realtime,
 // không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
-import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite } from "../db.js";
+import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
 import { addLookedUpWord } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
@@ -74,7 +74,13 @@ function computeGenderHints(content) {
   });
 }
 
-export async function renderLessonDetail(mount, params) {
+// "opts.news" (2026-07-28, "Tin tức tự sinh") — true khi vào từ route /news-lesson/:id (mục
+// con "Tin tức" dưới Phổ biến): đọc từ "news_lessons" (public, KHÔNG user_id) thay vì "lessons"
+// cá nhân, tắt hẳn lưu tiến trình + nút Yêu thích (2 thứ đó gắn với user_id, không áp dụng được
+// cho nội dung dùng chung) — MỌI phần còn lại (tooltip từ vựng, TTS, bài tập trong phiên xem)
+// hoạt động Y HỆT bài cá nhân vì cùng 1 hình dạng dữ liệu (content/vocabulary/grammar/exercises).
+export async function renderLessonDetail(mount, params, opts = {}) {
+  const isNews = !!opts.news;
   const lessonId = params?.[0];
   if (!lessonId) {
     mount.innerHTML = `<div class="screen"><p class="error-text">Thiếu mã bài học.</p></div>`;
@@ -84,13 +90,18 @@ export async function renderLessonDetail(mount, params) {
 
   let lesson, progress;
   try {
-    [lesson, progress] = await Promise.all([getLessonById(lessonId), getLessonProgress(lessonId)]);
+    if (isNews) {
+      lesson = await getNewsLessonById(lessonId);
+      progress = null;
+    } else {
+      [lesson, progress] = await Promise.all([getLessonById(lessonId), getLessonProgress(lessonId)]);
+    }
   } catch {
     mount.innerHTML = `<div class="screen"><p class="error-text">Không tải được bài học, thử lại sau.</p></div>`;
     return;
   }
   if (!lesson) {
-    mount.innerHTML = `<div class="screen"><p class="error-text">Không tìm thấy bài học (có thể không thuộc tài khoản này).</p></div>`;
+    mount.innerHTML = `<div class="screen"><p class="error-text">Không tìm thấy bài học${isNews ? "" : " (có thể không thuộc tài khoản này)"}.</p></div>`;
     return;
   }
 
@@ -139,7 +150,7 @@ export async function renderLessonDetail(mount, params) {
       <div class="lesson-header-row">
         ${backChevronHtml()}
         <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
-        <button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>
+        ${isNews ? "" : `<button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>`}
       </div>
       <div class="tabs" role="tablist">
         <button type="button" class="tab-btn active" data-tab="content">Nội dung</button>
@@ -159,7 +170,7 @@ export async function renderLessonDetail(mount, params) {
     history.back();
   });
 
-  mount.querySelector("#lesson-fav-btn").addEventListener("click", async (e) => {
+  mount.querySelector("#lesson-fav-btn")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;
     const next = !state.isFavorite;
     btn.disabled = true;
@@ -719,6 +730,9 @@ export async function renderLessonDetail(mount, params) {
   }
 
   function saveProgress() {
+    // Tin tức (2026-07-28) — bài KHÔNG thuộc user_id nào (public, "news_lessons"), không có
+    // tiến trình cá nhân để lưu (lesson_progress FK tới "lessons", không tới "news_lessons").
+    if (isNews) return;
     const total = (lesson.exercises || []).length;
     const allDone = total > 0 && state.completedExercises.size === total;
     upsertLessonProgress(lesson.id, {

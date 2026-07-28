@@ -13,8 +13,12 @@ export function lessonCardExcerpt(l) {
   return l.situation || "";
 }
 
-export function lessonCardHtml(l) {
+// "hideFavorite" (2026-07-28, "Tin tức tự sinh") — bài news_lessons KHÔNG thuộc user_id nào,
+// không có is_favorite/không PATCH được qua setLessonFavorite (khác bảng) — ẩn hẳn nút tim thay
+// vì hiện 1 nút bấm-vô-tác-dụng.
+export function lessonCardHtml(l, { hideFavorite = false } = {}) {
   const excerpt = lessonCardExcerpt(l);
+  const dateVal = l.created_at || l.published_at;
   return `
     <div class="lesson-card" data-id="${l.id}">
       <div class="lesson-card-cover">${
@@ -27,10 +31,10 @@ export function lessonCardHtml(l) {
         ${excerpt ? `<div class="lesson-card-sub">${escapeHtml(excerpt)}</div>` : ""}
         <div class="lesson-card-meta">
           <span class="badge">${escapeHtml(l.level)}</span>
-          <span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(l.created_at)}</span>
+          ${dateVal ? `<span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(dateVal)}</span>` : ""}
         </div>
       </div>
-      <button type="button" class="fav-btn ${l.is_favorite ? "is-favorite" : ""}" data-fav="${l.is_favorite}">${icon("heart", { size: 18, filled: l.is_favorite })}</button>
+      ${hideFavorite ? "" : `<button type="button" class="fav-btn ${l.is_favorite ? "is-favorite" : ""}" data-fav="${l.is_favorite}">${icon("heart", { size: 18, filled: l.is_favorite })}</button>`}
     </div>
   `;
 }

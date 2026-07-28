@@ -53,6 +53,9 @@ registerRoute("/create-text", renderCreateFromText);
 registerRoute("/writing", renderWritingPractice);
 registerRoute("/writing-favorite", renderWritingFavoriteDetail);
 registerRoute("/lesson", renderLessonDetail);
+// "Tin tức" (2026-07-28) — route RIÊNG (không phải /lesson/:id) để renderLessonDetail biết đọc
+// từ news_lessons (public) thay vì lessons cá nhân, xem opts.news trong views/lesson.js.
+registerRoute("/news-lesson", (mount, params) => renderLessonDetail(mount, params, { news: true }));
 registerRoute("/history", renderHistory);
 registerRoute("/stats", renderStats);
 registerRoute("/profile", renderProfile);
