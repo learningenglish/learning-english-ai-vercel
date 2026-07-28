@@ -37,23 +37,35 @@ function stripJsonFence(text) {
   return (text || "").replace(/```json|```/g, "").trim();
 }
 
-// ====== OpenAI — chat completions (hình dạng "tools" cho web_search CHƯA verify với API thật) ======
-const OPENAI_WEB_SEARCH_TOOL = [{ type: "web_search" }];
+// ====== OpenAI — chat completions ======
+// SỬA 2026-07-28 (xác nhận bằng lỗi API THẬT lúc thiết kế "Tin tức tự sinh"): "tools:
+// [{type:'web_search'}]" (bản cũ) KHÔNG hợp lệ với /v1/chat/completions — OpenAI trả thẳng lỗi
+// "Invalid value: 'web_search'. Supported values are: 'function' and 'custom'." (400, đo được
+// thật, không phải suy đoán). web_search CHỈ là tool hợp lệ ở API Responses
+// (/v1/responses, khác hẳn shape request/response, CHƯA làm ở đây) — cách ĐƠN GIẢN HƠN, giữ
+// nguyên endpoint /v1/chat/completions hiện tại: đổi sang MODEL có sẵn khả năng tìm kiếm web
+// ("gpt-4o-search-preview"/"gpt-4o-mini-search-preview") + tham số "web_search_options" thay vì
+// "tools". Các model *-search-preview KHÔNG nhận "temperature" (API từ chối nếu gửi kèm).
+const OPENAI_SEARCH_MODEL_MAP = {
+  "gpt-4o-mini": "gpt-4o-mini-search-preview",
+  "gpt-4o": "gpt-4o-search-preview",
+};
 
 async function callOpenAIChat({ messages, model, maxTokens, temperature, webSearch }) {
+  const effectiveModel = webSearch ? OPENAI_SEARCH_MODEL_MAP[model] || "gpt-4o-mini-search-preview" : model;
+  const body = {
+    model: effectiveModel,
+    max_tokens: maxTokens,
+    messages,
+    ...(webSearch ? { web_search_options: {} } : { temperature }),
+  };
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      messages,
-      ...(webSearch ? { tools: OPENAI_WEB_SEARCH_TOOL } : {}),
-    }),
+    body: JSON.stringify(body),
   });
   const data = await response.json();
   if (!response.ok) return { ok: false, status: response.status, raw: data };
