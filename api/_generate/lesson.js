@@ -808,18 +808,26 @@ export async function generate_lesson(data, ctx) {
   const attemptStartedAt = Date.now();
   const firstTarget = pickTargetLengthWords(minWords, maxWords);
   let result = await callAndValidateLesson(data, firstTarget, minWords, maxWords);
+  // TEMP DEBUG (2026-07-28, xác nhận retry có chạy + kết quả từng lượt) — XOÁ sau khi xong.
+  const debugAttempts = [{ reason: result.reason, actualWords: result.actualWords, target: firstTarget }];
 
+  let retried = false;
   if (!result.ok && Date.now() - attemptStartedAt < 25000) {
+    retried = true;
     const retryTarget =
       result.reason === "word_count_out_of_range" && result.actualWords < minWords
         ? Math.round(minWords + (maxWords - minWords) * 0.1)
         : firstTarget;
     console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `firstTarget=${firstTarget}`, `retryTarget=${retryTarget}`);
     result = await callAndValidateLesson(data, retryTarget, minWords, maxWords);
+    debugAttempts.push({ reason: result.reason, actualWords: result.actualWords, target: retryTarget });
   }
 
   if (!result.ok) {
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+    return {
+      error: `AI trả về dữ liệu không hợp lệ, vui lòng thử lại. [DEBUG retried=${retried} elapsed=${Date.now() - attemptStartedAt} attempts=${JSON.stringify(debugAttempts)}]`,
+      status: 502,
+    };
   }
   const parsed = result.parsed;
 
