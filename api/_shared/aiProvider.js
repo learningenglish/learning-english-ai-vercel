@@ -129,7 +129,8 @@ export async function generateText({ messages, model, tier = "default", maxToken
 
   const durationMs = Date.now() - start;
   if (!result.ok) {
-    return { ok: false, ...mapProviderError(result), provider: PROVIDER, model: resolvedModel, durationMs };
+    // TEMP DEBUG (2026-07-28, xác nhận web_search) — lộ raw provider error để chẩn đoán, XOÁ sau.
+    return { ok: false, ...mapProviderError(result), provider: PROVIDER, model: resolvedModel, durationMs, debugRawStatus: result.status, debugRaw: result.raw };
   }
   return { ok: true, status: 200, text: result.text, usage: result.usage, provider: PROVIDER, model: resolvedModel, durationMs };
 }
