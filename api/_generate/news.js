@@ -122,14 +122,20 @@ export async function generateDailyNews() {
     const level = LEVELS[i % LEVELS.length];
     const contentType = CONTENT_TYPES_TODAY[i];
     const [minWords, maxWords] = resolveLengthRange(level, "medium");
-    const target = pickTargetLengthWords(minWords, maxWords);
-    const genResult = await callAndValidateLesson(
-      { level, content_type: contentType, topic: topic.gist_en, description: "", field: "", industry: "", product: "", situation: "", term_density: 0, grammar_focus: [] },
-      target,
-      minWords,
-      maxWords,
-      "default"
-    );
+    const genData = { level, content_type: contentType, topic: topic.gist_en, description: "", field: "", industry: "", product: "", situation: "", term_density: 0, grammar_focus: [] };
+
+    // Retry (2026-07-28, cùng bài học Việc 2 "Tạo bài học phải luôn ra bài" — job nền có ngân
+    // sách 300s, không bị áp lực 1 request tương tác như generate_lesson, nên retry TOÀN BỘ ở
+    // đây thay vì chỉ dựa 1 lượt gọi default tier) — lượt 2 đổi target THẤP hơn (nếu lỗi do
+    // thiếu từ) + chuyển tier "strong" (đo thật ở Việc 2: model mạnh nâng B2/C1 từ ~0% lên ~75%).
+    let genResult = await callAndValidateLesson(genData, pickTargetLengthWords(minWords, maxWords), minWords, maxWords, "default");
+    if (!genResult.ok) {
+      const retryTarget =
+        genResult.reason === "word_count_out_of_range" && genResult.actualWords < minWords
+          ? Math.round(minWords + (maxWords - minWords) * 0.1)
+          : pickTargetLengthWords(minWords, maxWords);
+      genResult = await callAndValidateLesson(genData, retryTarget, minWords, maxWords, "strong");
+    }
     if (!genResult.ok) {
       results.push({ ok: false, topic: topic.headline_vi, level, contentType, reason: genResult.reason });
       continue;
