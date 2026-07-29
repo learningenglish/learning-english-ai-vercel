@@ -1655,6 +1655,33 @@ const ACTIONS = {
     );
     const allGoals = await goalsRes.json();
     if (data.list_all) return { content: JSON.stringify(allGoals) };
+    if (data.skin_id) {
+      const skinRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${data.skin_id}&select=*`,
+        { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } }
+      );
+      const skin = (await skinRes.json())?.[0];
+      const level = data.level;
+      const chunks = skin?.levels?.[level]?.chunks || {};
+      return {
+        content: JSON.stringify({
+          occupation_key: skin?.occupation_key,
+          levelKeys: skin?.levels ? Object.keys(skin.levels) : [],
+          chunkIndexesPresent: Object.keys(chunks),
+          chunkSummaries: Object.fromEntries(
+            Object.entries(chunks).map(([idx, c]) => [
+              idx,
+              {
+                frameKeys: c?.frames ? Object.keys(c.frames) : null,
+                variantCountsPerFrame: c?.frames
+                  ? Object.fromEntries(Object.entries(c.frames).map(([fk, variants]) => [fk, Array.isArray(variants) ? variants.length : "not_array"]))
+                  : null,
+              },
+            ])
+          ),
+        }),
+      };
+    }
     const matchedGoals = (allGoals || []).filter((g) => {
       const hay = `${g.title || ""} ${g.raw_keywords || ""} ${g.occupation_profile?.merged_occupation || ""}`.toLowerCase();
       return hay.includes(kw);
