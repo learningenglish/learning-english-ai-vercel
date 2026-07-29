@@ -83,8 +83,12 @@ function afterRender(path) {
 function renderBottomNav(activePath) {
   const nav = document.getElementById("bottom-nav");
   // Màn Bài học chi tiết tự vẽ thanh audio CỐ ĐỊNH ở đúng vị trí này (tab "Nội dung") —
-  // ẩn thanh điều hướng ngoài đi để không chồng 2 thanh cùng lúc (yêu cầu người dùng).
-  if (activePath === "/login" || activePath === "/lesson") {
+  // ẩn thanh điều hướng ngoài đi để không chồng 2 thanh cùng lúc (yêu cầu người dùng). "/news-
+  // lesson" (2026-07-29, bug thật Minh bắt được: bài Tin tức KHÔNG thấy thanh audio) — dùng
+  // CHUNG renderLessonDetail()/thanh audio với "/lesson" (xem opts.news trong views/lesson.js)
+  // nhưng route KHÁC tên nên bị BỎ SÓT ở đây trước đó — nav ngoài không ẩn, che mất thanh audio
+  // cố định (cả 2 cùng position:fixed đáy màn hình).
+  if (activePath === "/login" || activePath === "/lesson" || activePath === "/news-lesson") {
     nav.hidden = true;
     nav.innerHTML = "";
     return;

@@ -70,7 +70,7 @@ SCHEMA JSON:
       "speaker": "chỉ có với dialogue",
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
       "translation": "bản dịch tiếng Việt",
-      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ người học: cấu trúc đáng chú ý CỦA CHÍNH CÂU NÀY (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, VÌ SAO câu này dùng dạng đó. CẤM khuôn sáo rỗng kiểu 'Thì X trong câu này diễn tả...' lặp lại máy móc — mỗi câu đọc như đang phân tích riêng câu đó. Ngắn gọn, đúng trọng tâm."
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ người học: MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên). Mỗi câu đọc như đang phân tích RIÊNG câu đó. Ngắn gọn, đúng trọng tâm."
     }
   ],
   "vocabulary": [

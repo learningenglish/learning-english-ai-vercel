@@ -456,7 +456,7 @@ Trả lời bằng tiếng Việt theo format (mỗi mục xuống hàng):
 // sao dùng dạng đó ở đây), khớp đúng yêu cầu đã áp cho trường content[].explanation sinh sẵn
 // lúc tạo bài (lesson.js) — đây CHỈ là lưới đỡ cho bài học cũ chưa có trường đó.
 function buildSentenceTipPrompt(sentence) {
-  return `Phân tích câu tiếng Anh này cho người học Việt Nam trình độ B1-B2, viết bằng tiếng Việt, ngắn gọn (tối đa 3-5 dòng). Phân tích ĐÚNG câu này: cấu trúc đáng chú ý của chính câu (không phải tên thì chung chung), từ/cụm cần lưu ý nếu có, vì sao câu dùng dạng đó trong ngữ cảnh này. CẤM khuôn sáo rỗng kiểu "Thì X trong câu này diễn tả..." lặp lại máy móc. Câu: "${sentence}"`;
+  return `Phân tích câu tiếng Anh này cho người học Việt Nam trình độ B1-B2, viết bằng tiếng Việt, ngắn gọn (tối đa 3-5 dòng). MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của câu này (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong ngữ cảnh) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới bất kỳ cách diễn đạt nào của khuôn "Câu này dùng/sử dụng thì...", "Câu này ở thì...", "Thì X trong câu này diễn tả..." (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên). Câu: "${sentence}"`;
 }
 
 const EXAM_SYSTEM = "You are an expert English exam creator. Return ONLY valid JSON. Never truncate output.";
