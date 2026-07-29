@@ -478,18 +478,26 @@ export function renderCreateLesson(mount) {
     for (let attempt = 1; attempt <= MAX_CLIENT_ATTEMPTS; attempt++) {
       setProgress(attempt === 1 ? "AI đang soạn bài theo lộ trình..." : `AI đang thử soạn lại bài (lần ${attempt}/${MAX_CLIENT_ATTEMPTS})...`);
       res = await generateNextLessonForGoal(goalResult.goalId, attempt > 1);
-      // Chỉ retry lỗi 502 (AI sinh bài thất bại — CÓ THỂ khác kết quả ở lượt sau). Lỗi khác (403
-      // hết hạn mức, 400 lộ trình đã dừng...) sẽ KHÔNG đổi dù thử lại bao nhiêu lần — dừng ngay,
-      // đỡ tốn thời gian người dùng chờ vô ích.
-      if (res.ok || res.status !== 502) break;
+      // Retry lỗi 502 (AI sinh bài thất bại — CÓ THỂ khác kết quả ở lượt sau) VÀ lỗi mạng/hết
+      // giờ thật (504/status null — 2026-07-30, sau khi bỏ trần 15s nội bộ trong mentor.js:
+      // "TUYỆT ĐỐI KHÔNG rơi về da tổng quát", ca cực hiếm sinh skin chunk LẦN ĐẦU quá chậm giờ
+      // có thể chạm hẳn trần maxDuration=120s thay vì được cắt sớm — vẫn nên thử lại thay vì
+      // dừng ngay, vì request MỚI thường hit cache chunk đã lưu từ lượt trước). Lỗi khác (403
+      // hết hạn mức, 400 lộ trình đã dừng...) KHÔNG đổi dù thử lại bao nhiêu lần — dừng ngay, đỡ
+      // tốn thời gian người dùng chờ vô ích.
+      if (res.ok || (res.status !== 502 && res.status !== 504 && res.status !== null)) break;
     }
     btn.disabled = false;
     if (!res.ok) {
-      // status 502 = "AI trả về dữ liệu không hợp lệ" (lỗi kỹ thuật của LƯỢT SINH BÀI, thứ đang
-      // thử retry ở trên) -> thay bằng câu dễ hiểu, không lộ thuật ngữ kỹ thuật. Các status khác
-      // (403 hết hạn mức/hết lượt lĩnh vực, 400 lộ trình đã dừng...) đã có message tiếng Việt rõ
-      // ràng sẵn từ backend — hiện thẳng, không phải lỗi kỹ thuật cần che.
-      const friendlyError = res.status === 502 ? "Không thể tạo bài lúc này, vui lòng thử lại sau ít phút." : res.error;
+      // status 502/504/null = lỗi kỹ thuật của LƯỢT SINH BÀI (AI trả về dữ liệu không hợp lệ,
+      // hoặc hết giờ/mất mạng — thứ đang thử retry ở trên) -> thay bằng câu dễ hiểu, không lộ
+      // thuật ngữ kỹ thuật. Các status khác (403 hết hạn mức/hết lượt lĩnh vực, 400 lộ trình đã
+      // dừng...) đã có message tiếng Việt rõ ràng sẵn từ backend — hiện thẳng, không phải lỗi
+      // kỹ thuật cần che.
+      const friendlyError =
+        res.status === 502 || res.status === 504 || res.status === null
+          ? "Không thể tạo bài lúc này, vui lòng thử lại sau ít phút."
+          : res.error;
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(friendlyError)}</div>`;
       return;
     }

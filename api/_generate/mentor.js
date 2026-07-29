@@ -90,11 +90,6 @@ const MENTOR_TERM_DENSITY = 20; // lượng từ chuyên ngành mặc định ch
 // dùng 0 — dùng 1 số nhỏ để né câu "không có" trong prompt, vẫn hợp lý về nội dung (vài từ/cụm
 // từ đáng học trong bài, không đòi hỏi phải "chuyên ngành").
 const MENTOR_GENERAL_TERM_DENSITY = 3;
-// Trần thời gian chờ sinh 1 skin chunk trong mentor_next_lesson (2026-07-29) — xem ghi chú đầy
-// đủ tại nơi dùng (ensureSkinChunk trong mentor_next_lesson). generate_lesson tự đo thật cần
-// tới ~40s/lượt (model mạnh) + có thể tự retry nội bộ — 15s dành cho skin chunk để CHẮC CHẮN
-// còn đủ ngân sách cho phần quan trọng hơn (sinh bài) trong trần 60s Vercel.
-const SKIN_CHUNK_TIMEOUT_MS = 15000;
 
 async function restGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: SERVICE_HEADERS });
@@ -725,36 +720,41 @@ export async function mentor_next_lesson(data, ctx) {
     termDensity = MENTOR_GENERAL_TERM_DENSITY;
     skinId = null;
   } else {
+    // SỬA LẠI TOÀN BỘ (2026-07-30, lỗi THẬT xác nhận bằng dữ liệu sản xuất: goal đang active
+    // "Real Estate Agent" nhưng 1 bài ra chủ đề "Planning the Weekend" — Minh: "KHÔNG có khái
+    // niệm rơi về da tổng quát khi đang bám 1 lĩnh vực cụ thể"). Bản CŨ (2026-07-29) ép trần 15s
+    // rồi ÂM THẦM rơi về da Tổng quát khi hết giờ NHƯNG VẪN gán industry=lĩnh vực thật — đúng
+    // nguyên nhân gây lệch (topic chung + industry thật cùng lúc). Bỏ HẲN cơ chế fallback: đang
+    // có 1 lĩnh vực cụ thể thì PHẢI lấy đúng chủ đề của lĩnh vực đó, không có nhánh nào khác —
+    // thất bại ở BẤT KỲ bước nào dưới đây đều dừng lại, trả lỗi rõ ràng cho client tự retry
+    // (createLesson.js đã có sẵn vòng lặp thử lại tới 3 lần, xem resolveGoalId/submit ở đó),
+    // KHÔNG bao giờ âm thầm trả bài sai lĩnh vực. maxDuration của api/chat.js đã tăng 60->120s
+    // (vercel.json) để đủ chỗ cho CẢ sinh skin chunk lần đầu (~20-40s) LẪN sinh bài (~20-40s,
+    // có thể tự retry nội bộ) trong CÙNG 1 request mà không cần cắt ngang bước nào.
     const skinRow = await getOrCreateIndustrySkin(goal.occupation_profile);
-    // TRẦN THỜI GIAN cho việc sinh skin chunk (BUG THẬT 2026-07-29: khi user chạm vào 1 chunk
-    // CHƯA từng sinh — xảy ra với BẤT KỲ user nào cứ mỗi ~SKIN_CHUNK_SIZE slot, không chỉ lượt
-    // tạo đầu tiên — ensureSkinChunk() gọi generateSkinChunk() (skin.js, 1 lượt AI thật ~20-40s)
-    // NGAY TRONG request này, TRƯỚC KHI generate_lesson() (lesson.js, cũng ~20-40s/lượt, có thể
-    // tự retry nội bộ) kịp chạy — cộng dồn dễ vượt trần 60s Vercel, request bị giết GIỮA CHỪNG,
-    // client nhận lỗi mù (không phải 502 sạch) — RETRY client (createLesson.js) lặp lại ĐÚNG kịch
-    // bản đó vì chunk vẫn chưa kịp lưu, thất bại LIÊN TỤC 2/3, 3/3 dù model_tier="strong" đã đúng
-    // (đã verify: generate_lesson ĐƠN LẺ với model mạnh chạy tốt, ~39s, KHÔNG phải lỗi ở đó). Ép
-    // race với timeout — hết giờ thì COI NHƯ chưa có (rơi về da Tổng quát ngay, nhánh fallback đã
-    // có sẵn bên dưới), KHÔNG để việc sinh da chiếm hết ngân sách 60s cần dành cho generate_lesson.
-    const chunkResult = skinRow
-      ? await Promise.race([
-          ensureSkinChunk(skinRow, level, goal.occupation_profile, chunkIndex, spineLevelSlots),
-          new Promise((resolve) => setTimeout(() => resolve({ ok: false, timedOut: true }), SKIN_CHUNK_TIMEOUT_MS)),
-        ])
-      : { ok: false };
-    if (chunkResult.timedOut) {
-      console.log("[MENTOR_AI_CALL] skin_chunk_generation TIMED OUT, rơi về da Tổng quát cho lượt này", { skinId: skinRow?.id, level, chunkIndex });
+    if (!skinRow) {
+      return { error: "Không thể chuẩn bị nội dung cho lĩnh vực này lúc này, vui lòng thử lại.", status: 502 };
     }
-    if (chunkResult.ok) {
-      topic = topicFromFrames(chunkResult.frames, slot.situation_frame_key, occurrenceIndex);
-      skinId = topic ? skinRow.id : null;
+    const chunkResult = await ensureSkinChunk(skinRow, level, goal.occupation_profile, chunkIndex, spineLevelSlots);
+    if (!chunkResult.ok) {
+      console.error("[mentor_next_lesson] ensureSkinChunk thất bại, KHÔNG rơi về da Tổng quát", { skinId: skinRow.id, level, chunkIndex });
+      return { error: "Chưa tạo được nội dung cho lĩnh vực này, vui lòng thử lại sau ít phút.", status: 502 };
     }
-    // Da ngành CHƯA có (chưa tạo được hàng, sinh level thất bại, hoặc thiếu đúng khung này) ->
-    // rơi về da Tổng quát cho ĐÚNG lượt này, đúng mục 3 yêu cầu gốc — KHÔNG chặn tạo bài.
+    topic = topicFromFrames(chunkResult.frames, slot.situation_frame_key, occurrenceIndex);
     if (!topic) {
-      topic = topicFromFrames(generalFramesForLevel, slot.situation_frame_key, occurrenceIndex);
-      skinId = null;
+      // KHÔNG NÊN xảy ra — generateSkinChunk() (skin.js::validateLevelPayload) đã bắt buộc đủ
+      // biến thể cho MỌI frame key cần dùng trong chunk trước khi trả ok:true. Chặn cứng thay
+      // vì âm thầm rơi về da Tổng quát nếu giả định này sai ở đâu đó chưa lường hết.
+      console.error("[mentor_next_lesson] BUG: chunkResult.ok nhưng topicFromFrames null", {
+        skinId: skinRow.id,
+        level,
+        chunkIndex,
+        frameKey: slot.situation_frame_key,
+        occurrenceIndex,
+      });
+      return { error: "Không tạo được chủ đề phù hợp cho lĩnh vực này, vui lòng thử lại.", status: 502 };
     }
+    skinId = skinRow.id;
     industry = goal.occupation_profile.merged_occupation;
     termDensity = MENTOR_TERM_DENSITY;
   }

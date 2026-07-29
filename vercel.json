@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/chat.js": {
-      "maxDuration": 60,
+      "maxDuration": 120,
       "includeFiles": "api/_generate/**/*.json"
     },
     "api/cron/generate-news.js": {
