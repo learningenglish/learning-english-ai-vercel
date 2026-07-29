@@ -327,8 +327,6 @@ export function renderLessons(mount, params) {
     // TOÀN khác (writing_favorites, không phải lessons), tự thoát sớm khỏi luồng lessons bên
     // dưới, không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).
     if ((mode === "favorite" || mode === "library") && state.contentType === "writing") {
-      const row = mount.querySelector("#level-count-row");
-      if (row) row.innerHTML = "";
       return renderWritingFavoritesList(listEl);
     }
     try {
@@ -417,7 +415,15 @@ export function renderLessons(mount, params) {
 
   async function renderWritingFavoritesList(listEl) {
     try {
-      const favorites = await listWritingFavorites();
+      let favorites = await listWritingFavorites();
+      // Hàng chip Level (2026-07-29, sửa lỗi "nhảy" khi chuyển qua lại Bài viết/Phân tích) —
+      // trước đây tab này TỰ XOÁ #level-count-row (dữ liệu writing_favorites không có cùng
+      // hình dạng "lessons"), khiến hàng chip biến mất/xuất hiện đột ngột mỗi lần đổi tab, đẩy
+      // cả danh sách bên dưới nhảy lên/xuống — giờ TÍNH TRÊN "favorites" y hệt các tab khác
+      // (renderLevelCountRow() dùng chung, chỉ cần field "level" — writing_favorites vốn đã
+      // có), giữ chiều cao ổn định xuyên suốt 4 tab, không còn nhảy.
+      renderLevelCountRow(favorites);
+      if (state.level !== "all") favorites = favorites.filter((f) => f.level === state.level);
       if (!favorites.length) {
         listEl.innerHTML = `<p class="muted">Bạn chưa lưu bài viết nào từ Luyện viết.</p>`;
         return;

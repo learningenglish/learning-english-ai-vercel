@@ -17,6 +17,7 @@
 // có). Khi đó CHỈ sửa hàm dưới đây (gọi 2 action thay vì 1, ráp kết quả lại thành cùng shape
 // { lesson, meta } như hiện tại) — không đụng gì tới UI.
 import { callChatAction } from "./chatApi.js";
+import { computeGenderHints } from "./tts.js";
 
 // "level" KHÔNG còn là tham số (2026-07-27) — bỏ hẳn bước người dùng khai báo cấp độ trước khi
 // phân tích, AI tự đọc văn bản và tự xác định level, trả lại trong lesson.level (xem
@@ -66,6 +67,40 @@ export async function addLookedUpWord(lessonId, word, lookup, isNews) {
 // để caller tự rơi về Web Speech miễn phí, KHÔNG coi đây là lỗi cần hiện thông báo.
 export async function getLessonAudioUrl(lessonId, itemIndex, genderHint) {
   return callAndParse("get_lesson_audio", { lesson_id: lessonId, item_index: itemIndex, gender_hint: genderHint || null });
+}
+
+// SỬA 2026-07-29 (Minh phản hồi thật sau khi dùng thử "sinh lười lúc bấm Phát": "làm ảnh hưởng
+// đến trải nghiệm... đảm bảo khi người dùng nhấn nút là nghe được ngay" — KHÔNG chấp nhận bản
+// sinh-lúc-bấm-nút) — giờ sinh NGAY sau khi tạo bài xong, CÙNG THỜI ĐIỂM với ảnh bìa (xem
+// fetchAndSaveLessonCover bên dưới), fire-and-forget, KHÔNG chặn điều hướng sang màn xem bài.
+// Đến lúc người dùng thật sự mở bài + bấm Phát, audio nhiều khả năng ĐÃ sinh xong sẵn (mỗi câu
+// mất vài giây, có vài giây đến vài phút từ lúc tạo bài tới lúc thật sự bấm Phát tuỳ người
+// dùng). Cơ chế sinh-khi-cần trong tts.js/views/lesson.js VẪN giữ nguyên làm LƯỚI ĐỠ (nếu bấm
+// Phát quá nhanh trước khi kịp sinh xong ở đây) — không xoá, không phải 2 cơ chế xung đột nhau,
+// cả 2 đều gọi ĐÚNG 1 action get_lesson_audio, ai gọi trước thì cache cho người gọi sau.
+// CHỈ áp dụng bài đọc/hội thoại CÓ lĩnh vực (source='ai_generated' && industry) — khớp đúng
+// phạm vi đã chốt, backend (api/_generate/audio.js) tự kiểm tra lại, đây chỉ là lớp gọi sớm.
+// Giới hạn 2 lượt song song (audio nặng/đắt hơn hẳn tra từ — khác 8 lượt song song của
+// prefetchAllLessonWords trong views/lesson.js).
+export function prefetchLessonAudio(lesson) {
+  if (lesson?.source !== "ai_generated" || !lesson?.industry) return;
+  const content = Array.isArray(lesson.content) ? lesson.content : [];
+  if (!content.length) return;
+  const genderHints = computeGenderHints(content);
+  const CONCURRENCY = 2;
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < content.length) {
+      const i = nextIndex++;
+      try {
+        await getLessonAudioUrl(lesson.id, i, genderHints[i]);
+      } catch {
+        // Im lặng — 1 câu lỗi không nên chặn các câu còn lại; người dùng vẫn nghe được (rơi về
+        // Web Speech) nếu câu đó thật sự chưa có audio khi họ mở bài.
+      }
+    }
+  }
+  Promise.all(Array.from({ length: Math.min(CONCURRENCY, content.length) }, () => worker())).catch(() => {});
 }
 
 // Tự động lấy ảnh bìa NGAY sau khi tạo bài xong, không cần người học bấm gì — "lấy 1 lần và

@@ -29,6 +29,84 @@ export function isTTSSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
+// Danh sách tên phổ biến để đoán giới tính nhân vật hội thoại — KHÔNG đầy đủ tuyệt đối (không
+// có API nào cho việc này), chỉ đủ bao phủ phần lớn tên AI hay đặt cho nhân vật. Vai trò chung
+// chung (Staff/Customer/Guest...) hoặc tên lạ không đoán được -> để computeGenderHints() gán
+// theo giới đang ít dùng hơn, vẫn đảm bảo mỗi nhân vật có 1 giọng riêng biệt.
+const FEMALE_NAMES = new Set([
+  "anna", "mary", "emma", "sarah", "lisa", "laura", "emily", "jessica", "jennifer", "amanda",
+  "michelle", "kelly", "nancy", "susan", "karen", "linda", "patricia", "barbara", "elizabeth",
+  "maria", "helen", "sandra", "donna", "carol", "ruth", "sharon", "cynthia", "kathleen", "amy",
+  "angela", "brenda", "pamela", "nicole", "samantha", "katherine", "christine", "debra", "rachel",
+  "catherine", "carolyn", "janet", "virginia", "olivia", "sophia", "ava", "isabella", "mia",
+  "charlotte", "amelia", "harper", "evelyn", "abigail", "rose", "grace", "chloe", "victoria",
+  "hannah", "alice", "julia", "natalie", "diana", "claire", "megan", "waitress", "mom", "mother",
+]);
+const MALE_NAMES = new Set([
+  "steve", "tim", "john", "james", "robert", "michael", "william", "david", "richard", "joseph",
+  "thomas", "charles", "christopher", "daniel", "matthew", "anthony", "mark", "donald", "paul",
+  "george", "kenneth", "andrew", "joshua", "kevin", "brian", "edward", "ronald", "timothy",
+  "jason", "jeffrey", "ryan", "jacob", "gary", "nicholas", "eric", "jonathan", "stephen", "larry",
+  "justin", "scott", "brandon", "benjamin", "samuel", "frank", "raymond", "alexander", "patrick",
+  "jack", "dennis", "jerry", "tyler", "aaron", "peter", "henry", "adam", "nathan", "waiter",
+  "dad", "father",
+]);
+
+function guessGenderFromName(name) {
+  const n = (name || "").toLowerCase().trim();
+  if (FEMALE_NAMES.has(n)) return "female";
+  if (MALE_NAMES.has(n)) return "male";
+  return null;
+}
+
+// Bài đọc dài coi là "quá dài" từ ngưỡng này (số đoạn/"content" items) — dưới ngưỡng dùng 1
+// giọng SUỐT bài, từ ngưỡng này trở lên chia ĐÚNG 2 nửa (không alternate từng đoạn).
+const READING_LONG_PARAGRAPH_THRESHOLD = 6;
+
+// Tính giọng cho MỖI đoạn/lượt thoại 1 LẦN khi mở bài (ổn định suốt phiên xem, dùng CHUNG cho
+// cả Web Speech miễn phí lẫn audio trả phí — xem pickOpenAIVoice() phía backend):
+// - Hội thoại: đoán theo tên nhân vật; cùng 1 người nói luôn cùng 1 giọng suốt bài. Tên không
+//   đoán được (vai trò chung chung, tên lạ) -> gán theo giới đang ÍT DÙNG HƠN để cân bằng.
+// - Bài đọc (không có speaker) — SỬA 2026-07-29 (Minh: "quá nhiều giọng trong 1 bài đọc là
+//   không ổn, tối đa 2 giọng nếu bài đọc quá dài"): bản CŨ alternate giọng MỖI ĐOẠN, một bài
+//   đọc nhiều đoạn nghe như đổi giọng liên tục dù về mặt kỹ thuật vẫn chỉ 2 giá trị nam/nữ —
+//   giờ 1 giọng DUY NHẤT suốt bài nếu ngắn (≤ READING_LONG_PARAGRAPH_THRESHOLD đoạn), dài hơn
+//   thì chia ĐÚNG 2 nửa (nửa đầu 1 giọng, nửa sau giọng còn lại) — KHÔNG còn đổi qua đổi lại.
+export function computeGenderHints(content) {
+  const items = content || [];
+  const hasSpeakers = items.some((item) => item?.speaker);
+
+  if (!hasSpeakers) {
+    const firstHalfGender = Math.random() < 0.5 ? "male" : "female";
+    if (items.length <= READING_LONG_PARAGRAPH_THRESHOLD) return items.map(() => firstHalfGender);
+    const secondHalfGender = firstHalfGender === "male" ? "female" : "male";
+    const half = Math.ceil(items.length / 2);
+    return items.map((_, i) => (i < half ? firstHalfGender : secondHalfGender));
+  }
+
+  const speakerGenderMap = new Map();
+  let maleCount = 0;
+  let femaleCount = 0;
+  function assignBalanced() {
+    if (maleCount <= femaleCount) {
+      maleCount += 1;
+      return "male";
+    }
+    femaleCount += 1;
+    return "female";
+  }
+  return items.map((item) => {
+    if (!item?.speaker) return assignBalanced();
+    if (speakerGenderMap.has(item.speaker)) return speakerGenderMap.get(item.speaker);
+    let g = guessGenderFromName(item.speaker);
+    if (g === "male") maleCount += 1;
+    else if (g === "female") femaleCount += 1;
+    else g = assignBalanced();
+    speakerGenderMap.set(item.speaker, g);
+    return g;
+  });
+}
+
 function classifyVoices() {
   const voices = window.speechSynthesis.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith("en"));
   const female = voices.filter((v) => FEMALE_VOICE_HINTS.test(v.name));

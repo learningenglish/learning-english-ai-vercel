@@ -6,73 +6,13 @@ import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavori
 import { addLookedUpWord, getLessonAudioUrl } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
-import { createPlayer, isTTSSupported } from "../tts.js";
+import { createPlayer, isTTSSupported, computeGenderHints } from "../tts.js";
 import { icon } from "../icons.js";
 import { showToast } from "../toast.js";
 import { backChevronHtml, wireBackLink } from "../header.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
-
-// Danh sách tên phổ biến để đoán giới tính nhân vật hội thoại — KHÔNG đầy đủ tuyệt đối
-// (không có API nào cho việc này), chỉ đủ bao phủ phần lớn tên AI hay đặt cho nhân vật.
-// Vai trò chung chung (Staff/Customer/Guest...) hoặc tên lạ không đoán được -> để
-// computeGenderHints() luân phiên gán, vẫn đảm bảo mỗi nhân vật có 1 giọng riêng biệt.
-const FEMALE_NAMES = new Set([
-  "anna", "mary", "emma", "sarah", "lisa", "laura", "emily", "jessica", "jennifer", "amanda",
-  "michelle", "kelly", "nancy", "susan", "karen", "linda", "patricia", "barbara", "elizabeth",
-  "maria", "helen", "sandra", "donna", "carol", "ruth", "sharon", "cynthia", "kathleen", "amy",
-  "angela", "brenda", "pamela", "nicole", "samantha", "katherine", "christine", "debra", "rachel",
-  "catherine", "carolyn", "janet", "virginia", "olivia", "sophia", "ava", "isabella", "mia",
-  "charlotte", "amelia", "harper", "evelyn", "abigail", "rose", "grace", "chloe", "victoria",
-  "hannah", "alice", "julia", "natalie", "diana", "claire", "megan", "waitress", "mom", "mother",
-]);
-const MALE_NAMES = new Set([
-  "steve", "tim", "john", "james", "robert", "michael", "william", "david", "richard", "joseph",
-  "thomas", "charles", "christopher", "daniel", "matthew", "anthony", "mark", "donald", "paul",
-  "george", "kenneth", "andrew", "joshua", "kevin", "brian", "edward", "ronald", "timothy",
-  "jason", "jeffrey", "ryan", "jacob", "gary", "nicholas", "eric", "jonathan", "stephen", "larry",
-  "justin", "scott", "brandon", "benjamin", "samuel", "frank", "raymond", "alexander", "patrick",
-  "jack", "dennis", "jerry", "tyler", "aaron", "peter", "henry", "adam", "nathan", "waiter",
-  "dad", "father",
-]);
-
-function guessGenderFromName(name) {
-  const n = (name || "").toLowerCase().trim();
-  if (FEMALE_NAMES.has(n)) return "female";
-  if (MALE_NAMES.has(n)) return "male";
-  return null;
-}
-
-// Tính giọng cho MỖI đoạn/lượt thoại 1 LẦN khi mở bài (ổn định suốt phiên xem):
-// - Hội thoại: đoán theo tên nhân vật; cùng 1 người nói luôn cùng 1 giọng suốt bài. Tên
-//   không đoán được (vai trò chung chung, tên lạ) -> gán theo giới đang ÍT DÙNG HƠN để cân
-//   bằng, vẫn đảm bảo phân biệt được các nhân vật.
-// - Bài đọc (không có speaker): luân phiên theo TỪNG ĐOẠN cho đỡ đơn điệu, không liên quan
-//   giới tính nhân vật nào.
-function computeGenderHints(content) {
-  const speakerGenderMap = new Map();
-  let maleCount = 0;
-  let femaleCount = 0;
-  function assignBalanced() {
-    if (maleCount <= femaleCount) {
-      maleCount += 1;
-      return "male";
-    }
-    femaleCount += 1;
-    return "female";
-  }
-  return (content || []).map((item) => {
-    if (!item?.speaker) return assignBalanced();
-    if (speakerGenderMap.has(item.speaker)) return speakerGenderMap.get(item.speaker);
-    let g = guessGenderFromName(item.speaker);
-    if (g === "male") maleCount += 1;
-    else if (g === "female") femaleCount += 1;
-    else g = assignBalanced();
-    speakerGenderMap.set(item.speaker, g);
-    return g;
-  });
-}
 
 // "opts.news" (2026-07-28, "Tin tức tự sinh") — true khi vào từ route /news-lesson/:id (mục
 // con "Tin tức" dưới Phổ biến): đọc từ "news_lessons" (public, KHÔNG user_id) thay vì "lessons"
@@ -507,23 +447,22 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // tiến trình kéo được + nhãn thời gian — vừa gọn vừa cho tua tới bất kỳ đâu (không chỉ lùi/
   // tiến 10s cố định). "audio-seek" dùng thang 0-1000 (không phải 0-1) để bước kéo mượt hơn hẳn
   // input[type=range] step=0.001 trên 1 số trình duyệt di động.
+  // 1 HÀNG DUY NHẤT (2026-07-29, Minh: "thanh bar audio quá lớn, đưa icon và thanh thời gian
+  // nằm cùng 1 hàng" — bản 2 hàng trước đó cao hơn hẳn cần thiết) — gộp nhãn elapsed/total
+  // thành 1 cụm "m:ss/m:ss" đặt SAU thanh kéo (không còn flanking 2 bên) để dồn hết chỗ ngang
+  // cho thanh kéo, đủ chỗ cho Phát + Kéo + Thời gian + Âm lượng + Phát lại + Tốc độ trên 1 hàng.
   function audioBarHtml() {
     return `
       <div class="audio-bar" id="audio-bar">
-        <div class="audio-progress-row">
-          <span class="audio-time" id="audio-time-elapsed">0:00</span>
-          <input type="range" id="audio-seek" class="audio-seek" min="0" max="1000" step="1" value="0" />
-          <span class="audio-time" id="audio-time-total">0:00</span>
+        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
+        <input type="range" id="audio-seek" class="audio-seek" min="0" max="1000" step="1" value="0" />
+        <span class="audio-time"><span id="audio-time-elapsed">0:00</span>/<span id="audio-time-total">0:00</span></span>
+        <div class="audio-volume-wrap">
+          <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 15 })}</button>
+          <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
         </div>
-        <div class="audio-controls-row">
-          <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
-          <div class="audio-volume-wrap">
-            <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 17 })}</button>
-            <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
-          </div>
-          <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">${icon("repeat", { size: 17 })}</button>
-          <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
-        </div>
+        <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">${icon("repeat", { size: 15 })}</button>
+        <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
       </div>
     `;
   }

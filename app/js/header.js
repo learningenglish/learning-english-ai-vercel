@@ -22,6 +22,18 @@ function tierLabel(xp) {
   return XP_TIERS.reduce((label, t) => (xp >= t.min ? t.label : label), XP_TIERS[0].label);
 }
 
+// Cache CẤP MODULE (2026-07-29, Minh: "chuyển qua mục khác, số chuỗi ngày học bị -- rồi mới
+// hiện số" — mỗi màn/tab dưới cùng là 1 LƯỢT MOUNT MỚI HOÀN TOÀN, appHeaderHtml() trước đây
+// luôn vẽ lại "--"/"..." mặc định rồi ĐỢI loadAppHeaderStats() tải xong mới điền số thật —
+// createLesson.js đã tự né việc này bằng cache RIÊNG trong closure của chính nó (render() gọi
+// lại NHIỀU LẦN trong CÙNG 1 lượt mount), nhưng đó không giúp được lúc CHUYỂN TAB dưới cùng
+// sang 1 VIEW KHÁC hẳn — mount mới, closure mới, cache riêng đó không theo qua được). Cache
+// CHUNG ở đây thì có: 1 khi tải xong LẦN ĐẦU (bất kỳ màn nào) là mọi màn sau đó (kể cả những
+// lượt mount hoàn toàn mới) đọc được NGAY, không còn "--" chớp qua nữa — vẫn tự làm mới ngầm
+// mỗi lần loadAppHeaderStats() chạy (số liệu có thể đổi, vd vừa hoàn thành 1 bài), chỉ là
+// KHÔNG PHẢI đợi tải xong mới có gì để hiện.
+let sharedStatsCache = {};
+
 // titleHtml: có -> hiện tiêu đề màn (thay avatar, dùng cho Yêu thích/Thư viện AI/Lịch sử/Tiến
 // trình...). KHÔNG truyền (undefined) -> hiện avatar+tier badge (CHỈ màn "Phổ biến" — màn duy
 // nhất còn giữ nhân dạng cá nhân ở vị trí này; "Tạo bài học" dùng opts.hideTierBadge, xem dưới).
@@ -36,7 +48,7 @@ function tierLabel(xp) {
 // "đưa lên cao và đồng bộ với các mục khác" — 1 hàng back riêng phía trên đẩy cả khối xuống
 // thấp hơn hẳn Yêu thích/Thư viện AI (không có back), lệch nhau. Gộp vào cùng hàng thì mọi
 // tiêu đề luôn đứng cùng 1 độ cao bất kể có back hay không.
-export function appHeaderHtml(titleHtml, cache = {}, opts = {}) {
+export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
   const back = opts.showBack ? backChevronHtml() : "";
   const left = titleHtml
     ? `<div class="app-header-left">${back}<h1 class="screen-title icon-text app-header-title">${titleHtml}</h1></div>`
@@ -82,6 +94,7 @@ export async function loadAppHeaderStats(mount) {
   try {
     const [streak, stats] = await Promise.all([getStreakDays(), getProfileStats()]);
     const tier = tierLabel(stats.totalXp);
+    sharedStatsCache = { streakText: streak, tierText: tier };
     const streakEl = mount.querySelector("#streak-value");
     if (streakEl) streakEl.textContent = streak;
     const tierEl = mount.querySelector("#tier-label"); // không tồn tại ở màn dùng titleHtml -> bỏ qua, không lỗi

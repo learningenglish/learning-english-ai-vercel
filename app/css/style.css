@@ -1421,53 +1421,37 @@ textarea:focus {
 /* 2 hàng (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s bằng 1 thanh tiến trình có
    thời gian) — trước đó là viên thuốc (pill) tròn 1 hàng, giờ đủ chỗ cho thanh kéo full-width
    nên đổi sang chữ nhật bo góc, cao theo nội dung (không còn height cố định = --nav-height). */
+/* 1 HÀNG DUY NHẤT (2026-07-29, Minh: "thanh bar quá lớn, đưa icon và thanh thời gian nằm cùng
+   1 hàng") — trở lại viên thuốc tròn như bản gốc trước Round 8 (chiều cao = --nav-height), chỉ
+   khác là thanh kéo + nhãn thời gian giờ chiếm chỗ nút Về đoạn trước/Lùi 10s/Tiến 10s đã bỏ. */
 .audio-bar {
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: 12px;
+  height: var(--nav-height);
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
   background: var(--surface);
-  border-radius: 22px;
-  padding: 8px 14px 6px;
+  border-radius: 999px;
+  padding: 0 12px;
   box-shadow: 0 12px 30px rgba(31, 41, 55, 0.15);
   z-index: 50;
 }
 
-.audio-progress-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .audio-time {
   flex-shrink: 0;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
   color: var(--text-dim);
-  min-width: 28px;
-  text-align: center;
+  white-space: nowrap;
 }
 
 .audio-seek {
   flex: 1;
   min-width: 0;
   accent-color: var(--purple);
-}
-
-.audio-controls-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-/* Thanh audio giờ CAO HƠN bản cũ (2 hàng thay vì 1 viên thuốc tròn) — thêm đệm dưới để câu
-   cuối cùng của bài không bị khuất sau thanh cố định. */
-#content-body {
-  padding-bottom: 24px;
 }
 
 .audio-btn {

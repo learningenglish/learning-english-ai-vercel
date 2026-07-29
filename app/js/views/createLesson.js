@@ -45,7 +45,7 @@
 // bên dưới) — KHÔNG còn modal/gate nào, "(đổi)" chỉ đơn thuần hiện lại form, bấm "Huỷ" quay về
 // đúng dòng gọn ban đầu mà KHÔNG gửi gì lên server.
 import { navigate } from "../router.js";
-import { fetchAndSaveLessonCover } from "../lessonApi.js";
+import { fetchAndSaveLessonCover, prefetchLessonAudio } from "../lessonApi.js";
 import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, getGoalUsage, listGoals, selectGoal } from "../mentorApi.js";
 // getActiveLearningGoal() dùng ở CẢ 2 chỗ: tải sẵn lúc mount (quyết định hiện dòng gọn hay form
 // đầy đủ, xem isCompact()) VÀ đọc lại TRỰC TIẾP trong resolveGoalId() lúc submit (không dùng
@@ -116,15 +116,11 @@ export function renderCreateLesson(mount) {
     activeGoal: null,
     changingGoal: false,
   };
-  // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
-  // — render() gọi lại nhiều lần mỗi khi đổi chip (cấp độ/loại nội dung...), nếu không cache
-  // thì header sẽ nhảy về "--"/"..." mỗi lần đổi chip dù đã tải xong trước đó.
-  let headerCache = {};
-
+  // header.js::appHeaderHtml() tự đọc cache streak/tier CHUNG CẤP MODULE (2026-07-29) — không
+  // cần tự quản 1 bản cache RIÊNG ở đây nữa (bản cũ chỉ giúp trong lượt mount NÀY, không giúp
+  // được lúc mới CHUYỂN TỚI màn này từ 1 tab khác — xem ghi chú sharedStatsCache trong header.js).
   render();
-  loadAppHeaderStats(mount).then((r) => {
-    if (r) headerCache = { streakText: r.streak, tierText: r.tier };
-  });
+  loadAppHeaderStats(mount);
   Promise.all([getActiveLearningGoal(), getGoalUsage(), listGoals()])
     .then(([goal, usageRes, goalsRes]) => {
       state.goalLoaded = true;
@@ -265,7 +261,7 @@ export function renderCreateLesson(mount) {
     const submitLabel = loading ? "Đang tải..." : compact ? "Tạo bài học tiếp" : "Tạo bài học";
     mount.innerHTML = `
       <div class="screen">
-        ${appHeaderHtml(`${icon("library", { size: 22 })} Tạo bài học`, headerCache, { showBack: true })}
+        ${appHeaderHtml(`${icon("library", { size: 22 })} Tạo bài học`, undefined, { showBack: true })}
 
         ${bodyHtml}
 
@@ -481,6 +477,7 @@ export function renderCreateLesson(mount) {
       industry: state.industry || "",
     });
     fetchAndSaveLessonCover(res.data.lesson);
+    prefetchLessonAudio(res.data.lesson);
     navigate(`/lesson/${res.data.lesson.id}`);
   }
 }
