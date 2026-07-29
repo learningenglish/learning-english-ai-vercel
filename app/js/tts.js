@@ -1,13 +1,24 @@
-// app/js/tts.js — trình phát đọc-to (Web Speech API, có sẵn trong trình duyệt) cho nội
-// dung bài học. KHÔNG gọi AI, không tốn credit, không cần mạng sau khi trang đã tải.
+// app/js/tts.js — trình phát đọc-to, MẶC ĐỊNH dùng Web Speech API (có sẵn trong trình duyệt,
+// miễn phí, không cần mạng sau khi trang đã tải).
 //
-// GIỚI HẠN THẬT: Web Speech API không hỗ trợ "tua" (seek) thật bên trong 1 utterance đang
-// phát. "Tua nhanh/chậm 10 giây" ở đây là ƯỚC LƯỢNG: cắt lại câu từ vị trí từ thứ N (N suy
-// từ số giây muốn tua ÷ tốc độ nói trung bình đã ước tính), huỷ utterance cũ, phát utterance
-// mới bắt đầu từ đó — không phải seek chính xác tuyệt đối như audio file thật.
+// ÂM THANH TRẢ PHÍ (2026-07-29, xem api/_generate/audio.js) — CHỈ bài đọc/hội thoại CÓ lĩnh
+// vực trong Thư viện AI: caller (views/lesson.js) truyền "audioEligible"/"getAudioUrl"/
+// "onNeedAudio" vào load() (xem bên dưới). Player này KHÔNG tự gọi AI — chỉ hỏi
+// "getAudioUrl(index)" (SYNC, đọc cache đã có) trước, nếu chưa có thì gọi "onNeedAudio(index)"
+// (ASYNC, do views/lesson.js lo việc gọi backend sinh audio + lưu cache) rồi CHỜ, KHÔNG tự
+// retry — caller phải tự gọi lại retryCurrentIfWaiting() khi có kết quả (xem
+// prefetchLessonAudioOnDemand() trong views/lesson.js). SINH LƯỜI ĐÚNG 1 LẦN/câu — audio đã
+// sinh được LƯU VĨNH VIỄN ở server, lần sau (kể cả người khác) đọc thẳng URL, không tốn phí lại.
 //
-// GIỌNG NAM/NỮ: KHÔNG có API chính thức nào cho biết giới tính 1 giọng đọc — nhận diện
-// thô qua từ khoá trong tên giọng (voice.name), độ chính xác phụ thuộc trình duyệt/hệ điều
+// GIỚI HẠN THẬT (Web Speech): không hỗ trợ "tua" (seek) thật bên trong 1 utterance đang phát.
+// "Tua nhanh/chậm" ở đây là ƯỚC LƯỢNG: cắt lại câu từ vị trí từ thứ N (N suy từ số giây muốn
+// tua ÷ tốc độ nói trung bình đã ước tính), huỷ utterance cũ, phát utterance mới bắt đầu từ đó
+// — không phải seek chính xác tuyệt đối như audio file thật. ÁP DỤNG THỐNG NHẤT cho CẢ audio
+// thật (dù <audio> có currentTime/duration CHÍNH XÁC) — cố tình ĐƠN GIẢN HOÁ, không tách 2 công
+// thức ước lượng khác nhau cho 2 chế độ, đủ dùng cho 1 thanh tiến trình tương đối.
+//
+// GIỌNG NAM/NỮ (Web Speech): KHÔNG có API chính thức nào cho biết giới tính 1 giọng đọc — nhận
+// diện thô qua từ khoá trong tên giọng (voice.name), độ chính xác phụ thuộc trình duyệt/hệ điều
 // hành có những giọng gì cài sẵn. Nếu máy chỉ có 1 giọng tiếng Anh duy nhất, nam/nữ sẽ
 // giống nhau (không có gì để chọn) — chấp nhận được, không phải lỗi.
 const WORDS_PER_SECOND_AT_RATE_1 = 2.3;
@@ -44,22 +55,39 @@ function pickVoice(genderHint) {
 }
 
 export function createPlayer({ onStateChange } = {}) {
-  const state = { playing: false, rate: 1, volume: 1, items: [], itemIndex: 0, wordOffset: 0 };
+  const state = {
+    playing: false,
+    rate: 1,
+    volume: 1,
+    items: [],
+    itemIndex: 0,
+    wordOffset: 0,
+    // "loadingAudio" (âm thanh trả phí) — true trong lúc chờ onNeedAudio() sinh/lấy audio cho
+    // đoạn hiện tại, UI (updateAudioBarUI trong lesson.js) hiện spinner thay nút phát lúc này.
+    loadingAudio: false,
+    audioEligible: false,
+    getAudioUrl: null,
+    onNeedAudio: null,
+  };
+  // HTMLAudioElement đang phát (khi item hiện tại dùng audio thật, khác Web Speech utterance)
+  // — KHÔNG phải 1 phần "state" công khai (không cần bên ngoài đọc trực tiếp), chỉ closure nội
+  // bộ để play/pause/setRate/setVolume/stop biết còn audio nào đang chạy để điều khiển tiếp.
+  let audioEl = null;
+
+  function stopAudioEl() {
+    if (!audioEl) return;
+    audioEl.pause();
+    audioEl.onended = null;
+    audioEl.onerror = null;
+    audioEl = null;
+  }
 
   function notify() {
     if (onStateChange) onStateChange({ ...state });
   }
 
-  function speakCurrent() {
-    window.speechSynthesis.cancel();
-    const item = state.items[state.itemIndex];
-    const text = item?.text;
-    if (!text) {
-      state.playing = false;
-      notify();
-      return;
-    }
-    const words = text.split(/\s+/).filter(Boolean);
+  function speakWithWebSpeech(item) {
+    const words = (item.text || "").split(/\s+/).filter(Boolean);
     const fromWords = words.slice(state.wordOffset).join(" ");
     if (!fromWords.trim()) {
       goToItem(state.itemIndex + 1, 0);
@@ -81,6 +109,58 @@ export function createPlayer({ onStateChange } = {}) {
     window.speechSynthesis.speak(utter);
   }
 
+  function playRealAudio(url) {
+    audioEl = new Audio(url);
+    audioEl.playbackRate = state.rate;
+    audioEl.volume = state.volume;
+    audioEl.onended = () => {
+      if (state.playing) goToItem(state.itemIndex + 1, 0);
+    };
+    // Lỗi phát (URL hỏng/mạng chập chờn) -> rơi về Web Speech NGAY cho đúng đoạn này, không
+    // chặn hẳn cả bài chỉ vì 1 URL lỗi.
+    audioEl.onerror = () => {
+      audioEl = null;
+      speakWithWebSpeech(state.items[state.itemIndex]);
+    };
+    audioEl.play().catch(() => {
+      audioEl = null;
+      speakWithWebSpeech(state.items[state.itemIndex]);
+    });
+  }
+
+  function speakCurrent() {
+    window.speechSynthesis.cancel();
+    stopAudioEl();
+    const item = state.items[state.itemIndex];
+    if (!item?.text) {
+      state.playing = false;
+      notify();
+      return;
+    }
+
+    if (state.audioEligible) {
+      const url = state.getAudioUrl ? state.getAudioUrl(state.itemIndex) : null;
+      if (url) {
+        state.loadingAudio = false;
+        playRealAudio(url);
+        return;
+      }
+      // Chưa có URL cache — hỏi caller (views/lesson.js::prefetchLessonAudioOnDemand) sinh/lấy,
+      // hiện spinner chờ, KHÔNG tự phát Web Speech ngay (tránh vừa nghe giọng máy vừa chờ audio
+      // thật load xong, chồng 2 trải nghiệm). caller tự gọi lại retryCurrentIfWaiting() khi xong
+      // (dù thành công hay thất bại — thất bại thì getAudioUrl() vẫn trả null, rơi xuống nhánh
+      // Web Speech ở lượt gọi speakCurrent() kế tiếp).
+      if (state.onNeedAudio) {
+        state.loadingAudio = true;
+        notify();
+        state.onNeedAudio(state.itemIndex);
+        return;
+      }
+    }
+    state.loadingAudio = false;
+    speakWithWebSpeech(item);
+  }
+
   function wordCount(text) {
     return (text || "").split(/\s+/).filter(Boolean).length;
   }
@@ -99,6 +179,7 @@ export function createPlayer({ onStateChange } = {}) {
   }
 
   function goToItem(index, wordOffset) {
+    state.loadingAudio = false;
     if (index < 0) {
       state.itemIndex = 0;
       state.wordOffset = 0;
@@ -108,6 +189,7 @@ export function createPlayer({ onStateChange } = {}) {
     }
     if (index >= state.items.length) {
       window.speechSynthesis.cancel();
+      stopAudioEl();
       state.playing = false;
       notify();
       return;
@@ -121,23 +203,35 @@ export function createPlayer({ onStateChange } = {}) {
   return {
     // "items": mảng { text, genderHint } theo thứ tự (mỗi phần tử = 1 đoạn/lượt thoại).
     // "startIndex": vị trí bắt đầu (đồng bộ theo trang đang xem lúc vào tab, KHÔNG tự phát).
-    load(items, startIndex = 0) {
+    // "opts.audioEligible"/"opts.getAudioUrl"/"opts.onNeedAudio" — âm thanh trả phí, xem ghi chú
+    // đầu file. Bỏ trống opts (mặc định) -> LUÔN dùng Web Speech, hành vi y hệt trước đây.
+    load(items, startIndex = 0, opts = {}) {
       window.speechSynthesis.cancel();
+      stopAudioEl();
       state.items = items;
       state.itemIndex = Math.min(Math.max(0, startIndex), Math.max(0, items.length - 1));
       state.wordOffset = 0;
       state.playing = false;
+      state.loadingAudio = false;
+      state.audioEligible = !!opts.audioEligible;
+      state.getAudioUrl = opts.getAudioUrl || null;
+      state.onNeedAudio = opts.onNeedAudio || null;
       notify();
     },
     playPause() {
       if (state.playing) {
         state.playing = false;
         window.speechSynthesis.cancel();
+        if (audioEl) audioEl.pause();
         notify();
       } else {
         state.playing = true;
         notify();
-        speakCurrent();
+        // "audioEl" còn sống (vừa playPause() để TẠM DỪNG audio thật trước đó) -> tiếp tục
+        // ĐÚNG vị trí cũ (audio thật hỗ trợ pause/resume thật), KHÔNG gọi speakCurrent() (sẽ
+        // tạo lại <audio> mới, phát lại từ đầu đoạn — chỉ Web Speech mới cần vậy).
+        if (audioEl) audioEl.play().catch(() => speakCurrent());
+        else speakCurrent();
       }
     },
     back() {
@@ -167,12 +261,17 @@ export function createPlayer({ onStateChange } = {}) {
     setRate(rate) {
       state.rate = rate;
       notify();
-      if (state.playing) speakCurrent();
+      // "audioEl" đang chạy -> chỉnh trực tiếp (audio thật đổi tốc độ MƯỢT, không cần phát lại
+      // từ đầu) — chỉ Web Speech (utterance đã bắt đầu KHÔNG đổi tốc độ giữa chừng được) mới
+      // cần huỷ+phát lại qua speakCurrent().
+      if (audioEl) audioEl.playbackRate = rate;
+      else if (state.playing) speakCurrent();
     },
     setVolume(volume) {
       state.volume = volume;
       notify();
-      if (state.playing) speakCurrent();
+      if (audioEl) audioEl.volume = volume;
+      else if (state.playing) speakCurrent();
     },
     // Đọc 1 lần (từ/cụm/1 câu lẻ trong tooltip hoặc icon loa riêng) — KHÔNG thuộc playlist
     // đang phát, huỷ playlist hiện tại trước để tránh chồng 2 giọng đọc cùng lúc.
@@ -221,8 +320,18 @@ export function createPlayer({ onStateChange } = {}) {
     },
     stop() {
       window.speechSynthesis.cancel();
+      stopAudioEl();
       state.playing = false;
       notify();
+    },
+    // Gọi từ views/lesson.js SAU KHI onNeedAudio(index) xong (dù thành công hay thất bại) — thử
+    // phát lại. "state.loadingAudio" đã tự về false nếu người dùng bấm CHUYỂN ĐOẠN KHÁC trong
+    // lúc chờ (goToItem() reset nó ngay khi chuyển) — lúc đó hàm này tự no-op, không phát nhầm.
+    retryCurrentIfWaiting() {
+      if (!state.loadingAudio) return;
+      state.loadingAudio = false;
+      if (state.playing) speakCurrent();
+      else notify();
     },
   };
 }

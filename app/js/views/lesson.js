@@ -3,7 +3,7 @@
 // không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
 import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
-import { addLookedUpWord } from "../lessonApi.js";
+import { addLookedUpWord, getLessonAudioUrl } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported } from "../tts.js";
@@ -126,6 +126,44 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   const wordLookupCache = new Map();
   const ttsSupported = isTTSSupported();
   const genderHints = computeGenderHints(lesson.content); // 1 giọng cố định/nhân vật suốt bài
+
+  // Âm thanh trả phí (2026-07-29) — CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư viện AI, xem
+  // api/_generate/audio.js. "audioEligible" chặn SỚM ở client (không hỏi server cho bài rõ
+  // ràng không đủ điều kiện, đỡ 1 lượt round-trip vô ích) — server VẪN tự kiểm tra lại y hệt
+  // (phòng hờ dữ liệu client cũ/sai), đây không phải lớp chặn duy nhất.
+  const audioEligible = !isNews && lesson.source === "ai_generated" && !!lesson.industry;
+  // index -> URL (string) | null (đã hỏi xong, không có/lỗi -> rơi về Web Speech). CHƯA có key
+  // trong Map = CHƯA hỏi lần nào — khác "null" (đã hỏi, biết chắc không có).
+  const audioUrlByIndex = new Map();
+  const pendingAudioRequests = new Map(); // index -> Promise, chặn gọi trùng nếu chuyển đoạn dồn dập.
+
+  function getCachedAudioUrl(index) {
+    const v = audioUrlByIndex.get(index);
+    return typeof v === "string" ? v : null;
+  }
+
+  // Gọi từ tts.js khi cần audio cho 1 đoạn CHƯA có cache — sinh lười ĐÚNG 1 LẦN/đoạn (server
+  // tự cache vĩnh viễn vào lessons.audio_urls, xem api/_generate/audio.js), dedup ở ĐÂY cho
+  // trường hợp người dùng bấm qua lại quá nhanh trước khi lượt gọi trước kịp xong.
+  async function onNeedAudio(index) {
+    if (pendingAudioRequests.has(index)) {
+      await pendingAudioRequests.get(index);
+      ttsPlayer.retryCurrentIfWaiting();
+      return;
+    }
+    const p = (async () => {
+      try {
+        const res = await getLessonAudioUrl(lesson.id, index, genderHints[index]);
+        audioUrlByIndex.set(index, res.ok && res.data.eligible && res.data.url ? res.data.url : null);
+      } catch {
+        audioUrlByIndex.set(index, null);
+      }
+    })();
+    pendingAudioRequests.set(index, p);
+    await p;
+    pendingAudioRequests.delete(index);
+    ttsPlayer.retryCurrentIfWaiting();
+  }
 
   // Player dùng CHUNG cho toàn bộ tab "Nội dung" — nạp 1 lần với TẤT CẢ đoạn/lượt thoại
   // (không phụ thuộc đang xem "Từng câu" hay "Tất cả"), để nút back/tua/lặp lại của thanh
@@ -258,7 +296,8 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       if (!ttsLoaded) {
         ttsPlayer.load(
           pages.map((p, i) => ({ text: p?.text || "", genderHint: genderHints[i] })),
-          Math.min(state.page, Math.max(0, pages.length - 1))
+          Math.min(state.page, Math.max(0, pages.length - 1)),
+          { audioEligible, getAudioUrl: getCachedAudioUrl, onNeedAudio }
         );
         ttsLoaded = true;
       }
@@ -529,7 +568,15 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     const playBtn = document.getElementById("audio-play");
     const speedBtn = document.getElementById("audio-speed");
     const volSlider = document.getElementById("audio-volume-slider");
-    if (playBtn) playBtn.innerHTML = s.playing ? icon("pause", { size: 18, filled: true }) : icon("play", { size: 18, filled: true });
+    // "loadingAudio" (âm thanh trả phí đang sinh/tải cho đoạn hiện tại, xem tts.js) -> spinner
+    // thay nút phát/tạm dừng, tránh người dùng tưởng bấm không ăn (bấm lại chỉ làm rối thêm).
+    if (playBtn) {
+      playBtn.innerHTML = s.loadingAudio
+        ? `<span class="spinner spinner-sm"></span>`
+        : s.playing
+        ? icon("pause", { size: 18, filled: true })
+        : icon("play", { size: 18, filled: true });
+    }
     if (speedBtn) speedBtn.textContent = `${s.rate}x`;
     if (volSlider) volSlider.value = String(s.volume);
 

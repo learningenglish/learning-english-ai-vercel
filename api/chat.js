@@ -3,6 +3,7 @@ import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
 import { generate_writing_task, grade_writing, save_writing_favorite } from "./_generate/writing.js";
 import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
+import { get_lesson_audio } from "./_generate/audio.js";
 import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
 import {
   mentor_get_action,
@@ -1299,6 +1300,9 @@ const ACTIONS = {
   // xem api/_generate/vocab.js. Bản "_news" ghi vào news_lessons (công khai, không user_id).
   add_vocab_word,
   add_news_vocab_word,
+  // Âm thanh chất lượng cao trả phí (2026-07-29, CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư
+  // viện AI), sinh lười lúc bấm Phát lần đầu, xem api/_generate/audio.js.
+  get_lesson_audio,
 
   // Mentor AI (Đợt 3) — thay luồng "Tạo nội dung" cũ, xem api/_generate/mentor.js. Tách lớp
   // Quyết định/Lời thoại NGAY TRONG module đó — 5 action dưới đây chỉ là điểm vào, không tự

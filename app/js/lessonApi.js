@@ -61,6 +61,13 @@ export async function addLookedUpWord(lessonId, word, lookup, isNews) {
   }
 }
 
+// Âm thanh chất lượng cao trả phí (2026-07-29) — chỉ trả "eligible:true" cho bài đọc/hội thoại
+// CÓ lĩnh vực trong Thư viện AI (xem api/_generate/audio.js), các bài khác trả eligible:false
+// để caller tự rơi về Web Speech miễn phí, KHÔNG coi đây là lỗi cần hiện thông báo.
+export async function getLessonAudioUrl(lessonId, itemIndex, genderHint) {
+  return callAndParse("get_lesson_audio", { lesson_id: lessonId, item_index: itemIndex, gender_hint: genderHint || null });
+}
+
 // Tự động lấy ảnh bìa NGAY sau khi tạo bài xong, không cần người học bấm gì — "lấy 1 lần và
 // lưu trữ luôn" (yêu cầu người dùng): search_lesson_cover_image tìm ảnh MIỄN PHÍ theo tiêu
 // đề tiếng Anh của bài (Unsplash/Pexels/Wikimedia — 0đ, URL vĩnh viễn; KHÔNG dùng DALL-E
