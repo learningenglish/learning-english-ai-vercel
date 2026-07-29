@@ -90,6 +90,11 @@ const MENTOR_TERM_DENSITY = 20; // lượng từ chuyên ngành mặc định ch
 // dùng 0 — dùng 1 số nhỏ để né câu "không có" trong prompt, vẫn hợp lý về nội dung (vài từ/cụm
 // từ đáng học trong bài, không đòi hỏi phải "chuyên ngành").
 const MENTOR_GENERAL_TERM_DENSITY = 3;
+// Trần thời gian chờ sinh 1 skin chunk trong mentor_next_lesson (2026-07-29) — xem ghi chú đầy
+// đủ tại nơi dùng (ensureSkinChunk trong mentor_next_lesson). generate_lesson tự đo thật cần
+// tới ~40s/lượt (model mạnh) + có thể tự retry nội bộ — 15s dành cho skin chunk để CHẮC CHẮN
+// còn đủ ngân sách cho phần quan trọng hơn (sinh bài) trong trần 60s Vercel.
+const SKIN_CHUNK_TIMEOUT_MS = 15000;
 
 async function restGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: SERVICE_HEADERS });
@@ -721,7 +726,25 @@ export async function mentor_next_lesson(data, ctx) {
     skinId = null;
   } else {
     const skinRow = await getOrCreateIndustrySkin(goal.occupation_profile);
-    const chunkResult = skinRow ? await ensureSkinChunk(skinRow, level, goal.occupation_profile, chunkIndex, spineLevelSlots) : { ok: false };
+    // TRẦN THỜI GIAN cho việc sinh skin chunk (BUG THẬT 2026-07-29: khi user chạm vào 1 chunk
+    // CHƯA từng sinh — xảy ra với BẤT KỲ user nào cứ mỗi ~SKIN_CHUNK_SIZE slot, không chỉ lượt
+    // tạo đầu tiên — ensureSkinChunk() gọi generateSkinChunk() (skin.js, 1 lượt AI thật ~20-40s)
+    // NGAY TRONG request này, TRƯỚC KHI generate_lesson() (lesson.js, cũng ~20-40s/lượt, có thể
+    // tự retry nội bộ) kịp chạy — cộng dồn dễ vượt trần 60s Vercel, request bị giết GIỮA CHỪNG,
+    // client nhận lỗi mù (không phải 502 sạch) — RETRY client (createLesson.js) lặp lại ĐÚNG kịch
+    // bản đó vì chunk vẫn chưa kịp lưu, thất bại LIÊN TỤC 2/3, 3/3 dù model_tier="strong" đã đúng
+    // (đã verify: generate_lesson ĐƠN LẺ với model mạnh chạy tốt, ~39s, KHÔNG phải lỗi ở đó). Ép
+    // race với timeout — hết giờ thì COI NHƯ chưa có (rơi về da Tổng quát ngay, nhánh fallback đã
+    // có sẵn bên dưới), KHÔNG để việc sinh da chiếm hết ngân sách 60s cần dành cho generate_lesson.
+    const chunkResult = skinRow
+      ? await Promise.race([
+          ensureSkinChunk(skinRow, level, goal.occupation_profile, chunkIndex, spineLevelSlots),
+          new Promise((resolve) => setTimeout(() => resolve({ ok: false, timedOut: true }), SKIN_CHUNK_TIMEOUT_MS)),
+        ])
+      : { ok: false };
+    if (chunkResult.timedOut) {
+      console.log("[MENTOR_AI_CALL] skin_chunk_generation TIMED OUT, rơi về da Tổng quát cho lượt này", { skinId: skinRow?.id, level, chunkIndex });
+    }
     if (chunkResult.ok) {
       topic = topicFromFrames(chunkResult.frames, slot.situation_frame_key, occurrenceIndex);
       skinId = topic ? skinRow.id : null;
