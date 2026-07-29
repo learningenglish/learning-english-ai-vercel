@@ -476,9 +476,7 @@ function buildGoalConfirmationDisplay(profile) {
 // KHÔNG reset theo ngày/tháng), KHÔNG tính "Giao tiếp tổng quát" (is_general). Số lượng nhỏ (tối
 // đa vài chục dòng/user) nên fetch hết rồi lọc bằng JS — tránh vật lộn cú pháp filter jsonb path
 // của PostgREST trong URL (occupation_profile->>is_general), không đáng cho quy mô dữ liệu này.
-// TẠM NÂNG 5 -> 50 (2026-07-29, phục vụ QA 2 ngành mới trên tài khoản test đã ở mức 8/5 từ các
-// đợt test trước) — PHẢI HẠ LẠI 5 TRƯỚC KHI KẾT THÚC PHIÊN.
-const MAX_LIFETIME_INDUSTRY_GOALS = 50;
+const MAX_LIFETIME_INDUSTRY_GOALS = 5;
 
 async function countLifetimeIndustryGoals(studentId) {
   const rows = await restGet(`learning_goals?user_id=eq.${studentId}&select=occupation_profile`);
