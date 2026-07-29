@@ -1663,22 +1663,14 @@ const ACTIONS = {
       const skin = (await skinRes.json())?.[0];
       const level = data.level;
       const chunks = skin?.levels?.[level]?.chunks || {};
+      const chunk0 = chunks["0"];
       return {
         content: JSON.stringify({
           occupation_key: skin?.occupation_key,
           levelKeys: skin?.levels ? Object.keys(skin.levels) : [],
           chunkIndexesPresent: Object.keys(chunks),
-          chunkSummaries: Object.fromEntries(
-            Object.entries(chunks).map(([idx, c]) => [
-              idx,
-              {
-                frameKeys: c?.frames ? Object.keys(c.frames) : null,
-                variantCountsPerFrame: c?.frames
-                  ? Object.fromEntries(Object.entries(c.frames).map(([fk, variants]) => [fk, Array.isArray(variants) ? variants.length : "not_array"]))
-                  : null,
-              },
-            ])
-          ),
+          planning_future_raw: chunk0?.frames?.planning_future,
+          family_social_raw: chunk0?.frames?.family_social,
         }),
       };
     }
