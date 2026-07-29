@@ -504,6 +504,18 @@ function buildGenerateLessonUserPrompt(data) {
           )}. NHẮC LẠI: vẫn phải viết ĐỦ ${lengthWordsMin}-${lengthWordsMax} từ như yêu cầu độ dài ở trên — đừng viết ngắn hơn chỉ vì đang tập trung vào điểm ngữ pháp này.`
       : "";
 
+  // "is_real_news_topic" (2026-07-29, "Tin tức tự sinh" — api/_generate/news.js) — "topic" ở
+  // đây là tin thời sự THẬT, đã xác minh qua web_search Ở BƯỚC KHÁC (searchTodayNews trong
+  // news.js); LƯỢT VIẾT BÀI NÀY (buildGenerateLessonUserPrompt) KHÔNG có web_search, chỉ có
+  // kiến thức nền CŨ (huấn luyện tới 1 mốc thời gian nhất định) — Minh phát hiện thật: bài sinh
+  // nhắc "Tổng Bí thư Nguyễn Phú Trọng" dù không còn đúng, vì model TỰ THÊM chi tiết thời sự
+  // ngoài "topic" bằng kiến thức cũ khi viết. Chặn NGAY TẠI ĐÂY — chỉ áp dụng khi cờ này bật
+  // (Tin tức), KHÔNG đụng lộ trình cá nhân thường (topic ở đó không phải tin thời sự thật, câu
+  // chặn này vô nghĩa/thừa với chúng).
+  const newsGroundingInstruction = data.is_real_news_topic
+    ? `\n\nLƯU Ý QUAN TRỌNG — "Chủ đề" ở trên là tin thời sự THẬT vừa xác minh qua tìm kiếm web (không phải hư cấu): CHỈ được dùng ĐÚNG những chi tiết/sự kiện/tên riêng ĐÃ CÓ trong "Chủ đề" — TUYỆT ĐỐI KHÔNG tự thêm bất kỳ chi tiết thời sự nào khác (tên lãnh đạo/chức vụ hiện tại, số liệu, ngày tháng, tổ chức...) không có sẵn trong "Chủ đề", vì kiến thức nền của bạn có thể đã LỖI THỜI và không đáng tin cho tin tức hiện tại. Nếu cần nhắc tới người/tổ chức KHÔNG có tên trong "Chủ đề", dùng cách gọi CHUNG CHUNG (vd "the government", "officials", "the company", "a spokesperson") thay vì tự đoán tên cụ thể.`
+    : "";
+
   return `Tạo bài học theo yêu cầu sau:
 
 - Mô tả của người học: ${orNone(data.description)}
@@ -515,7 +527,7 @@ ${lengthInstruction}
 - Ngành nghề: ${orNone(data.industry)}
 - Sản phẩm / Dịch vụ liên quan: ${orNone(data.product)}
 - Tình huống cụ thể: ${orNone(data.situation)}
-- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}${grammarFocusInstruction}
+- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}${grammarFocusInstruction}${newsGroundingInstruction}
 
 Nếu mô tả của người học mâu thuẫn với các trường còn lại (ví dụ mô tả đòi thì quá khứ
 nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho vừa cấp độ.`;

@@ -63,6 +63,9 @@ const PATHS = {
   // "Khoá chip + xác nhận đổi lộ trình" (2026-07-28) — thay 2 chip Cấp độ/Loại nội dung khi
   // đang bám 1 lộ trình có sẵn, xem views/createLesson.js.
   lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  // "Các khoá học" (2026-07-29) — thay chỗ "Máy ảnh" ở hàng lối tắt màn Phổ biến, xem
+  // QUICK_ACTIONS trong views/lessons.js.
+  "graduation-cap": '<path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>',
 };
 
 // "name": tên icon trong PATHS ở trên. "size"/"strokeWidth": tuỳ biến kích thước hiển thị.

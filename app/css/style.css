@@ -686,7 +686,30 @@ textarea:focus {
 }
 
 .quick-action-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
   white-space: nowrap;
+}
+
+.quick-action-label-text {
+  display: inline-block;
+}
+
+/* Nhãn dài hơn khung (vd "Các khoá học", 2026-07-29) -> tự cuộn ngang thay vì tràn/ngắt cứng —
+   JS (views/lessons.js) chỉ gắn ".marquee" cho nhãn THẬT SỰ tràn (đo scrollWidth sau render),
+   chữ đã nhân đôi kèm khoảng trắng để vòng lặp -50% liền mạch, không giật lúc lặp lại. */
+.quick-action-label.marquee .quick-action-label-text {
+  animation: quick-action-marquee 6s linear infinite;
+}
+
+@keyframes quick-action-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 /* ===== "BÀI ĐANG ĐỌC" — carousel lướt ngang (views/lessons.js loadContinueSection). Nhãn
@@ -850,26 +873,27 @@ textarea:focus {
 }
 
 /* ===== Card "Lĩnh vực" (màn Thư viện AI, views/lessons.js::renderIndustrySection) — CÙNG
-   size/tỉ lệ 4:3 với .continue-card (yêu cầu người dùng "giống bài đang đọc"), khác là không
-   có ảnh bìa/tim (đại diện 1 NHÓM bài, không phải 1 bài) — chỉ số đếm to + tên lĩnh vực trên
-   nền gradient. "active" (đang lọc theo lĩnh vực này) -> viền trắng nổi bật. ===== */
+   size/tỉ lệ 4:3 với .continue-card (yêu cầu người dùng "giống bài đang đọc"). SỬA LẠI
+   2026-07-29 (Minh phản hồi thật: nền màu đặc trơn khiến thẻ "nhìn to/trống" dù ĐÃ cùng kích
+   thước .continue-card từ trước) — dùng lại đúng cấu trúc ảnh nền + lớp phủ mờ/tối ở đáy +
+   khối chữ như .continue-card (xem industryCardHtml() trong lessonCard.js), thay vì màu nền
+   đặc trơn — nhóm chưa có bài nào có ảnh bìa mới rơi về gradient cũ (.industry-card-fallback-bg).
+   "active" (đang lọc theo lĩnh vực này) -> viền trắng nổi bật. ===== */
 .industry-card {
   position: relative;
   flex: 0 0 38%;
   scroll-snap-align: start;
   aspect-ratio: 4 / 3;
   border-radius: var(--radius-sm);
-  background: var(--gradient-primary);
+  overflow: hidden;
+  background-color: var(--surface-soft);
+  background-size: cover;
+  background-position: center;
   box-shadow: var(--shadow-card);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: #fff;
-  text-align: center;
-  padding: 8px;
+  justify-content: flex-end;
   border: 2px solid transparent;
   transition: border-color 0.15s ease;
 }
@@ -878,12 +902,32 @@ textarea:focus {
   border-color: #fff;
 }
 
+.industry-card-fallback-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-primary);
+  z-index: 0;
+}
+
+.industry-card-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58%;
+  z-index: 1;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 35%, rgba(0, 0, 0, 0.8) 100%);
+}
+
 /* "Đã dừng" (2026-07-28) — lĩnh vực đã archived qua "Tạo lộ trình mới", KHÔNG ẩn/xoá gì, chỉ
    gắn nhãn để phân biệt với lĩnh vực đang active. */
 .industry-card-archived-badge {
   position: absolute;
   top: 6px;
   right: 6px;
+  z-index: 2;
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
   font-size: 0.62rem;
@@ -893,10 +937,20 @@ textarea:focus {
   letter-spacing: 0.02em;
 }
 
+.industry-card-body {
+  position: relative;
+  z-index: 1;
+  padding: 6px 8px 8px;
+  color: #fff;
+  text-align: center;
+  min-width: 0;
+}
+
 .industry-card-count {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.2;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .industry-card-name {
@@ -906,6 +960,7 @@ textarea:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* ===== Content-type tabs (Bài đọc / Hội thoại) — 2 tab CHIA ĐỀU, canh giữa (yêu cầu người

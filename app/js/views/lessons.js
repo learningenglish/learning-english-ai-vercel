@@ -20,12 +20,15 @@ import { escapeHtml, formatDate } from "../utils.js";
 
 // 4 lối tạo bài học nhanh (thay cho luồng Mentor AI nhiều bước đã tắt) — "Văn bản" là tính
 // năng CŨ "Tôi có văn bản" (analyze_user_text) trước đây chỉ vào được qua màn Mentor AI, nay
-// bị mồ côi vì route /mentor-goal đã gỡ; đưa lên đây mới có đường vào lại. "Máy ảnh" CHƯA có
-// backend — bấm vào chỉ báo "sắp ra mắt", không giả vờ hoạt động. "Luyện viết" (2026-07-27) có
-// backend + route riêng (/writing, xem views/writingPractice.js) — không còn comingSoon.
+// bị mồ côi vì route /mentor-goal đã gỡ; đưa lên đây mới có đường vào lại. "Luyện viết"
+// (2026-07-27) có backend + route riêng (/writing, xem views/writingPractice.js) — không còn
+// comingSoon. "Các khoá học" (2026-07-29, thay chỗ "Máy ảnh" — CHƯA làm, admin dự định chèn
+// quảng cáo tạm ở đây trước khi có khoá học thật) CŨNG comingSoon như "Máy ảnh" trước đó, chỉ
+// đổi nhãn/icon — nhãn dài hơn hẳn 3 nhãn còn lại nên tự cuộn chữ (marquee) thay vì tràn/ngắt
+// cứng, xem CSS ".quick-action-label"/"quick-action-marquee" trong style.css.
 const QUICK_ACTIONS = [
   { id: "text", label: "Văn bản", icon: "file-text", path: "/create-text" },
-  { id: "camera", label: "Máy ảnh", icon: "camera", comingSoon: true },
+  { id: "courses", label: "Các khoá học", icon: "graduation-cap", comingSoon: true },
   { id: "ai", label: "AI", icon: "sparkles", path: "/create" },
   { id: "writing", label: "Luyện viết", icon: "edit-3", path: "/writing" },
 ];
@@ -76,7 +79,7 @@ export function renderLessons(mount, params) {
           (a) => `
           <button type="button" class="quick-action-btn" data-action="${a.id}">
             <span class="quick-action-icon">${icon(a.icon, { size: 20 })}</span>
-            <span class="quick-action-label">${a.label}</span>
+            <span class="quick-action-label"><span class="quick-action-label-text">${escapeHtml(a.label)}</span></span>
           </button>
         `
         ).join("")}
@@ -132,6 +135,17 @@ export function renderLessons(mount, params) {
       }
       navigate(action.path);
     });
+  });
+
+  // Nhãn dài hơn hẳn các nhãn khác (vd "Các khoá học") -> tự cuộn ngang (marquee) thay vì tràn
+  // ra ngoài nút hoặc bị ngắt cứng (2026-07-29, yêu cầu người dùng) — CHỈ bật hiệu ứng cho nhãn
+  // THẬT SỰ tràn (so scrollWidth/clientWidth sau khi đã render), nhãn ngắn (vừa khung) giữ
+  // nguyên đứng yên. Nhân đôi chữ (kèm khoảng cách) để vòng lặp cuộn liền mạch, không giật.
+  mount.querySelectorAll(".quick-action-label").forEach((label) => {
+    const textEl = label.querySelector(".quick-action-label-text");
+    if (!textEl || textEl.scrollWidth <= label.clientWidth) return;
+    textEl.textContent = `${textEl.textContent}    ${textEl.textContent}`;
+    label.classList.add("marquee");
   });
 
   // #toggle-level-filter/#search-input CHỈ tồn tại ở mode "main" (xem template ở trên) —
@@ -275,7 +289,12 @@ export function renderLessons(mount, params) {
     }
     const scroll = section.querySelector("#industry-scroll");
     scroll.innerHTML = Array.from(groups.entries())
-      .map(([name, groupLessons]) => industryCardHtml(name, groupLessons.length, state.industry === name, isIndustryGroupArchived(groupLessons)))
+      .map(([name, groupLessons]) => {
+        // Ảnh bìa đại diện (2026-07-29) — lấy TẠM ảnh bìa của 1 bài bất kỳ trong nhóm đã có sẵn
+        // (không tốn thêm lượt tìm ảnh riêng cho từng lĩnh vực), xem industryCardHtml().
+        const cover = groupLessons.find((l) => l.cover_image_url)?.cover_image_url || null;
+        return industryCardHtml(name, groupLessons.length, state.industry === name, isIndustryGroupArchived(groupLessons), cover);
+      })
       .join("");
     scroll.querySelectorAll(".industry-card").forEach((card) => {
       card.addEventListener("click", () => {

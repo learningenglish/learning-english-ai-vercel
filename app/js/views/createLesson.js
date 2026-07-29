@@ -184,7 +184,7 @@ export function renderCreateLesson(mount) {
     return `
       <div class="current-goal-row">
         <span>Bạn đang ở lĩnh vực <strong>${escapeHtml(state.activeGoal.title)}</strong></span>
-        <button type="button" class="link-btn" id="change-goal-btn">(đổi)</button>
+        <button type="button" class="link-btn" id="change-goal-btn">Đổi</button>
       </div>
     `;
   }
@@ -253,16 +253,24 @@ export function renderCreateLesson(mount) {
     `;
   }
 
+  // "loading" (2026-07-29, Minh bắt được): TRƯỚC đây lúc goalLoaded=false, render() tạm coi như
+  // "chưa có mục tiêu" nên vẽ NGAY form đầy đủ, rồi vài trăm ms sau goalLoaded xong lại vẽ LẠI
+  // thành dòng gọn nếu hoá ra CÓ mục tiêu — người dùng thấy rõ màn hình "nhảy" từ form sang dòng
+  // gọn. Giờ khi CHƯA biết chắc, hiện 1 trạng thái TRUNG LẬP (không phải form, không phải dòng
+  // gọn) — chỉ vẽ ĐÚNG 1 LẦN sau khi đã biết chắc nên hiện gì.
   function render() {
+    const loading = !state.goalLoaded;
     const compact = isCompact();
+    const bodyHtml = loading ? `<p class="muted">Đang tải...</p>` : compact ? compactGoalHtml() : fullFormHtml();
+    const submitLabel = loading ? "Đang tải..." : compact ? "Tạo bài học tiếp" : "Tạo bài học";
     mount.innerHTML = `
       <div class="screen">
         ${appHeaderHtml(`${icon("library", { size: 22 })} Tạo bài học`, headerCache, { showBack: true })}
 
-        ${compact ? compactGoalHtml() : fullFormHtml()}
+        ${bodyHtml}
 
         <div id="create-result-slot"></div>
-        <button type="button" class="btn btn-primary btn-block" id="create-submit-btn">${compact ? "Tạo bài học tiếp" : "Tạo bài học"}</button>
+        <button type="button" class="btn btn-primary btn-block" id="create-submit-btn" ${loading ? "disabled" : ""}>${submitLabel}</button>
       </div>
     `;
     wire();

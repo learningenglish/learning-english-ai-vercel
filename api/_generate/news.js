@@ -40,7 +40,7 @@ async function searchTodayNews() {
       role: "system",
       content: `Bạn có công cụ tìm kiếm web thật. Tìm ${CANDIDATES_TO_FIND} tin thời sự PHỔ THÔNG (được nhiều báo đưa tin, không phải tin hiếm/địa phương nhỏ lẻ), xảy ra trong 48 giờ gần đây, ĐA DẠNG lĩnh vực (cố gắng phủ nhiều lĩnh vực trong danh sách: ${CATEGORIES.join(", ")} — không dồn hết vào 1-2 lĩnh vực).${safetyInstruction()}
 Với MỖI tin, viết ĐÚNG 1 dòng theo mẫu sau, không thêm chữ nào khác ngoài đúng ${CANDIDATES_TO_FIND} dòng này (không đánh số, không markdown, không link trích dẫn):
-<lĩnh vực đúng 1 trong danh sách trên>|<tiêu đề tiếng Việt ngắn gọn>|<1-2 câu tóm tắt bằng tiếng Anh, đủ chi tiết để dùng làm chủ đề viết bài học>`,
+<lĩnh vực đúng 1 trong danh sách trên>|<tiêu đề tiếng Việt ngắn gọn>|<2-3 câu tóm tắt bằng tiếng Anh, LẤY ĐÚNG các chi tiết CỤ THỂ thật từ kết quả tìm kiếm (tên người/tổ chức/chức vụ, số liệu, ngày tháng, địa điểm) — đây sẽ là NGUỒN SỰ THẬT DUY NHẤT cho 1 bài học viết sau đó, không dựa vào nguồn nào khác, nên phải đủ chi tiết xác thực, không chỉ nói chung chung>`,
     },
     { role: "user", content: `Tìm ${CANDIDATES_TO_FIND} tin thời sự phổ thông mới nhất, đa dạng lĩnh vực.` },
   ];
@@ -122,7 +122,25 @@ export async function generateDailyNews() {
     const level = LEVELS[i % LEVELS.length];
     const contentType = CONTENT_TYPES_TODAY[i];
     const [minWords, maxWords] = resolveLengthRange(level, "medium");
-    const genData = { level, content_type: contentType, topic: topic.gist_en, description: "", field: "", industry: "", product: "", situation: "", term_density: 0, grammar_focus: [] };
+    // "is_real_news_topic" (2026-07-29, Minh phát hiện thật: bài sinh nhắc "TBT Nguyễn Phú
+    // Trọng" dù đã qua đời/rời chức từ lâu — model KHÔNG dùng web_search ở bước viết bài này
+    // (chỉ bước tìm tin ở searchTodayNews() có search thật), nên khi chủ đề chạm tới người/tổ
+    // chức không có tên trong "topic", model tự bịa bằng kiến thức nền CŨ) — xem
+    // buildGenerateLessonUserPrompt() trong lesson.js: cờ này thêm 1 đoạn chặn bịa thêm chi tiết
+    // thời sự ngoài "topic" đã cho, CHỈ áp dụng cho Tin tức, không đụng lộ trình cá nhân thường.
+    const genData = {
+      level,
+      content_type: contentType,
+      topic: topic.gist_en,
+      description: "",
+      field: "",
+      industry: "",
+      product: "",
+      situation: "",
+      term_density: 0,
+      grammar_focus: [],
+      is_real_news_topic: true,
+    };
 
     // Retry (2026-07-28, cùng bài học Việc 2 "Tạo bài học phải luôn ra bài" — job nền có ngân
     // sách 300s, không bị áp lực 1 request tương tác như generate_lesson, nên retry TOÀN BỘ ở

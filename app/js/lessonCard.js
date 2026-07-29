@@ -73,18 +73,27 @@ export function continueCardHtml(l) {
 }
 
 // Card "Lĩnh vực" (màn Thư viện AI, lướt ngang) — CÙNG kích thước/tỉ lệ với .continue-card
-// (yêu cầu người dùng "giống bài đang đọc") nhưng không có ảnh bìa/tim (đây là 1 NHÓM bài,
-// không phải 1 bài cụ thể) — chỉ tên lĩnh vực + số bài, nền gradient tím-hồng sẵn có của app.
-// "active" -> đang được chọn làm bộ lọc (viền trắng nổi bật), xem views/lessons.js::state.industry.
-// "archived" (2026-07-28, "giới hạn 5 lĩnh vực + Thư mục AI") -> nhóm này thuộc 1 learning_goals
-// đã archived (người dùng đã đổi sang lộ trình khác) — gắn nhãn "Đã dừng" để phân biệt với lĩnh
-// vực đang active, KHÔNG ẩn/xoá gì, bài vẫn xem/lọc được bình thường.
-export function industryCardHtml(name, count, active, archived) {
+// (yêu cầu người dùng "giống bài đang đọc"). "coverImageUrl" (2026-07-29, Minh phản hồi thật:
+// nền màu đặc trơn khiến thẻ "nhìn to/trống" dù ĐÃ cùng kích thước .continue-card) — dùng lại
+// ẢNH BÌA của 1 BÀI BẤT KỲ trong nhóm lĩnh vực đó (đã có sẵn từ lúc tạo bài, không tốn thêm 1
+// lượt tìm ảnh riêng) làm nền, cùng kiểu phủ mờ+tối ở đáy như .continue-card — nhóm nào chưa có
+// bài nào có ảnh bìa thì rơi về nền gradient cũ (fallback). "active" -> đang được chọn làm bộ
+// lọc (viền trắng nổi bật), xem views/lessons.js::state.industry. "archived" (2026-07-28, "giới
+// hạn 5 lĩnh vực + Thư mục AI") -> nhóm này thuộc 1 learning_goals đã archived (người dùng đã
+// đổi sang lộ trình khác) — gắn nhãn "Đã dừng" để phân biệt với lĩnh vực đang active, KHÔNG
+// ẩn/xoá gì, bài vẫn xem/lọc được bình thường.
+export function industryCardHtml(name, count, active, archived, coverImageUrl) {
   return `
-    <div class="industry-card ${active ? "active" : ""}" data-industry="${escapeHtml(name)}">
+    <div class="industry-card ${active ? "active" : ""}" data-industry="${escapeHtml(name)}" ${
+    coverImageUrl ? `style="background-image:url('${escapeHtml(coverImageUrl)}')"` : ""
+  }>
+      ${!coverImageUrl ? '<div class="industry-card-fallback-bg"></div>' : ""}
+      <div class="industry-card-overlay"></div>
       ${archived ? `<span class="industry-card-archived-badge">Đã dừng</span>` : ""}
-      <div class="industry-card-count">${count}</div>
-      <div class="industry-card-name">${escapeHtml(name)}</div>
+      <div class="industry-card-body">
+        <div class="industry-card-count">${count}</div>
+        <div class="industry-card-name">${escapeHtml(name)}</div>
+      </div>
     </div>
   `;
 }
