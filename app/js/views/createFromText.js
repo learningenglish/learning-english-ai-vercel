@@ -76,7 +76,7 @@ export function renderCreateFromText(mount) {
     resultSlot.innerHTML = `
       <div class="result-panel result-success">
         <div class="result-title">Đã phân tích xong</div>
-        <p>Cấp độ văn bản (AI tự xác định): <span class="level-pill">${escapeHtml(lesson.level)}</span></p>
+        <p>Cấp độ văn bản: <span class="level-pill">${escapeHtml(lesson.level)}</span></p>
       </div>
       <button type="button" class="btn btn-primary btn-block" id="paste-view-lesson-btn">Xem bài học</button>
     `;

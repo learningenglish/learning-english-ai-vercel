@@ -68,6 +68,19 @@ export async function listAiGeneratedLessons({ filter = "all" } = {}) {
   return restFetch(`lessons?${q}`);
 }
 
+// Tab "Phân tích" (2026-07-29, "bài phân tích xong cần phải có đích đến") — bài tạo qua "Tôi có
+// văn bản" (action analyze_user_text, xem views/createFromText.js) trước đó không có nơi liệt
+// kê riêng, chỉ lẫn trong danh sách chung theo Bài đọc/Hội thoại. Lọc theo lessons.source=
+// 'user_text' (enum cố định, xem buildLessonInsertRow trong api/_generate/lesson.js) — cùng
+// pattern với listAiGeneratedLessons() ở trên, chỉ khác giá trị "source".
+export async function listTextAnalyzedLessons({ filter = "all" } = {}) {
+  let q =
+    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at" +
+    "&source=eq.user_text&order=created_at.desc";
+  if (filter === "favorite") q += "&is_favorite=eq.true";
+  return restFetch(`lessons?${q}`);
+}
+
 // Nhãn "Đã dừng" cho nhóm lĩnh vực trong Thư mục AI (2026-07-28, "giới hạn 5 lĩnh vực + Thư mục
 // AI") — đọc status của TOÀN BỘ learning_goals của user (active lẫn archived), views/lessons.js
 // tự đối chiếu qua lessons.goal_id để biết 1 nhóm lĩnh vực có đang "đã dừng" hay không. Chỉ

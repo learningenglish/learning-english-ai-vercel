@@ -81,6 +81,23 @@ export function createPlayer({ onStateChange } = {}) {
     window.speechSynthesis.speak(utter);
   }
 
+  function wordCount(text) {
+    return (text || "").split(/\s+/).filter(Boolean).length;
+  }
+
+  // Tổng số từ CẢ playlist — dùng để ước lượng tổng thời lượng (Web Speech API không có khái
+  // niệm "duration" thật, xem ghi chú GIỚI HẠN THẬT đầu file).
+  function totalWords() {
+    return state.items.reduce((sum, it) => sum + wordCount(it?.text), 0);
+  }
+
+  // Số từ đã "đọc qua" tính từ đầu playlist tới đúng vị trí hiện tại (itemIndex + wordOffset).
+  function wordsElapsed() {
+    let sum = 0;
+    for (let i = 0; i < state.itemIndex; i++) sum += wordCount(state.items[i]?.text);
+    return sum + Math.min(state.wordOffset, wordCount(state.items[state.itemIndex]?.text));
+  }
+
   function goToItem(index, wordOffset) {
     if (index < 0) {
       state.itemIndex = 0;
@@ -126,7 +143,12 @@ export function createPlayer({ onStateChange } = {}) {
     back() {
       goToItem(state.itemIndex - 1, 0);
     },
+    // 2026-07-29 (Minh: "nút replay không hoạt động") — trước đây chỉ reset vị trí, CHỈ phát
+    // lại nếu ĐANG playing (goToItem() gốc không tự bật phát) — bấm lúc đang TẠM DỪNG thì
+    // không có gì xảy ra, đúng như "không hoạt động" Minh thấy. Giờ luôn BẬT phát lại từ đầu
+    // đoạn hiện tại bất kể đang phát hay tạm dừng — đúng nghĩa "Phát lại".
     replay() {
+      state.playing = true;
       goToItem(state.itemIndex, 0);
     },
     // Nhảy thẳng tới 1 đoạn/lượt thoại bất kỳ (nút "câu trước/câu tiếp" thủ công ở tab Nội
@@ -168,6 +190,34 @@ export function createPlayer({ onStateChange } = {}) {
     },
     getState() {
       return { ...state };
+    },
+    // Thanh thời gian (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s) — "elapsedSeconds"/
+    // "totalSeconds" là ƯỚC LƯỢNG theo số từ ÷ tốc độ đọc trung bình (như skip() ở trên, KHÔNG
+    // phải thời gian audio thật — Web Speech API không cho biết), đủ để vẽ 1 thanh tiến trình +
+    // nhãn mm:ss hợp lý, KHÔNG chính xác tuyệt đối.
+    getProgress() {
+      const total = totalWords();
+      const elapsed = wordsElapsed();
+      const wordsPerSecond = WORDS_PER_SECOND_AT_RATE_1 * state.rate;
+      return {
+        fraction: total ? Math.min(1, elapsed / total) : 0,
+        elapsedSeconds: wordsPerSecond ? elapsed / wordsPerSecond : 0,
+        totalSeconds: wordsPerSecond ? total / wordsPerSecond : 0,
+      };
+    },
+    // Kéo thanh tiến trình tới 1 tỉ lệ 0-1 của CẢ playlist — quy đổi ngược ra đúng
+    // itemIndex/wordOffset (ƯỚC LƯỢNG, cùng cơ chế skip()/getProgress() ở trên).
+    seekToFraction(fraction) {
+      const target = Math.round(Math.max(0, Math.min(1, fraction)) * totalWords());
+      let remaining = target;
+      for (let i = 0; i < state.items.length; i++) {
+        const words = wordCount(state.items[i]?.text);
+        if (remaining <= words || i === state.items.length - 1) {
+          goToItem(i, remaining);
+          return;
+        }
+        remaining -= words;
+      }
     },
     stop() {
       window.speechSynthesis.cancel();

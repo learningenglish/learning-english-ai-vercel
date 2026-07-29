@@ -133,9 +133,25 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   let ttsLoaded = false;
   let lastSyncedPage = state.page;
   let renderContentBodyFn = null;
+  // Thanh tiến trình (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s) — Web Speech API
+  // không bắn sự kiện tiến trình liên tục trong lúc đọc (chỉ có onend/onstart cho MỖI utterance),
+  // nên cần tự chạy 1 timer NHẸ để cập nhật thanh + nhãn thời gian mượt trong lúc đang phát;
+  // "audioSeeking" chặn timer ghi đè vị trí thanh NGAY LÚC người dùng đang kéo tay (xem
+  // wireAudioBar()/updateAudioBarUI() bên dưới).
+  let progressTimer = null;
+  let audioSeeking = false;
+  function ensureProgressTimer(playing) {
+    if (playing && !progressTimer) {
+      progressTimer = setInterval(() => updateAudioBarUI(ttsPlayer.getState()), 500);
+    } else if (!playing && progressTimer) {
+      clearInterval(progressTimer);
+      progressTimer = null;
+    }
+  }
   const ttsPlayer = createPlayer({
     onStateChange: (s) => {
       updateAudioBarUI(s);
+      ensureProgressTimer(s.playing);
       if (!state.showAllContent && s.itemIndex !== lastSyncedPage) {
         lastSyncedPage = s.itemIndex;
         state.page = s.itemIndex;
@@ -340,11 +356,15 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // "pendingLookups": key -> Promise, GẮN NGAY khi lên lịch tra (kể cả chưa thật sự gọi AI, xem
   // hàng đợi giới hạn song song bên dưới) — để showWordTooltip() LUÔN tìm thấy đúng promise đang
   // chờ mà DÙNG LẠI, không tự tạo 1 lượt gọi AI trùng lặp cho cùng 1 từ dù bấm sớm hơn lúc
-  // prefetch thật sự xong. Giới hạn tối đa 4 lượt gọi AI song song (MAX_CONCURRENT_PREFETCH) —
-  // 1 bài có thể có vài chục từ chưa biết, gọi hết cùng lúc dễ đụng rate limit OpenAI/kéo dài
-  // thời gian phản hồi chung (xem rủi ro đã ghi nhận về nhiều người dùng đồng thời).
+  // prefetch thật sự xong. Giới hạn tối đa 8 lượt gọi AI song song (MAX_CONCURRENT_PREFETCH,
+  // 4->8 ngày 2026-07-29 — Minh vẫn thấy tooltip xoay vòng ở bài "Tôi có văn bản": văn bản dán
+  // vào tối đa 600 từ, nhiều gấp 2-4 lần 1 bài AI-tạo thông thường (~150-300 từ), nên hàng đợi
+  // 4-song-song trước đó cần QUÁ LÂU mới tới lượt các từ cuối bài — 8 rút ngắn đáng kể thời gian
+  // hàng đợi mà vẫn chưa đủ lớn để dễ đụng rate limit OpenAI) — 1 bài có thể có vài chục từ chưa
+  // biết, gọi hết cùng lúc dễ đụng rate limit OpenAI/kéo dài thời gian phản hồi chung (xem rủi
+  // ro đã ghi nhận về nhiều người dùng đồng thời).
   const pendingLookups = new Map();
-  const MAX_CONCURRENT_PREFETCH = 4;
+  const MAX_CONCURRENT_PREFETCH = 8;
   let activePrefetchCount = 0;
   const prefetchQueue = [];
 
@@ -436,29 +456,56 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   }
 
   // ====== Thanh audio (chỉ hiện khi trình duyệt hỗ trợ Web Speech API) ======
+  // "mm:ss" — âm/NaN (playlist rỗng, chưa load xong) rơi về "0:00" thay vì hiện "NaN:NaN".
+  function formatAudioTime(totalSeconds) {
+    const s = Math.max(0, Math.round(totalSeconds || 0));
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return `${m}:${String(rem).padStart(2, "0")}`;
+  }
+
+  // Bỏ 3 nút Về đoạn trước/Lùi 10s/Tiến 10s (2026-07-29, yêu cầu người dùng), thay bằng 1 thanh
+  // tiến trình kéo được + nhãn thời gian — vừa gọn vừa cho tua tới bất kỳ đâu (không chỉ lùi/
+  // tiến 10s cố định). "audio-seek" dùng thang 0-1000 (không phải 0-1) để bước kéo mượt hơn hẳn
+  // input[type=range] step=0.001 trên 1 số trình duyệt di động.
   function audioBarHtml() {
     return `
       <div class="audio-bar" id="audio-bar">
-        <button type="button" class="audio-btn" id="audio-back" title="Về đoạn trước">${icon("skip-back", { size: 17 })}</button>
-        <button type="button" class="audio-btn" id="audio-back10" title="Lùi 10 giây">${icon("rewind", { size: 17 })}</button>
-        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
-        <button type="button" class="audio-btn" id="audio-fwd10" title="Tiến 10 giây">${icon("fast-forward", { size: 17 })}</button>
-        <div class="audio-volume-wrap">
-          <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 17 })}</button>
-          <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
+        <div class="audio-progress-row">
+          <span class="audio-time" id="audio-time-elapsed">0:00</span>
+          <input type="range" id="audio-seek" class="audio-seek" min="0" max="1000" step="1" value="0" />
+          <span class="audio-time" id="audio-time-total">0:00</span>
         </div>
-        <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">${icon("repeat", { size: 17 })}</button>
-        <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
+        <div class="audio-controls-row">
+          <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
+          <div class="audio-volume-wrap">
+            <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 17 })}</button>
+            <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
+          </div>
+          <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">${icon("repeat", { size: 17 })}</button>
+          <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
+        </div>
       </div>
     `;
   }
 
   function wireAudioBar(panel) {
-    panel.querySelector("#audio-back").addEventListener("click", () => ttsPlayer.back());
-    panel.querySelector("#audio-back10").addEventListener("click", () => ttsPlayer.skip(-10));
-    panel.querySelector("#audio-fwd10").addEventListener("click", () => ttsPlayer.skip(10));
     panel.querySelector("#audio-replay").addEventListener("click", () => ttsPlayer.replay());
     panel.querySelector("#audio-play").addEventListener("click", () => ttsPlayer.playPause());
+
+    // "audioSeeking" (khai báo cùng ensureProgressTimer() ở trên) — bật khi NGÓN TAY đang kéo
+    // (input), chặn timer/onStateChange ghi đè vị trí thanh giữa chừng; chỉ thật sự tua khi
+    // NHẢ tay (change) — kéo xong mới gọi 1 lần, không gọi liên tục theo từng pixel kéo.
+    const seek = panel.querySelector("#audio-seek");
+    seek.addEventListener("input", () => {
+      audioSeeking = true;
+      const progress = ttsPlayer.getProgress();
+      document.getElementById("audio-time-elapsed").textContent = formatAudioTime((Number(seek.value) / 1000) * progress.totalSeconds);
+    });
+    seek.addEventListener("change", () => {
+      ttsPlayer.seekToFraction(Number(seek.value) / 1000);
+      audioSeeking = false;
+    });
 
     const volBtn = panel.querySelector("#audio-volume-btn");
     const volSlider = panel.querySelector("#audio-volume-slider");
@@ -485,6 +532,18 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     if (playBtn) playBtn.innerHTML = s.playing ? icon("pause", { size: 18, filled: true }) : icon("play", { size: 18, filled: true });
     if (speedBtn) speedBtn.textContent = `${s.rate}x`;
     if (volSlider) volSlider.value = String(s.volume);
+
+    // Không đụng thanh/nhãn "elapsed" khi người dùng ĐANG kéo tay (audioSeeking) — tránh giật
+    // ngược giữa chừng lúc kéo, xem wireAudioBar().
+    if (audioSeeking) return;
+    const seek = document.getElementById("audio-seek");
+    const elapsedEl = document.getElementById("audio-time-elapsed");
+    const totalEl = document.getElementById("audio-time-total");
+    if (!seek) return;
+    const progress = ttsPlayer.getProgress();
+    seek.value = String(Math.round(progress.fraction * 1000));
+    if (elapsedEl) elapsedEl.textContent = formatAudioTime(progress.elapsedSeconds);
+    if (totalEl) totalEl.textContent = formatAudioTime(progress.totalSeconds);
   }
 
   // "spans" tính lại NGUYÊN VẸN bằng computeInteractiveSpans() (2026-07-28, sửa lỗi tooltip xoay
@@ -839,6 +898,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
 
   return function teardown() {
     ttsPlayer.stop();
+    if (progressTimer) clearInterval(progressTimer);
     document.getElementById("word-popover")?.remove();
     // Rời bài CHƯA hoàn thành nhưng ĐÃ có chút tiến độ (đọc dở/làm dở bài tập) — giọng rủ rê,
     // KHÔNG trách móc (mục 6.4 Đợt 3: cấm giọng "bạn chưa hoàn thành"). Bài chưa động tới gì

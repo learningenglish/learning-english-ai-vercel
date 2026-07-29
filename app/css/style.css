@@ -984,19 +984,25 @@ textarea:focus {
   background: var(--surface);
 }
 
+/* Icon TRÊN + nhãn DƯỚI (2026-07-29, thêm tab "Phân tích" thứ 4 kế bên "Bài viết") — trước đó
+   icon+chữ nằm CÙNG hàng ngang, đủ chỗ cho 2-3 tab nhưng 4 tab dễ tràn/khuất trên màn hẹp; đổi
+   sang bố cục dọc (giống .nav-tab ở thanh điều hướng dưới cùng, vốn đã chứng minh vừa 5 mục
+   trên 1 hàng) để LUÔN đủ 4 tab trên 1 hàng, không cần lướt ngang. */
 .content-tab-btn {
   flex: 1;
   background: none;
   border: none;
   padding: 6px 2px 10px;
   font-weight: 700;
+  font-size: 0.78rem;
   color: var(--text-dim);
   cursor: pointer;
   border-bottom: 3px solid transparent;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 3px;
 }
 
 .content-tab-btn.active {
@@ -1412,21 +1418,56 @@ textarea:focus {
 
 /* ===== Thanh audio — CỐ ĐỊNH đúng vị trí thanh điều hướng ngoài (thay thế hoàn toàn khi
    đang ở tab Nội dung, xem app.js::renderBottomNav ẩn #bottom-nav cho route /lesson). ===== */
+/* 2 hàng (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s bằng 1 thanh tiến trình có
+   thời gian) — trước đó là viên thuốc (pill) tròn 1 hàng, giờ đủ chỗ cho thanh kéo full-width
+   nên đổi sang chữ nhật bo góc, cao theo nội dung (không còn height cố định = --nav-height). */
 .audio-bar {
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: 12px;
-  height: var(--nav-height);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
   background: var(--surface);
-  border-radius: 999px;
-  padding: 0 10px;
+  border-radius: 22px;
+  padding: 8px 14px 6px;
   box-shadow: 0 12px 30px rgba(31, 41, 55, 0.15);
   z-index: 50;
+}
+
+.audio-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-time {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 28px;
+  text-align: center;
+}
+
+.audio-seek {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--purple);
+}
+
+.audio-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Thanh audio giờ CAO HƠN bản cũ (2 hàng thay vì 1 viên thuốc tròn) — thêm đệm dưới để câu
+   cuối cùng của bài không bị khuất sau thanh cố định. */
+#content-body {
+  padding-bottom: 24px;
 }
 
 .audio-btn {

@@ -11,7 +11,16 @@
 // - Dòng phụ màu cam = lessons.situation (bảng "lessons" hiện KHÔNG lưu cột "chủ đề" riêng
 //   — trường "topic" chỉ dùng để dựng prompt lúc tạo bài, không persist).
 import { navigate } from "../router.js";
-import { listLessons, listAiGeneratedLessons, listInProgressLessons, setLessonFavorite, listWritingFavorites, listGoalStatuses, listNewsLessons } from "../db.js";
+import {
+  listLessons,
+  listAiGeneratedLessons,
+  listInProgressLessons,
+  setLessonFavorite,
+  listWritingFavorites,
+  listGoalStatuses,
+  listNewsLessons,
+  listTextAnalyzedLessons,
+} from "../db.js";
 import { icon } from "../icons.js";
 import { lessonCardHtml, continueCardHtml, industryCardHtml, wireLessonCards } from "../lessonCard.js";
 import { showToast } from "../toast.js";
@@ -117,7 +126,12 @@ export function renderLessons(mount, params) {
       <div class="content-tabs sticky-tabs" role="tablist">
         <button type="button" class="content-tab-btn active" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
         <button type="button" class="content-tab-btn" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
-        ${mode === "favorite" || mode === "library" ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>` : ""}
+        ${
+          mode === "favorite" || mode === "library"
+            ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>
+               <button type="button" class="content-tab-btn" data-type="analysis">${icon("search", { size: 17 })} Phân tích</button>`
+            : ""
+        }
       </div>
 
       <div id="lessons-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
@@ -321,7 +335,12 @@ export function renderLessons(mount, params) {
       // 3 nguồn dữ liệu khác nhau theo mode — CÙNG áp dụng tiếp bộ lọc cấp độ/tìm kiếm/tab
       // Bài đọc-Hội thoại bên dưới, không phân biệt nữa sau bước này.
       let lessons;
-      if (mode === "library") {
+      if (state.contentType === "analysis") {
+        // Tab "Phân tích" (2026-07-29) — bài từ "Tôi có văn bản", nguồn dữ liệu RIÊNG
+        // (lessons.source='user_text'), không tách Bài đọc/Hội thoại như 2 tab đầu (giống cách
+        // "Bài viết" cũng không tách) nên KHÔNG truyền content_type vào bộ lọc.
+        lessons = await listTextAnalyzedLessons({ filter: mode === "favorite" ? "favorite" : "all" });
+      } else if (mode === "library") {
         lessons = await listAiGeneratedLessons({ filter: state.contentType });
       } else if (mode === "favorite") {
         lessons = await listLessons({ filter: "favorite" });
@@ -360,7 +379,9 @@ export function renderLessons(mount, params) {
       }
       if (!lessons.length) {
         const emptyText =
-          mode === "favorite"
+          state.contentType === "analysis"
+            ? "Bạn chưa phân tích văn bản nào từ mục \"Văn bản\"."
+            : mode === "favorite"
             ? "Bạn chưa yêu thích bài học nào."
             : mode === "library"
             ? "Chưa có bài học nào tạo từ Thư viện AI."
