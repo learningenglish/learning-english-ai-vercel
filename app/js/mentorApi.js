@@ -72,13 +72,6 @@ export async function selectGoal(goalId) {
   return callAndParse("mentor_select_goal", { goal_id: goalId });
 }
 
-// Không gọi AI — đổi trình độ của lĩnh vực đang hoạt động NGAY TẠI CHỖ (2026-07-29, "thêm chọn
-// trình độ" ở dòng gọn "Bạn đang ở lĩnh vực..."), KHÔNG tốn lượt trong giới hạn 5 (không tạo
-// goal mới), xem mentor_set_goal_level trong api/_generate/mentor.js.
-export async function setGoalLevel(goalId, level) {
-  return callAndParse("mentor_set_goal_level", { goal_id: goalId, level });
-}
-
 // ====== Màn nghi thức xưng hô (mục 3.2/3.4 điểm 1 Đợt 3) ======
 
 export async function getPronounState() {

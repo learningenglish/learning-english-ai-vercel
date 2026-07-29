@@ -323,6 +323,20 @@ export function renderLessons(mount, params) {
   async function renderList() {
     const listEl = mount.querySelector("#lessons-list");
     listEl.innerHTML = `<p class="muted">Đang tải...</p>`;
+    // SỬA 2026-07-30 (Minh: "tab Phân tích VẪN nhảy" — nguyên nhân THẬT khác lần trước tưởng:
+    // không phải trạng thái CUỐI CÙNG (đã đúng từ lần sửa trước), mà là 1 NHÁY HÌNH lúc CHUYỂN
+    // tab — #industry-section vẫn giữ NGUYÊN hiện/ẩn của tab VỪA RỜI ĐI suốt khoảng "Đang tải..."
+    // (mọi chỗ cập nhật section đều nằm SAU await bên dưới), rồi ẨN/HIỆN ĐỘT NGỘT khi dữ liệu
+    // mới về — đúng là "khoảng trống xuất hiện khi ẩn card" Minh thấy, chỉ là nó xảy ra ở KHOẢNH
+    // KHẮC chuyển tab chứ không phải trạng thái đứng yên. Ẩn NGAY (đồng bộ, trước mọi await) cho
+    // các tab CHẮC CHẮN không dùng lĩnh vực (Bài viết/Phân tích) — 2 tab còn lại (Bài đọc/Hội
+    // thoại) vẫn ẩn nếu tab TRƯỚC ĐÓ đang hiện, do KHÔNG biết trước sẽ có ≥2 lĩnh vực hay không
+    // (chỉ biết được sau khi tải), nên cứ ẩn NGAY rồi để renderIndustrySection() tự hiện lại nếu
+    // dữ liệu mới đủ điều kiện — tránh mọi trường hợp giữ nguyên trạng thái CŨ trong lúc tải.
+    if (mode === "library") {
+      const section = mount.querySelector("#industry-section");
+      if (section) section.hidden = true;
+    }
     // Tab "Bài viết" (Yêu thích + Thư viện AI, Việc 3/Item 7 — 2026-07-27) — nguồn dữ liệu HOÀN
     // TOÀN khác (writing_favorites, không phải lessons), tự thoát sớm khỏi luồng lessons bên
     // dưới, không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).

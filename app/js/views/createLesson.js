@@ -44,9 +44,15 @@
 // mục tiêu nào (lần đầu) HOẶC bấm "(đổi)" (xem isCompact()/compactGoalHtml()/fullFormHtml()
 // bên dưới) — KHÔNG còn modal/gate nào, "(đổi)" chỉ đơn thuần hiện lại form, bấm "Huỷ" quay về
 // đúng dòng gọn ban đầu mà KHÔNG gửi gì lên server.
+//
+// THÊM RỒI BỎ (2026-07-29 -> 2026-07-30) — từng thêm 1 hàng chip trình độ NGAY trong
+// compactGoalHtml() để đổi trình độ mà không cần qua "(đổi)". Minh yêu cầu bỏ lại: trình độ chỉ
+// được đổi như 1 PHẦN của việc xác nhận đổi lộ trình (hộp thoại/form đầy đủ khi bấm "Đổi"),
+// không còn cách nào khác để đổi trình độ khi đang bám 1 lộ trình — kể cả Giao tiếp tổng quát.
+// Action backend mentor_set_goal_level (mentor.js/chat.js/mentorApi.js) đã gỡ theo.
 import { navigate } from "../router.js";
 import { fetchAndSaveLessonCover, prefetchLessonAudio } from "../lessonApi.js";
-import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, getGoalUsage, listGoals, selectGoal, setGoalLevel } from "../mentorApi.js";
+import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, getGoalUsage, listGoals, selectGoal } from "../mentorApi.js";
 // getActiveLearningGoal() dùng ở CẢ 2 chỗ: tải sẵn lúc mount (quyết định hiện dòng gọn hay form
 // đầy đủ, xem isCompact()) VÀ đọc lại TRỰC TIẾP trong resolveGoalId() lúc submit (không dùng
 // state.activeGoal đã tải trước đó — tránh dữ liệu cũ nếu người dùng để màn mở lâu).
@@ -125,10 +131,6 @@ export function renderCreateLesson(mount) {
     .then(([goal, usageRes, goalsRes]) => {
       state.goalLoaded = true;
       state.activeGoal = goal;
-      // Chip trình độ ở dòng gọn (xem compactGoalHtml()) mặc định đúng trình độ THẬT của lĩnh
-      // vực đang hoạt động, không phải giá trị nhớ ở localStorage (2 thứ khác nhau — level ở
-      // đây gắn với 1 goal_id cụ thể, remembered.level chỉ là gợi ý cho form TẠO MỚI).
-      if (goal?.level) state.level = goal.level;
       if (usageRes.ok) state.goalUsage = usageRes.data;
       state.goals = goalsRes.ok ? goalsRes.data.goals : [];
       render();
@@ -185,12 +187,6 @@ export function renderCreateLesson(mount) {
       <div class="current-goal-row">
         <span>Bạn đang ở lĩnh vực <strong>${escapeHtml(state.activeGoal.title)}</strong></span>
         <button type="button" class="link-btn" id="change-goal-btn">Đổi</button>
-      </div>
-      <label class="field">
-        <span class="field-question">Trình độ cho bài tiếp theo</span>
-      </label>
-      <div class="filter-row" id="level-chip-row">
-        ${LEVELS.map((l) => `<button type="button" class="filter-chip level-chip ${l === state.level ? "active" : ""}" data-level="${l}">${l}</button>`).join("")}
       </div>
     `;
   }
@@ -449,21 +445,6 @@ export function renderCreateLesson(mount) {
       btn.disabled = false;
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(goalResult.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
       return;
-    }
-
-    // Chip trình độ ở dòng gọn (2026-07-29, "thêm chọn trình độ ra ngoài này") — đổi trước khi
-    // sinh bài NẾU khác trình độ hiện có của lĩnh vực này, để mentor_next_lesson đọc đúng level
-    // mới ngay lượt này. Bỏ qua khi đang ở form đầy đủ (level ở đó đi kèm resolveGoalId phía trên
-    // rồi, không cần PATCH riêng).
-    if (isCompact() && state.level !== state.activeGoal.level) {
-      setProgress("Đang đổi trình độ...");
-      const levelRes = await setGoalLevel(goalResult.goalId, state.level);
-      if (!levelRes.ok) {
-        btn.disabled = false;
-        resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(levelRes.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
-        return;
-      }
-      state.activeGoal.level = state.level;
     }
 
     // Thử lại TỰ ĐỘNG ở tầng client (2026-07-28, "Tạo bài học phải luôn ra bài" — mỗi lượt ở đây
