@@ -1642,62 +1642,6 @@ const ACTIONS = {
     if (!r.ok) return safeOpenAIError(r);
     return { content: content(r) };
   },
-
-  // TẠM THỜI (2026-07-30) — điều tra lỗi "đang lĩnh vực Bất động sản nhưng bài ra chủ đề
-  // không liên quan", chỉ ĐỌC (không sửa gì), xoá action này khỏi file trước khi kết thúc
-  // phiên điều tra. Tìm goal khớp từ khoá + toàn bộ lesson của goal đó, trả skin_id/
-  // spine_slot (skin_id NULL = lượt đó đã rơi về da Tổng quát, xem mentor_next_lesson).
-  async debug_investigate_mismatch(data, ctx) {
-    const kw = (data.keyword || "bất động sản").toLowerCase();
-    const goalsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/learning_goals?select=id,title,raw_keywords,occupation_profile,level,status,lesson_count,created_at`,
-      { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } }
-    );
-    const allGoals = await goalsRes.json();
-    if (data.list_all) return { content: JSON.stringify(allGoals) };
-    if (data.occ_key) {
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/industry_skins?occupation_key=eq.${encodeURIComponent(data.occ_key)}&select=id,occupation_key,created_at,updated_at`,
-        { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } }
-      );
-      return { content: JSON.stringify(await r.json()) };
-    }
-    if (data.skin_id) {
-      const skinRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/industry_skins?id=eq.${data.skin_id}&select=*`,
-        { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } }
-      );
-      const skin = (await skinRes.json())?.[0];
-      const level = data.level;
-      const chunks = skin?.levels?.[level]?.chunks || {};
-      const chunk0 = chunks["0"];
-      return {
-        content: JSON.stringify({
-          occupation_key: skin?.occupation_key,
-          created_at: skin?.created_at,
-          updated_at: skin?.updated_at,
-          levelKeys: skin?.levels ? Object.keys(skin.levels) : [],
-          chunkIndexesPresent: Object.keys(chunks),
-          planning_future_raw: chunk0?.frames?.planning_future,
-          family_social_raw: chunk0?.frames?.family_social,
-        }),
-      };
-    }
-    const matchedGoals = (allGoals || []).filter((g) => {
-      const hay = `${g.title || ""} ${g.raw_keywords || ""} ${g.occupation_profile?.merged_occupation || ""}`.toLowerCase();
-      return hay.includes(kw);
-    });
-    const out = [];
-    for (const g of matchedGoals) {
-      const lessonsRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/lessons?goal_id=eq.${g.id}&select=id,title,title_vi,industry,situation,skin_id,spine_slot,content_type,created_at&order=created_at.desc`,
-        { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } }
-      );
-      const lessons = await lessonsRes.json();
-      out.push({ goal: g, lessons });
-    }
-    return { content: JSON.stringify(out) };
-  },
 };
 
 // ====== ENTRYPOINT (Vercel handler) ======
