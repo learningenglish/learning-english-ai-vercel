@@ -1654,6 +1654,7 @@ const ACTIONS = {
       { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } }
     );
     const allGoals = await goalsRes.json();
+    if (data.list_all) return { content: JSON.stringify(allGoals) };
     const matchedGoals = (allGoals || []).filter((g) => {
       const hay = `${g.title || ""} ${g.raw_keywords || ""} ${g.occupation_profile?.merged_occupation || ""}`.toLowerCase();
       return hay.includes(kw);
