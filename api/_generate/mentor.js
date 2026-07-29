@@ -900,6 +900,34 @@ export async function mentor_select_goal(data, ctx) {
   return { content: JSON.stringify({ goal }) };
 }
 
+// Đổi CẤP ĐỘ của lĩnh vực đang hoạt động, NGAY TẠI CHỖ (2026-07-29, Minh: "người dùng có thể
+// đơn giản muốn sinh bài trình độ khác nhưng cùng lĩnh vực") — PATCH cột level của đúng hàng
+// learning_goals đó, KHÔNG tạo goal mới/KHÔNG tốn lượt trong giới hạn 5 (khác hẳn gõ lại lĩnh
+// vực mới ở resolveGoalId). lesson_count GIỮ NGUYÊN — findSpineSlot() dùng phép chia dư nên vẫn
+// ra 1 slot hợp lệ ở khung trình độ mới dù không phải "vị trí tương ứng" chính xác, chấp nhận
+// được vì đây là lựa chọn CHỦ ĐỘNG của người dùng, không phải lỗi.
+export async function mentor_set_goal_level(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const goalId = data.goal_id;
+  const level = data.level;
+  if (!goalId) return { error: "Thiếu lĩnh vực cần đổi trình độ.", status: 400 };
+  if (!VALID_LEVELS.includes(level)) return { error: "Cấp độ không hợp lệ.", status: 400 };
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals?id=eq.${goalId}&user_id=eq.${ctx.studentId}`, {
+    method: "PATCH",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({ level }),
+  });
+  if (!r.ok) {
+    console.error("mentor.js mentor_set_goal_level error:", r.status, await r.text().catch(() => ""));
+    return { error: "Không thể đổi trình độ, vui lòng thử lại.", status: 502 };
+  }
+  const rows = await r.json();
+  const goal = rows?.[0];
+  if (!goal) return { error: "Không tìm thấy lĩnh vực này.", status: 404 };
+  return { content: JSON.stringify({ goal }) };
+}
+
 // ============================================================
 // MÀN NGHI THỨC XƯNG HÔ (mục 3.2/3.4 điểm 1 Đợt 3) — hỏi ĐÚNG 1 LẦN/user, đầu tiên khi chạm
 // Mentor. KHÔNG có "để Mentor tự chọn giúp" ở màn này (đã chốt với Minh 2026-07-21) — người

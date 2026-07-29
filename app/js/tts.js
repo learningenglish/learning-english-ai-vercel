@@ -204,6 +204,26 @@ export function createPlayer({ onStateChange } = {}) {
       audioEl = null;
       speakWithWebSpeech(state.items[state.itemIndex]);
     });
+    // "khựng khi đọc câu mới" (Minh, 2026-07-29) — bản eager-prefetch lúc tạo bài (2 luồng nền)
+    // không đảm bảo bắt kịp người nghe nhanh/bài dài, khiến speakCurrent() phải DỪNG GIỮA CHỪNG
+    // chờ onNeedAudio() sinh xong mới phát tiếp (chỗ khựng thật). Chủ động hỏi trước ĐÚNG đoạn
+    // KẾ TIẾP ngay khi đoạn hiện tại bắt đầu phát — có trọn thời lượng đoạn hiện tại (vài giây
+    // tới vài chục giây) làm khoảng đệm cho lượt sinh audio kế tiếp chạy NỀN, không lộ ra tai
+    // người nghe. Không cần cho Web Speech (miễn phí, tổng hợp tức thời, không có độ trễ sinh).
+    prefetchNextAudio();
+  }
+
+  // Chỉ hỏi khi THẬT SỰ chưa hỏi bao giờ (undefined, xem getCachedAudioUrl trong views/
+  // lesson.js) — tránh hỏi lại vô ích những đoạn ĐÃ XÁC NHẬN không có audio (null) mỗi lần
+  // lướt qua. Fire-and-forget: KHÔNG set loadingAudio/notify (đây là chuẩn bị TRƯỚC cho đoạn
+  // kế tiếp, không phải đang chờ để phát đoạn HIỆN TẠI).
+  function prefetchNextAudio() {
+    if (!state.audioEligible || !state.onNeedAudio) return;
+    const nextIndex = state.itemIndex + 1;
+    if (nextIndex >= state.items.length) return;
+    const url = state.getAudioUrl ? state.getAudioUrl(nextIndex) : undefined;
+    if (url !== undefined) return;
+    state.onNeedAudio(nextIndex);
   }
 
   function speakCurrent() {

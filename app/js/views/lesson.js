@@ -77,9 +77,15 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   const audioUrlByIndex = new Map();
   const pendingAudioRequests = new Map(); // index -> Promise, chặn gọi trùng nếu chuyển đoạn dồn dập.
 
+  // SỬA 2026-07-29 (Minh: "audio luôn bị khựng khi đọc câu mới" — bản eager-prefetch lúc tạo
+  // bài chỉ CHẠY NỀN 2 luồng song song, không đảm bảo bắt kịp người dùng đọc nhanh/bài dài;
+  // lưới đỡ onNeedAudio() vẫn phải CHỜ đồng bộ giữa 2 câu nếu chưa kịp sinh — đó chính là chỗ
+  // khựng). Phân biệt RÕ "chưa hỏi bao giờ" (undefined, key chưa có trong Map) với "đã hỏi,
+  // biết chắc không có audio" (null) — trước đây gộp chung thành null, khiến tts.js không biết
+  // khi nào NÊN chủ động hỏi trước (prefetchNextAudio bên dưới) mà không hỏi lại vô ích những
+  // đoạn ĐÃ XÁC NHẬN không có audio.
   function getCachedAudioUrl(index) {
-    const v = audioUrlByIndex.get(index);
-    return typeof v === "string" ? v : null;
+    return audioUrlByIndex.get(index); // undefined | null | string — xem ghi chú trên
   }
 
   // Gọi từ tts.js khi cần audio cho 1 đoạn CHƯA có cache — sinh lười ĐÚNG 1 LẦN/đoạn (server

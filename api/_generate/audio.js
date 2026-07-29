@@ -14,8 +14,14 @@ const BUCKET = "lesson-audio";
 // "voice" OpenAI TTS — 2 giọng trung tính rõ nam/nữ, KHÔNG cần khớp chính xác nhân vật (bài học
 // đã có genderHint riêng cho Web Speech fallback, ở đây chỉ cần MỘT giọng nghe tự nhiên, khác
 // nam/nữ đủ để phân biệt người nói trong hội thoại).
+// ĐỔI GIỌNG (2026-07-29, Minh phản hồi nghe thật: "giọng nam quá tệ, giọng nữ là giọng nam
+// cao" — onyx/shimmer không đạt): chuyển sang echo (nam, được đánh giá tự nhiên/ấm hơn onyx
+// vốn khá đều đều/thiếu sức sống cho hội thoại) và nova (nữ, giọng phổ biến nhất trong các
+// voice OpenAI TTS cho cảm giác tự nhiên, rõ ràng là giọng nữ — khác hẳn shimmer, giọng nhẹ dễ
+// bị nghe lẫn). CHƯA nghe thử lại bằng tai thật (không nghe được audio trong sandbox) — cần
+// Minh xác nhận trên bài thật sau khi deploy, đổi tiếp nếu vẫn chưa ổn.
 function pickOpenAIVoice(genderHint) {
-  return genderHint === "female" ? "shimmer" : "onyx";
+  return genderHint === "female" ? "nova" : "echo";
 }
 
 async function uploadAudio(path, audioBase64, contentType) {

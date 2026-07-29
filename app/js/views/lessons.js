@@ -361,7 +361,20 @@ export function renderLessons(mount, params) {
       // level (nếu tính sau thì bấm 1 level là các level khác biến mất luôn, không còn số để
       // bấm chuyển) — tab Bài đọc/Hội thoại vẫn ảnh hưởng số liệu vì đã lọc contentType ở trên.
       if (mode !== "main") renderLevelCountRow(lessons);
-      if (mode === "library") renderIndustrySection(lessons);
+      // SỬA 2026-07-29 (Minh: "tab Phân tích vẫn còn bị nhảy" — "Bài viết" đã cố định vì return
+      // sớm ở trên, KHÔNG BAO GIỜ đụng #industry-section, nhưng "Phân tích" vẫn rơi vào nhánh
+      // này: lessons từ listTextAnalyzedLessons() không có "industry" thật (luôn rơi vào nhóm
+      // "Chưa phân loại"), renderIndustrySection() theo đó ẨN section — ĐANG THAY ĐỔI visibility
+      // mỗi lần chuyển qua/lại từ tab Bài đọc/Hội thoại (có lĩnh vực thật, section HIỆN), đúng
+      // là nguyên nhân "nhảy" chiều cao). Loại "analysis" khỏi nhánh gọi renderIndustrySection
+      // (giống "Bài viết" — lĩnh vực không áp dụng cho 2 tab này) VÀ ẩn cứng section khi vào tab
+      // Phân tích, không để nó giữ trạng thái CŨ (hiện/ẩn) sót lại từ tab trước đó.
+      if (mode === "library" && state.contentType !== "analysis") {
+        renderIndustrySection(lessons);
+      } else if (mode === "library") {
+        const section = mount.querySelector("#industry-section");
+        if (section) section.hidden = true;
+      }
       if (state.level !== "all") {
         lessons = lessons.filter((l) => l.level === state.level);
       }
