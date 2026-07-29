@@ -1,31 +1,37 @@
-// api/_generate/audio.js — action "get_lesson_audio": âm thanh chất lượng cao TRẢ PHÍ cho bài
-// đọc/hội thoại CÓ LĨNH VỰC trong Thư viện AI (2026-07-29, xem supabase/030_lesson_audio.sql
-// cho toàn bộ bối cảnh quyết định phạm vi). SINH LƯỜI đúng 1 lần/câu — bấm Phát lần đầu cho 1
-// câu thì tốn vài giây gọi generateSpeech() + upload Storage, LƯU VĨNH VIỄN vào
-// lessons.audio_urls[item_index]; mọi lượt phát SAU (kể cả người khác nếu bài dùng chung, hoặc
-// chính người này mở lại bài) đọc thẳng URL đã lưu, KHÔNG gọi AI lại — cùng triết lý cache-1-lần
-// đã dùng cho word_lookup (xem app/js/views/lesson.js::prefetchAllLessonWords, cùng ngày).
+// api/_generate/audio.js — action "generate_lesson_full_audio": âm thanh chất lượng cao TRẢ
+// PHÍ cho bài đọc/hội thoại CÓ LĨNH VỰC trong Thư viện AI (xem supabase/030_lesson_audio.sql +
+// 031_lesson_full_audio.sql cho toàn bộ bối cảnh quyết định phạm vi).
+//
+// SỬA LẠI TOÀN BỘ KIẾN TRÚC (2026-07-30, Minh: "audio luôn bị khựng khi đọc câu mới" — bản cũ
+// sinh/phát TỪNG CÂU MỘT, 1 <audio> element/1 request/câu, dù đã có look-ahead prefetch vẫn
+// khựng vì mỗi câu là 1 network round-trip riêng). Xác nhận kỹ thuật TRƯỚC KHI code (Minh yêu
+// cầu câu trả lời dứt khoát CÓ/KHÔNG): generateSpeech() (aiProvider.js) luôn gọi CÙNG 1
+// model/encoder OpenAI (gpt-4o-mini-tts, response_format mp3) cho MỌI đoạn — nối buffer thô
+// (Buffer.concat, KHÔNG cần ffmpeg/binary ngoài) cho kết quả phát liền mạch, đủ an toàn vì mọi
+// đoạn ra từ cùng 1 encoder. Sinh xong 1 lần, ghép thành ĐÚNG 1 FILE, lưu vĩnh viễn vào
+// lessons.audio_full_url — mọi lượt phát SAU (kể cả người khác nếu bài dùng chung) đọc thẳng
+// URL đã lưu, KHÔNG gọi AI lại, cùng triết lý cache-1-lần đã dùng cho word_lookup.
 import { generateSpeech } from "../_shared/aiProvider.js";
 import { SUPABASE_URL } from "./_shared.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = "lesson-audio";
+// Sinh song song có giới hạn — mỗi đoạn là 1 lượt gọi OpenAI TTS thật (~1-4s cho câu ngắn/vừa),
+// cần đủ nhanh để không chạm trần maxDuration=60s của Vercel (api/chat.js) ngay cả với bài dài
+// (B2/C1 nhiều lượt thoại) — 4 song song đã đủ dư thời gian với độ dài bài hiện tại (xem
+// LEVEL_LENGTH_TABLE/DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL trong lesson.js, tối đa ~15-20 đơn vị).
+const GENERATION_CONCURRENCY = 4;
 
 // "voice" OpenAI TTS — 2 giọng trung tính rõ nam/nữ, KHÔNG cần khớp chính xác nhân vật (bài học
 // đã có genderHint riêng cho Web Speech fallback, ở đây chỉ cần MỘT giọng nghe tự nhiên, khác
 // nam/nữ đủ để phân biệt người nói trong hội thoại).
 // ĐỔI GIỌNG (2026-07-29, Minh phản hồi nghe thật: "giọng nam quá tệ, giọng nữ là giọng nam
-// cao" — onyx/shimmer không đạt): chuyển sang echo (nam, được đánh giá tự nhiên/ấm hơn onyx
-// vốn khá đều đều/thiếu sức sống cho hội thoại) và nova (nữ, giọng phổ biến nhất trong các
-// voice OpenAI TTS cho cảm giác tự nhiên, rõ ràng là giọng nữ — khác hẳn shimmer, giọng nhẹ dễ
-// bị nghe lẫn). CHƯA nghe thử lại bằng tai thật (không nghe được audio trong sandbox) — cần
-// Minh xác nhận trên bài thật sau khi deploy, đổi tiếp nếu vẫn chưa ổn.
+// cao" — onyx/shimmer không đạt): echo (nam)/nova (nữ).
 function pickOpenAIVoice(genderHint) {
   return genderHint === "female" ? "nova" : "echo";
 }
 
-async function uploadAudio(path, audioBase64, contentType) {
-  const buffer = Buffer.from(audioBase64, "base64");
+async function uploadAudio(path, buffer, contentType) {
   const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
     method: "POST",
     headers: {
@@ -43,20 +49,39 @@ async function uploadAudio(path, audioBase64, contentType) {
   return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
 }
 
-export async function get_lesson_audio(data, ctx) {
+// Sinh song song có giới hạn, GIỮ ĐÚNG THỨ TỰ kết quả (mảng "results" ghi theo index gốc, KHÔNG
+// theo thứ tự hoàn thành) — bắt buộc để ghép buffer đúng trình tự câu trong bài.
+async function generateAllSegments(texts, voices) {
+  const results = new Array(texts.length);
+  let nextIndex = 0;
+  let firstError = null;
+  async function worker() {
+    while (nextIndex < texts.length) {
+      const i = nextIndex++;
+      const res = await generateSpeech({ text: texts[i], voice: voices[i] });
+      if (!res.ok) {
+        if (!firstError) firstError = res.error;
+        continue;
+      }
+      results[i] = res;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(GENERATION_CONCURRENCY, texts.length) }, () => worker()));
+  if (firstError) return { ok: false, error: firstError };
+  return { ok: true, results };
+}
+
+export async function generate_lesson_full_audio(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const lessonId = data.lesson_id;
-  const itemIndex = Number(data.item_index);
-  if (!lessonId || !Number.isInteger(itemIndex) || itemIndex < 0) {
-    return { error: "Thiếu 'lesson_id' hoặc 'item_index' không hợp lệ.", status: 400 };
-  }
+  if (!lessonId) return { error: "Thiếu 'lesson_id'.", status: 400 };
 
   const selectRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}&select=content,industry,source,audio_urls`,
+    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}&select=content,industry,source,audio_full_url`,
     { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
   );
   if (!selectRes.ok) {
-    console.error("get_lesson_audio select error:", selectRes.status, await selectRes.text().catch(() => ""));
+    console.error("generate_lesson_full_audio select error:", selectRes.status, await selectRes.text().catch(() => ""));
     return { error: "Không tải được bài học.", status: 502 };
   }
   const rows = await selectRes.json();
@@ -70,23 +95,30 @@ export async function get_lesson_audio(data, ctx) {
     return { content: JSON.stringify({ eligible: false, url: null }) };
   }
 
+  if (lesson.audio_full_url) {
+    return { content: JSON.stringify({ eligible: true, url: lesson.audio_full_url }) };
+  }
+
   const content = Array.isArray(lesson.content) ? lesson.content : [];
-  const item = content[itemIndex];
-  if (!item?.text) return { error: "Không tìm thấy câu/đoạn này trong bài.", status: 404 };
+  const texts = content.map((item) => item?.text || "").filter((t) => t.trim());
+  if (!texts.length) return { error: "Bài học không có nội dung để đọc.", status: 400 };
 
-  const audioUrls = Array.isArray(lesson.audio_urls) ? [...lesson.audio_urls] : [];
-  const cached = audioUrls[itemIndex];
-  if (cached) return { content: JSON.stringify({ eligible: true, url: cached }) };
+  const genderHints = Array.isArray(data.gender_hints) ? data.gender_hints : [];
+  const voices = texts.map((_, i) => pickOpenAIVoice(genderHints[i]));
 
-  const speechRes = await generateSpeech({ text: item.text, voice: pickOpenAIVoice(data.gender_hint) });
-  if (!speechRes.ok) return { error: speechRes.error || "Không tạo được audio.", status: speechRes.status || 502 };
+  const genResult = await generateAllSegments(texts, voices);
+  if (!genResult.ok) return { error: genResult.error || "Không tạo được audio.", status: 502 };
 
-  const ext = (speechRes.contentType || "").includes("wav") ? "wav" : "mp3";
-  const url = await uploadAudio(`${lessonId}/${itemIndex}.${ext}`, speechRes.audioBase64, speechRes.contentType);
+  // Nối buffer thô THEO ĐÚNG THỨ TỰ — an toàn vì mọi đoạn cùng 1 model/encoder (xem ghi chú đầu
+  // file, đã xác nhận kỹ thuật trước khi code, KHÔNG cần ffmpeg).
+  const buffers = genResult.results.map((r) => Buffer.from(r.audioBase64, "base64"));
+  const combined = Buffer.concat(buffers);
+  const contentType = genResult.results[0]?.contentType || "audio/mpeg";
+  const ext = contentType.includes("wav") ? "wav" : "mp3";
+
+  const url = await uploadAudio(`${lessonId}/full.${ext}`, combined, contentType);
   if (!url) return { error: "Không lưu được audio.", status: 502 };
 
-  while (audioUrls.length <= itemIndex) audioUrls.push(null);
-  audioUrls[itemIndex] = url;
   const patchRes = await fetch(
     `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}`,
     {
@@ -97,13 +129,13 @@ export async function get_lesson_audio(data, ctx) {
         "Content-Type": "application/json",
         Prefer: "return=minimal",
       },
-      body: JSON.stringify({ audio_urls: audioUrls }),
+      body: JSON.stringify({ audio_full_url: url }),
     }
   );
   if (!patchRes.ok) {
     // Lỗi lưu KHÔNG nên chặn lượt phát lần này — audio đã upload xong, trả URL luôn dùng được,
     // chỉ là lần SAU sẽ phải sinh lại (mất phần "tốn 1 lần" nhưng không hỏng trải nghiệm hiện tại).
-    console.error("get_lesson_audio PATCH error:", patchRes.status, await patchRes.text().catch(() => ""));
+    console.error("generate_lesson_full_audio PATCH error:", patchRes.status, await patchRes.text().catch(() => ""));
   }
   return { content: JSON.stringify({ eligible: true, url }) };
 }

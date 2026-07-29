@@ -62,45 +62,32 @@ export async function addLookedUpWord(lessonId, word, lookup, isNews) {
   }
 }
 
-// Âm thanh chất lượng cao trả phí (2026-07-29) — chỉ trả "eligible:true" cho bài đọc/hội thoại
-// CÓ lĩnh vực trong Thư viện AI (xem api/_generate/audio.js), các bài khác trả eligible:false
-// để caller tự rơi về Web Speech miễn phí, KHÔNG coi đây là lỗi cần hiện thông báo.
-export async function getLessonAudioUrl(lessonId, itemIndex, genderHint) {
-  return callAndParse("get_lesson_audio", { lesson_id: lessonId, item_index: itemIndex, gender_hint: genderHint || null });
+// Âm thanh chất lượng cao trả phí — chỉ trả "eligible:true" cho bài đọc/hội thoại CÓ lĩnh vực
+// trong Thư viện AI (xem api/_generate/audio.js), các bài khác trả eligible:false để caller tự
+// rơi về Web Speech miễn phí, KHÔNG coi đây là lỗi cần hiện thông báo.
+// SỬA LẠI TOÀN BỘ KIẾN TRÚC (2026-07-30, Minh: "audio luôn bị khựng khi đọc câu mới") — 1 lượt
+// gọi DUY NHẤT trả về ĐÚNG 1 URL (server tự sinh + ghép mọi câu thành 1 file, xem
+// generate_lesson_full_audio trong api/_generate/audio.js), thay hẳn vòng lặp gọi từng câu cũ.
+export async function getLessonFullAudioUrl(lessonId, genderHints) {
+  return callAndParse("generate_lesson_full_audio", { lesson_id: lessonId, gender_hints: genderHints || [] });
 }
 
-// SỬA 2026-07-29 (Minh phản hồi thật sau khi dùng thử "sinh lười lúc bấm Phát": "làm ảnh hưởng
-// đến trải nghiệm... đảm bảo khi người dùng nhấn nút là nghe được ngay" — KHÔNG chấp nhận bản
-// sinh-lúc-bấm-nút) — giờ sinh NGAY sau khi tạo bài xong, CÙNG THỜI ĐIỂM với ảnh bìa (xem
-// fetchAndSaveLessonCover bên dưới), fire-and-forget, KHÔNG chặn điều hướng sang màn xem bài.
-// Đến lúc người dùng thật sự mở bài + bấm Phát, audio nhiều khả năng ĐÃ sinh xong sẵn (mỗi câu
-// mất vài giây, có vài giây đến vài phút từ lúc tạo bài tới lúc thật sự bấm Phát tuỳ người
-// dùng). Cơ chế sinh-khi-cần trong tts.js/views/lesson.js VẪN giữ nguyên làm LƯỚI ĐỠ (nếu bấm
-// Phát quá nhanh trước khi kịp sinh xong ở đây) — không xoá, không phải 2 cơ chế xung đột nhau,
-// cả 2 đều gọi ĐÚNG 1 action get_lesson_audio, ai gọi trước thì cache cho người gọi sau.
-// CHỈ áp dụng bài đọc/hội thoại CÓ lĩnh vực (source='ai_generated' && industry) — khớp đúng
-// phạm vi đã chốt, backend (api/_generate/audio.js) tự kiểm tra lại, đây chỉ là lớp gọi sớm.
-// Giới hạn 2 lượt song song (audio nặng/đắt hơn hẳn tra từ — khác 8 lượt song song của
-// prefetchAllLessonWords trong views/lesson.js).
+// Sinh NGAY sau khi tạo bài xong, CÙNG THỜI ĐIỂM với ảnh bìa (xem fetchAndSaveLessonCover bên
+// dưới), fire-and-forget, KHÔNG chặn điều hướng sang màn xem bài (Minh: "đảm bảo khi người dùng
+// nhấn nút là nghe được ngay" — sinh trước khi cần tới, không sinh-lúc-bấm-nút). views/lesson.js
+// TỰ GỌI LẠI đúng action này lúc mount (idempotent — đã có audio_full_url thì trả thẳng URL đã
+// lưu, không sinh lại) làm lưới đỡ nếu người dùng mở bài quá nhanh trước khi lượt gọi ở đây kịp
+// xong. CHỈ áp dụng bài đọc/hội thoại CÓ lĩnh vực (source='ai_generated' && industry) — khớp
+// đúng phạm vi đã chốt, backend tự kiểm tra lại, đây chỉ là lớp gọi sớm.
 export function prefetchLessonAudio(lesson) {
   if (lesson?.source !== "ai_generated" || !lesson?.industry) return;
   const content = Array.isArray(lesson.content) ? lesson.content : [];
   if (!content.length) return;
   const genderHints = computeGenderHints(content);
-  const CONCURRENCY = 2;
-  let nextIndex = 0;
-  async function worker() {
-    while (nextIndex < content.length) {
-      const i = nextIndex++;
-      try {
-        await getLessonAudioUrl(lesson.id, i, genderHints[i]);
-      } catch {
-        // Im lặng — 1 câu lỗi không nên chặn các câu còn lại; người dùng vẫn nghe được (rơi về
-        // Web Speech) nếu câu đó thật sự chưa có audio khi họ mở bài.
-      }
-    }
-  }
-  Promise.all(Array.from({ length: Math.min(CONCURRENCY, content.length) }, () => worker())).catch(() => {});
+  getLessonFullAudioUrl(lesson.id, genderHints).catch(() => {
+    // Im lặng — lỗi ở lượt sinh SỚM này không nên chặn điều hướng; views/lesson.js sẽ tự thử
+    // lại lúc mở bài, và nếu vẫn lỗi thì rơi về Web Speech miễn phí, không phải lỗi hiển thị.
+  });
 }
 
 // Tự động lấy ảnh bìa NGAY sau khi tạo bài xong, không cần người học bấm gì — "lấy 1 lần và

@@ -3,7 +3,7 @@
 // không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
 import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
-import { addLookedUpWord, getLessonAudioUrl } from "../lessonApi.js";
+import { addLookedUpWord, getLessonFullAudioUrl } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported, computeGenderHints } from "../tts.js";
@@ -67,48 +67,25 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   const ttsSupported = isTTSSupported();
   const genderHints = computeGenderHints(lesson.content); // 1 giọng cố định/nhân vật suốt bài
 
-  // Âm thanh trả phí (2026-07-29) — CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư viện AI, xem
+  // Âm thanh trả phí — CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư viện AI, xem
   // api/_generate/audio.js. "audioEligible" chặn SỚM ở client (không hỏi server cho bài rõ
   // ràng không đủ điều kiện, đỡ 1 lượt round-trip vô ích) — server VẪN tự kiểm tra lại y hệt
   // (phòng hờ dữ liệu client cũ/sai), đây không phải lớp chặn duy nhất.
+  // SỬA LẠI TOÀN BỘ KIẾN TRÚC (2026-07-30, xem ghi chú đầu tts.js) — ĐÚNG 1 lượt gọi
+  // generate_lesson_full_audio, KHÔNG còn cache/dedup theo TỪNG CÂU nữa (server tự cache
+  // NGUYÊN CẢ FILE). lessonApi.js::prefetchLessonAudio() đã gọi action này NGAY lúc tạo bài
+  // (fire-and-forget) — ở đây gọi LẠI làm lưới đỡ (idempotent, server trả thẳng URL đã lưu nếu
+  // có) cho ca mở bài quá nhanh trước khi lượt gọi sớm kịp xong.
   const audioEligible = !isNews && lesson.source === "ai_generated" && !!lesson.industry;
-  // index -> URL (string) | null (đã hỏi xong, không có/lỗi -> rơi về Web Speech). CHƯA có key
-  // trong Map = CHƯA hỏi lần nào — khác "null" (đã hỏi, biết chắc không có).
-  const audioUrlByIndex = new Map();
-  const pendingAudioRequests = new Map(); // index -> Promise, chặn gọi trùng nếu chuyển đoạn dồn dập.
-
-  // SỬA 2026-07-29 (Minh: "audio luôn bị khựng khi đọc câu mới" — bản eager-prefetch lúc tạo
-  // bài chỉ CHẠY NỀN 2 luồng song song, không đảm bảo bắt kịp người dùng đọc nhanh/bài dài;
-  // lưới đỡ onNeedAudio() vẫn phải CHỜ đồng bộ giữa 2 câu nếu chưa kịp sinh — đó chính là chỗ
-  // khựng). Phân biệt RÕ "chưa hỏi bao giờ" (undefined, key chưa có trong Map) với "đã hỏi,
-  // biết chắc không có audio" (null) — trước đây gộp chung thành null, khiến tts.js không biết
-  // khi nào NÊN chủ động hỏi trước (prefetchNextAudio bên dưới) mà không hỏi lại vô ích những
-  // đoạn ĐÃ XÁC NHẬN không có audio.
-  function getCachedAudioUrl(index) {
-    return audioUrlByIndex.get(index); // undefined | null | string — xem ghi chú trên
-  }
-
-  // Gọi từ tts.js khi cần audio cho 1 đoạn CHƯA có cache — sinh lười ĐÚNG 1 LẦN/đoạn (server
-  // tự cache vĩnh viễn vào lessons.audio_urls, xem api/_generate/audio.js), dedup ở ĐÂY cho
-  // trường hợp người dùng bấm qua lại quá nhanh trước khi lượt gọi trước kịp xong.
-  async function onNeedAudio(index) {
-    if (pendingAudioRequests.has(index)) {
-      await pendingAudioRequests.get(index);
-      ttsPlayer.retryCurrentIfWaiting();
-      return;
-    }
-    const p = (async () => {
-      try {
-        const res = await getLessonAudioUrl(lesson.id, index, genderHints[index]);
-        audioUrlByIndex.set(index, res.ok && res.data.eligible && res.data.url ? res.data.url : null);
-      } catch {
-        audioUrlByIndex.set(index, null);
-      }
-    })();
-    pendingAudioRequests.set(index, p);
-    await p;
-    pendingAudioRequests.delete(index);
-    ttsPlayer.retryCurrentIfWaiting();
+  if (audioEligible) {
+    getLessonFullAudioUrl(lesson.id, genderHints)
+      .then((res) => {
+        if (res.ok && res.data.eligible && res.data.url) ttsPlayer.setFullAudioUrl(res.data.url);
+      })
+      .catch(() => {
+        // Im lặng — lỗi ở đây chỉ có nghĩa "chưa nâng cấp được lên audio thật", vẫn nghe được
+        // bằng Web Speech miễn phí ngay lập tức, không phải lỗi cần hiện thông báo.
+      });
   }
 
   // Player dùng CHUNG cho toàn bộ tab "Nội dung" — nạp 1 lần với TẤT CẢ đoạn/lượt thoại
@@ -242,8 +219,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       if (!ttsLoaded) {
         ttsPlayer.load(
           pages.map((p, i) => ({ text: p?.text || "", genderHint: genderHints[i] })),
-          Math.min(state.page, Math.max(0, pages.length - 1)),
-          { audioEligible, getAudioUrl: getCachedAudioUrl, onNeedAudio }
+          Math.min(state.page, Math.max(0, pages.length - 1))
         );
         ttsLoaded = true;
       }
@@ -513,14 +489,11 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     const playBtn = document.getElementById("audio-play");
     const speedBtn = document.getElementById("audio-speed");
     const volSlider = document.getElementById("audio-volume-slider");
-    // "loadingAudio" (âm thanh trả phí đang sinh/tải cho đoạn hiện tại, xem tts.js) -> spinner
-    // thay nút phát/tạm dừng, tránh người dùng tưởng bấm không ăn (bấm lại chỉ làm rối thêm).
+    // SỬA 2026-07-30 (ghép 1 file audio duy nhất, xem tts.js đầu file) — không còn trạng thái
+    // "đang chờ audio" nào nữa (URL đã sinh sẵn từ trước hoặc chưa có -> Web Speech phát ngay,
+    // cả 2 đều tức thời), bỏ hẳn spinner thay nút phát.
     if (playBtn) {
-      playBtn.innerHTML = s.loadingAudio
-        ? `<span class="spinner spinner-sm"></span>`
-        : s.playing
-        ? icon("pause", { size: 18, filled: true })
-        : icon("play", { size: 18, filled: true });
+      playBtn.innerHTML = s.playing ? icon("pause", { size: 18, filled: true }) : icon("play", { size: 18, filled: true });
     }
     if (speedBtn) speedBtn.textContent = `${s.rate}x`;
     if (volSlider) volSlider.value = String(s.volume);
