@@ -42,10 +42,7 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
-// TẠM NÂNG 100 -> 3000 (2026-07-29, Minh đang test thật cả ngày, chạm trần) — PHẢI HẠ LẠI 100
-// TRƯỚC KHI KẾT THÚC PHIÊN, xem ghi chú luật cứng "kiểm tra DAILY_LESSON_LIMIT/rate limit có
-// đang bị nâng tạm không" — đúng loại lỗi hay bị quên.
-const DAILY_LIMIT_PER_IP = 3000;
+const DAILY_LIMIT_PER_IP = 100;
 const MAX_TOKENS_CAP = 4000;
 
 // ====== ƯU TIÊN 0: bắt buộc danh tính hợp lệ (Mentor hoặc Student đã đăng nhập
