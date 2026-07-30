@@ -152,7 +152,7 @@ export async function generate_lesson_full_audio(data, ctx) {
   if (!lessonId) return { error: "Thiếu 'lesson_id'.", status: 400 };
 
   const selectRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}&select=content,industry,source,audio_full_url`,
+    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}&select=content,industry,source,audio_full_url,audio_segment_times`,
     { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
   );
   if (!selectRes.ok) {
@@ -171,7 +171,9 @@ export async function generate_lesson_full_audio(data, ctx) {
   }
 
   if (lesson.audio_full_url) {
-    return { content: JSON.stringify({ eligible: true, url: lesson.audio_full_url }) };
+    // "segmentTimes" có thể null cho bài đã sinh TRƯỚC cột audio_segment_times tồn tại (chưa
+    // regenerate) — client tự rơi về công thức ước lượng cũ cho riêng bài đó, xem tts.js.
+    return { content: JSON.stringify({ eligible: true, url: lesson.audio_full_url, segmentTimes: lesson.audio_segment_times || null }) };
   }
 
   // BUG THẬT (2026-07-30, Minh: "giọng nữ bị phát ra giọng nam") — bản cũ filter() TRỰC TIẾP
@@ -179,11 +181,13 @@ export async function generate_lesson_full_audio(data, ctx) {
   // trí gốc theo content) — 1 đoạn text rỗng bị filter ra sẽ làm LỆCH INDEX toàn bộ giọng của
   // MỌI đoạn phía sau nó (đoạn thứ N+1 vô tình dùng gender_hints[N], sai giọng dây chuyền).
   // Ghép text+hint THÀNH CẶP trước khi filter để không bao giờ lệch, bất kể filter bỏ đi bao
-  // nhiêu đoạn ở vị trí nào.
+  // nhiêu đoạn ở vị trí nào. "origIndex" giữ lại vị trí THẬT trong "content" gốc — cần để dựng
+  // "segmentTimes" bên dưới đúng theo chỉ số mà client (views/lesson.js/tts.js) dùng để tra
+  // (client luôn đánh index theo "lesson.content" gốc, không phải theo mảng đã lọc rỗng này).
   const content = Array.isArray(lesson.content) ? lesson.content : [];
   const rawGenderHints = Array.isArray(data.gender_hints) ? data.gender_hints : [];
   const paired = content
-    .map((item, i) => ({ text: item?.text || "", genderHint: rawGenderHints[i] }))
+    .map((item, i) => ({ origIndex: i, text: item?.text || "", genderHint: rawGenderHints[i] }))
     .filter((x) => x.text.trim());
   if (!paired.length) return { error: "Bài học không có nội dung để đọc.", status: 400 };
 
@@ -200,10 +204,26 @@ export async function generate_lesson_full_audio(data, ctx) {
   const parsedSegments = genResult.results.map((r) => parseWav(Buffer.from(r.audioBase64, "base64")));
   const fmt = parsedSegments[0].fmt;
   const gap = silenceBuffer(fmt, SILENCE_GAP_MS);
+  const gapSeconds = SILENCE_GAP_MS / 1000;
+
+  // Mốc thời gian THẬT của từng câu (mục 1+2+3+9, 2026-07-30) — tính được NGAY ở đây, không tốn
+  // thêm lượt AI nào: mỗi đoạn đã biết chính xác số byte PCM của nó (seg.data.length), chia cho
+  // byteRate (byte/giây, cùng fmt cho mọi đoạn) ra đúng số giây thật. Cộng dồn theo thứ tự +
+  // khoảng lặng đã chèn giữa 2 đoạn liền kề. Mảng "segmentTimes" CÙNG ĐỘ DÀI với "content" gốc
+  // (không phải "paired" đã lọc) — vị trí nào bị lọc bỏ (text rỗng) giữ nguyên null, để client
+  // tra thẳng bằng đúng index của "lesson.content"/"pages" mà không cần biết gì về việc lọc này.
+  const segmentTimes = new Array(content.length).fill(null);
   const pcmParts = [];
+  let cursor = 0;
   parsedSegments.forEach((seg, i) => {
+    const durationSeconds = seg.data.length / fmt.byteRate;
+    segmentTimes[paired[i].origIndex] = { start: cursor, end: cursor + durationSeconds };
     pcmParts.push(seg.data);
-    if (i < parsedSegments.length - 1) pcmParts.push(gap);
+    cursor += durationSeconds;
+    if (i < parsedSegments.length - 1) {
+      pcmParts.push(gap);
+      cursor += gapSeconds;
+    }
   });
   const combined = buildWav(fmt, Buffer.concat(pcmParts));
 
@@ -220,7 +240,7 @@ export async function generate_lesson_full_audio(data, ctx) {
         "Content-Type": "application/json",
         Prefer: "return=minimal",
       },
-      body: JSON.stringify({ audio_full_url: url }),
+      body: JSON.stringify({ audio_full_url: url, audio_segment_times: segmentTimes }),
     }
   );
   if (!patchRes.ok) {
@@ -228,5 +248,5 @@ export async function generate_lesson_full_audio(data, ctx) {
     // chỉ là lần SAU sẽ phải sinh lại (mất phần "tốn 1 lần" nhưng không hỏng trải nghiệm hiện tại).
     console.error("generate_lesson_full_audio PATCH error:", patchRes.status, await patchRes.text().catch(() => ""));
   }
-  return { content: JSON.stringify({ eligible: true, url }) };
+  return { content: JSON.stringify({ eligible: true, url, segmentTimes }) };
 }

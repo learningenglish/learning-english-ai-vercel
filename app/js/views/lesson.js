@@ -67,6 +67,22 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   const ttsSupported = isTTSSupported();
   const genderHints = computeGenderHints(lesson.content); // 1 giọng cố định/nhân vật suốt bài
 
+  // Gộp cặp lượt thoại (2026-07-30, mục 9 — Minh: "gộp mỗi CẶP hỏi-đáp vào chung 1 khung", yêu
+  // cầu lại từ Đợt 2). CHỈ áp dụng cho hội thoại (có "speaker") — bài đọc thường (không có
+  // speaker) giữ nguyên 1 đoạn/1 trang như trước, không có khái niệm "cặp". "pairIndexFor"/
+  // "pairStartIndex" quy đổi 2 chiều giữa chỉ số TRANG hiển thị (CẶP cho hội thoại, ĐOẠN cho bài
+  // đọc — chỉ dùng cục bộ trong renderContentTab() để tính phân trang/điều hướng) và chỉ số CÂU
+  // THẬT trong "lesson.content"/"ttsPlayer.items"/"state.page" (state.page LUÔN là chỉ số câu
+  // thật, KHÔNG đổi đơn vị — khớp completed_paragraphs đã lưu + progress_page dùng ở nơi khác,
+  // xem ghi chú tại chỗ gọi ttsPlayer.load()).
+  const isDialogueLesson = (lesson.content || []).some((it) => it?.speaker);
+  function pairIndexFor(itemIdx) {
+    return isDialogueLesson ? Math.floor(itemIdx / 2) : itemIdx;
+  }
+  function pairStartIndex(pageIdx) {
+    return isDialogueLesson ? pageIdx * 2 : pageIdx;
+  }
+
   // Âm thanh trả phí — CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư viện AI, xem
   // api/_generate/audio.js. "audioEligible" chặn SỚM ở client (không hỏi server cho bài rõ
   // ràng không đủ điều kiện, đỡ 1 lượt round-trip vô ích) — server VẪN tự kiểm tra lại y hệt
@@ -80,7 +96,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   if (audioEligible) {
     getLessonFullAudioUrl(lesson.id, genderHints)
       .then((res) => {
-        if (res.ok && res.data.eligible && res.data.url) ttsPlayer.setFullAudioUrl(res.data.url);
+        if (res.ok && res.data.eligible && res.data.url) ttsPlayer.setFullAudioUrl(res.data.url, res.data.segmentTimes);
       })
       .catch(() => {
         // Im lặng — lỗi ở đây chỉ có nghĩa "chưa nâng cấp được lên audio thật", vẫn nghe được
@@ -104,8 +120,10 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // (không phụ thuộc đang xem "Từng câu" hay "Tất cả"), để nút back/tua/lặp lại của thanh
   // audio có thể đi xuyên trang khi ở chế độ "Từng câu" mà không cần tải lại player.
   let ttsLoaded = false;
-  let lastSyncedPage = state.page;
   let renderContentBodyFn = null;
+  // Cập nhật CHỈ highlight câu đang đọc bên trong 1 khung cặp, KHÔNG render lại cả khung (mục 9)
+  // — gán lại mỗi lần renderContentBody() vẽ khung "Từng câu" mới, xem bên dưới.
+  let updateActiveTurnFn = null;
   // Thanh tiến trình (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s) — Web Speech API
   // không bắn sự kiện tiến trình liên tục trong lúc đọc (chỉ có onend/onstart cho MỖI utterance),
   // nên cần tự chạy 1 timer NHẸ để cập nhật thanh + nhãn thời gian mượt trong lúc đang phát;
@@ -125,11 +143,21 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     onStateChange: (s) => {
       updateAudioBarUI(s);
       ensureProgressTimer(s.playing);
-      if (!state.showAllContent && s.itemIndex !== lastSyncedPage) {
-        lastSyncedPage = s.itemIndex;
-        state.page = s.itemIndex;
-        saveProgress();
+      if (state.showAllContent || s.itemIndex === state.page) return;
+      // "state.page" LUÔN lưu chỉ số CÂU thật (khớp completed_paragraphs/progress_page dùng ở
+      // nơi khác, xem ghi chú ttsPlayer.load()) — chỉ khác NHAU giữa 2 lượt gọi ở đơn vị TRANG
+      // (pairIndexFor) mới quyết định có cần render lại cả khung hay không.
+      const pairChanged = pairIndexFor(s.itemIndex) !== pairIndexFor(state.page);
+      state.page = s.itemIndex;
+      saveProgress();
+      if (pairChanged || !updateActiveTurnFn) {
+        // Sang CẶP mới (hoặc sang đoạn mới, bài đọc thường) -> đổi khung, render lại toàn bộ.
         if (renderContentBodyFn) renderContentBodyFn();
+      } else {
+        // VẪN trong CÙNG 1 cặp (vd câu 1 -> câu 2 của cùng 1 lượt hỏi-đáp, mục 9 — Minh: "không
+        // chuyển card khi chuyển từ câu 1 sang câu 2 trong cùng 1 cặp") -> CHỈ đổi highlight bên
+        // trong khung đang hiện, không render lại (tránh giật/nhấp nháy vô ích).
+        updateActiveTurnFn(s.itemIndex);
       }
     },
   });
@@ -202,6 +230,9 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // ====== Tab Nội dung ======
   function renderContentTab(panel) {
     const pages = lesson.content || [];
+    // Tổng số "trang" hiển thị ở chế độ "Từng câu" — CẶP cho hội thoại (2 câu/trang, mục 9),
+    // ĐOẠN cho bài đọc thường (không đổi, 1 câu/trang như trước).
+    const totalPages = isDialogueLesson ? Math.max(1, Math.ceil(pages.length / 2)) : Math.max(1, pages.length);
     panel.innerHTML = `
       <div class="content-toolbar">
         <button type="button" class="icon-toggle-btn ${state.showAllContent ? "active" : ""}" id="toggle-all-btn" title="Xem tất cả">${icon("list", { size: 18 })}</button>
@@ -229,9 +260,14 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     if (ttsSupported) {
       wireAudioBar(panel);
       if (!ttsLoaded) {
+        // "state.page" LUÔN là chỉ số câu THẬT (khớp completed_paragraphs đã lưu/đọc lại +
+        // progress_page dùng ở thẻ "Bài đang đọc", xem lessonCard.js) — KHÔNG đổi đơn vị thành
+        // "cặp" dù hiển thị gộp cặp (mục 9), tránh làm sai % tiến độ ở nơi khác. Việc gộp cặp
+        // chỉ ảnh hưởng CÁCH HIỂN THỊ (renderContentBody/goToPage bên dưới), không ảnh hưởng
+        // đơn vị lưu trữ.
         ttsPlayer.load(
           pages.map((p, i) => ({ text: p?.text || "", genderHint: genderHints[i] })),
-          Math.min(state.page, Math.max(0, pages.length - 1))
+          Math.min(Math.max(0, state.page), Math.max(0, pages.length - 1))
         );
         ttsLoaded = true;
       }
@@ -243,9 +279,14 @@ export async function renderLessonDetail(mount, params, opts = {}) {
 
     function renderContentBody() {
       const body = panel.querySelector("#content-body");
-      const idx = Math.min(state.page, Math.max(0, pages.length - 1));
+      // "idx" = chỉ số CÂU thật (đơn vị lưu trữ, xem ghi chú ttsPlayer.load ở trên). "pageIdx" =
+      // chỉ số TRANG hiển thị (CẶP cho hội thoại, mục 9) — CHỈ dùng để tính toán phân trang/điều
+      // hướng, không lưu riêng.
+      const idx = Math.min(Math.max(0, state.page), Math.max(0, pages.length - 1));
+      const pageIdx = Math.min(pairIndexFor(idx), totalPages - 1);
 
       if (state.showAllContent) {
+        updateActiveTurnFn = null;
         body.innerHTML = `
           <div class="content-page">
             ${pages
@@ -263,25 +304,64 @@ export async function renderLessonDetail(mount, params, opts = {}) {
               .join("")}
           </div>
         `;
-      } else {
-        const item = pages[idx];
+      } else if (isDialogueLesson) {
+        // Cặp lượt thoại (mục 9) — 2 câu liên tiếp trong CÙNG 1 khung, mỗi câu đánh dấu
+        // "data-turn-idx" đúng chỉ số THẬT (để updateActiveTurnFn tô sáng đúng câu đang đọc mà
+        // không cần render lại cả khung khi chuyển từ câu 1 sang câu 2 của cùng cặp).
+        const start = pairStartIndex(pageIdx);
+        const turnIndices = [start, start + 1].filter((i) => i < pages.length);
+        const activeItemIdx = ttsSupported ? ttsPlayer.getState().itemIndex : idx;
         body.innerHTML = `
           <div class="content-page">
             <div class="content-nav">
-              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${idx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
-              <div class="content-progress muted">Trang ${idx + 1}/${pages.length}</div>
-              <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${idx === pages.length - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
+              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Cặp trước" ${pageIdx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
+              <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
+              <button type="button" class="content-nav-btn" id="content-next-btn" title="Cặp tiếp theo" ${pageIdx === totalPages - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
+            </div>
+            ${turnIndices
+              .map(
+                (i) => `
+              ${i > start ? '<div class="content-divider"></div>' : ""}
+              <div class="content-turn ${i === activeItemIdx ? "active-turn" : ""}" data-turn-idx="${i}">
+                <div class="content-item-header">
+                  <span class="speaker-name">${pages[i]?.speaker ? escapeHtml(pages[i].speaker) : ""}</span>
+                  ${contentActionsHtml(i)}
+                </div>
+                <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(pages[i]?.text || "", lesson.vocabulary || [])}</div>
+                ${state.showTranslation ? `<div class="content-translation">${escapeHtml(pages[i]?.translation || "")}</div>` : ""}
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+        body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(pageIdx - 1));
+        body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(pageIdx + 1));
+        updateActiveTurnFn = (itemIdx) => {
+          body.querySelectorAll("[data-turn-idx]").forEach((el) => {
+            el.classList.toggle("active-turn", Number(el.dataset.turnIdx) === itemIdx);
+          });
+        };
+      } else {
+        updateActiveTurnFn = null;
+        const item = pages[pageIdx];
+        body.innerHTML = `
+          <div class="content-page">
+            <div class="content-nav">
+              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${pageIdx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
+              <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
+              <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${pageIdx === totalPages - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
             </div>
             <div class="content-item-header">
               <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
-              ${contentActionsHtml(idx)}
+              ${contentActionsHtml(pageIdx)}
             </div>
-            <div class="content-text" data-item-idx="${idx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
+            <div class="content-text" data-item-idx="${pageIdx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
             ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
           </div>
         `;
-        body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(idx - 1));
-        body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(idx + 1));
+        body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(pageIdx - 1));
+        body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(pageIdx + 1));
       }
 
       body.querySelectorAll(".content-text").forEach((el) => {
@@ -294,7 +374,9 @@ export async function renderLessonDetail(mount, params, opts = {}) {
           const itemIdx = Number(btn.dataset.idx);
           const item = pages[itemIdx];
           if (btn.dataset.action === "speak") {
-            ttsPlayer.speakOnce(item?.text || "", genderHints[itemIdx]);
+            // 2026-07-30 (mục 1+2) — phát ĐÚNG đoạn audio thật đã cắt sẵn cho câu này (nếu bài
+            // đã có), KHÔNG còn luôn luôn Web Speech như trước — xem playSegment() trong tts.js.
+            ttsPlayer.playSegment(itemIdx);
           } else {
             showSentenceExplain(btn, item);
           }
@@ -302,18 +384,22 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       });
     }
 
-    // Chuyển câu thủ công (nút ‹/›), độc lập với việc trình duyệt có hỗ trợ đọc-to hay
-    // không. Có TTS -> đi qua ttsPlayer để thanh audio + trạng thái phát luôn khớp đúng
-    // đoạn đang xem (onStateChange ở trên tự cập nhật state.page + render lại). Không có
-    // TTS -> tự cập nhật state.page rồi render lại, không đụng gì tới ttsPlayer (gọi vào sẽ
-    // lỗi vì window.speechSynthesis không tồn tại).
+    // Chuyển trang thủ công (nút ‹/›) — "newIdx" là chỉ số TRANG (CẶP cho hội thoại, ĐOẠN cho
+    // bài đọc, xem totalPages/pairStartIndex ở trên), độc lập với việc trình duyệt có hỗ trợ
+    // đọc-to hay không. Có TTS -> đi qua ttsPlayer (nhảy tới CÂU ĐẦU của trang/cặp đích) để
+    // thanh audio + trạng thái phát luôn khớp đúng đoạn đang xem (onStateChange ở trên tự cập
+    // nhật state.page + render lại). Không có TTS -> tự cập nhật state.page rồi render lại,
+    // không đụng gì tới ttsPlayer (gọi vào sẽ lỗi vì window.speechSynthesis không tồn tại).
     function goToPage(newIdx) {
-      const clamped = Math.max(0, Math.min(pages.length - 1, newIdx));
-      if (clamped === state.page) return;
+      const clamped = Math.max(0, Math.min(totalPages - 1, newIdx));
+      // So sánh theo ĐƠN VỊ TRANG (pairIndexFor(state.page)), KHÔNG so trực tiếp với state.page
+      // — state.page giữ chỉ số CÂU thật (xem ghi chú ttsPlayer.load ở trên), khác đơn vị với
+      // "clamped" khi đang gộp cặp.
+      if (clamped === pairIndexFor(state.page)) return;
       if (ttsSupported) {
-        ttsPlayer.goTo(clamped);
+        ttsPlayer.goTo(pairStartIndex(clamped));
       } else {
-        state.page = clamped;
+        state.page = pairStartIndex(clamped);
         saveProgress();
         renderContentBody();
       }

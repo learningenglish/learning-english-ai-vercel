@@ -1567,6 +1567,19 @@ textarea:focus {
   opacity: 0.7;
 }
 
+/* Cặp lượt thoại gộp chung 1 khung (2026-07-30, mục 9) — mỗi lượt là 1 ".content-turn" bên
+   trong CÙNG ".content-page", "active-turn" đánh dấu câu ĐANG ĐỌC (viền trái nổi bật, KHÔNG
+   đổi cả khung/không render lại — xem updateActiveTurnFn trong views/lesson.js). */
+.content-turn {
+  border-left: 3px solid transparent;
+  padding-left: 10px;
+  margin-left: -13px;
+  transition: border-color 0.15s ease;
+}
+.content-turn.active-turn {
+  border-left-color: var(--purple);
+}
+
 .content-nav {
   display: flex;
   align-items: center;

@@ -148,6 +148,13 @@ export function createPlayer({ onStateChange } = {}) {
     // Speech, xem ghi chú đầu file) — thay hẳn "audioEligible"/"getAudioUrl"/"onNeedAudio"/
     // "loadingAudio" của kiến trúc từng câu cũ, không còn trạng thái "đang chờ audio" nào nữa.
     fullAudioUrl: null,
+    // Mốc giây THẬT của từng câu trong "fullAudioUrl" (2026-07-30, mục 1+2+3+9) — mảng CÙNG ĐỘ
+    // DÀI với "items", mỗi phần tử { start, end } tính bằng giây, null nếu câu đó không có audio
+    // (text rỗng, hoặc bài sinh TRƯỚC khi cột này tồn tại). null TOÀN BỘ -> mọi hàm bên dưới tự
+    // rơi về công thức ước lượng theo số từ/giây cũ (estimateSecondsForPosition/
+    // estimatePositionForSeconds), hành vi y hệt trước đây — có mốc thật thì LUÔN ưu tiên dùng vì
+    // chính xác tuyệt đối, không phụ thuộc tốc độ nói thật nhanh/chậm không đều.
+    segmentTimes: null,
   };
   // <audio> DUY NHẤT cho cả phiên khi có fullAudioUrl — KHÔNG tạo lại mỗi lần chuyển câu (khác
   // hẳn bản cũ tạo 1 Audio/câu), giữ SỐNG xuyên suốt để playPause()/setRate()/setVolume() điều
@@ -159,6 +166,20 @@ export function createPlayer({ onStateChange } = {}) {
   // vd bấm "câu tiếp" lúc đang tạm dừng) mà audio CHƯA seek theo -> playPause() phải gọi lại
   // speakCurrent() (seek lại) thay vì chỉ .play() tiếp tại vị trí cũ.
   let fullAudioPositionSynced = true;
+  // <audio> RIÊNG cho icon loa đọc-1-câu (playSegment() bên dưới) — CỐ Ý KHÔNG dùng chung
+  // "fullAudioEl": icon loa là hành động "đọc 1 lần" độc lập với playlist đang phát/tạm dừng
+  // (giống hệt triết lý speakOnce() cũ), dùng chung sẽ làm currentTime/itemIndex của playlist
+  // chính bị xáo trộn theo lượt nghe lẻ này.
+  let segmentPreviewEl = null;
+
+  function stopSegmentPreview() {
+    if (!segmentPreviewEl) return;
+    segmentPreviewEl.pause();
+    segmentPreviewEl.ontimeupdate = null;
+    segmentPreviewEl.onended = null;
+    segmentPreviewEl.onerror = null;
+    segmentPreviewEl = null;
+  }
 
   function stopFullAudioEl() {
     if (!fullAudioEl) return;
@@ -213,18 +234,43 @@ export function createPlayer({ onStateChange } = {}) {
     return sum + Math.min(state.wordOffset, wordCount(state.items[state.itemIndex]?.text));
   }
 
-  // Quy đổi (itemIndex, wordOffset) -> giây ƯỚC LƯỢNG trong file audio ghép (không phụ thuộc
-  // state.rate — mốc thời gian trong FILE là cố định theo tốc độ nói TỰ NHIÊN lúc sinh, đổi tốc
-  // độ nghe chỉ đổi playbackRate lúc phát, không đổi vị trí mốc).
+  // Có mốc giây THẬT cho MỌI câu trong "items" hiện tại không — đúng độ dài, không rơi vào bài
+  // sinh trước khi cột audio_segment_times tồn tại (segmentTimes null hoàn toàn trong ca đó).
+  function hasRealSegmentTimes() {
+    return Array.isArray(state.segmentTimes) && state.segmentTimes.length === state.items.length;
+  }
+
+  // Quy đổi (itemIndex, wordOffset) -> giây trong file audio ghép. ƯU TIÊN mốc THẬT
+  // (state.segmentTimes, xem ghi chú ở "state" phía trên) — nội suy tuyến tính theo tỉ lệ số từ
+  // đã qua/tổng số từ của CHÍNH câu đó (không phải toàn bài) để vẫn hỗ trợ tua giữa câu (skip()).
+  // KHÔNG có mốc thật (bài cũ) -> rơi về công thức ƯỚC LƯỢNG cũ (số từ/giây trung bình toàn bài).
   function estimateSecondsForPosition(index, wordOffset) {
+    if (hasRealSegmentTimes() && state.segmentTimes[index]) {
+      const seg = state.segmentTimes[index];
+      if (wordOffset <= 0) return seg.start;
+      const words = wordCount(state.items[index]?.text);
+      const frac = words ? Math.min(1, wordOffset / words) : 0;
+      return seg.start + frac * (seg.end - seg.start);
+    }
     let words = 0;
     for (let i = 0; i < index; i++) words += wordCount(state.items[i]?.text);
     words += Math.max(0, wordOffset);
     return words / WORDS_PER_SECOND_AT_RATE_1;
   }
 
-  // Chiều ngược lại — dùng trong ontimeupdate để suy ra câu đang đọc từ currentTime thật.
+  // Chiều ngược lại — dùng trong ontimeupdate để suy ra câu đang đọc từ currentTime thật. ƯU
+  // TIÊN mốc THẬT: quét theo thứ tự, chọn câu đầu tiên mà "seconds" còn nằm trước điểm kết thúc
+  // của nó (khớp cả lúc đang ở trong khoảng lặng giữa 2 câu — coi như đã sang câu kế tiếp, sai
+  // số tối đa đúng bằng SILENCE_GAP_MS, không đáng kể). Câu bị lọc bỏ (rỗng, segmentTimes[i] =
+  // null) không bao giờ được chọn — không có audio nào ứng với nó để mà "đang đọc" cả.
   function estimatePositionForSeconds(seconds) {
+    if (hasRealSegmentTimes()) {
+      for (let i = 0; i < state.segmentTimes.length; i++) {
+        const seg = state.segmentTimes[i];
+        if (!seg) continue;
+        if (seconds < seg.end || i === state.segmentTimes.length - 1) return { index: i, wordOffset: 0 };
+      }
+    }
     let target = Math.max(0, seconds) * WORDS_PER_SECOND_AT_RATE_1;
     for (let i = 0; i < state.items.length; i++) {
       const words = wordCount(state.items[i]?.text);
@@ -271,6 +317,22 @@ export function createPlayer({ onStateChange } = {}) {
       state.fullAudioUrl = null;
       speakWithWebSpeech(state.items[index]);
     });
+  }
+
+  // Đọc-1-lần bằng Web Speech (lõi dùng chung cho speakOnce() công khai lẫn playSegment() bên
+  // dưới khi audio thật không có/không đủ điều kiện cho câu đó) — KHÔNG thuộc playlist đang
+  // phát, huỷ playlist hiện tại trước để tránh chồng 2 giọng đọc cùng lúc.
+  function speakOnceWithWebSpeech(text, genderHint) {
+    window.speechSynthesis.cancel();
+    state.playing = false;
+    notify();
+    if (!text) return;
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.rate = 1;
+    const voice = pickVoice(genderHint || null);
+    if (voice) utter.voice = voice;
+    window.speechSynthesis.speak(utter);
   }
 
   function speakCurrent() {
@@ -325,14 +387,18 @@ export function createPlayer({ onStateChange } = {}) {
       state.wordOffset = 0;
       state.playing = false;
       state.fullAudioUrl = opts.fullAudioUrl || null;
+      state.segmentTimes = opts.segmentTimes || null;
       notify();
     },
     // Gắn URL audio thật SAU KHI load() (bài đủ điều kiện nhưng lượt sinh nền chưa kịp xong lúc
     // mount — xem prefetchLessonAudioOnDemand trong views/lesson.js) — KHÔNG cắt ngang nếu đang
     // đọc dở bằng Web Speech, chỉ áp dụng từ lượt speakCurrent() KẾ TIẾP (điều hướng/replay).
-    setFullAudioUrl(url) {
+    // "segmentTimes" đi kèm CÙNG LƯỢT với url (cùng 1 response generate_lesson_full_audio) — xem
+    // ghi chú state.segmentTimes ở trên.
+    setFullAudioUrl(url, segmentTimes) {
       if (!url) return;
       state.fullAudioUrl = url;
+      state.segmentTimes = segmentTimes || null;
     },
     playPause() {
       if (state.playing) {
@@ -395,28 +461,70 @@ export function createPlayer({ onStateChange } = {}) {
       if (fullAudioEl) fullAudioEl.volume = volume;
       else if (state.playing) speakCurrent();
     },
-    // Đọc 1 lần (từ/cụm/1 câu lẻ trong tooltip hoặc icon loa riêng) — KHÔNG thuộc playlist
-    // đang phát, huỷ playlist hiện tại trước để tránh chồng 2 giọng đọc cùng lúc.
+    // Đọc 1 lần (từ/cụm lẻ trong tooltip tra từ) — KHÔNG có audio thật theo từng TỪ (chỉ có
+    // theo từng CÂU, xem playSegment() bên dưới), luôn Web Speech, đúng như trước giờ.
     speakOnce(text, genderHint) {
+      stopSegmentPreview();
+      speakOnceWithWebSpeech(text, genderHint);
+    },
+    // Icon loa đọc-1-CÂU trong tab Nội dung (2026-07-30, mục 1+2 — Minh: "audio từng câu vẫn ra
+    // giọng máy dù pipeline audio thật đã hoạt động"). "index" = đúng chỉ số trong "items" (đã
+    // load() cùng lesson.content ở views/lesson.js, khớp 1-1 với data-idx của icon loa). Có
+    // audio thật CHO ĐÚNG CÂU NÀY (fullAudioUrl + segmentTimes[index] không null) -> cắt PHÁT
+    // ĐÚNG đoạn đó từ CHÍNH file đã ghép (KHÔNG gọi AI lại, KHÔNG tạo file mới) bằng 1 <audio>
+    // RIÊNG (segmentPreviewEl, xem ghi chú khai báo) để không đụng tới playlist chính đang
+    // phát/tạm dừng. KHÔNG có (bài chưa nâng cấp lên audio thật, hoặc câu đó không có mốc thời
+    // gian) -> rơi về Web Speech y hệt trước đây, không phải lỗi.
+    playSegment(index) {
       window.speechSynthesis.cancel();
+      stopSegmentPreview();
+      const item = state.items[index];
+      const seg = hasRealSegmentTimes() ? state.segmentTimes[index] : null;
+      if (!state.fullAudioUrl || !seg) {
+        speakOnceWithWebSpeech(item?.text || "", item?.genderHint);
+        return;
+      }
       state.playing = false;
       notify();
-      if (!text) return;
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = "en-US";
-      utter.rate = 1;
-      const voice = pickVoice(genderHint || null);
-      if (voice) utter.voice = voice;
-      window.speechSynthesis.speak(utter);
+      const el = new Audio(state.fullAudioUrl);
+      segmentPreviewEl = el;
+      const onFail = () => {
+        stopSegmentPreview();
+        speakOnceWithWebSpeech(item?.text || "", item?.genderHint);
+      };
+      el.ontimeupdate = () => {
+        if (el.currentTime >= seg.end) stopSegmentPreview();
+      };
+      el.onended = () => stopSegmentPreview();
+      el.onerror = onFail;
+      // Đặt "currentTime" TRONG "loadedmetadata" (không phải ngay sau new Audio()) — 1 số
+      // trình duyệt (đặc biệt Safari/iOS, đối tượng dùng chính của app) bỏ qua/reset seek đặt
+      // trước khi biết duration thật của file.
+      el.addEventListener(
+        "loadedmetadata",
+        () => {
+          el.currentTime = seg.start;
+          el.play().catch(onFail);
+        },
+        { once: true }
+      );
     },
     getState() {
       return { ...state };
     },
-    // Thanh thời gian (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s) — "elapsedSeconds"/
-    // "totalSeconds" là ƯỚC LƯỢNG theo số từ ÷ tốc độ đọc trung bình (như skip() ở trên, KHÔNG
-    // phải thời gian audio thật — Web Speech API không cho biết), đủ để vẽ 1 thanh tiến trình +
-    // nhãn mm:ss hợp lý, KHÔNG chính xác tuyệt đối.
+    // Thanh thời gian (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s). ĐANG phát audio
+    // thật (fullAudioEl sống, đã biết duration thật) -> đọc THẲNG currentTime/duration thật của
+    // <audio> (2026-07-30, mục 3 — chính xác tuyệt đối, không phụ thuộc tốc độ nói trung bình).
+    // KHÔNG có audio thật (Web Speech) -> vẫn ƯỚC LƯỢNG theo số từ ÷ tốc độ đọc trung bình như
+    // trước (Web Speech API không có khái niệm duration thật).
     getProgress() {
+      if (fullAudioEl && Number.isFinite(fullAudioEl.duration) && fullAudioEl.duration > 0) {
+        return {
+          fraction: Math.min(1, fullAudioEl.currentTime / fullAudioEl.duration),
+          elapsedSeconds: fullAudioEl.currentTime,
+          totalSeconds: fullAudioEl.duration,
+        };
+      }
       const total = totalWords();
       const elapsed = wordsElapsed();
       const wordsPerSecond = WORDS_PER_SECOND_AT_RATE_1 * state.rate;
@@ -443,6 +551,7 @@ export function createPlayer({ onStateChange } = {}) {
     stop() {
       window.speechSynthesis.cancel();
       stopFullAudioEl();
+      stopSegmentPreview();
       state.playing = false;
       notify();
     },
