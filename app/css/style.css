@@ -781,6 +781,11 @@ textarea:focus {
    người dùng chê "mờ kiểu nghiệp dư" vì không ăn nhập gì với chữ). Nay: mờ + tối CHỈ đúng dải
    dưới cùng nơi chữ đè lên, ảnh phía trên vẫn SẮC NÉT hoàn toàn — giống cách Netflix/Prime
    Video làm caption bar cho poster, chuyên nghiệp hơn hẳn 1 vệt mờ vô nghĩa giữa ảnh. */
+/* SỬA 2026-07-30 (mục 5 — Minh: "hiệu ứng mờ ảnh bìa quá thô, như cắt cứng"): "backdrop-filter:
+   blur()" là cường độ CỐ ĐỊNH trong toàn vùng — dù lớp TỐI (background gradient) đã mờ dần mượt,
+   ranh giới trên của vùng blur vẫn là 1 đường cắt cứng (ảnh sắc nét đột ngột chuyển sang mờ).
+   Thêm "mask-image" cùng hướng mờ dần (trong suốt ở đỉnh -> đặc ở thân) khiến CHÍNH lớp blur này
+   cũng mờ dần theo (trộn dần ảnh gốc sắc nét với bản đã blur+tối), không còn đường cắt. */
 .continue-card-overlay {
   position: absolute;
   left: 0;
@@ -791,6 +796,8 @@ textarea:focus {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 35%, rgba(0, 0, 0, 0.8) 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, black 45%, black 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 45%, black 100%);
 }
 
 /* ".fav-btn.continue-card-fav" (2 class) CỐ Ý thay vì chỉ ".continue-card-fav" — selector
@@ -909,6 +916,7 @@ textarea:focus {
   z-index: 0;
 }
 
+/* Cùng sửa mờ-dần-thật như .continue-card-overlay ở trên (mục 5) — xem ghi chú tại đó. */
 .industry-card-overlay {
   position: absolute;
   left: 0;
@@ -919,6 +927,8 @@ textarea:focus {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 35%, rgba(0, 0, 0, 0.8) 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, black 45%, black 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 45%, black 100%);
 }
 
 /* "Đã dừng" (2026-07-28) — lĩnh vực đã archived qua "Tạo lộ trình mới", KHÔNG ẩn/xoá gì, chỉ
@@ -1178,7 +1188,14 @@ textarea:focus {
 .level-count-chip-badge[data-level="B2"] { background: #8b5cf6; }
 .level-count-chip-badge[data-level="C1"] { background: #ef4444; }
 
+/* SỬA 2026-07-30 (mục 8 — Minh: "chip Tất cả đổi độ rộng theo số đếm"): ".level-count-chip-badge"
+   (số theo TỪNG level, vd "A1") đã có min-width sẵn, nhưng số ở chip "Tất cả" dùng riêng span
+   này (KHÔNG kèm badge tròn) lại không có — cả chip đổi rộng/hẹp theo 1 hay 2 chữ số. "min-width"
+   + "inline-block" + canh giữa để số 1-2 chữ số không làm đổi độ rộng cả chip. */
 .level-count-chip-num {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
   font-weight: 800;
 }
 
@@ -1280,6 +1297,24 @@ textarea:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Khung "xương" thay "Đang tải..." (2026-07-30, mục 4) — xem skeletonListHtml() trong
+   views/lessons.js. "cursor: default" đè lại .lesson-card (không phải thẻ bấm được thật). */
+.lesson-card-skeleton {
+  cursor: default;
+}
+.skeleton-line {
+  border-radius: 6px;
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--surface-soft) 25%, var(--border) 50%, var(--surface-soft) 75%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer-move 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer-move {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
 }
 
 /* KHÔNG còn nền tròn trắng phía sau (yêu cầu người dùng) — chỉ icon trơn, dùng drop-shadow

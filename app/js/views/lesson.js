@@ -3,7 +3,7 @@
 // không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
 import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
-import { addLookedUpWord, getLessonFullAudioUrl } from "../lessonApi.js";
+import { addLookedUpWord, getLessonFullAudioUrl, fetchAndSaveLessonCover } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported, computeGenderHints } from "../tts.js";
@@ -86,6 +86,18 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         // Im lặng — lỗi ở đây chỉ có nghĩa "chưa nâng cấp được lên audio thật", vẫn nghe được
         // bằng Web Speech miễn phí ngay lập tức, không phải lỗi cần hiện thông báo.
       });
+  }
+
+  // Ảnh bìa còn thiếu -> thử lại NGAY LÚC MỞ BÀI (2026-07-30, mục 7 — Minh: "một số bài có
+  // ảnh, một số không"). fetchAndSaveLessonCover() vốn chỉ gọi ĐÚNG 1 LẦN lúc tạo bài
+  // (fire-and-forget) — thất bại thoáng qua (mạng chập chờn/không tìm được ảnh lúc đó) thì
+  // KHÔNG có cơ chế thử lại nào, và bài tạo TRƯỚC khi tính năng này tồn tại thì chưa từng được
+  // gọi lần nào cả. Gọi lại ở đây (cũng fire-and-forget, không chặn hiển thị bài) mỗi lần mở 1
+  // bài chưa có ảnh — cùng nguyên tắc idempotent như getLessonFullAudioUrl() ở trên: có ảnh rồi
+  // thì hàm đó tự thoát sớm (title rỗng/đã có ảnh), gọi thêm không tốn kém gì. Chỉ áp dụng bài
+  // cá nhân (không phải Tin tức — news.js tự lo ảnh riêng lúc sinh tin).
+  if (!isNews && !lesson.cover_image_url) {
+    fetchAndSaveLessonCover(lesson).catch(() => {});
   }
 
   // Player dùng CHUNG cho toàn bộ tab "Nội dung" — nạp 1 lần với TẤT CẢ đoạn/lượt thoại

@@ -44,6 +44,23 @@ const QUICK_ACTIONS = [
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
+// Khung "xương" (skeleton) thay cho dòng chữ "Đang tải..." (2026-07-30, mục 4 — Minh: "bấm vào
+// Thư viện AI bị nhảy giao diện", render 2 lần từ khung rỗng sang danh sách đầy). Cùng HÌNH DẠNG
+// .lesson-card (ảnh bìa + 3 dòng chữ) nên khi dữ liệu về, bố cục không đổi đột ngột — chỉ đổi từ
+// "xám nhấp nháy" sang nội dung thật, không co/giãn chiều cao khung chứa.
+function skeletonListHtml(count = 3) {
+  return Array.from({ length: count }, () => `
+    <div class="lesson-card lesson-card-skeleton">
+      <div class="lesson-card-cover skeleton-shimmer"></div>
+      <div class="lesson-card-body">
+        <div class="skeleton-line skeleton-shimmer" style="width:70%;height:14px;margin-bottom:8px"></div>
+        <div class="skeleton-line skeleton-shimmer" style="width:45%;height:11px;margin-bottom:8px"></div>
+        <div class="skeleton-line skeleton-shimmer" style="width:30%;height:11px"></div>
+      </div>
+    </div>
+  `).join("");
+}
+
 export function renderLessons(mount, params) {
   const mode = params?.[0] === "favorite" || params?.[0] === "library" ? params[0] : "main";
   const state = {
@@ -341,7 +358,7 @@ export function renderLessons(mount, params) {
 
   async function renderList() {
     const listEl = mount.querySelector("#lessons-list");
-    listEl.innerHTML = `<p class="muted">Đang tải...</p>`;
+    listEl.innerHTML = skeletonListHtml();
     // #industry-section KHÔNG còn đụng gì ở đây nữa (2026-07-30, Minh: "giữ cố định các card
     // lĩnh vực, 4 tab") — tự tải/tự quyết định hiện-ẩn ĐÚNG 1 LẦN lúc mount, xem
     // loadIndustrySection() phía trên, hoàn toàn tách khỏi renderList()/đổi tab.
