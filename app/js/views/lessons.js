@@ -44,6 +44,16 @@ const QUICK_ACTIONS = [
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
+// Cache TẠM sống suốt phiên SPA (module-level, mất khi F5 thật) — 2026-07-30, Minh: "chuyển
+// qua lại giữa các mục vẫn thấy khung xương rồi mới ra nội dung thật, đó cũng là 1 kiểu giật
+// giao diện". Trước đây renderList() luôn vẽ khung xương RỒI MỚI gọi API mỗi lần chạy (kể cả
+// quay lại ĐÚNG tab vừa xem giây trước) — giờ nhớ lại danh sách THẬT gần nhất theo từng tổ hợp
+// (mode + loại nội dung), quay lại đúng tổ hợp đó trong CÙNG phiên thì hiện THẲNG dữ liệu cũ
+// NGAY LẬP TỨC (không qua khung xương), rồi âm thầm tải lại ở nền — CHỈ vẽ lại nếu dữ liệu THẬT
+// SỰ khác (so sánh JSON, xem renderList()) để không tự gây giật ngược lại chính nó khi dữ liệu
+// không đổi. Cùng triết lý cache-1-lần đã dùng cho streak/tier ở header.js.
+const listResultCache = new Map();
+
 // Tách riêng để TÁI SỬ DỤNG (2026-07-30, mục B5 — Minh: "thêm 4 icon lối tắt vào đầu trang Thư
 // viện AI, đồng bộ với Phổ biến") — trước đây khối này chỉ tồn tại NGAY TRONG template của mode
 // "main", giờ gọi lại y nguyên cho cả "main" lẫn "library" (KHÔNG viết lại logic click/marquee).
@@ -371,9 +381,55 @@ export function renderLessons(mount, params) {
     section.hidden = false;
   }
 
+  // Vẽ danh sách THẬT từ "lessonsRaw" (chưa lọc level/lĩnh vực/tìm kiếm — lọc lại đây, đọc
+  // state MỚI NHẤT mỗi lần gọi) vào "listEl" — tách khỏi renderList() để dùng lại được cho cả
+  // đường "hiện cache ngay" lẫn đường "dữ liệu mới tải xong", xem renderList() bên dưới.
+  function renderLessonsInto(listEl, lessonsRaw) {
+    let lessons = lessonsRaw;
+    // Yêu thích/Thư viện AI: hàng chip Level+số bài TÍNH TRÊN "lessons" TRƯỚC khi lọc theo
+    // level (nếu tính sau thì bấm 1 level là các level khác biến mất luôn, không còn số để
+    // bấm chuyển) — tab Bài đọc/Hội thoại vẫn ảnh hưởng số liệu vì đã lọc contentType từ trước.
+    if (mode !== "main") renderLevelCountRow(lessons);
+    if (state.level !== "all") {
+      lessons = lessons.filter((l) => l.level === state.level);
+    }
+    if (state.industry) {
+      lessons = lessons.filter((l) => (l.industry || "Chưa phân loại") === state.industry);
+    }
+    if (state.search) {
+      lessons = lessons.filter(
+        (l) =>
+          (l.title_vi || l.title || "").toLowerCase().includes(state.search) ||
+          (l.situation || "").toLowerCase().includes(state.search)
+      );
+    }
+    if (!lessons.length) {
+      const emptyText =
+        state.contentType === "analysis"
+          ? "Bạn chưa phân tích văn bản nào từ mục \"Văn bản\"."
+          : mode === "favorite"
+          ? "Bạn chưa yêu thích bài học nào."
+          : mode === "library"
+          ? "Chưa có bài học nào tạo từ Thư viện AI."
+          : "Chưa có bài học nào.";
+      listEl.innerHTML = `<p class="muted">${emptyText}</p>`;
+      return;
+    }
+    listEl.innerHTML = lessons.map((l) => lessonCardHtml(l, { hideFavorite: l._source === "news" })).join("");
+    wireLessonCards(listEl, {
+      onOpen: (id) => {
+        const item = lessons.find((l) => String(l.id) === String(id));
+        navigate(item?._source === "news" ? `/news-lesson/${id}` : `/lesson/${id}`);
+      },
+      onToggleFavorite: async (id, nextFav) => {
+        await setLessonFavorite(id, nextFav);
+        if (mode === "favorite") renderList(); // đang ở tab Yêu thích -> bỏ tim thì phải biến mất khỏi danh sách
+      },
+    });
+  }
+
   async function renderList() {
     const listEl = mount.querySelector("#lessons-list");
-    listEl.innerHTML = skeletonListHtml();
     // #industry-section KHÔNG còn đụng gì ở đây nữa (2026-07-30, Minh: "giữ cố định các card
     // lĩnh vực, 4 tab") — tự tải/tự quyết định hiện-ẩn ĐÚNG 1 LẦN lúc mount, xem
     // loadIndustrySection() phía trên, hoàn toàn tách khỏi renderList()/đổi tab.
@@ -382,6 +438,17 @@ export function renderLessons(mount, params) {
     // dưới, không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).
     if ((mode === "favorite" || mode === "library") && state.contentType === "writing") {
       return renderWritingFavoritesList(listEl);
+    }
+    // SỬA 2026-07-30 (mục B1/B3 tiếp — Minh: "chuyển qua lại giữa các mục vẫn thấy khung xương
+    // rồi mới ra nội dung thật, cũng là 1 kiểu giật giao diện") — quay lại ĐÚNG tổ hợp
+    // mode+contentType đã tải trong CÙNG phiên: hiện THẲNG dữ liệu cũ, KHÔNG qua khung xương,
+    // rồi mới âm thầm tải lại ở nền bên dưới.
+    const cacheKey = `${mode}:${state.contentType}`;
+    const cached = listResultCache.get(cacheKey);
+    if (cached) {
+      renderLessonsInto(listEl, cached);
+    } else {
+      listEl.innerHTML = skeletonListHtml();
     }
     try {
       // 3 nguồn dữ liệu khác nhau theo mode — CÙNG áp dụng tiếp bộ lọc cấp độ/tìm kiếm/tab
@@ -409,48 +476,16 @@ export function renderLessons(mount, params) {
         // khác) — đây là đổi lại 1 quyết định thiết kế, không phải vá lỗ hổng bảo mật.
         lessons = (await listNewsLessons({ filter: state.contentType }).catch(() => [])).map((l) => ({ ...l, _source: "news" }));
       }
-      // Yêu thích/Thư viện AI: hàng chip Level+số bài TÍNH TRÊN "lessons" TRƯỚC khi lọc theo
-      // level (nếu tính sau thì bấm 1 level là các level khác biến mất luôn, không còn số để
-      // bấm chuyển) — tab Bài đọc/Hội thoại vẫn ảnh hưởng số liệu vì đã lọc contentType ở trên.
-      if (mode !== "main") renderLevelCountRow(lessons);
-      if (state.level !== "all") {
-        lessons = lessons.filter((l) => l.level === state.level);
-      }
-      if (state.industry) {
-        lessons = lessons.filter((l) => (l.industry || "Chưa phân loại") === state.industry);
-      }
-      if (state.search) {
-        lessons = lessons.filter(
-          (l) =>
-            (l.title_vi || l.title || "").toLowerCase().includes(state.search) ||
-            (l.situation || "").toLowerCase().includes(state.search)
-        );
-      }
-      if (!lessons.length) {
-        const emptyText =
-          state.contentType === "analysis"
-            ? "Bạn chưa phân tích văn bản nào từ mục \"Văn bản\"."
-            : mode === "favorite"
-            ? "Bạn chưa yêu thích bài học nào."
-            : mode === "library"
-            ? "Chưa có bài học nào tạo từ Thư viện AI."
-            : "Chưa có bài học nào.";
-        listEl.innerHTML = `<p class="muted">${emptyText}</p>`;
-        return;
-      }
-      listEl.innerHTML = lessons.map((l) => lessonCardHtml(l, { hideFavorite: l._source === "news" })).join("");
-      wireLessonCards(listEl, {
-        onOpen: (id) => {
-          const item = lessons.find((l) => String(l.id) === String(id));
-          navigate(item?._source === "news" ? `/news-lesson/${id}` : `/lesson/${id}`);
-        },
-        onToggleFavorite: async (id, nextFav) => {
-          await setLessonFavorite(id, nextFav);
-          if (mode === "favorite") renderList(); // đang ở tab Yêu thích -> bỏ tim thì phải biến mất khỏi danh sách
-        },
-      });
+      // Chỉ vẽ lại nếu KHÔNG có cache (lần đầu) hoặc dữ liệu mới tải THẬT SỰ khác cache — dữ
+      // liệu giống hệt thì bỏ qua, tránh tự gây giật ngược lại chính mình mỗi lần đổi tab dù
+      // chẳng có gì mới (đây là phần cốt lõi giải quyết "chấm dứt tình trạng" Minh yêu cầu).
+      const changed = !cached || JSON.stringify(lessons) !== JSON.stringify(cached);
+      listResultCache.set(cacheKey, lessons);
+      if (changed) renderLessonsInto(listEl, lessons);
     } catch {
-      listEl.innerHTML = `<p class="error-text">Không tải được danh sách bài học.</p>`;
+      // Có cache đang hiện đúng -> GIỮ NGUYÊN, coi như 1 lượt làm mới nền thất bại, không phá
+      // nội dung đang hiển thị đúng chỉ vì mạng chập chờn ở lần tải lại.
+      if (!cached) listEl.innerHTML = `<p class="error-text">Không tải được danh sách bài học.</p>`;
     }
   }
 

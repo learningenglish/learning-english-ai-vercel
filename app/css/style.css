@@ -1511,7 +1511,14 @@ textarea:focus {
   position: absolute;
   left: 0;
   right: 0;
+  /* BUG THẬT (2026-07-30, Minh: "chấm tròn lệch với thanh trượt") — thiếu "top"/"transform" ở
+     đây khiến đường nền (::before, KHÔNG tham gia flex vì position:absolute) nằm SÁT MÉP TRÊN
+     của khối, trong khi ".audio-progress-fill"/".audio-progress-thumb" bên dưới lại canh giữa
+     theo chiều dọc (top:50%) — 2 lớp lệch hẳn nhau theo trục dọc. Thêm "top:50%" + dịch ngược
+     nửa chiều cao (translateY) để CÙNG 1 trục ngang với fill/thumb. */
+  top: 50%;
   height: 4px;
+  transform: translateY(-50%);
   border-radius: 999px;
   background: var(--surface-soft);
 }
