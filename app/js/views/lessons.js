@@ -54,6 +54,16 @@ const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 // không đổi. Cùng triết lý cache-1-lần đã dùng cho streak/tier ở header.js.
 const listResultCache = new Map();
 
+// Cùng lý do/cùng cơ chế như "listResultCache" ở trên, áp dụng cho 2 khối RIÊNG (2026-07-30,
+// Minh: "vẫn chớp vì bài đang đọc và lĩnh vực hiển thị không cùng lúc khi chuyển mục") — 2 khối
+// này trước đây KHÔNG có cache gì cả, tự tải MỚI HOÀN TOÀN mỗi lần MOUNT lại màn hình (khác
+// listResultCache vốn theo mode+contentType) — nên dù danh sách bài học đã hiện tức thời nhờ
+// cache ở trên, 2 khối carousel này vẫn "rơi" vào SAU MỘT NHỊP, đẩy danh sách xuống — chính là
+// cảm giác "không cùng lúc" Minh mô tả. "continueSectionCache": mảng lessons hoặc null (chưa
+// tải lần nào). "industrySectionCache": { allLessons, goalStatusEntries } hoặc null.
+let continueSectionCache = null;
+let industrySectionCache = null;
+
 // Tách riêng để TÁI SỬ DỤNG (2026-07-30, mục B5 — Minh: "thêm 4 icon lối tắt vào đầu trang Thư
 // viện AI, đồng bộ với Phổ biến") — trước đây khối này chỉ tồn tại NGAY TRONG template của mode
 // "main", giờ gọi lại y nguyên cho cả "main" lẫn "library" (KHÔNG viết lại logic click/marquee).
@@ -125,7 +135,7 @@ export function renderLessons(mount, params) {
     search: "",
   };
   // goalId -> 'active'|'archived' (2026-07-28) — CHỈ dùng ở mode "library" để gắn nhãn "Đã dừng"
-  // cho nhóm lĩnh vực, xem isIndustryGroupArchived()/loadGoalStatuses() bên dưới.
+  // cho nhóm lĩnh vực, xem isIndustryGroupArchived()/loadIndustrySection() bên dưới.
   let goalStatusMap = new Map();
 
   // Yêu thích/Thư viện AI: BỎ icon người dùng (avatar+badge) — thay bằng CHÍNH tên màn hình,
@@ -242,47 +252,46 @@ export function renderLessons(mount, params) {
 
   loadAppHeaderStats(mount);
   if (mode === "main") loadContinueSection();
-  if (mode === "library") {
-    loadGoalStatuses();
-    loadIndustrySection();
-  }
+  if (mode === "library") loadIndustrySection();
   renderList();
 
-  // Nhãn "Đã dừng" (xem isIndustryGroupArchived()) — tải 1 lần lúc mount, render lại
-  // #industry-section KHI XONG (goalStatusMap rỗng lúc loadIndustrySection() chạy lần đầu ở
-  // mount -> chưa gắn nhãn nào, tự bổ sung ngay khi tải xong, không cần người dùng thao tác gì
-  // thêm — 2026-07-30: gọi loadIndustrySection() thay vì renderList(), vì card lĩnh vực đã
-  // tách khỏi renderList() hoàn toàn).
-  async function loadGoalStatuses() {
-    try {
-      const rows = await listGoalStatuses();
-      goalStatusMap = new Map(rows.map((g) => [g.id, g.status]));
-      loadIndustrySection();
-    } catch {
-      // Không tải được -> giữ Map rỗng, đơn giản là chưa gắn nhãn cho tới F5 — không chặn màn.
+  // Vẽ carousel "Bài đang đọc" (main) từ dữ liệu THẬT — tách khỏi loadContinueSection() để dùng
+  // lại được cho cả đường "hiện cache ngay" lẫn "dữ liệu mới tải xong" (xem bên dưới, cùng mẫu
+  // renderLessonsInto()/renderIndustrySection()).
+  function renderContinueSection(lessons) {
+    const section = mount.querySelector("#continue-section");
+    if (!lessons.length) {
+      section.hidden = true; // không có gì "đang đọc" thì không chiếm chỗ màn hình
+      return;
     }
+    const scroll = mount.querySelector("#continue-scroll");
+    scroll.innerHTML = lessons.map(continueCardHtml).join("");
+    wireLessonCards(scroll, {
+      cardSelector: ".continue-card",
+      onOpen: (id) => navigate(`/lesson/${id}`),
+      onToggleFavorite: (id, nextFav) => setLessonFavorite(id, nextFav),
+    });
+    section.hidden = false;
+    // KHÔNG tự động lướt (yêu cầu người dùng: để người dùng tự vuốt) — carousel vẫn lướt
+    // ngang được bằng tay (overflow-x:auto + scroll-snap ở CSS), chỉ bỏ setInterval tự chạy.
   }
 
   // NẰM TRONG renderLessons (đóng gói cùng "mount") thay vì hàm rời cấp module như bản đầu —
-  // dùng chung closure "mount"/"navigate" với renderList() bên dưới.
+  // dùng chung closure "mount"/"navigate" với renderList() bên dưới. SỬA 2026-07-30 (Minh:
+  // "bài đang đọc và lĩnh vực hiển thị không cùng lúc khi chuyển mục") — có cache (đã từng tải
+  // trong phiên này) thì hiện THẲNG NGAY LẬP TỨC, không đợi round-trip mạng lần này nữa, rồi mới
+  // âm thầm tải lại nền + chỉ vẽ lại nếu THẬT SỰ khác — cùng cơ chế listResultCache ở renderList().
   async function loadContinueSection() {
+    if (continueSectionCache) renderContinueSection(continueSectionCache);
+    let lessons;
     try {
-      const lessons = await listInProgressLessons({ limit: 6 });
-      if (!lessons.length) return; // giữ [hidden], không có gì "đang đọc" thì không chiếm chỗ màn hình
-      const section = mount.querySelector("#continue-section");
-      const scroll = mount.querySelector("#continue-scroll");
-      scroll.innerHTML = lessons.map(continueCardHtml).join("");
-      wireLessonCards(scroll, {
-        cardSelector: ".continue-card",
-        onOpen: (id) => navigate(`/lesson/${id}`),
-        onToggleFavorite: (id, nextFav) => setLessonFavorite(id, nextFav),
-      });
-      section.hidden = false;
-      // KHÔNG tự động lướt (yêu cầu người dùng: để người dùng tự vuốt) — carousel vẫn lướt
-      // ngang được bằng tay (overflow-x:auto + scroll-snap ở CSS), chỉ bỏ setInterval tự chạy.
+      lessons = await listInProgressLessons({ limit: 6 });
     } catch {
-      // Không tải được carousel "đang đọc" thì đơn giản là không hiện mục này — không chặn màn chính.
+      return; // Giữ cache cũ (nếu có) — 1 lượt làm mới nền lỗi không nên phá nội dung đang đúng.
     }
+    const changed = !continueSectionCache || JSON.stringify(lessons) !== JSON.stringify(continueSectionCache);
+    continueSectionCache = lessons;
+    if (changed) renderContinueSection(lessons);
   }
 
   // Hàng chip "Level (số bài)" thay cho ô tìm kiếm/nút Tìm lọc ở Yêu thích/Thư viện AI (yêu
@@ -342,24 +351,28 @@ export function renderLessons(mount, params) {
   // còn khả năng đổi trạng thái khi chuyển tab. Giờ tách hẳn KHỎI renderList()/state.contentType
   // — tự tải dữ liệu RIÊNG (toàn bộ bài ai_generated, không lọc content_type), tự quyết định
   // hiện/ẩn ĐÚNG 1 LẦN lúc mount, KHÔNG bao giờ đụng lại khi đổi tab nữa — xem loadIndustrySection()
-  // bên dưới, gọi Ở MOUNT (giống loadGoalStatuses()/loadContinueSection()), KHÔNG gọi trong
-  // renderList().
-  async function loadIndustrySection() {
+  // bên dưới, gọi Ở MOUNT (giống loadContinueSection()), KHÔNG gọi trong renderList().
+  // Vẽ carousel "Lĩnh vực" + gắn nhãn "Đã dừng" từ dữ liệu THẬT ("allLessons" + mảng cặp
+  // [goalId, status] đã tải) — tách khỏi loadIndustrySection() để dùng lại được cho cả đường
+  // "hiện cache ngay" lẫn "dữ liệu mới tải xong", cùng mẫu renderLessonsInto()/
+  // renderContinueSection() ở trên. Gộp LUÔN việc gắn nhãn "Đã dừng" vào ĐÂY (trước đây tách 2
+  // hàm loadGoalStatuses()/loadIndustrySection() gọi nối tiếp nhau, giờ 1 lượt tải song song
+  // duy nhất, xem loadIndustrySection() bên dưới) — goalStatusMap cập nhật NGAY TRƯỚC khi tính
+  // nhóm, luôn khớp đúng dữ liệu đang vẽ, không còn phụ thuộc thứ tự 2 lượt gọi rời nhau.
+  function renderIndustrySection(allLessons, goalStatusEntries) {
     const section = mount.querySelector("#industry-section");
     if (!section) return;
-    let allLessons;
-    try {
-      allLessons = await listAiGeneratedLessons({ filter: "all" });
-    } catch {
-      return; // Lỗi mạng lúc CHỈ ĐỌC — im lặng, giữ [hidden] mặc định, không chặn màn.
-    }
+    goalStatusMap = new Map(goalStatusEntries);
     const groups = new Map();
     allLessons.forEach((l) => {
       const key = l.industry || "Chưa phân loại";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(l);
     });
-    if (groups.size < 2) return; // giữ [hidden] mặc định — 1 lĩnh vực duy nhất thì nhóm vô nghĩa.
+    if (groups.size < 2) {
+      section.hidden = true; // 1 lĩnh vực duy nhất thì nhóm vô nghĩa.
+      return;
+    }
     const scroll = section.querySelector("#industry-scroll");
     scroll.innerHTML = Array.from(groups.entries())
       .map(([name, groupLessons]) => {
@@ -379,6 +392,35 @@ export function renderLessons(mount, params) {
       });
     });
     section.hidden = false;
+  }
+
+  // SỬA 2026-07-30 (Minh: "bài đang đọc và lĩnh vực hiển thị không cùng lúc khi chuyển mục") —
+  // có cache (đã từng tải trong phiên này) thì hiện THẲNG NGAY LẬP TỨC (kèm nhãn "Đã dừng" đã
+  // biết), không đợi round-trip mạng lần này, rồi mới âm thầm tải lại nền + chỉ vẽ lại nếu THẬT
+  // SỰ khác — cùng cơ chế loadContinueSection()/listResultCache ở trên. Gộp 2 lượt gọi
+  // listAiGeneratedLessons()/listGoalStatuses() (trước đây 2 hàm rời, nối tiếp nhau) thành 1
+  // Promise.all duy nhất — vừa nhanh hơn (song song thay vì nối tiếp), vừa dễ cache đúng 1 lần.
+  async function loadIndustrySection() {
+    const section = mount.querySelector("#industry-section");
+    if (!section) return;
+    if (industrySectionCache) renderIndustrySection(industrySectionCache.allLessons, industrySectionCache.goalStatusEntries);
+    let allLessons, goalStatusEntries;
+    try {
+      const [lessonsRes, statusRows] = await Promise.all([
+        listAiGeneratedLessons({ filter: "all" }),
+        listGoalStatuses().catch(() => []), // Lỗi -> coi như chưa biết nhãn "Đã dừng", không chặn cả khối.
+      ]);
+      allLessons = lessonsRes;
+      goalStatusEntries = statusRows.map((g) => [g.id, g.status]);
+    } catch {
+      return; // Giữ cache cũ (nếu có) — 1 lượt làm mới nền lỗi không nên phá nội dung đang đúng.
+    }
+    const changed =
+      !industrySectionCache ||
+      JSON.stringify(allLessons) !== JSON.stringify(industrySectionCache.allLessons) ||
+      JSON.stringify(goalStatusEntries) !== JSON.stringify(industrySectionCache.goalStatusEntries);
+    industrySectionCache = { allLessons, goalStatusEntries };
+    if (changed) renderIndustrySection(allLessons, goalStatusEntries);
   }
 
   // Vẽ danh sách THẬT từ "lessonsRaw" (chưa lọc level/lĩnh vực/tìm kiếm — lọc lại đây, đọc
