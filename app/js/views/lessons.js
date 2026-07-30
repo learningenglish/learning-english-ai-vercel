@@ -357,18 +357,16 @@ export function renderLessons(mount, params) {
         lessons = await listLessons({ filter: "favorite" });
         lessons = lessons.filter((l) => l.content_type === state.contentType);
       } else {
-        // Phổ biến (2026-07-28, "bỏ toggle Của tôi/Tin tức"): bài của người dùng + Tin tức tự
-        // sinh công khai hiện CHUNG 1 danh sách, sắp mới nhất trước — không còn mục con riêng,
-        // phân biệt bằng lĩnh vực/chuyên mục cạnh ngày tạo trên thẻ (xem lessonCardHtml()).
-        // "_source" gắn tạm để onOpen()/hideFavorite bên dưới biết mở đúng route/ẩn nút tim cho
-        // bài Tin tức (không thuộc user_id nào, không PATCH is_favorite được).
-        const [personal, news] = await Promise.all([
-          listLessons({ filter: state.contentType }),
-          listNewsLessons({ filter: state.contentType }).catch(() => []),
-        ]);
-        lessons = [...personal.map((l) => ({ ...l, _source: "personal" })), ...news.map((l) => ({ ...l, _source: "news" }))].sort(
-          (a, b) => new Date(b.created_at || b.published_at) - new Date(a.created_at || a.published_at)
-        );
+        // SỬA LẠI 2026-07-30 (Minh: "bài do người dùng tự tạo đang lộ ra ở mục Phổ biến, thay
+        // vì chỉ nằm trong Thư viện AI" — mục G) — bản 2026-07-28 CỐ Ý trộn bài cá nhân + Tin
+        // tức chung 1 danh sách (đọc lại comment cũ: "bỏ toggle Của tôi/Tin tức"), nhưng Minh
+        // giờ chốt lại ranh giới CHẶT: Phổ biến CHỈ chứa nội dung hệ thống tự sinh (news_lessons,
+        // không user_id, không phải của riêng ai); mọi bài cá nhân (Tạo nội dung/Phân tích) chỉ
+        // ở Thư viện AI. Bỏ hẳn listLessons() (bài cá nhân) khỏi nhánh này — CHỈ còn Tin tức.
+        // KHÔNG phải lỗi rò rỉ dữ liệu (đã xác nhận RLS "auth.uid()=user_id" chặn đúng, mỗi
+        // người trước đây chỉ từng thấy ĐÚNG bài của chính họ trộn vào, không phải của người
+        // khác) — đây là đổi lại 1 quyết định thiết kế, không phải vá lỗ hổng bảo mật.
+        lessons = (await listNewsLessons({ filter: state.contentType }).catch(() => [])).map((l) => ({ ...l, _source: "news" }));
       }
       // Yêu thích/Thư viện AI: hàng chip Level+số bài TÍNH TRÊN "lessons" TRƯỚC khi lọc theo
       // level (nếu tính sau thì bấm 1 level là các level khác biến mất luôn, không còn số để
