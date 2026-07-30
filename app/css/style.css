@@ -1390,8 +1390,16 @@ textarea:focus {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
+/* Rút gọn còn ĐÚNG 1 dòng + "..." khi tiêu đề dài (2026-07-30, mục B4) — "min-width: 0" bắt
+   buộc phải có ở con flex item để "text-overflow: ellipsis" thật sự có hiệu lực (mặc định
+   flex item không co dưới kích thước nội dung, ellipsis sẽ không bao giờ kích hoạt nếu thiếu
+   dòng này). */
 .lesson-header-row .screen-title {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .content-toolbar {
@@ -1483,10 +1491,52 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.audio-seek {
+/* Thanh tiến trình tự vẽ (2026-07-30, mục B2) — thay <input type="range"> gốc trình duyệt.
+   LÝ DO: ở tỉ lệ % nhỏ, chấm tròn kéo MẶC ĐỊNH của trình duyệt chiếm 1 phần đáng kể chiều
+   ngang 1 thanh hẹp (chung hàng nhiều nút), tạo ẢO GIÁC "đã chạy 15-20%" dù giá trị thật chỉ
+   2-3% — xem ghi chú tại audioBarHtml()/setProgressVisual() trong views/lesson.js. Độ rộng
+   ".audio-progress-fill" đặt TRỰC TIẾP bằng đúng % thời gian thật, không qua trung gian nào. */
+.audio-progress-track {
+  position: relative;
   flex: 1;
   min-width: 0;
-  accent-color: var(--purple);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none; /* cần cho pointer drag mượt trên di động, không bị cuộn trang theo */
+}
+.audio-progress-track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+}
+.audio-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 4px;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.audio-progress-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--purple);
+  box-shadow: 0 1px 4px rgba(31, 41, 55, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .audio-btn {
@@ -1580,23 +1630,35 @@ textarea:focus {
   border-left-color: var(--purple);
 }
 
+/* SỬA 2026-07-30 (mục B3 — Minh: "dời Trang X/Y ra ngoài card, đặt trên-trái, bỏ nền tròn
+   mũi tên") — ".content-nav" giờ là 1 hàng RIÊNG đứng TRƯỚC ".content-page" (không còn lồng
+   bên trong card), "Trang X/Y" là phần tử ĐẦU TIÊN/bên trái (justify-content: space-between
+   tự đẩy nhóm nút mũi tên "content-nav-btns" sang phải cùng hàng). */
 .content-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
+.content-nav-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Icon TRẦN, không còn nền tròn (yêu cầu người dùng) — vẫn giữ min-width/min-height đủ vùng
+   chạm (--touch-min) dù phần nhìn thấy chỉ là icon. */
 .content-nav-btn {
   flex-shrink: 0;
-  min-width: 36px;
-  min-height: 36px;
-  border-radius: 50%;
-  background: var(--surface-soft);
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
   border: none;
-  font-size: 1.2rem;
-  font-weight: 700;
   color: var(--text);
   cursor: pointer;
 }

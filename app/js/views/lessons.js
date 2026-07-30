@@ -44,6 +44,51 @@ const QUICK_ACTIONS = [
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
+// Tách riêng để TÁI SỬ DỤNG (2026-07-30, mục B5 — Minh: "thêm 4 icon lối tắt vào đầu trang Thư
+// viện AI, đồng bộ với Phổ biến") — trước đây khối này chỉ tồn tại NGAY TRONG template của mode
+// "main", giờ gọi lại y nguyên cho cả "main" lẫn "library" (KHÔNG viết lại logic click/marquee).
+function quickActionsHtml() {
+  return `
+    <div class="quick-actions">
+      ${QUICK_ACTIONS.map(
+        (a) => `
+        <button type="button" class="quick-action-btn" data-action="${a.id}">
+          <span class="quick-action-icon">${icon(a.icon, { size: 20 })}</span>
+          <span class="quick-action-label"><span class="quick-action-label-text">${escapeHtml(a.label)}</span></span>
+        </button>
+      `
+      ).join("")}
+    </div>
+  `;
+}
+
+// Wire click + marquee cho MỌI ".quick-action-btn"/".quick-action-label" hiện có trong "mount"
+// — an toàn gọi vô điều kiện dù mode không có quick-actions (querySelectorAll rỗng, forEach
+// không làm gì).
+function wireQuickActions(mount) {
+  mount.querySelectorAll(".quick-action-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = QUICK_ACTIONS.find((a) => a.id === btn.dataset.action);
+      if (action.comingSoon) {
+        showToast("Tính năng đang phát triển, sẽ sớm ra mắt!");
+        return;
+      }
+      navigate(action.path);
+    });
+  });
+
+  // Nhãn dài hơn hẳn các nhãn khác (vd "Các khoá học") -> tự cuộn ngang (marquee) thay vì tràn
+  // ra ngoài nút hoặc bị ngắt cứng (2026-07-29, yêu cầu người dùng) — CHỈ bật hiệu ứng cho nhãn
+  // THẬT SỰ tràn (so scrollWidth/clientWidth sau khi đã render), nhãn ngắn (vừa khung) giữ
+  // nguyên đứng yên. Nhân đôi chữ (kèm khoảng cách) để vòng lặp cuộn liền mạch, không giật.
+  mount.querySelectorAll(".quick-action-label").forEach((label) => {
+    const textEl = label.querySelector(".quick-action-label-text");
+    if (!textEl || textEl.scrollWidth <= label.clientWidth) return;
+    textEl.textContent = `${textEl.textContent}    ${textEl.textContent}`;
+    label.classList.add("marquee");
+  });
+}
+
 // Khung "xương" (skeleton) thay cho dòng chữ "Đang tải..." (2026-07-30, mục 4 — Minh: "bấm vào
 // Thư viện AI bị nhảy giao diện", render 2 lần từ khung rỗng sang danh sách đầy). Cùng HÌNH DẠNG
 // .lesson-card (ảnh bìa + 3 dòng chữ) nên khi dữ liệu về, bố cục không đổi đột ngột — chỉ đổi từ
@@ -89,6 +134,8 @@ export function renderLessons(mount, params) {
     <div class="screen">
       ${appHeaderHtml(headerTitleHtml)}
 
+      ${mode !== "favorite" ? quickActionsHtml() : ""}
+
       ${
         mode === "library"
           ? `
@@ -100,17 +147,6 @@ export function renderLessons(mount, params) {
           : mode === "favorite"
           ? ""
           : `
-      <div class="quick-actions">
-        ${QUICK_ACTIONS.map(
-          (a) => `
-          <button type="button" class="quick-action-btn" data-action="${a.id}">
-            <span class="quick-action-icon">${icon(a.icon, { size: 20 })}</span>
-            <span class="quick-action-label"><span class="quick-action-label-text">${escapeHtml(a.label)}</span></span>
-          </button>
-        `
-        ).join("")}
-      </div>
-
       <div id="continue-section" hidden>
         <div class="section-label-row"><span class="section-label-tab">Bài đang đọc</span></div>
         <div id="continue-scroll" class="continue-scroll"></div>
@@ -156,28 +192,7 @@ export function renderLessons(mount, params) {
   `;
 
   wireAppHeader(mount);
-
-  mount.querySelectorAll(".quick-action-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const action = QUICK_ACTIONS.find((a) => a.id === btn.dataset.action);
-      if (action.comingSoon) {
-        showToast("Tính năng đang phát triển, sẽ sớm ra mắt!");
-        return;
-      }
-      navigate(action.path);
-    });
-  });
-
-  // Nhãn dài hơn hẳn các nhãn khác (vd "Các khoá học") -> tự cuộn ngang (marquee) thay vì tràn
-  // ra ngoài nút hoặc bị ngắt cứng (2026-07-29, yêu cầu người dùng) — CHỈ bật hiệu ứng cho nhãn
-  // THẬT SỰ tràn (so scrollWidth/clientWidth sau khi đã render), nhãn ngắn (vừa khung) giữ
-  // nguyên đứng yên. Nhân đôi chữ (kèm khoảng cách) để vòng lặp cuộn liền mạch, không giật.
-  mount.querySelectorAll(".quick-action-label").forEach((label) => {
-    const textEl = label.querySelector(".quick-action-label-text");
-    if (!textEl || textEl.scrollWidth <= label.clientWidth) return;
-    textEl.textContent = `${textEl.textContent}    ${textEl.textContent}`;
-    label.classList.add("marquee");
-  });
+  wireQuickActions(mount);
 
   // #toggle-level-filter/#search-input CHỈ tồn tại ở mode "main" (xem template ở trên) —
   // Yêu thích/Thư viện AI dùng #level-count-row (wire trong renderList(), vì chip render lại

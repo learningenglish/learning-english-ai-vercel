@@ -26,7 +26,32 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     mount.innerHTML = `<div class="screen"><p class="error-text">Thiếu mã bài học.</p></div>`;
     return;
   }
-  mount.innerHTML = `<div class="screen"><p class="muted">Đang tải bài học...</p></div>`;
+  // Khung "xương" GIỐNG HÌNH DẠNG màn thật (header + tabs, mục B1 — 2026-07-30, Minh: "chớp
+  // giao diện khi chuyển route, ví dụ vào 1 bài học") — trước đây khung chờ chỉ là 1 dòng chữ
+  // giữa màn hình rỗng, khi dữ liệu về (thường rất nhanh vì Supabase REST nhẹ) toàn bộ mount bị
+  // thay bằng khung THẬT khác hẳn hình dạng -> mắt người thấy như 1 cú "chớp" dù không có
+  // khoảng trắng thật sự (cùng nguyên nhân/cách sửa như card lĩnh vực ở Thư viện AI trước đó:
+  // giữ hình dạng ổn định xuyên suốt lúc chờ, không đổi bố cục đột ngột khi dữ liệu về).
+  mount.innerHTML = `
+    <div class="screen">
+      <div class="lesson-header-row">
+        ${backChevronHtml()}
+        <h1 class="screen-title skeleton-line skeleton-shimmer" style="height:1.2em;width:60%"></h1>
+      </div>
+      <div class="tabs sticky-tabs" role="tablist">
+        <button type="button" class="tab-btn active" disabled>Nội dung</button>
+        <button type="button" class="tab-btn" disabled>Từ vựng</button>
+        <button type="button" class="tab-btn" disabled>Ngữ pháp</button>
+        <button type="button" class="tab-btn" disabled>Luyện tập</button>
+      </div>
+      <div class="content-page">
+        <div class="skeleton-line skeleton-shimmer" style="width:100%;height:14px;margin-bottom:10px"></div>
+        <div class="skeleton-line skeleton-shimmer" style="width:90%;height:14px;margin-bottom:10px"></div>
+        <div class="skeleton-line skeleton-shimmer" style="width:75%;height:14px"></div>
+      </div>
+    </div>
+  `;
+  wireBackLink(mount, () => history.back());
 
   let lesson, progress;
   try {
@@ -312,12 +337,14 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         const turnIndices = [start, start + 1].filter((i) => i < pages.length);
         const activeItemIdx = ttsSupported ? ttsPlayer.getState().itemIndex : idx;
         body.innerHTML = `
-          <div class="content-page">
-            <div class="content-nav">
+          <div class="content-nav">
+            <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
+            <div class="content-nav-btns">
               <button type="button" class="content-nav-btn" id="content-prev-btn" title="Cặp trước" ${pageIdx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
-              <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
               <button type="button" class="content-nav-btn" id="content-next-btn" title="Cặp tiếp theo" ${pageIdx === totalPages - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
             </div>
+          </div>
+          <div class="content-page">
             ${turnIndices
               .map(
                 (i) => `
@@ -346,12 +373,14 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         updateActiveTurnFn = null;
         const item = pages[pageIdx];
         body.innerHTML = `
-          <div class="content-page">
-            <div class="content-nav">
+          <div class="content-nav">
+            <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
+            <div class="content-nav-btns">
               <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${pageIdx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
-              <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
               <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${pageIdx === totalPages - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
             </div>
+          </div>
+          <div class="content-page">
             <div class="content-item-header">
               <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
               ${contentActionsHtml(pageIdx)}
@@ -531,11 +560,24 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // nằm cùng 1 hàng" — bản 2 hàng trước đó cao hơn hẳn cần thiết) — gộp nhãn elapsed/total
   // thành 1 cụm "m:ss/m:ss" đặt SAU thanh kéo (không còn flanking 2 bên) để dồn hết chỗ ngang
   // cho thanh kéo, đủ chỗ cho Phát + Kéo + Thời gian + Âm lượng + Phát lại + Tốc độ trên 1 hàng.
+  // Thanh audio thiết kế lại (2026-07-30, mục B2) — 2 lý do gộp làm 1 lần vì cùng 1 chỗ code:
+  // (1) yêu cầu thẩm mỹ chuyên nghiệp hơn, (2) BUG THẬT đã xác nhận không phải do tính sai tỉ
+  // lệ (progress.fraction dùng CHUNG 1 công thức cho cả elapsedSeconds/totalSeconds hiển thị
+  // lẫn vị trí thanh, không thể lệch nhau về mặt số học) — mà do bản CŨ dùng
+  // <input type="range"> gốc trình duyệt: ở tỉ lệ % rất nhỏ, riêng chấm tròn (thumb) kéo
+  // MẶC ĐỊNH của trình duyệt đã chiếm 1 phần đáng kể chiều ngang thanh (nhất là thanh hẹp do
+  // chung hàng với nhiều nút khác), khiến MẮT NHÌN thấy như đã chạy 15-20% dù giá trị thật chỉ
+  // 2-3%, dù thanh vẫn "đúng" theo đúng nghĩa kỹ thuật input.value. Thay hẳn bằng 1 thanh tự vẽ
+  // (track + fill + thumb, xem CSS ".audio-progress-*"): độ rộng lớp "fill" đặt TRỰC TIẾP bằng
+  // đúng % của progress.fraction, không còn ảo giác từ kích thước thumb gốc trình duyệt.
   function audioBarHtml() {
     return `
       <div class="audio-bar" id="audio-bar">
         <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
-        <input type="range" id="audio-seek" class="audio-seek" min="0" max="1000" step="1" value="0" />
+        <div class="audio-progress-track" id="audio-progress-track">
+          <div class="audio-progress-fill" id="audio-progress-fill"></div>
+          <div class="audio-progress-thumb" id="audio-progress-thumb"></div>
+        </div>
         <span class="audio-time"><span id="audio-time-elapsed">0:00</span>/<span id="audio-time-total">0:00</span></span>
         <div class="audio-volume-wrap">
           <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 15 })}</button>
@@ -547,23 +589,56 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     `;
   }
 
+  // Vẽ lại vị trí lớp fill/thumb theo 1 tỉ lệ 0-1 — dùng CHUNG cho cả lúc phát (updateAudioBarUI)
+  // lẫn lúc NGÓN TAY đang kéo (wireAudioBar) để 2 luồng luôn khớp nhau tuyệt đối.
+  function setProgressVisual(fraction) {
+    const pct = `${Math.max(0, Math.min(1, fraction)) * 100}%`;
+    const fill = document.getElementById("audio-progress-fill");
+    const thumb = document.getElementById("audio-progress-thumb");
+    if (fill) fill.style.width = pct;
+    if (thumb) thumb.style.left = pct;
+  }
+
   function wireAudioBar(panel) {
     panel.querySelector("#audio-replay").addEventListener("click", () => ttsPlayer.replay());
     panel.querySelector("#audio-play").addEventListener("click", () => ttsPlayer.playPause());
 
-    // "audioSeeking" (khai báo cùng ensureProgressTimer() ở trên) — bật khi NGÓN TAY đang kéo
-    // (input), chặn timer/onStateChange ghi đè vị trí thanh giữa chừng; chỉ thật sự tua khi
-    // NHẢ tay (change) — kéo xong mới gọi 1 lần, không gọi liên tục theo từng pixel kéo.
-    const seek = panel.querySelector("#audio-seek");
-    seek.addEventListener("input", () => {
-      audioSeeking = true;
+    // "audioSeeking" (khai báo cùng ensureProgressTimer() ở trên) — bật khi NGÓN TAY đang kéo,
+    // chặn timer/onStateChange ghi đè vị trí thanh giữa chừng; chỉ thật sự tua khi NHẢ tay
+    // (pointerup) — kéo xong mới gọi 1 lần, không gọi liên tục theo từng pixel kéo. Dùng
+    // Pointer Events (thay "input"/"change" của <input type=range> cũ) vì giờ là 1 <div> tự vẽ,
+    // cần tự tính vị trí từ toạ độ X thay vì trình duyệt tự lo.
+    const track = panel.querySelector("#audio-progress-track");
+    function fractionFromEvent(e) {
+      const rect = track.getBoundingClientRect();
+      const x = Math.max(rect.left, Math.min(rect.right, e.clientX));
+      return rect.width ? (x - rect.left) / rect.width : 0;
+    }
+    let dragging = false;
+    function updateDrag(e) {
+      const fraction = fractionFromEvent(e);
+      setProgressVisual(fraction);
       const progress = ttsPlayer.getProgress();
-      document.getElementById("audio-time-elapsed").textContent = formatAudioTime((Number(seek.value) / 1000) * progress.totalSeconds);
+      const elapsedEl = document.getElementById("audio-time-elapsed");
+      if (elapsedEl) elapsedEl.textContent = formatAudioTime(fraction * progress.totalSeconds);
+    }
+    track.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      audioSeeking = true;
+      track.setPointerCapture(e.pointerId);
+      updateDrag(e);
     });
-    seek.addEventListener("change", () => {
-      ttsPlayer.seekToFraction(Number(seek.value) / 1000);
+    track.addEventListener("pointermove", (e) => {
+      if (dragging) updateDrag(e);
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      ttsPlayer.seekToFraction(fractionFromEvent(e));
       audioSeeking = false;
-    });
+    }
+    track.addEventListener("pointerup", endDrag);
+    track.addEventListener("pointercancel", endDrag);
 
     const volBtn = panel.querySelector("#audio-volume-btn");
     const volSlider = panel.querySelector("#audio-volume-slider");
@@ -599,12 +674,12 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     // Không đụng thanh/nhãn "elapsed" khi người dùng ĐANG kéo tay (audioSeeking) — tránh giật
     // ngược giữa chừng lúc kéo, xem wireAudioBar().
     if (audioSeeking) return;
-    const seek = document.getElementById("audio-seek");
+    const track = document.getElementById("audio-progress-track");
     const elapsedEl = document.getElementById("audio-time-elapsed");
     const totalEl = document.getElementById("audio-time-total");
-    if (!seek) return;
+    if (!track) return;
     const progress = ttsPlayer.getProgress();
-    seek.value = String(Math.round(progress.fraction * 1000));
+    setProgressVisual(progress.fraction);
     if (elapsedEl) elapsedEl.textContent = formatAudioTime(progress.elapsedSeconds);
     if (totalEl) totalEl.textContent = formatAudioTime(progress.totalSeconds);
   }
