@@ -1641,6 +1641,16 @@ const ACTIONS = {
     if (!r.ok) return safeOpenAIError(r);
     return { content: content(r) };
   },
+
+  // TẠM THỜI (2026-07-30) — kích hoạt thủ công generateDailyNews() (đúng hàm cron gọi mỗi
+  // ngày, api/cron/generate-news.js) để xác nhận cron THẬT SỰ hoạt động sau khi promote lên
+  // Production lần đầu, không cần chờ tới giờ lịch (22:00 UTC). Xoá action này khỏi file
+  // ngay sau khi xác nhận xong.
+  async debug_trigger_news_cron() {
+    const { generateDailyNews } = await import("./_generate/news.js");
+    const report = await generateDailyNews();
+    return { content: JSON.stringify(report) };
+  },
 };
 
 // ====== ENTRYPOINT (Vercel handler) ======
