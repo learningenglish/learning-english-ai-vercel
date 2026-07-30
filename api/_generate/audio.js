@@ -99,12 +99,21 @@ export async function generate_lesson_full_audio(data, ctx) {
     return { content: JSON.stringify({ eligible: true, url: lesson.audio_full_url }) };
   }
 
+  // BUG THẬT (2026-07-30, Minh: "giọng nữ bị phát ra giọng nam") — bản cũ filter() TRỰC TIẾP
+  // trên mảng text RỒI MỚI đánh index vào gender_hints (mảng KHÔNG filter, vẫn giữ nguyên vị
+  // trí gốc theo content) — 1 đoạn text rỗng bị filter ra sẽ làm LỆCH INDEX toàn bộ giọng của
+  // MỌI đoạn phía sau nó (đoạn thứ N+1 vô tình dùng gender_hints[N], sai giọng dây chuyền).
+  // Ghép text+hint THÀNH CẶP trước khi filter để không bao giờ lệch, bất kể filter bỏ đi bao
+  // nhiêu đoạn ở vị trí nào.
   const content = Array.isArray(lesson.content) ? lesson.content : [];
-  const texts = content.map((item) => item?.text || "").filter((t) => t.trim());
-  if (!texts.length) return { error: "Bài học không có nội dung để đọc.", status: 400 };
+  const rawGenderHints = Array.isArray(data.gender_hints) ? data.gender_hints : [];
+  const paired = content
+    .map((item, i) => ({ text: item?.text || "", genderHint: rawGenderHints[i] }))
+    .filter((x) => x.text.trim());
+  if (!paired.length) return { error: "Bài học không có nội dung để đọc.", status: 400 };
 
-  const genderHints = Array.isArray(data.gender_hints) ? data.gender_hints : [];
-  const voices = texts.map((_, i) => pickOpenAIVoice(genderHints[i]));
+  const texts = paired.map((x) => x.text);
+  const voices = paired.map((x) => pickOpenAIVoice(x.genderHint));
 
   const genResult = await generateAllSegments(texts, voices);
   if (!genResult.ok) return { error: genResult.error || "Không tạo được audio.", status: 502 };
