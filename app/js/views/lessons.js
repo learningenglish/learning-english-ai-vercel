@@ -200,17 +200,22 @@ export function renderLessons(mount, params) {
 
   loadAppHeaderStats(mount);
   if (mode === "main") loadContinueSection();
-  if (mode === "library") loadGoalStatuses();
+  if (mode === "library") {
+    loadGoalStatuses();
+    loadIndustrySection();
+  }
   renderList();
 
-  // Nhãn "Đã dừng" (xem isIndustryGroupArchived()) — tải 1 lần lúc mount, render lại danh sách
-  // khi xong (goalStatusMap rỗng lúc renderList() lần đầu chạy trước đó -> chưa gắn nhãn nào,
-  // tự bổ sung ngay khi tải xong, không cần người dùng thao tác gì thêm).
+  // Nhãn "Đã dừng" (xem isIndustryGroupArchived()) — tải 1 lần lúc mount, render lại
+  // #industry-section KHI XONG (goalStatusMap rỗng lúc loadIndustrySection() chạy lần đầu ở
+  // mount -> chưa gắn nhãn nào, tự bổ sung ngay khi tải xong, không cần người dùng thao tác gì
+  // thêm — 2026-07-30: gọi loadIndustrySection() thay vì renderList(), vì card lĩnh vực đã
+  // tách khỏi renderList() hoàn toàn).
   async function loadGoalStatuses() {
     try {
       const rows = await listGoalStatuses();
       goalStatusMap = new Map(rows.map((g) => [g.id, g.status]));
-      renderList();
+      loadIndustrySection();
     } catch {
       // Không tải được -> giữ Map rỗng, đơn giản là chưa gắn nhãn cho tới F5 — không chặn màn.
     }
@@ -288,19 +293,31 @@ export function renderLessons(mount, params) {
     return statuses.every((s) => s === "archived");
   }
 
-  function renderIndustrySection(lessons) {
+  // SỬA LẠI TOÀN BỘ (2026-07-30, Minh: "giữ cố định các card lĩnh vực, 4 tab. Không tự động ẩn
+  // để tab bị nhảy") — bản CŨ nhận "lessons" (đã lọc theo TAB đang xem) làm tham số, tính lại
+  // nhóm lĩnh vực + ẩn/hiện MỖI LẦN renderList() chạy (tức MỖI LẦN đổi tab) — dù đã vá 2 lần
+  // (ẩn đồng bộ, chỉ ẩn đúng lúc cần...) bản chất vẫn là 1 khối PHỤ THUỘC vào tab đang xem, luôn
+  // còn khả năng đổi trạng thái khi chuyển tab. Giờ tách hẳn KHỎI renderList()/state.contentType
+  // — tự tải dữ liệu RIÊNG (toàn bộ bài ai_generated, không lọc content_type), tự quyết định
+  // hiện/ẩn ĐÚNG 1 LẦN lúc mount, KHÔNG bao giờ đụng lại khi đổi tab nữa — xem loadIndustrySection()
+  // bên dưới, gọi Ở MOUNT (giống loadGoalStatuses()/loadContinueSection()), KHÔNG gọi trong
+  // renderList().
+  async function loadIndustrySection() {
     const section = mount.querySelector("#industry-section");
     if (!section) return;
+    let allLessons;
+    try {
+      allLessons = await listAiGeneratedLessons({ filter: "all" });
+    } catch {
+      return; // Lỗi mạng lúc CHỈ ĐỌC — im lặng, giữ [hidden] mặc định, không chặn màn.
+    }
     const groups = new Map();
-    lessons.forEach((l) => {
+    allLessons.forEach((l) => {
       const key = l.industry || "Chưa phân loại";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(l);
     });
-    if (groups.size < 2) {
-      section.hidden = true;
-      return;
-    }
+    if (groups.size < 2) return; // giữ [hidden] mặc định — 1 lĩnh vực duy nhất thì nhóm vô nghĩa.
     const scroll = section.querySelector("#industry-scroll");
     scroll.innerHTML = Array.from(groups.entries())
       .map(([name, groupLessons]) => {
@@ -314,6 +331,8 @@ export function renderLessons(mount, params) {
       card.addEventListener("click", () => {
         const name = card.dataset.industry;
         state.industry = state.industry === name ? null : name; // bấm lại thẻ đang chọn -> bỏ lọc
+        card.classList.toggle("active", !!state.industry && state.industry === name);
+        scroll.querySelectorAll(".industry-card").forEach((c) => c.classList.toggle("active", c.dataset.industry === state.industry));
         renderList();
       });
     });
@@ -323,19 +342,9 @@ export function renderLessons(mount, params) {
   async function renderList() {
     const listEl = mount.querySelector("#lessons-list");
     listEl.innerHTML = `<p class="muted">Đang tải...</p>`;
-    // SỬA 2026-07-30, LẦN 2 (Minh: "TẤT CẢ tab đều nhảy, nặng hơn hẳn" sau lần sửa trước) — bản
-    // TRƯỚC ẩn #industry-section NGAY cho MỌI tab kể cả Bài đọc<->Hội thoại, khiến 2 tab đó co
-    // rồi giãn lại MỖI LẦN chuyển qua lại dù CẢ 2 đều nên hiện (thừa/sai hướng — đúng là "nặng
-    // hơn" Minh thấy). Chỉ ẩn NGAY khi CHẮC CHẮN tab đích không dùng lĩnh vực (Phân tích —
-    // nguồn dữ liệu listTextAnalyzedLessons() không có industry thật, section LUÔN ẩn, biết
-    // trước không cần chờ tải). Bài đọc/Hội thoại phụ thuộc DỮ LIỆU (chỉ biết sau khi tải) nên
-    // KHÔNG ép ẩn ở đây nữa — giữ nguyên trạng thái cũ trong lúc tải rồi để
-    // renderIndustrySection() tự cập nhật đúng khi dữ liệu mới về, y hệt hành vi trước khi có
-    // lần sửa trước (chỉ còn đúng 1 điểm hở: chuyển ĐẾN Phân tích luôn ẩn ngay, không còn nháy).
-    if (mode === "library" && state.contentType === "analysis") {
-      const section = mount.querySelector("#industry-section");
-      if (section) section.hidden = true;
-    }
+    // #industry-section KHÔNG còn đụng gì ở đây nữa (2026-07-30, Minh: "giữ cố định các card
+    // lĩnh vực, 4 tab") — tự tải/tự quyết định hiện-ẩn ĐÚNG 1 LẦN lúc mount, xem
+    // loadIndustrySection() phía trên, hoàn toàn tách khỏi renderList()/đổi tab.
     // Tab "Bài viết" (Yêu thích + Thư viện AI, Việc 3/Item 7 — 2026-07-27) — nguồn dữ liệu HOÀN
     // TOÀN khác (writing_favorites, không phải lessons), tự thoát sớm khỏi luồng lessons bên
     // dưới, không dùng chung filter cấp độ/lĩnh vực/tìm kiếm (những control đó chỉ hiện cho lessons).
@@ -372,20 +381,6 @@ export function renderLessons(mount, params) {
       // level (nếu tính sau thì bấm 1 level là các level khác biến mất luôn, không còn số để
       // bấm chuyển) — tab Bài đọc/Hội thoại vẫn ảnh hưởng số liệu vì đã lọc contentType ở trên.
       if (mode !== "main") renderLevelCountRow(lessons);
-      // SỬA 2026-07-29 (Minh: "tab Phân tích vẫn còn bị nhảy" — "Bài viết" đã cố định vì return
-      // sớm ở trên, KHÔNG BAO GIỜ đụng #industry-section, nhưng "Phân tích" vẫn rơi vào nhánh
-      // này: lessons từ listTextAnalyzedLessons() không có "industry" thật (luôn rơi vào nhóm
-      // "Chưa phân loại"), renderIndustrySection() theo đó ẨN section — ĐANG THAY ĐỔI visibility
-      // mỗi lần chuyển qua/lại từ tab Bài đọc/Hội thoại (có lĩnh vực thật, section HIỆN), đúng
-      // là nguyên nhân "nhảy" chiều cao). Loại "analysis" khỏi nhánh gọi renderIndustrySection
-      // (giống "Bài viết" — lĩnh vực không áp dụng cho 2 tab này) VÀ ẩn cứng section khi vào tab
-      // Phân tích, không để nó giữ trạng thái CŨ (hiện/ẩn) sót lại từ tab trước đó.
-      if (mode === "library" && state.contentType !== "analysis") {
-        renderIndustrySection(lessons);
-      } else if (mode === "library") {
-        const section = mount.querySelector("#industry-section");
-        if (section) section.hidden = true;
-      }
       if (state.level !== "all") {
         lessons = lessons.filter((l) => l.level === state.level);
       }

@@ -6,11 +6,18 @@
 // sinh/phát TỪNG CÂU MỘT, 1 <audio> element/1 request/câu, dù đã có look-ahead prefetch vẫn
 // khựng vì mỗi câu là 1 network round-trip riêng). Xác nhận kỹ thuật TRƯỚC KHI code (Minh yêu
 // cầu câu trả lời dứt khoát CÓ/KHÔNG): generateSpeech() (aiProvider.js) luôn gọi CÙNG 1
-// model/encoder OpenAI (gpt-4o-mini-tts, response_format mp3) cho MỌI đoạn — nối buffer thô
-// (Buffer.concat, KHÔNG cần ffmpeg/binary ngoài) cho kết quả phát liền mạch, đủ an toàn vì mọi
-// đoạn ra từ cùng 1 encoder. Sinh xong 1 lần, ghép thành ĐÚNG 1 FILE, lưu vĩnh viễn vào
+// model/encoder OpenAI cho MỌI đoạn — nối buffer thô cho kết quả phát liền mạch, KHÔNG cần
+// ffmpeg/binary ngoài. Sinh xong 1 lần, ghép thành ĐÚNG 1 FILE, lưu vĩnh viễn vào
 // lessons.audio_full_url — mọi lượt phát SAU (kể cả người khác nếu bài dùng chung) đọc thẳng
 // URL đã lưu, KHÔNG gọi AI lại, cùng triết lý cache-1-lần đã dùng cho word_lookup.
+//
+// ĐỔI SANG WAV (2026-07-30, mục E — "khoảng lặng giữa câu", gộp cùng đợt với sửa giọng ở trên
+// theo đúng yêu cầu Minh) — MP3 không có cách chèn khoảng lặng CHÍNH XÁC theo mili-giây mà
+// không cần ffmpeg (frame MP3 mã hoá phức tạp, tự ghép byte thô rủi ro sai định dạng, không có
+// công cụ nghe thử để kiểm chứng). WAV thì khoảng lặng ĐƠN GIẢN LÀ SỐ 0 thô sau chuỗi PCM —
+// ghép chính xác tuyệt đối, không rủi ro. Đánh đổi: file nặng hơn hẳn MP3 (~3-4x, nhạc nói PCM
+// 24kHz mono ~48KB/s) — chấp nhận được cho tính năng audio trả phí đã có cổng lĩnh vực, KHÔNG
+// áp dụng đại trà cho mọi loại audio trong app.
 import { generateSpeech } from "../_shared/aiProvider.js";
 import { SUPABASE_URL } from "./_shared.js";
 
@@ -21,6 +28,11 @@ const BUCKET = "lesson-audio";
 // (B2/C1 nhiều lượt thoại) — 4 song song đã đủ dư thời gian với độ dài bài hiện tại (xem
 // LEVEL_LENGTH_TABLE/DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL trong lesson.js, tối đa ~15-20 đơn vị).
 const GENERATION_CONCURRENCY = 4;
+// Khoảng lặng chèn giữa 2 đoạn liền kề (mục E) — Minh: "200-400ms, anh tự chọn số nghe tự nhiên
+// nhất". 300ms = điểm giữa, đủ để phân biệt 2 câu/2 lượt thoại khác nhân vật mà không kéo dài
+// cảm giác chờ. Áp dụng ĐỒNG NHẤT cho cả bài đọc lẫn hội thoại (không chỉ riêng hội thoại như
+// Minh nêu ví dụ) — nhất quán, không cần 2 con số khác nhau cho 2 loại nội dung.
+const SILENCE_GAP_MS = 300;
 
 // "voice" OpenAI TTS — 2 giọng trung tính rõ nam/nữ, KHÔNG cần khớp chính xác nhân vật (bài học
 // đã có genderHint riêng cho Web Speech fallback, ở đây chỉ cần MỘT giọng nghe tự nhiên, khác
@@ -29,6 +41,69 @@ const GENERATION_CONCURRENCY = 4;
 // cao" — onyx/shimmer không đạt): echo (nam)/nova (nữ).
 function pickOpenAIVoice(genderHint) {
   return genderHint === "female" ? "nova" : "echo";
+}
+
+// Đọc chunk "fmt " + "data" của 1 file WAV (bỏ qua chunk khác nếu có, vd LIST/INFO — một số
+// encoder chèn thêm, không phải lỗi) — trả về thông số PCM + buffer dữ liệu thô (KHÔNG kèm
+// header 44 byte đầu). Không validate sâu (định dạng luôn do CHÍNH generateSpeech() sinh ra,
+// không phải input người dùng tự do) — lỗi cấu trúc (nếu có) nên NỔ RÕ ở đây thay vì âm thầm
+// ghép sai, dễ debug hơn 1 lớp try/catch nuốt lỗi.
+function parseWav(buffer) {
+  if (buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WAVE") {
+    throw new Error("Không phải file WAV hợp lệ (thiếu RIFF/WAVE header)");
+  }
+  let offset = 12;
+  let fmt = null;
+  let data = null;
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString("ascii", offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const chunkStart = offset + 8;
+    if (chunkId === "fmt ") {
+      fmt = {
+        audioFormat: buffer.readUInt16LE(chunkStart),
+        numChannels: buffer.readUInt16LE(chunkStart + 2),
+        sampleRate: buffer.readUInt32LE(chunkStart + 4),
+        byteRate: buffer.readUInt32LE(chunkStart + 8),
+        blockAlign: buffer.readUInt16LE(chunkStart + 12),
+        bitsPerSample: buffer.readUInt16LE(chunkStart + 14),
+      };
+    } else if (chunkId === "data") {
+      data = buffer.subarray(chunkStart, chunkStart + chunkSize);
+    }
+    offset = chunkStart + chunkSize + (chunkSize % 2); // chunk WAV luôn căn chẵn byte
+  }
+  if (!fmt || !data) throw new Error("File WAV thiếu chunk 'fmt ' hoặc 'data'");
+  return { fmt, data };
+}
+
+// Dựng lại 1 file WAV hoàn chỉnh (44-byte header chuẩn PCM) từ thông số fmt + buffer PCM thô
+// (đã ghép sẵn nhiều đoạn + khoảng lặng, xem generate_lesson_full_audio bên dưới).
+function buildWav(fmt, pcmData) {
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(36 + pcmData.length, 4);
+  header.write("WAVE", 8, "ascii");
+  header.write("fmt ", 12, "ascii");
+  header.writeUInt32LE(16, 16); // kích thước chunk "fmt " chuẩn PCM
+  header.writeUInt16LE(fmt.audioFormat, 20);
+  header.writeUInt16LE(fmt.numChannels, 22);
+  header.writeUInt32LE(fmt.sampleRate, 24);
+  header.writeUInt32LE(fmt.byteRate, 28);
+  header.writeUInt16LE(fmt.blockAlign, 32);
+  header.writeUInt16LE(fmt.bitsPerSample, 34);
+  header.write("data", 36, "ascii");
+  header.writeUInt32LE(pcmData.length, 40);
+  return Buffer.concat([header, pcmData]);
+}
+
+// Buffer PCM toàn số 0 (im lặng thật, không phải "gần như im lặng") đúng "durationMs", tính
+// theo ĐÚNG thông số fmt của các đoạn đã sinh (byteRate = số byte/giây) — căn về bội số
+// blockAlign để không làm lệch khung mẫu (mỗi khung = blockAlign byte).
+function silenceBuffer(fmt, durationMs) {
+  const rawBytes = Math.round((fmt.byteRate * durationMs) / 1000);
+  const alignedBytes = Math.round(rawBytes / fmt.blockAlign) * fmt.blockAlign;
+  return Buffer.alloc(alignedBytes); // Buffer.alloc() mặc định điền toàn số 0.
 }
 
 async function uploadAudio(path, buffer, contentType) {
@@ -58,7 +133,7 @@ async function generateAllSegments(texts, voices) {
   async function worker() {
     while (nextIndex < texts.length) {
       const i = nextIndex++;
-      const res = await generateSpeech({ text: texts[i], voice: voices[i] });
+      const res = await generateSpeech({ text: texts[i], voice: voices[i], format: "wav" });
       if (!res.ok) {
         if (!firstError) firstError = res.error;
         continue;
@@ -118,14 +193,21 @@ export async function generate_lesson_full_audio(data, ctx) {
   const genResult = await generateAllSegments(texts, voices);
   if (!genResult.ok) return { error: genResult.error || "Không tạo được audio.", status: 502 };
 
-  // Nối buffer thô THEO ĐÚNG THỨ TỰ — an toàn vì mọi đoạn cùng 1 model/encoder (xem ghi chú đầu
-  // file, đã xác nhận kỹ thuật trước khi code, KHÔNG cần ffmpeg).
-  const buffers = genResult.results.map((r) => Buffer.from(r.audioBase64, "base64"));
-  const combined = Buffer.concat(buffers);
-  const contentType = genResult.results[0]?.contentType || "audio/mpeg";
-  const ext = contentType.includes("wav") ? "wav" : "mp3";
+  // Ghép WAV THEO ĐÚNG THỨ TỰ, chèn khoảng lặng THẬT (SILENCE_GAP_MS) giữa mỗi 2 đoạn liền kề —
+  // mục E, "khoảng lặng giữa câu" (2026-07-30). fmt lấy từ đoạn ĐẦU TIÊN (mọi đoạn cùng 1
+  // model/API nên fmt luôn giống nhau, xem ghi chú đầu file) — dùng làm chuẩn cho cả khoảng
+  // lặng lẫn header file cuối cùng.
+  const parsedSegments = genResult.results.map((r) => parseWav(Buffer.from(r.audioBase64, "base64")));
+  const fmt = parsedSegments[0].fmt;
+  const gap = silenceBuffer(fmt, SILENCE_GAP_MS);
+  const pcmParts = [];
+  parsedSegments.forEach((seg, i) => {
+    pcmParts.push(seg.data);
+    if (i < parsedSegments.length - 1) pcmParts.push(gap);
+  });
+  const combined = buildWav(fmt, Buffer.concat(pcmParts));
 
-  const url = await uploadAudio(`${lessonId}/full.${ext}`, combined, contentType);
+  const url = await uploadAudio(`${lessonId}/full.wav`, combined, "audio/wav");
   if (!url) return { error: "Không lưu được audio.", status: 502 };
 
   const patchRes = await fetch(
