@@ -436,62 +436,78 @@ export function renderCreateLesson(mount) {
     };
     setProgress("Đang xác định lộ trình...");
 
-    // "Tạo bài học tiếp" (dòng gọn, đang có mục tiêu hoạt động VÀ chưa bấm "(đổi)") -> đi THẲNG
-    // tới mục tiêu đang hoạt động, KHÔNG qua resolveGoalId() — cố tình BỎ QUA field/industry
-    // đang nhớ trong localStorage (có thể còn sót giá trị từ lượt TẠO MỚI trước đó, không liên
-    // quan gì tới lượt "tiếp tục" này, lỡ đọc nhầm sẽ vô tình đổi sang lĩnh vực khác).
-    const goalResult = isCompact() ? { ok: true, goalId: state.activeGoal.id } : await resolveGoalId(setProgress);
-    if (!goalResult.ok) {
-      btn.disabled = false;
-      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(goalResult.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
-      return;
-    }
+    // BUG THẬT (2026-07-30, Minh: "cứ báo đang tạo lộ trình" — kẹt vĩnh viễn ở spinner) — TOÀN
+    // BỘ hàm này trước đây KHÔNG có try/catch nào bọc ngoài. getActiveLearningGoal() (db.js,
+    // dùng trong resolveGoalId() bên dưới) THROW lỗi thật (không trả {ok:false} như các hàm
+    // mentorApi.js khác) mỗi khi restFetch() gặp lỗi mạng/phiên hết hạn — 1 lượt throw KHÔNG
+    // bắt được sẽ dừng cả submit() giữa chừng, spinner đứng yên mãi mãi vì phần
+    // btn.disabled=false/hiện lỗi không bao giờ chạy tới. Bọc try/catch NGOÀI CÙNG để MỌI lỗi
+    // không lường trước (không riêng gì getActiveLearningGoal) đều rơi về đúng 1 thông báo lỗi
+    // rõ ràng, không bao giờ kẹt màn hình lại nữa.
+    try {
+      // "Tạo bài học tiếp" (dòng gọn, đang có mục tiêu hoạt động VÀ chưa bấm "(đổi)") -> đi
+      // THẲNG tới mục tiêu đang hoạt động, KHÔNG qua resolveGoalId() — cố tình BỎ QUA
+      // field/industry đang nhớ trong localStorage (có thể còn sót giá trị từ lượt TẠO MỚI
+      // trước đó, không liên quan gì tới lượt "tiếp tục" này, lỡ đọc nhầm sẽ vô tình đổi sang
+      // lĩnh vực khác).
+      const goalResult = isCompact() ? { ok: true, goalId: state.activeGoal.id } : await resolveGoalId(setProgress);
+      if (!goalResult.ok) {
+        btn.disabled = false;
+        resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(goalResult.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
+        return;
+      }
 
-    // Thử lại TỰ ĐỘNG ở tầng client (2026-07-28, "Tạo bài học phải luôn ra bài" — mỗi lượt ở đây
-    // là 1 request HTTP MỚI, ngân sách 60s MỚI TINH cho server). Đo tỷ lệ lỗi thật phát hiện: 1
-    // lượt gọi B2/C1 đơn lẻ đã mất ~27-40s — KHÔNG còn đủ thời gian cho retry NỘI BỘ trong CÙNG
-    // request (generate_lesson) chạy trọn vẹn ở 2 cấp này, nên retry ở TẦNG NÀY (fresh request)
-    // là cửa DUY NHẤT thật sự hữu ích cho B2/C1. Từ lượt thứ 2 trở đi, CHUYỂN SANG model mạnh
-    // hơn (useStrongModel — xem generate_lesson trong lesson.js) thay vì chỉ lặp lại y hệt lượt
-    // đầu với cùng model rẻ (đo thật: model rẻ gần như luôn hụt từ ở B2/C1 dù thử bao nhiêu lần).
-    const MAX_CLIENT_ATTEMPTS = 3;
-    let res;
-    for (let attempt = 1; attempt <= MAX_CLIENT_ATTEMPTS; attempt++) {
-      setProgress(attempt === 1 ? "AI đang soạn bài theo lộ trình..." : `AI đang thử soạn lại bài (lần ${attempt}/${MAX_CLIENT_ATTEMPTS})...`);
-      res = await generateNextLessonForGoal(goalResult.goalId, attempt > 1);
-      // Retry lỗi 502 (AI sinh bài thất bại — CÓ THỂ khác kết quả ở lượt sau) VÀ lỗi mạng/hết
-      // giờ thật (504/status null — 2026-07-30, sau khi bỏ trần 15s nội bộ trong mentor.js:
-      // "TUYỆT ĐỐI KHÔNG rơi về da tổng quát", ca cực hiếm sinh skin chunk LẦN ĐẦU quá chậm giờ
-      // có thể chạm hẳn trần maxDuration=120s thay vì được cắt sớm — vẫn nên thử lại thay vì
-      // dừng ngay, vì request MỚI thường hit cache chunk đã lưu từ lượt trước). Lỗi khác (403
-      // hết hạn mức, 400 lộ trình đã dừng...) KHÔNG đổi dù thử lại bao nhiêu lần — dừng ngay, đỡ
-      // tốn thời gian người dùng chờ vô ích.
-      if (res.ok || (res.status !== 502 && res.status !== 504 && res.status !== null)) break;
+      // Thử lại TỰ ĐỘNG ở tầng client (2026-07-28, "Tạo bài học phải luôn ra bài" — mỗi lượt ở
+      // đây là 1 request HTTP MỚI, ngân sách 60s MỚI TINH cho server). Đo tỷ lệ lỗi thật phát
+      // hiện: 1 lượt gọi B2/C1 đơn lẻ đã mất ~27-40s — KHÔNG còn đủ thời gian cho retry NỘI BỘ
+      // trong CÙNG request (generate_lesson) chạy trọn vẹn ở 2 cấp này, nên retry ở TẦNG NÀY
+      // (fresh request) là cửa DUY NHẤT thật sự hữu ích cho B2/C1. Từ lượt thứ 2 trở đi, CHUYỂN
+      // SANG model mạnh hơn (useStrongModel — xem generate_lesson trong lesson.js) thay vì chỉ
+      // lặp lại y hệt lượt đầu với cùng model rẻ (đo thật: model rẻ gần như luôn hụt từ ở B2/C1
+      // dù thử bao nhiêu lần).
+      const MAX_CLIENT_ATTEMPTS = 3;
+      let res;
+      for (let attempt = 1; attempt <= MAX_CLIENT_ATTEMPTS; attempt++) {
+        setProgress(attempt === 1 ? "AI đang soạn bài theo lộ trình..." : `AI đang thử soạn lại bài (lần ${attempt}/${MAX_CLIENT_ATTEMPTS})...`);
+        res = await generateNextLessonForGoal(goalResult.goalId, attempt > 1);
+        // Retry lỗi 502 (AI sinh bài thất bại — CÓ THỂ khác kết quả ở lượt sau) VÀ lỗi mạng/hết
+        // giờ thật (504/status null — 2026-07-30, sau khi bỏ trần 15s nội bộ trong mentor.js:
+        // "TUYỆT ĐỐI KHÔNG rơi về da tổng quát", ca cực hiếm sinh skin chunk LẦN ĐẦU quá chậm
+        // giờ có thể chạm hẳn trần maxDuration=120s thay vì được cắt sớm — vẫn nên thử lại thay
+        // vì dừng ngay, vì request MỚI thường hit cache chunk đã lưu từ lượt trước). Lỗi khác
+        // (403 hết hạn mức, 400 lộ trình đã dừng...) KHÔNG đổi dù thử lại bao nhiêu lần — dừng
+        // ngay, đỡ tốn thời gian người dùng chờ vô ích.
+        if (res.ok || (res.status !== 502 && res.status !== 504 && res.status !== null)) break;
+      }
+      btn.disabled = false;
+      if (!res.ok) {
+        // status 502/504/null = lỗi kỹ thuật của LƯỢT SINH BÀI (AI trả về dữ liệu không hợp lệ,
+        // hoặc hết giờ/mất mạng — thứ đang thử retry ở trên) -> thay bằng câu dễ hiểu, không lộ
+        // thuật ngữ kỹ thuật. Các status khác (403 hết hạn mức/hết lượt lĩnh vực, 400 lộ trình
+        // đã dừng...) đã có message tiếng Việt rõ ràng sẵn từ backend — hiện thẳng, không phải
+        // lỗi kỹ thuật cần che.
+        const friendlyError =
+          res.status === 502 || res.status === 504 || res.status === null
+            ? "Không thể tạo bài lúc này, vui lòng thử lại sau ít phút."
+            : res.error;
+        resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(friendlyError)}</div>`;
+        return;
+      }
+      // Nhớ lại cho lần tạo bài KẾ TIẾP (yêu cầu người dùng) — CHỈ lưu sau khi tạo bài THÀNH
+      // CÔNG, tránh nhớ nhầm giá trị của 1 lượt gọi lỗi.
+      saveRememberedProfile({
+        level: state.level,
+        term_density: state.term_density,
+        field: state.field || "",
+        industry: state.industry || "",
+      });
+      fetchAndSaveLessonCover(res.data.lesson);
+      prefetchLessonAudio(res.data.lesson);
+      navigate(`/lesson/${res.data.lesson.id}`);
+    } catch (e) {
+      console.error("createLesson.js submit() lỗi không lường trước:", e);
+      btn.disabled = false;
+      resultSlot.innerHTML = `<div class="result-panel result-error">Có lỗi xảy ra, vui lòng thử lại.</div>`;
     }
-    btn.disabled = false;
-    if (!res.ok) {
-      // status 502/504/null = lỗi kỹ thuật của LƯỢT SINH BÀI (AI trả về dữ liệu không hợp lệ,
-      // hoặc hết giờ/mất mạng — thứ đang thử retry ở trên) -> thay bằng câu dễ hiểu, không lộ
-      // thuật ngữ kỹ thuật. Các status khác (403 hết hạn mức/hết lượt lĩnh vực, 400 lộ trình đã
-      // dừng...) đã có message tiếng Việt rõ ràng sẵn từ backend — hiện thẳng, không phải lỗi
-      // kỹ thuật cần che.
-      const friendlyError =
-        res.status === 502 || res.status === 504 || res.status === null
-          ? "Không thể tạo bài lúc này, vui lòng thử lại sau ít phút."
-          : res.error;
-      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(friendlyError)}</div>`;
-      return;
-    }
-    // Nhớ lại cho lần tạo bài KẾ TIẾP (yêu cầu người dùng) — CHỈ lưu sau khi tạo bài THÀNH
-    // CÔNG, tránh nhớ nhầm giá trị của 1 lượt gọi lỗi.
-    saveRememberedProfile({
-      level: state.level,
-      term_density: state.term_density,
-      field: state.field || "",
-      industry: state.industry || "",
-    });
-    fetchAndSaveLessonCover(res.data.lesson);
-    prefetchLessonAudio(res.data.lesson);
-    navigate(`/lesson/${res.data.lesson.id}`);
   }
 }
