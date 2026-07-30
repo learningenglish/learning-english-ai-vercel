@@ -7,7 +7,12 @@ import { generateDailyNews } from "../_generate/news.js";
 
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization || "";
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // TẠM THỜI (2026-07-30) — cho phép header X-Debug-Trigger khớp APP_SECRET để test thủ công
+  // qua ĐÚNG endpoint này (trần 300s thật, khác hẳn trần 120s của api/chat.js) ngay sau lần
+  // đầu promote lên Production, xác nhận cron THẬT SỰ chạy được mà không cần chờ tới giờ lịch.
+  // XOÁ dòng debugBypass này ngay sau khi xác nhận xong.
+  const debugBypass = req.headers["x-debug-trigger"] === process.env.APP_SECRET;
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && !debugBypass) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
