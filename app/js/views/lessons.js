@@ -298,6 +298,16 @@ export function renderLessons(mount, params) {
   // cầu người dùng) — LUÔN hiện sẵn (không ẩn/hiện), tự tính lại số liệu theo đúng dữ liệu
   // đang xem (đã lọc theo tab Bài đọc/Hội thoại). Chỉ hiện level nào có ít nhất 1 bài, tránh
   // rối mắt với "A2 (0)".
+  //
+  // SỬA 2026-07-30 (Minh: "chớp nhẹ nền trên tab khi bấm Bài đọc/Hội thoại/Bài viết/Phân tích")
+  // — hàng chip này nằm NGAY TRÊN thanh tab (content-tabs), và trước đây BẤT KỲ lần gọi nào
+  // (kể cả khi renderList() đã hiện dữ liệu THẲNG từ cache, xem listResultCache) đều
+  // row.innerHTML = ... LẠI TỪ ĐẦU — dù nội dung/số liệu giống hệt lần trước, việc phá-rồi-dựng
+  // lại DOM vẫn buộc trình duyệt vẽ lại (repaint) đúng dải này mỗi lần bấm tab, tạo đúng cảm
+  // giác "chớp nhẹ nền" dù dữ liệu không đổi. "lastLevelCountHtml" nhớ lại HTML đã vẽ lần
+  // trước — giống hệt thì bỏ qua hẳn (không đụng DOM), chỉ vẽ lại khi số liệu/chip active THẬT
+  // SỰ khác (đổi tab dữ liệu khác, đổi cấp độ đang chọn...).
+  let lastLevelCountHtml = null;
   function renderLevelCountRow(lessons) {
     const row = mount.querySelector("#level-count-row");
     if (!row) return;
@@ -306,7 +316,7 @@ export function renderLessons(mount, params) {
       return acc;
     }, {});
     const levelsWithLessons = LEVELS.filter((l) => counts[l] > 0);
-    row.innerHTML = `
+    const html = `
       <button type="button" class="level-count-chip ${state.level === "all" ? "active" : ""}" data-level="all">
         <span class="level-count-chip-num">${lessons.length}</span> Tất cả
       </button>
@@ -321,6 +331,9 @@ export function renderLessons(mount, params) {
         )
         .join("")}
     `;
+    if (html === lastLevelCountHtml) return;
+    lastLevelCountHtml = html;
+    row.innerHTML = html;
     row.querySelectorAll(".level-count-chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         state.level = chip.dataset.level;
