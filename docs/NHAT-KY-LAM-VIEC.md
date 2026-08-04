@@ -205,3 +205,17 @@ luồng backend mới hoạt động đúng. 4 việc tinh chỉnh giao diện:
    `.industry-select-icon` (đổi tên `.genre-row-icon`, cùng 4 màu chip).
 
 Bump `CACHE_NAME` lên v35.
+
+## 2026-08-04 (tiếp 6) — 2 phản hồi từ ảnh Tiến trình thật
+
+1. **Gộp level vào 1 card** (Minh: "tất cả các level vào một card") — `progress.js` đổi
+   `skillSectionHtml()`/`writingSectionHtml()` bọc TẤT CẢ level/thể loại trong 1
+   `.progress-bars-card` DUY NHẤT (trước đây mỗi level là 1 card `.progress-bar-row` riêng) —
+   mỗi level giờ chỉ là 1 khối `.progress-bar-item`, ngăn bằng viền mảnh.
+2. **Font in đậm** — Minh nghi có 2 font khác nhau. Xác nhận lại: toàn app CHỈ 1 font-family
+   (`--font-main`), không phải font khác — nhưng `font-weight: 800` (số Tổng XP/streak/tên
+   level) ở size lớn trông khác hẳn chữ thường, dễ hiểu nhầm là font khác. Đổi 3 chỗ MỚI thêm
+   trong đợt redesign này (`.progress-summary-value`, `.streak-card-value`, `.level-card-name`)
+   từ 800 xuống 600 — các `font-weight: 800` KHÁC trong app (thuộc màn hình cũ, không phải đợt
+   redesign này) giữ nguyên, không đụng.
+Bump `CACHE_NAME` lên v36.

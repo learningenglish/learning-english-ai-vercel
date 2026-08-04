@@ -20,9 +20,12 @@ function summaryCardsHtml() {
   `;
 }
 
+// "row" (KHÔNG còn thẻ .progress-bar-row riêng từng level, 2026-08-04 — Minh: "tất cả level
+// vào 1 card") — mỗi level/thể loại giờ chỉ là 1 KHỐI trong CÙNG 1 card bọc ngoài
+// (.progress-bars-card, xem skillSectionHtml/writingSectionHtml), phân cách bằng viền mảnh.
 function barRowHtml(label, pct, subLabel) {
   return `
-    <div class="progress-bar-row">
+    <div class="progress-bar-item">
       <div class="progress-bar-head"><span>${escapeHtml(label)}</span><span>${pct}%</span></div>
       <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
       <p class="progress-bar-sub">${escapeHtml(subLabel)}</p>
@@ -32,12 +35,12 @@ function barRowHtml(label, pct, subLabel) {
 
 function skillSectionHtml(rows) {
   if (!rows.length) return `<p class="muted">Chưa có bài nào.</p>`;
-  return rows.map((r) => barRowHtml(r.level, r.pct, `${r.done}/${r.total} bài đã học`)).join("");
+  return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.level, r.pct, `${r.done}/${r.total} bài đã học`)).join("")}</div>`;
 }
 
 function writingSectionHtml(rows) {
   if (!rows.length) return `<p class="muted">Chưa có bài luyện viết nào.</p>`;
-  return rows.map((r) => barRowHtml(r.genre, r.pct, `${r.count} bài đã chấm`)).join("");
+  return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.genre, r.pct, `${r.count} bài đã chấm`)).join("")}</div>`;
 }
 
 // Nhãn ngày kiểu mockup ("Hôm nay — dd/mm/yyyy", "Hôm qua — ...", còn lại là ngày thường) —

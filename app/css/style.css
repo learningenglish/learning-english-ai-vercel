@@ -2778,7 +2778,7 @@ textarea:focus {
 
 .streak-card-value {
   flex-shrink: 0;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--purple);
   font-size: 0.95rem;
 }
@@ -2882,7 +2882,7 @@ textarea:focus {
 }
 
 .level-card-name {
-  font-weight: 800;
+  font-weight: 600;
   font-size: 0.85rem;
   color: var(--text);
 }
@@ -3117,7 +3117,11 @@ textarea:focus {
 
 .progress-summary-value {
   font-size: 1.4rem;
-  font-weight: 800;
+  /* 600 thay 800 (2026-08-04, Minh: "không thích font in đậm đó, lấy font chữ nhỏ dùng làm
+     font in đậm") — CHỈ 1 font-family duy nhất trong toàn app (--font-main), 800 là ĐỘ ĐẬM
+     (font-weight), không phải font khác — nhưng ở size lớn, 800 trông khác hẳn chữ thường tới
+     mức bị hiểu nhầm là 1 kiểu chữ khác. 600 vẫn đủ nổi bật, gần chữ thường hơn hẳn. */
+  font-weight: 600;
   color: var(--purple);
 }
 
@@ -3128,22 +3132,33 @@ textarea:focus {
 }
 
 .progress-section-title {
-  font-weight: 700;
+  font-weight: 600;
   margin: 20px 0 8px;
 }
 
-.progress-bar-row {
+/* GỘP tất cả level/thể loại vào 1 CARD DUY NHẤT (2026-08-04, Minh: "tất cả các level vào một
+   card") — trước đây .progress-bar-row là 1 card riêng/level, giờ .progress-bars-card là card
+   DUY NHẤT bọc ngoài, .progress-bar-item chỉ còn là 1 khối bên trong, ngăn cách bằng viền mảnh
+   phía trên (trừ khối đầu tiên). */
+.progress-bars-card {
   background: var(--surface);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  padding: 12px 14px;
-  margin-bottom: 10px;
+  padding: 4px 14px;
+}
+
+.progress-bar-item {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.progress-bar-item:first-child {
+  border-top: none;
 }
 
 .progress-bar-head {
   display: flex;
   justify-content: space-between;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 6px;
 }
 
