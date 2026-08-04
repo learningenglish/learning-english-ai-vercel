@@ -9,7 +9,6 @@ import { getActiveLearningGoal, getStreakDays } from "../db.js";
 import { getSession } from "../session.js";
 import { icon } from "../icons.js";
 import { escapeHtml } from "../utils.js";
-import { wireAppHeader } from "../header.js";
 
 // "chip" = màu icon vuông bo góc riêng cho từng card, KHÔNG đổi theo Theme Color Palette (màu
 // nhận diện thể loại, cố định) — khác hẳn --purple (accent chọn được) dùng cho nút/tab active.
@@ -38,10 +37,12 @@ export function renderHome(mount) {
 
   mount.innerHTML = `
     <div class="screen home-screen">
-      <div class="home-topbar">
-        <div class="home-track-chip" id="home-track-chip" hidden></div>
-        <button type="button" class="home-settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
-      </div>
+      <!-- "home-track-chip" (2026-08-04, Minh: "đồng bộ với các mục khác về font chữ và vị trí
+           hiển thị" — trước đây 1 chip màu tím nhỏ, giờ dùng ĐÚNG class tiêu đề header dùng
+           chung .screen-title/.app-header-title như mọi màn khác) + BỎ nút cài đặt góc phải
+           (Minh: "bỏ nút setting góc phải trên cao" — Setting đã có sẵn icon riêng ở bottom
+           nav, không cần trùng lặp). -->
+      <h1 class="screen-title app-header-title home-track-title" id="home-track-title" hidden></h1>
       <h1 class="home-greeting">Xin chào${name ? " " + escapeHtml(name) : ""} 👋</h1>
       <p class="home-subgreeting">Hôm nay bạn muốn học gì?</p>
 
@@ -50,6 +51,7 @@ export function renderHome(mount) {
         <div class="streak-card-row">
           <span class="streak-card-value" id="streak-value">--</span>
           <div class="streak-card-bar"><div class="streak-card-bar-fill" id="streak-bar-fill" style="width:0%"></div></div>
+          <span class="streak-card-flame">${icon("flame", { size: 20, filled: true })}</span>
         </div>
       </div>
 
@@ -66,7 +68,6 @@ export function renderHome(mount) {
       </div>
     </div>
   `;
-  wireAppHeader(mount);
 
   mount.querySelectorAll(".feature-card").forEach((btn) => {
     btn.addEventListener("click", () => navigate(btn.dataset.path));
@@ -94,9 +95,9 @@ export function renderHome(mount) {
         navigate("/industry-select");
         return;
       }
-      const chip = mount.querySelector("#home-track-chip");
-      chip.textContent = goal.title;
-      chip.hidden = false;
+      const titleEl = mount.querySelector("#home-track-title");
+      titleEl.textContent = goal.title;
+      titleEl.hidden = false;
     })
     .catch(() => {
       // Lỗi mạng lúc kiểm tra -> không chặn Home, cứ để người dùng dùng bình thường.

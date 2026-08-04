@@ -219,3 +219,28 @@ Bump `CACHE_NAME` lên v35.
    từ 800 xuống 600 — các `font-weight: 800` KHÁC trong app (thuộc màn hình cũ, không phải đợt
    redesign này) giữ nguyên, không đụng.
 Bump `CACHE_NAME` lên v36.
+
+## 2026-08-04 (tiếp 7) — 5 phản hồi từ test thật, 1 sửa lại cho đúng ý ban đầu
+
+1. **Bug back-navigation thật** — back từ "Luyện viết" và "Văn bản" nhảy vào `/lessons` (màn
+   Bài học cũ) thay vì `/home` (màn chính mới sau đăng nhập). Sửa `writingPractice.js` (nhánh
+   back mặc định + nút "Hoàn tất") và `createFromText.js` (back-link) — cả 3 chỗ đổi
+   `navigate("/lessons")` → `navigate("/home")`.
+2. **Home**: xác nhận lại `home.js` đã đúng yêu cầu từ trước (tiêu đề lộ trình dùng chung class
+   header với Tiến trình/Setting, chữ "Xin chào" nằm dưới, đã bỏ nút setting góc phải) — không
+   cần sửa thêm.
+3. **Card Bài đọc/Hội thoại**: bỏ hẳn ngày tạo + nhãn lĩnh vực khỏi `lessonCardHtml()` (không
+   cần thiết vì chủ đề đã sinh sẵn từ Tầng 1), badge trạng thái rút từ 3 mức (Chưa/Đang/Đã học)
+   xuống 2 mức (Chưa học/Đã học) — `lessonCard.js`.
+4. **Ngọn lửa chuỗi ngày học** — `.streak-card-flame` đổi màu từ `var(--purple)` sang
+   `var(--orange)` cho khớp ngọn lửa cũ ở `.streak-badge` (header).
+5. **Luyện viết — hiểu lầm rồi sửa lại 2 lần**: lần đầu Minh báo "card lĩnh vực bị mất, thay
+   bằng ô lĩnh vực (không bắt buộc) là sai" → đã thêm lại `.writing-industry-grid` (8 thẻ lĩnh
+   vực). Sau khi xem lại, Minh xác nhận đó là NHẦM LẪN — thứ cần khôi phục thực ra là "dạng bài
+   viết" (genre, đã có sẵn trong code từ "tiếp 3", không hề mất), còn "lĩnh vực" thì KHÔNG cần ở
+   màn này nữa. Đã bỏ hẳn `INDUSTRY_CHIPS`, khối "Lĩnh vực (không bắt buộc)" trong
+   `renderGenreStep()`, wiring `.writing-industry-card`, và toàn bộ CSS `.writing-industry-*`
+   trong `style.css`. `state.industry` giữ nguyên field rỗng cố định (server vẫn nhận tham số
+   này, chỉ không còn UI để đặt).
+
+Bump `CACHE_NAME` lên v37.

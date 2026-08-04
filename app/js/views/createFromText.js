@@ -12,13 +12,12 @@
 import { navigate } from "../router.js";
 import { createLessonFromText, fetchAndSaveLessonCover } from "../lessonApi.js";
 import { escapeHtml, countWords } from "../utils.js";
-import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
 
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("file-text", { size: 22 })} Phân tích văn bản`, {}, { showBack: true, archivePath: "/analysis-archive" })}
+      ${appHeaderHtml(`Văn bản`, {}, { showBack: true, archivePath: "/analysis-archive" })}
 
       <label class="field">
         <span class="field-question">Dán văn bản của bạn</span>
@@ -30,7 +29,9 @@ export function renderCreateFromText(mount) {
     </div>
   `;
 
-  wireBackLink(mount, () => navigate("/lessons"));
+  // 2026-08-04 (Minh bắt lỗi thật) — "/lessons" không còn là màn chính sau đăng nhập, Home mới
+  // giữ vai trò đó, back từ đây phải về Home.
+  wireBackLink(mount, () => navigate("/home"));
   wireAppHeader(mount);
   loadAppHeaderStats(mount);
 

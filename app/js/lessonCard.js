@@ -5,14 +5,15 @@ import { escapeHtml, formatDate } from "./utils.js";
 import { icon } from "./icons.js";
 import { computeLearnStatus } from "./db.js";
 
-// "chưa học/đang học/đã học" (2026-08-04, Phần A4) — chỉ vẽ badge khi lesson có nhúng sẵn
-// lesson_progress (xem PROGRESS_EMBED trong db.js) — bài không có (vd carousel "Bài đang đọc"
-// tự biết đang học rồi qua ngữ cảnh riêng) thì bỏ qua, không vẽ gì thêm.
+// "Đã học/Chưa học" (2026-08-04, Phần A4 — RÚT GỌN 2026-08-04 lần 2, Minh: "chỉ để Đã học
+// (nghe hết audio tổng) và Chưa học") — bỏ hẳn nhãn "Đang học" riêng (gộp chung vào "Chưa học"
+// trên thẻ danh sách, dữ liệu "đang học dở" thật vẫn còn nguyên trong lesson_progress, chỉ
+// không tách nhãn riêng ở đây nữa) — chỉ vẽ badge khi lesson có nhúng sẵn lesson_progress (xem
+// PROGRESS_EMBED trong db.js).
 function learnStatusBadgeHtml(l) {
   if (!("lesson_progress" in l)) return "";
-  const status = computeLearnStatus(l);
-  if (status === "not_started") return `<span class="learn-status-badge learn-status-not-started">Chưa học</span>`;
-  if (status === "in_progress") return `<span class="learn-status-badge learn-status-in-progress">Đang học</span>`;
+  const done = computeLearnStatus(l) === "done";
+  if (!done) return `<span class="learn-status-badge learn-status-not-started">Chưa học</span>`;
   return `<span class="learn-status-badge learn-status-done">${icon("check-circle", { size: 12 })} Đã học</span>`;
 }
 
@@ -28,14 +29,11 @@ export function lessonCardExcerpt(l) {
 // "hideFavorite" (2026-07-28, "Tin tức tự sinh") — bài news_lessons KHÔNG thuộc user_id nào,
 // không có is_favorite/không PATCH được qua setLessonFavorite (khác bảng) — ẩn hẳn nút tim thay
 // vì hiện 1 nút bấm-vô-tác-dụng.
+// BỎ ngày tạo + nhãn lĩnh vực khỏi meta (2026-08-04, Minh: "chủ đề được sinh trước nên card
+// không cần đề ngày và lĩnh vực nữa, chỉ để Đã học/Chưa học") — CHỈ còn badge level + trạng
+// thái học, xem learnStatusBadgeHtml() ở trên.
 export function lessonCardHtml(l, { hideFavorite = false } = {}) {
   const excerpt = lessonCardExcerpt(l);
-  const dateVal = l.created_at || l.published_at;
-  // Nhãn lĩnh vực cạnh ngày tạo (2026-07-28, "bỏ toggle Của tôi/Tin tức") — bài cá nhân dùng
-  // lessons.industry (điền ở form "Tạo bài học"), bài Tin tức dùng news_lessons.category (8
-  // chuyên mục cố định, xem NEWS_CATEGORIES trong api/_generate/news.js) — cùng 1 vị trí hiển
-  // thị, không cần biết nguồn nào đang render.
-  const industryVal = l.industry || l.category || "";
   return `
     <div class="lesson-card" data-id="${l.id}">
       <div class="lesson-card-cover">${
@@ -48,8 +46,6 @@ export function lessonCardHtml(l, { hideFavorite = false } = {}) {
         ${excerpt ? `<div class="lesson-card-sub">${escapeHtml(excerpt)}</div>` : ""}
         <div class="lesson-card-meta">
           <span class="badge">${escapeHtml(l.level)}</span>
-          ${industryVal ? `<span class="muted lesson-card-industry">${escapeHtml(industryVal)}</span>` : ""}
-          ${dateVal ? `<span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(dateVal)}</span>` : ""}
           ${learnStatusBadgeHtml(l)}
         </div>
       </div>

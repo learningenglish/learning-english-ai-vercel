@@ -67,12 +67,17 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
   const archiveBtn = opts.archivePath
     ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="Lưu trữ">${icon("bookmark", { size: 20 })}</button>`
     : "";
+  // "archiveBtn" ĐỨNG TRƯỚC streak-badge (2026-08-04, Minh: "icon lưu trữ nằm bên trái icon
+  // chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — streak-badge giờ LUÔN kề
+  // ngay cạnh nút cài đặt (2 phần tử LUÔN có mặt trên mọi màn), archiveBtn (chỉ có ở 1-2 màn)
+  // chèn thêm vào bên TRÁI thay vì xen giữa — vị trí streak so với nút cài đặt không đổi dù màn
+  // có/không có nút Lưu trữ.
   return `
     <div class="app-header">
       ${left}
       <div class="header-right">
-        <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>
         ${archiveBtn}
+        <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>
         <button type="button" class="settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
       </div>
     </div>

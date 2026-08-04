@@ -51,9 +51,11 @@ const GENRE_STYLES = {
 };
 const DEFAULT_GENRE_STYLE = { icon: "file-text", chip: "blue" };
 
+// Bỏ icon trước tiêu đề (2026-08-04, Minh: "bỏ icon Chọn dạng bài viết") — chỉ CÒN icon ở 2
+// bước cuối (Bài viết hoàn chỉnh/Bài tham khảo, dùng "sparkles" phân biệt rõ với các bước
+// trước, giữ nguyên như cũ).
 const STEP_TITLES = {
-  genre: `${icon("edit-3", { size: 22 })} Chọn dạng bài viết`,
-  setup: `${icon("edit-3", { size: 22 })} Luyện viết`,
+  genre: `Luyện viết`,
   task: `${icon("edit-3", { size: 22 })} Nhiệm vụ`,
   write: `${icon("edit-3", { size: 22 })} Viết bài`,
   result: `${icon("edit-3", { size: 22 })} Kết quả`,
@@ -65,9 +67,12 @@ const STEP_TITLES = {
 export function renderWritingPractice(mount) {
   const state = {
     // "genre" (2026-08-04, KHÔI PHỤC màn "Chọn dạng bài viết" — Minh chốt lại, xem ghi chú
-    // "genre" trong api/_generate/writing.js::generate_writing_task) LUÔN là bước ĐẦU TIÊN,
-    // TRƯỚC "setup" (chọn cấp độ) — thứ tự ngược lại bản 2026-07-27 (cấp độ trước, AI tự chọn
-    // thể loại sau khi bấm "AI giao nhiệm vụ").
+    // "genre" trong api/_generate/writing.js::generate_writing_task) LUÔN là bước ĐẦU TIÊN — GỘP
+    // CHUNG với chọn cấp độ (2026-08-04 lần 2, Minh: "bớt được 1 luồng, không phải Tiếp tục rồi
+    // mới AI giao nhiệm vụ nữa") — KHÔNG còn bước "setup" riêng, chọn thể loại + cấp độ đều trên
+    // CÙNG 1 màn, bấm "AI Giao Nhiệm Vụ" duy nhất 1 lần. BỎ chọn "lĩnh vực" (2026-08-04 lần 3,
+    // Minh: nhầm lẫn giữa "dạng bài viết" và "lĩnh vực" — không cần chọn lĩnh vực ở đây nữa),
+    // "industry" giữ nguyên field rỗng cố định (server vẫn nhận tham số này, chỉ không có UI đặt).
     step: "genre",
     genres: null, // null = đang tải danh sách thể loại
     genre: null, // thể loại đã CHỌN (tên tiếng Việt, khớp key WRITING_TOPIC_POOL_BY_GENRE)
@@ -122,13 +127,11 @@ export function renderWritingPractice(mount) {
       <div class="screen">
         ${appHeaderHtml(STEP_TITLES[state.step], headerCache, {
           showBack: true,
-          archivePath: state.step === "genre" || state.step === "setup" ? "/writing-archive" : undefined,
+          archivePath: state.step === "genre" ? "/writing-archive" : undefined,
         })}
         ${
           state.step === "genre"
             ? renderGenreStep()
-            : state.step === "setup"
-            ? renderSetupStep()
             : state.step === "task"
             ? renderTaskStep()
             : state.step === "write"
@@ -146,8 +149,10 @@ export function renderWritingPractice(mount) {
     wire();
   }
 
-  // ====== Bước 0 (2026-08-04): chọn dạng bài viết — tick chọn 1 trong các thể loại có sẵn
-  // (writingTopicPool.json qua list_writing_genres, KHÔNG gọi AI) TRƯỚC khi AI giao đề. ======
+  // ====== Bước 0 (2026-08-04, GỘP với chọn cấp độ 2026-08-04 lần 2 — Minh: "bớt được 1 luồng"):
+  // chọn dạng bài viết (tick chọn 1 trong các thể loại có sẵn, writingTopicPool.json qua
+  // list_writing_genres, KHÔNG gọi AI) + cấp độ + lĩnh vực (tuỳ chọn), TẤT CẢ trên CÙNG 1 màn —
+  // ĐÚNG 1 nút "AI Giao Nhiệm Vụ" duy nhất, không còn màn "setup" riêng. ======
   function renderGenreStep() {
     if (state.genres === null) return `<p class="muted">Đang tải...</p>`;
     return `
@@ -165,31 +170,16 @@ export function renderWritingPractice(mount) {
           })
           .join("")}
       </div>
-      <button type="button" class="btn btn-primary btn-block" id="genre-continue-btn" ${state.genre ? "" : "disabled"}>Tiếp tục</button>
-    `;
-  }
 
-  // ====== Bước 1: chọn cấp độ + lĩnh vực (tuỳ chọn) ======
-  function renderSetupStep() {
-    return `
-      <div class="current-goal-row">
-        <span>Dạng bài viết: <strong>${escapeHtml(state.genre)}</strong></span>
-        <button type="button" class="link-btn" id="setup-change-genre-btn">Đổi</button>
-      </div>
       <label class="field">
-        <span class="field-question">Bạn đang ở cấp độ nào?</span>
+        <span class="field-question">Cấp độ luyện tập</span>
       </label>
       <div class="filter-row" id="level-chip-row">
         ${LEVELS.map((l) => `<button type="button" class="filter-chip level-chip ${l === state.level ? "active" : ""}" data-level="${l}">${l}</button>`).join("")}
       </div>
 
-      <label class="field">
-        <span class="field-question">Lĩnh vực (không bắt buộc)</span>
-        <input type="text" id="industry-input" placeholder="VD: Nhà hàng - Khách sạn" value="${escapeHtml(state.industry)}" />
-      </label>
-
-      <div id="setup-result-slot"></div>
-      <button type="button" class="btn btn-primary btn-block" id="setup-submit-btn">AI giao nhiệm vụ</button>
+      <div id="genre-result-slot"></div>
+      <button type="button" class="btn btn-primary btn-block" id="genre-continue-btn" ${state.genre ? "" : "disabled"}>AI Giao Nhiệm Vụ</button>
     `;
   }
 
@@ -603,11 +593,8 @@ export function renderWritingPractice(mount) {
   function wire() {
     wireAppHeader(mount);
     wireBackLink(mount, () => {
-      if (state.step === "setup") {
+      if (state.step === "task") {
         state.step = "genre";
-        render();
-      } else if (state.step === "task") {
-        state.step = "setup";
         render();
       } else if (state.step === "write") {
         state.step = "task";
@@ -620,12 +607,13 @@ export function renderWritingPractice(mount) {
         state.step = "detail";
         render();
       } else {
-        navigate("/lessons");
+        // 2026-08-04 (Minh bắt lỗi thật: "back từ Luyện Viết đáng lẽ về Home lại nhảy vào Bài
+        // học") — "/lessons" không còn là màn chính sau đăng nhập nữa, Home mới giữ vai trò đó.
+        navigate("/home");
       }
     });
 
     if (state.step === "genre") wireGenreStep();
-    else if (state.step === "setup") wireSetupStep();
     else if (state.step === "task") wireTaskStep();
     else if (state.step === "write") wireWriteStep();
     else if (state.step === "result") wireResultStep();
@@ -634,6 +622,7 @@ export function renderWritingPractice(mount) {
     else wireReferenceStep();
   }
 
+  // GỘP chọn thể loại + cấp độ + lĩnh vực (2026-08-04 lần 2) — 1 hàm wire duy nhất cho cả màn.
   function wireGenreStep() {
     mount.querySelectorAll(".genre-row").forEach((row) => {
       row.addEventListener("click", () => {
@@ -641,27 +630,17 @@ export function renderWritingPractice(mount) {
         render();
       });
     });
-    // "#genre-continue-btn" CHƯA tồn tại lúc state.genres === null (renderGenreStep() chỉ vẽ
-    // "Đang tải...", chưa có nút) — optional chaining tránh crash trong khoảng chờ đó.
-    mount.querySelector("#genre-continue-btn")?.addEventListener("click", () => {
-      if (!state.genre) return;
-      state.step = "setup";
-      render();
-    });
-  }
-
-  function wireSetupStep() {
     mount.querySelectorAll(".level-chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         state.level = chip.dataset.level;
         render();
       });
     });
-    mount.querySelector("#industry-input").addEventListener("input", (e) => (state.industry = e.target.value));
-    mount.querySelector("#setup-submit-btn").addEventListener("click", () => requestTask());
-    mount.querySelector("#setup-change-genre-btn").addEventListener("click", () => {
-      state.step = "genre";
-      render();
+    // "#genre-continue-btn" CHƯA tồn tại lúc state.genres === null (renderGenreStep() chỉ vẽ
+    // "Đang tải...", chưa có nút) — optional chaining tránh crash trong khoảng chờ đó.
+    mount.querySelector("#genre-continue-btn")?.addEventListener("click", () => {
+      if (!state.genre) return;
+      requestTask();
     });
   }
 
@@ -695,7 +674,7 @@ export function renderWritingPractice(mount) {
       state.step = "detail";
       render();
     });
-    mount.querySelector("#finish-writing-btn").addEventListener("click", () => navigate("/lessons"));
+    mount.querySelector("#finish-writing-btn").addEventListener("click", () => navigate("/home"));
   }
 
   function wireDetailStep() {
@@ -805,8 +784,8 @@ export function renderWritingPractice(mount) {
 
   // ====== gọi API ======
   async function requestTask() {
-    const resultSlot = mount.querySelector(state.step === "setup" ? "#setup-result-slot" : "#task-result-slot");
-    const submitBtns = mount.querySelectorAll("#setup-submit-btn, #task-reroll-btn, #task-start-btn");
+    const resultSlot = mount.querySelector(state.step === "genre" ? "#genre-result-slot" : "#task-result-slot");
+    const submitBtns = mount.querySelectorAll("#genre-continue-btn, #task-reroll-btn, #task-start-btn");
     submitBtns.forEach((b) => b && (b.disabled = true));
     resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> AI đang chọn nhiệm vụ...</div>`;
 

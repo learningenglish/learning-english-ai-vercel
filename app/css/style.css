@@ -1263,11 +1263,17 @@ textarea:focus {
 }
 
 /* KHÔNG uppercase — cùng kiểu chữ thường với .content-text (nội dung bài đọc thật), tránh
-   cảm giác "2 font khác nhau" dù kỹ thuật vẫn chỉ 1 var(--font-main) (người dùng nhận xét). */
+   cảm giác "2 font khác nhau" dù kỹ thuật vẫn chỉ 1 var(--font-main) (người dùng nhận xét).
+   1 DÒNG DUY NHẤT (2026-08-04, Minh: "tiêu đề chỉ 1 dòng... đảm bảo các card đồng bộ size") —
+   tiêu đề dài/ngắn khác nhau trước đây khiến thẻ wrap 1-2 dòng, chiều cao card KHÔNG đều nhau
+   khi xếp danh sách — ellipsis cắt gọn, mọi card cùng 1 chiều cao cố định. */
 .lesson-card-title {
   font-weight: 700;
   font-size: 0.95rem;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lesson-card-sub {
@@ -2729,13 +2735,11 @@ textarea:focus {
   min-height: 40px;
 }
 
-.home-track-chip {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--purple);
-  background: var(--purple-soft);
-  border-radius: 999px;
-  padding: 5px 12px;
+/* 2026-08-04 — trước là 1 chip màu tím nhỏ riêng, giờ dùng ĐÚNG .screen-title/.app-header-title
+   (Minh: "đồng bộ với các mục khác về font chữ và vị trí hiển thị") — chỉ chỉnh lại margin cho
+   khớp layout Home (đứng trên "Xin chào", không phải trong hàng .app-header). */
+.home-track-title {
+  margin: 6px 0 0;
 }
 
 .home-settings-btn {
@@ -2796,6 +2800,14 @@ textarea:focus {
   border-radius: 999px;
   background: var(--purple);
   transition: width 0.3s ease;
+}
+
+/* Màu CAM (2026-08-04, Minh: "ngọn lửa quá xấu, sử dụng lại ngọn lửa cũ và đồng bộ") — ĐÚNG màu
+   .streak-badge (header.js, icon lửa đã dùng sẵn khắp app), trước đó nhầm sang var(--purple). */
+.streak-card-flame {
+  flex-shrink: 0;
+  color: var(--orange);
+  display: flex;
 }
 
 .home-card-grid {
