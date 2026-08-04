@@ -2,8 +2,9 @@
 // hướng, Phần A2/B). THAY HẲN màn ô-gõ-tự-do+6-chip cũ (views/mentorGoal.js, hiện KHÔNG có route
 // nào trỏ tới, mồ côi từ lúc tắt UI Mentor AI 2026-07-23) bằng 1 danh mục CỐ ĐỊNH 2 tầng: lĩnh
 // vực (tầng 1) xổ ra vị trí (tầng 2, nút tròn). mentorGoal.js GIỮ NGUYÊN, không đụng, không import
-// lẫn nhau — file này độc lập, chỉ gọi lại đúng backend đã có (mentorApi.js), KHÔNG viết logic
-// mới nào ở tầng "1 goal active"/gate — checkGoalGate() y hệt bước 0 cũ.
+// lẫn nhau — file này độc lập, chỉ gọi lại đúng backend đã có (mentorApi.js). KHÔNG còn gọi
+// checkGoalGate() nữa (bỏ 2026-08-04, xem ghi chú tại renderIndustrySelect() bên dưới) — "1 goal
+// active" vẫn giữ ĐÚNG cấu trúc cũ, chỉ không hiện màn "gate" cảnh báo trước khi vào đây nữa.
 //
 // SỬA LẠI 2026-08-04 (Minh: "xây luồng truy cập trước" — CHỈ Kế toán là lĩnh vực THẬT, 8 vị trí
 // đều phải CHỌN ĐƯỢC NGAY, không còn "Sắp ra mắt"/không còn phụ thuộc industry_skins đã có sẵn
@@ -18,7 +19,7 @@
 // Các lĩnh vực KHÁC (Minh: "ghi ra và cho toggle, các vị trí cụ thể nhưng để sắp ra mắt") — CHỈ
 // để tham khảo/đúng khung ảnh mẫu, KHÔNG chọn được, mọi vị trí con đều "Sắp ra mắt" vĩnh viễn.
 import { navigate } from "../router.js";
-import { checkGoalGate, autoCreateGoal, createGoal } from "../mentorApi.js";
+import { autoCreateGoal, createGoal } from "../mentorApi.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { showToast } from "../toast.js";
@@ -26,6 +27,10 @@ import { showToast } from "../toast.js";
 function accountingProfile(mergedOccupation, scope, interlocutors, coreTerms) {
   return {
     is_general: false,
+    // "is_fixed_catalog" (2026-08-04) — khớp đúng cờ mới thêm ở insertLearningGoal() trong
+    // api/_generate/mentor.js: miễn giới hạn "5 lĩnh vực trọn đời" (giới hạn đó sinh ra để chặn
+    // đường TỰ DO gõ chữ, không áp dụng cho danh mục CỐ ĐỊNH 8 vị trí ở đây).
+    is_fixed_catalog: true,
     merged_occupation: mergedOccupation,
     primary_communication_scope: scope,
     interlocutors,
@@ -166,32 +171,20 @@ const INDUSTRIES = [
 
 export function renderIndustrySelect(mount) {
   const state = {
-    step: "loading", // loading | gate | select
-    gateInfo: null,
     expandedIndustry: null,
     submitting: false,
   };
 
-  checkGoalGate()
-    .then((res) => {
-      if (res.ok && res.data.shouldGate) {
-        state.gateInfo = res.data;
-        state.step = "gate";
-      } else {
-        state.step = "select";
-      }
-      render();
-    })
-    .catch(() => {
-      state.step = "select"; // lỗi mạng lúc kiểm tra chặn -> không chặn oan, cho chọn thẳng
-      render();
-    });
-
   render();
 
+  // "gate" (mentor_check_goal_gate) BỎ HẲN khỏi màn này (2026-08-04, Minh: "đây là thiết kế
+  // luồng app MỚI" — màn "gate" cũ hiện lại câu nhắc dựa trên learning_goals CŨ, tài khoản test
+  // đã tích luỹ rất nhiều từ các đợt test khác không liên quan, gây cảm giác "sao có thông tin
+  // cũ"). "1 goal active" VẪN được giữ đúng cấu trúc — insertLearningGoal() (mentor.js) LUÔN tự
+  // archive goal active cũ trước khi tạo/chọn goal mới, KHÔNG phụ thuộc màn hình này có hỏi lại
+  // hay không — tự bấm vào 1 vị trí ở màn CHỌN CHUYÊN NGÀNH đã LÀ hành động xác nhận rõ ràng
+  // rồi, không cần thêm 1 lớp xác nhận phụ nữa.
   function render() {
-    if (state.step === "loading") return renderShell(`<p class="muted">Đang kiểm tra...</p>`);
-    if (state.step === "gate") return renderGate();
     return renderSelect();
   }
 
@@ -203,23 +196,6 @@ export function renderIndustrySelect(mount) {
         ${innerHtml}
       </div>
     `;
-  }
-
-  function renderGate() {
-    renderShell(`
-      <div class="card">
-        <p>${escapeHtml(state.gateInfo.message)}</p>
-        <div class="director-card-actions">
-          <button type="button" class="btn btn-primary btn-block" id="gate-keep-old">Học tiếp cái cũ</button>
-          <button type="button" class="btn btn-ghost btn-block" id="gate-new">Vẫn muốn tạo mới</button>
-        </div>
-      </div>
-    `);
-    mount.querySelector("#gate-keep-old").addEventListener("click", () => navigate("/home"));
-    mount.querySelector("#gate-new").addEventListener("click", () => {
-      state.step = "select";
-      render();
-    });
   }
 
   function renderSelect() {

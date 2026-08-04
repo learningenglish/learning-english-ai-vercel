@@ -163,3 +163,25 @@ trong ảnh mẫu 1) chỉ trưng bày cho đúng khung ảnh, vĩnh viễn "S�
 - Bump `CACHE_NAME` lên v33.
 - Còn nợ: xác nhận lại URL preview Minh có truy cập được không, rồi test round-trip thật (chọn
   vị trí → tạo goal → Home hiện đúng chip tên lộ trình) trên bản deploy đó.
+- Tìm ra link CỐ ĐỊNH không đổi qua các lần push (Vercel branch alias):
+  `https://learning-english-ai-vercel-git-feature-8ef108-learningenglishai.vercel.app/app/` —
+  báo Minh dùng link này thay vì domain-theo-từng-lần-deploy trước đó, và thêm domain gốc vào
+  Supabase Redirect URLs cho OAuth.
+
+## 2026-08-04 (tiếp 4) — 2 lỗi thật từ tài khoản test tích luỹ lâu năm
+
+Minh test trên link cố định, bắt 2 vấn đề: (1) màn "gate" cũ hiện thông tin không liên quan
+("thông tin cũ"), (2) chọn vị trí Kế toán bị chặn "đã dùng hết 5 lượt tạo lĩnh vực chuyên
+ngành" — tài khoản test đã tích luỹ rất nhiều `learning_goals` từ nhiều đợt test trước (không
+liên quan luồng mới), 2 cơ chế cũ này đều dựa trên lịch sử đó nên gây cản trở luồng MỚI.
+
+- **`api/_generate/mentor.js::insertLearningGoal()`**: thêm cờ `is_fixed_catalog` — MIỄN giới
+  hạn "5 lĩnh vực trọn đời" (giới hạn đó sinh ra để chặn đường TỰ DO gõ chữ tạo lĩnh vực tràn
+  lan, KHÔNG áp dụng cho danh mục CỐ ĐỊNH 8 vị trí Kế toán). Đường tự do cũ (mentorGoal.js/
+  createLesson.js) KHÔNG đụng, vẫn bị giới hạn như trước.
+- **`industrySelect.js`**: gắn `is_fixed_catalog: true` cho cả 8 profile Kế toán soạn sẵn; BỎ
+  HẲN bước "gate" (`checkGoalGate()`) — màn "Chọn chuyên ngành" giờ vào thẳng danh sách, không
+  còn hiện cảnh báo dựa trên lịch sử cũ. Cơ chế "1 goal active" vẫn giữ nguyên cấu trúc —
+  `insertLearningGoal()` luôn tự archive goal cũ trước khi tạo/chọn goal mới, không phụ thuộc
+  màn hình có hỏi lại hay không.
+- Bump `CACHE_NAME` lên v34.

@@ -549,9 +549,14 @@ async function countLifetimeIndustryGoals(studentId) {
 }
 
 async function insertLearningGoal(studentId, profile, rawKeywords, level) {
-  // Chỉ đếm/chặn khi TẠO LĨNH VỰC CHUYÊN NGÀNH THẬT — "Giao tiếp tổng quát" (is_general) không
-  // tính vào giới hạn, tạo tự do không giới hạn.
-  if (!profile?.is_general) {
+  // Chỉ đếm/chặn khi TẠO LĨNH VỰC CHUYÊN NGÀNH THẬT qua đường TỰ DO (gõ chữ + AI suy luận,
+  // views/mentorGoal.js/createLesson.js) — "Giao tiếp tổng quát" (is_general) không tính.
+  // "is_fixed_catalog" (2026-08-04, Minh: "đây là thiết kế luồng app MỚI") — danh mục vị trí Kế
+  // toán giờ CỐ ĐỊNH/hữu hạn (8 vị trí, xem views/industrySelect.js), không còn rủi ro tạo
+  // tràn lan như đường tự do mà giới hạn này vốn sinh ra để chặn — tài khoản test đã tích luỹ
+  // sẵn learning_goals từ rất nhiều đợt test trước đó (không liên quan luồng mới) nên KHÔNG
+  // được để giới hạn cũ đó chặn oan việc chọn lại 1 trong 8 vị trí cố định.
+  if (!profile?.is_general && !profile?.is_fixed_catalog) {
     const used = await countLifetimeIndustryGoals(studentId);
     if (used >= MAX_LIFETIME_INDUSTRY_GOALS) {
       return { limitReached: true, used, max: MAX_LIFETIME_INDUSTRY_GOALS };
