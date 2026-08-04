@@ -29,12 +29,14 @@ import { escapeHtml, formatDate } from "../utils.js";
 
 // "Chọn level" (2026-08-04, bám ảnh mẫu — Minh: "giao diện Bài đọc/Hội thoại không đúng như
 // hình") — thẻ bo viền màu riêng từng level thay cho hàng chip ẩn/hiện sau nút "Tìm lọc" cũ.
+// "sub" rút gọn (2026-08-04, đủ 5 level 1 hàng thay vì 4+1 rớt xuống — thẻ hẹp lại, chữ dài
+// (vd "Intermediate") sẽ tràn/xuống dòng xấu).
 const LEVEL_CARDS = [
-  { level: "A1", sub: "Beginner", chip: "blue" },
-  { level: "A2", sub: "Elementary", chip: "green" },
-  { level: "B1", sub: "Intermediate", chip: "purple" },
-  { level: "B2", sub: "Upper Int.", chip: "orange" },
-  { level: "C1", sub: "Advanced", chip: "blue" },
+  { level: "A1", sub: "Begin.", chip: "blue" },
+  { level: "A2", sub: "Elem.", chip: "green" },
+  { level: "B1", sub: "Inter.", chip: "purple" },
+  { level: "B2", sub: "Upper", chip: "orange" },
+  { level: "C1", sub: "Adv.", chip: "blue" },
 ];
 
 // 4 lối tạo bài học nhanh (thay cho luồng Mentor AI nhiều bước đã tắt) — "Văn bản" là tính
@@ -177,7 +179,6 @@ export function renderLessons(mount, params) {
       ${
         mode === "main"
           ? `
-      <p class="level-picker-label">Chọn level</p>
       <div class="level-card-row">
         ${LEVEL_CARDS.map(
           (l) => `
@@ -219,16 +220,22 @@ export function renderLessons(mount, params) {
             `<div class="filter-row" id="level-count-row"></div>`
       }
 
+      ${
+        // Tab Bài đọc/Hội thoại (2026-08-04, Minh: "bỏ vì Home đã có 2 lối vào riêng") — CHỈ còn
+        // cho Yêu thích/Thư viện AI (mode "favorite"/"library", hiện KHÔNG có route nào trỏ tới
+        // nữa, giữ nguyên code phòng khi cần lại) — mode "main" không còn hàng tab này, đổi tab
+        // giờ đi qua card Bài đọc/Hội thoại riêng ở Home.
+        mode === "main"
+          ? ""
+          : `
       <div class="content-tabs sticky-tabs" role="tablist">
         <button type="button" class="content-tab-btn ${state.contentType === "reading" ? "active" : ""}" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
         <button type="button" class="content-tab-btn ${state.contentType === "dialogue" ? "active" : ""}" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
-        ${
-          mode === "favorite" || mode === "library"
-            ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>
-               <button type="button" class="content-tab-btn" data-type="analysis">${icon("search", { size: 17 })} Phân tích</button>`
-            : ""
-        }
+        <button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>
+        <button type="button" class="content-tab-btn" data-type="analysis">${icon("search", { size: 17 })} Phân tích</button>
       </div>
+      `
+      }
 
       <div id="lessons-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
     </div>

@@ -185,3 +185,23 @@ liên quan luồng mới), 2 cơ chế cũ này đều dựa trên lịch sử �
   `insertLearningGoal()` luôn tự archive goal cũ trước khi tạo/chọn goal mới, không phụ thuộc
   màn hình có hỏi lại hay không.
 - Bump `CACHE_NAME` lên v34.
+
+## 2026-08-04 (tiếp 5) — Minh test round-trip thật thành công, 4 điểm tinh chỉnh UI
+
+Xác nhận: đã tạo goal + có bài học thật hiển thị ("Bài học gần đây" ra đúng carousel bài thật) —
+luồng backend mới hoạt động đúng. 4 việc tinh chỉnh giao diện:
+
+1. **Level cards rớt xuống 2 hàng (4+1)** — đổi `.level-card-row` từ `grid-template-columns:
+   repeat(4,1fr)` sang `repeat(5,1fr)`, rút ngắn nhãn phụ ("Beginner"→"Begin.") cho vừa thẻ hẹp
+   hơn. Bỏ luôn chữ "Chọn level" phía trên (Minh: "bỏ chữ").
+2. **Bỏ tab Bài đọc/Hội thoại trong màn danh sách bài** — Home đã có 2 lối vào riêng
+   (`/lessons` và `/lessons/main/dialogue`), không cần chuyển tab tại chỗ nữa; tab đó CHỈ còn
+   giữ lại cho mode "favorite"/"library" (hiện không route tới, code dự phòng).
+3. **Icon lĩnh vực có cái có nền màu, có cái không** — bug thật: CSS `.industry-select-icon`
+   trước đó CHỈ định nghĩa `chip-blue`/`chip-orange` (đủ cho Giao tiếp/Kế toán), thiếu hẳn
+   `chip-green`/`chip-purple` mà 8 lĩnh vực trưng bày dùng tới — đã bổ sung đủ 4 màu.
+4. **Tab Luyện viết chưa có icon như màn chọn ngành** — thêm bảng `GENRE_STYLES` (icon + màu
+   riêng cho cả 14 thể loại, khớp đúng writingTopicPool.json), tái dùng CHÍNH pattern
+   `.industry-select-icon` (đổi tên `.genre-row-icon`, cùng 4 màu chip).
+
+Bump `CACHE_NAME` lên v35.

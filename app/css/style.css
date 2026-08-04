@@ -2855,24 +2855,20 @@ textarea:focus {
 }
 
 /* Màn Bài đọc/Hội thoại — "Chọn level" (2026-08-04, views/lessons.js, bám ảnh mẫu) — thẻ bo
-   viền màu riêng từng level, THAY hàng chip ẩn/hiện sau nút "Tìm lọc" cũ. */
-.level-picker-label {
-  font-weight: 700;
-  margin: 14px 0 8px;
-}
-
+   viền màu riêng từng level, THAY hàng chip ẩn/hiện sau nút "Tìm lọc" cũ. 5 CỘT (2026-08-04,
+   Minh: "các icon level nằm trên 1 hàng" — 4 cột cũ khiến C1 rớt xuống hàng riêng). */
 .level-card-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin: 16px 0 18px;
 }
 
 .level-card {
   background: var(--surface);
   border: 2px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 4px;
+  padding: 8px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2892,7 +2888,8 @@ textarea:focus {
 }
 
 .level-card-sub {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
+  white-space: nowrap;
 }
 
 .level-card.chip-blue.active {
@@ -2986,9 +2983,21 @@ textarea:focus {
   justify-content: center;
   flex-shrink: 0;
 }
+/* 2026-08-04 (Minh bắt lỗi thật: "đồng bộ các icon có nền, không để cái có cái không") — trước
+   đây CHỈ có chip-blue/chip-orange (đủ cho Giao tiếp/Kế toán), 8 lĩnh vực trưng bày thêm
+   (OTHER_INDUSTRIES trong industrySelect.js) dùng chip-green/chip-purple nhưng THIẾU luật CSS
+   tương ứng -> rơi về icon KHÔNG có nền màu, xen kẽ lẫn lộn với các icon có nền. */
 .industry-select-icon.chip-blue {
   color: var(--chip-blue);
   background: var(--chip-blue-soft);
+}
+.industry-select-icon.chip-green {
+  color: var(--chip-green);
+  background: var(--chip-green-soft);
+}
+.industry-select-icon.chip-purple {
+  color: var(--chip-purple);
+  background: var(--chip-purple-soft);
 }
 .industry-select-icon.chip-orange {
   color: var(--chip-orange);
@@ -3227,10 +3236,32 @@ textarea:focus {
   color: var(--purple);
 }
 
-.genre-row-check {
-  width: 20px;
+/* Icon vuông màu riêng (2026-08-04, Minh: "icon giống giao diện chọn ngành để đồng bộ thị
+   giác") — CÙNG pattern .industry-select-icon, chỉ nhỏ hơn 1 chút cho vừa hàng thấp hơn. */
+.genre-row-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  color: var(--purple);
+}
+.genre-row-icon.chip-blue {
+  color: var(--chip-blue);
+  background: var(--chip-blue-soft);
+}
+.genre-row-icon.chip-green {
+  color: var(--chip-green);
+  background: var(--chip-green-soft);
+}
+.genre-row-icon.chip-purple {
+  color: var(--chip-purple);
+  background: var(--chip-purple-soft);
+}
+.genre-row-icon.chip-orange {
+  color: var(--chip-orange);
+  background: var(--chip-orange-soft);
 }
 
 .genre-row-label {

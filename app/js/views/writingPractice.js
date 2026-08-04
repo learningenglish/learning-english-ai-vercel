@@ -29,6 +29,28 @@ import { createPlayer, isTTSSupported } from "../tts.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
+// Icon + màu chip riêng cho từng thể loại (2026-08-04, Minh: "các tab có icon giống giao diện
+// chọn ngành để đồng bộ thị giác") — khớp ĐÚNG 14 khoá trong api/_generate/writingTopicPool.json
+// (list_writing_genres trả nguyên văn tên này). Tên KHÔNG khớp map (nếu sau này thêm thể loại
+// mới) rơi về DEFAULT_GENRE_STYLE, không vỡ giao diện.
+const GENRE_STYLES = {
+  "Nghị luận": { icon: "list", chip: "blue" },
+  "Phân tích": { icon: "flask", chip: "orange" },
+  "Đánh giá": { icon: "star", chip: "purple" },
+  "Kể chuyện": { icon: "book-open", chip: "green" },
+  "Viết thư": { icon: "bookmark", chip: "blue" },
+  "Báo cáo": { icon: "briefcase", chip: "orange" },
+  Email: { icon: "file-text", chip: "purple" },
+  "Tin nhắn": { icon: "message-circle", chip: "green" },
+  "Mô tả": { icon: "compass", chip: "blue" },
+  "Hướng dẫn": { icon: "graduation-cap", chip: "orange" },
+  "Bài đăng mạng xã hội": { icon: "camera", chip: "purple" },
+  "Thư ngỏ": { icon: "file-text", chip: "green" },
+  "Ghi chú": { icon: "edit-3", chip: "blue" },
+  "Tường thuật sự việc": { icon: "book", chip: "orange" },
+};
+const DEFAULT_GENRE_STYLE = { icon: "file-text", chip: "blue" };
+
 const STEP_TITLES = {
   genre: `${icon("edit-3", { size: 22 })} Chọn dạng bài viết`,
   setup: `${icon("edit-3", { size: 22 })} Luyện viết`,
@@ -131,14 +153,16 @@ export function renderWritingPractice(mount) {
     return `
       <div class="genre-list">
         ${state.genres
-          .map(
-            (g) => `
+          .map((g) => {
+            const style = GENRE_STYLES[g] || DEFAULT_GENRE_STYLE;
+            return `
           <button type="button" class="genre-row ${state.genre === g ? "active" : ""}" data-genre="${escapeHtml(g)}">
-            <span class="genre-row-check">${state.genre === g ? icon("check-circle", { size: 20, filled: true }) : ""}</span>
+            <span class="genre-row-icon chip-${style.chip}">${icon(style.icon, { size: 18 })}</span>
             <span class="genre-row-label">${escapeHtml(g)}</span>
+            ${state.genre === g ? icon("check-circle", { size: 20, filled: true }) : ""}
           </button>
-        `
-          )
+        `;
+          })
           .join("")}
       </div>
       <button type="button" class="btn btn-primary btn-block" id="genre-continue-btn" ${state.genre ? "" : "disabled"}>Tiếp tục</button>
