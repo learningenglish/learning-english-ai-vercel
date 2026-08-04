@@ -97,7 +97,11 @@ function renderBottomNav(activePath) {
   // CHUNG renderLessonDetail()/thanh audio với "/lesson" (xem opts.news trong views/lesson.js)
   // nhưng route KHÁC tên nên bị BỎ SÓT ở đây trước đó — nav ngoài không ẩn, che mất thanh audio
   // cố định (cả 2 cùng position:fixed đáy màn hình).
-  if (activePath === "/login" || activePath === "/lesson" || activePath === "/news-lesson") {
+  // "/industry-select" (2026-08-04, Minh bắt lỗi thật: "giao diện lần đầu chọn chuyên ngành
+  // không có 4 icon bên dưới" — đúng ý: màn này PHẢI GIỐNG /login, là màn onboarding TRƯỚC KHI
+  // vào hẳn app, không phải 1 tab thường) — ẩn thanh điều hướng ngoài, đúng khung ảnh mẫu (màn
+  // "Chọn chuyên ngành" không có bottom nav).
+  if (activePath === "/login" || activePath === "/lesson" || activePath === "/news-lesson" || activePath === "/industry-select") {
     nav.hidden = true;
     nav.innerHTML = "";
     return;

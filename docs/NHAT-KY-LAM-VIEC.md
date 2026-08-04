@@ -146,3 +146,20 @@ trong ảnh mẫu 1) chỉ trưng bày cho đúng khung ảnh, vĩnh viễn "S�
   GIỜ KHÔNG CÒN CẦN THIẾT** — vì không còn khái niệm "sinh 400 chủ đề trước rồi mới cho chọn"
   nữa, danh sách bài vẫn đọc thẳng từ bảng `lessons` đã sinh như cũ (đúng cơ chế on-demand sẵn
   có), chỉ khác là giờ CHỌN ĐƯỢC vị trí thật ngay từ đầu.
+
+## 2026-08-04 (tiếp 3) — Minh test thật, bắt 1 lỗi UI + làm rõ 1 hiểu lầm môi trường test
+
+- **Lỗi thật đã sửa**: màn "Chọn chuyên ngành" (`/industry-select`) vẫn hiện bottom nav 4 icon —
+  SAI, đây là màn onboarding TRƯỚC KHI vào app (giống `/login`), không phải 1 tab thường, đúng
+  khung ảnh mẫu là KHÔNG có bottom nav. Đã thêm vào danh sách ẩn nav trong `app.js::
+  renderBottomNav()`, xác nhận lại bằng Preview tool — đã hết.
+- **KHÔNG phải lỗi code** (làm rõ, không phải việc cần sửa): Minh test bằng `localhost:3001` —
+  đây là server TĨNH THUẦN (`http-server`, không chạy `/api/chat`), nên MỌI action qua
+  `/api/chat` (kể cả không gọi AI, như `mentor_create_goal` khi chọn Giao tiếp/vị trí Kế toán)
+  đều trả về "Phản hồi máy chủ không hợp lệ" — lỗi này xảy ra với BẤT KỲ action nào trên server
+  tĩnh, không riêng gì phần vừa code. Cần test trên bản deploy Vercel thật (có `/api/chat`) mới
+  thấy đúng hành vi. Domain preview trước gửi Minh không truy cập được — rất có thể do thiếu
+  `/app/` ở cuối URL (gốc domain không map tới gì, xem `vercel.json` chỉ rewrite `/app`).
+- Bump `CACHE_NAME` lên v33.
+- Còn nợ: xác nhận lại URL preview Minh có truy cập được không, rồi test round-trip thật (chọn
+  vị trí → tạo goal → Home hiện đúng chip tên lộ trình) trên bản deploy đó.
