@@ -2729,6 +2729,15 @@ textarea:focus {
   min-height: 40px;
 }
 
+.home-track-chip {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--purple-soft);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
 .home-settings-btn {
   width: var(--touch-min);
   height: var(--touch-min);
@@ -2843,6 +2852,80 @@ textarea:focus {
 .feature-card-sub {
   font-size: 0.78rem;
   color: var(--text-dim);
+}
+
+/* Màn Bài đọc/Hội thoại — "Chọn level" (2026-08-04, views/lessons.js, bám ảnh mẫu) — thẻ bo
+   viền màu riêng từng level, THAY hàng chip ẩn/hiện sau nút "Tìm lọc" cũ. */
+.level-picker-label {
+  font-weight: 700;
+  margin: 14px 0 8px;
+}
+
+.level-card-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.level-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+.level-card-icon {
+  margin-bottom: 2px;
+}
+
+.level-card-name {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.level-card-sub {
+  font-size: 0.65rem;
+}
+
+.level-card.chip-blue.active {
+  border-color: var(--chip-blue);
+  background: var(--chip-blue-soft);
+}
+.level-card.chip-green.active {
+  border-color: var(--chip-green);
+  background: var(--chip-green-soft);
+}
+.level-card.chip-purple.active {
+  border-color: var(--chip-purple);
+  background: var(--chip-purple-soft);
+}
+.level-card.chip-orange.active {
+  border-color: var(--chip-orange);
+  background: var(--chip-orange-soft);
+}
+.level-card.chip-blue .level-card-icon,
+.level-card.chip-blue.active .level-card-name {
+  color: var(--chip-blue);
+}
+.level-card.chip-green .level-card-icon,
+.level-card.chip-green.active .level-card-name {
+  color: var(--chip-green);
+}
+.level-card.chip-purple .level-card-icon,
+.level-card.chip-purple.active .level-card-name {
+  color: var(--chip-purple);
+}
+.level-card.chip-orange .level-card-icon,
+.level-card.chip-orange.active .level-card-name {
+  color: var(--chip-orange);
 }
 
 /* Màn "Chọn chuyên ngành" — danh mục cố định 2 tầng (views/industrySelect.js). GIAO DIỆN RIÊNG

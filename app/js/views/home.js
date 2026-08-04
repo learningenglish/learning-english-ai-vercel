@@ -39,7 +39,7 @@ export function renderHome(mount) {
   mount.innerHTML = `
     <div class="screen home-screen">
       <div class="home-topbar">
-        <div></div>
+        <div class="home-track-chip" id="home-track-chip" hidden></div>
         <button type="button" class="home-settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
       </div>
       <h1 class="home-greeting">Xin chào${name ? " " + escapeHtml(name) : ""} 👋</h1>
@@ -83,10 +83,20 @@ export function renderHome(mount) {
     });
 
   // Chưa có mục tiêu đang hoạt động (lần đầu, hoặc vừa "Đổi vị trí" ở Setting) -> Home không có
-  // gì để hiện, đưa thẳng vào màn chọn chuyên ngành thay vì hiện Home rỗng.
+  // gì để hiện, đưa thẳng vào màn chọn chuyên ngành thay vì hiện Home rỗng. CÓ mục tiêu -> hiện
+  // chip "đang học lộ trình nào" ở đầu màn (2026-08-04, Minh: "chọn lĩnh vực nào sẽ xuất hiện
+  // luồng Home có dòng [tên lộ trình] đó") — "goal.title" đã là câu hoàn chỉnh dựng sẵn ở server
+  // (buildConfirmationDisplay()/buildGoalConfirmationDisplay() trong skin.js/mentor.js, xem
+  // views/industrySelect.js), KHÔNG tự ghép chữ gì thêm ở đây.
   getActiveLearningGoal()
     .then((goal) => {
-      if (!goal) navigate("/industry-select");
+      if (!goal) {
+        navigate("/industry-select");
+        return;
+      }
+      const chip = mount.querySelector("#home-track-chip");
+      chip.textContent = goal.title;
+      chip.hidden = false;
     })
     .catch(() => {
       // Lỗi mạng lúc kiểm tra -> không chặn Home, cứ để người dùng dùng bình thường.

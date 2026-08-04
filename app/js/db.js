@@ -266,13 +266,13 @@ export async function getSkillLevelBreakdown() {
     const progressRow = Array.isArray(l.lesson_progress) ? l.lesson_progress[0] : l.lesson_progress;
     if (progressRow?.completed_at) bucket[l.level].done += 1;
   }
+  // LUÔN trả đủ 5 level (kể cả level CHƯA có bài nào) — Minh: "các level chưa đo được để ở mức
+  // 0%", KHÔNG ẩn hẳn level đó đi như bản trước (lọc theo bucket[lv] tồn tại).
   const toRows = (bucket) =>
-    LEVELS_ORDER.filter((lv) => bucket[lv]).map((lv) => ({
-      level: lv,
-      total: bucket[lv].total,
-      done: bucket[lv].done,
-      pct: Math.round((bucket[lv].done / bucket[lv].total) * 100),
-    }));
+    LEVELS_ORDER.map((lv) => {
+      const b = bucket[lv] || { total: 0, done: 0 };
+      return { level: lv, total: b.total, done: b.done, pct: b.total ? Math.round((b.done / b.total) * 100) : 0 };
+    });
   return { reading: toRows(bySkill.reading), dialogue: toRows(bySkill.dialogue) };
 }
 

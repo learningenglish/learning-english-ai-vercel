@@ -617,7 +617,9 @@ export function renderWritingPractice(mount) {
         render();
       });
     });
-    mount.querySelector("#genre-continue-btn").addEventListener("click", () => {
+    // "#genre-continue-btn" CHƯA tồn tại lúc state.genres === null (renderGenreStep() chỉ vẽ
+    // "Đang tải...", chưa có nút) — optional chaining tránh crash trong khoảng chờ đó.
+    mount.querySelector("#genre-continue-btn")?.addEventListener("click", () => {
       if (!state.genre) return;
       state.step = "setup";
       render();

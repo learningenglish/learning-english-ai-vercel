@@ -24,8 +24,18 @@ import {
 import { icon } from "../icons.js";
 import { lessonCardHtml, continueCardHtml, industryCardHtml, wireLessonCards } from "../lessonCard.js";
 import { showToast } from "../toast.js";
-import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, backChevronHtml, wireBackLink } from "../header.js";
 import { escapeHtml, formatDate } from "../utils.js";
+
+// "Chọn level" (2026-08-04, bám ảnh mẫu — Minh: "giao diện Bài đọc/Hội thoại không đúng như
+// hình") — thẻ bo viền màu riêng từng level thay cho hàng chip ẩn/hiện sau nút "Tìm lọc" cũ.
+const LEVEL_CARDS = [
+  { level: "A1", sub: "Beginner", chip: "blue" },
+  { level: "A2", sub: "Elementary", chip: "green" },
+  { level: "B1", sub: "Intermediate", chip: "purple" },
+  { level: "B2", sub: "Upper Int.", chip: "orange" },
+  { level: "C1", sub: "Advanced", chip: "blue" },
+];
 
 // 4 lối tạo bài học nhanh (thay cho luồng Mentor AI nhiều bước đã tắt) — "Văn bản" là tính
 // năng CŨ "Tôi có văn bản" (analyze_user_text) trước đây chỉ vào được qua màn Mentor AI, nay
@@ -145,18 +155,43 @@ export function renderLessons(mount, params) {
   // cũ. header.js::appHeaderHtml() là NƠI DUY NHẤT dựng khung này (đã bị bắt lỗi 2 lần vì mỗi
   // view tự chép 1 bản riêng rồi trôi lệch nhau — avatar "nhảy" lúc trước, "độ cao/cỡ chữ
   // không đồng bộ" lần này — xem ghi chú đầu file header.js).
+  // "main" (2026-08-04, bám ảnh mẫu): màn này giờ là MÀN CON của Home (vào từ card Bài đọc/Hội
+  // thoại), không còn là màn chính sau đăng nhập nữa -> đổi hẳn từ avatar+badge sang back+tiêu
+  // đề đúng loại nội dung đang xem (cùng cách Yêu thích/Thư viện AI đã làm trước đó).
+  function mainTitleText() {
+    return state.contentType === "dialogue" ? "Hội thoại" : "Bài đọc";
+  }
   const headerTitleHtml =
     mode === "favorite"
       ? `<span style="color:#ef4476">${icon("heart", { size: 22, filled: true })}</span> Yêu thích`
       : mode === "library"
       ? `<span style="color:var(--purple)">${icon("library", { size: 22 })}</span> Thư viện AI`
-      : undefined; // undefined -> appHeaderHtml() tự vẽ avatar+badge (chỉ màn "Phổ biến")
+      : `<span id="main-list-title">${escapeHtml(mainTitleText())}</span>`;
 
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(headerTitleHtml)}
+      ${appHeaderHtml(headerTitleHtml, {}, { showBack: mode === "main" })}
 
-      ${mode !== "favorite" ? quickActionsHtml() : ""}
+      ${mode === "library" ? quickActionsHtml() : ""}
+
+      ${
+        mode === "main"
+          ? `
+      <p class="level-picker-label">Chọn level</p>
+      <div class="level-card-row">
+        ${LEVEL_CARDS.map(
+          (l) => `
+          <button type="button" class="level-card chip-${l.chip} ${state.level === l.level ? "active" : ""}" data-level="${l.level}">
+            <span class="level-card-icon">${icon("book-open", { size: 18 })}</span>
+            <span class="level-card-name">${l.level}</span>
+            <span class="level-card-sub">${l.sub}</span>
+          </button>
+        `
+        ).join("")}
+      </div>
+      `
+          : ""
+      }
 
       ${
         mode === "library"
@@ -170,7 +205,7 @@ export function renderLessons(mount, params) {
           ? ""
           : `
       <div id="continue-section" hidden>
-        <div class="section-label-row"><span class="section-label-tab">Bài đang đọc</span></div>
+        <div class="section-label-row"><span class="section-label-tab">Bài học gần đây</span></div>
         <div id="continue-scroll" class="continue-scroll"></div>
       </div>
       `
@@ -178,23 +213,9 @@ export function renderLessons(mount, params) {
 
       ${
         mode === "main"
-          ? `
-      <div class="search-row">
-        <button type="button" class="filter-btn" id="toggle-level-filter">${icon("filter", { size: 16 })} Tìm lọc</button>
-        <div class="search-box">
-          <span class="search-icon">${icon("search", { size: 18 })}</span>
-          <input type="text" id="search-input" placeholder="Tìm kiếm bài học..." />
-        </div>
-      </div>
-
-      <div class="filter-row" id="level-filter-row" hidden>
-        <button type="button" class="filter-chip active" data-level="all">Tất cả</button>
-        ${LEVELS.map((l) => `<button type="button" class="filter-chip" data-level="${l}">${l}</button>`).join("")}
-      </div>
-      `
-          : // Yêu thích/Thư viện AI: KHÔNG có ô tìm kiếm/nút "Tìm lọc" (yêu cầu người dùng) —
-            // thay bằng 1 hàng chip Level kèm SỐ BÀI trong level đó, luôn hiện sẵn (không ẩn/hiện
-            // như #level-filter-row), tự tính lại số liệu mỗi khi renderList() chạy lại (xem hàm đó).
+          ? ""
+          : // Yêu thích/Thư viện AI: hàng chip Level kèm SỐ BÀI trong level đó, luôn hiện sẵn, tự
+            // tính lại số liệu mỗi khi renderList() chạy lại (xem hàm đó).
             `<div class="filter-row" id="level-count-row"></div>`
       }
 
@@ -215,39 +236,28 @@ export function renderLessons(mount, params) {
 
   wireAppHeader(mount);
   wireQuickActions(mount);
+  if (mode === "main") wireBackLink(mount, () => navigate("/home"));
 
-  // #toggle-level-filter/#search-input CHỈ tồn tại ở mode "main" (xem template ở trên) —
-  // Yêu thích/Thư viện AI dùng #level-count-row (wire trong renderList(), vì chip render lại
-  // mỗi lần đổi tab/search nên phải wire lại theo).
-  if (mode === "main") {
-    mount.querySelector("#toggle-level-filter").addEventListener("click", () => {
-      const row = mount.querySelector("#level-filter-row");
-      row.hidden = !row.hidden;
+  // "Chọn level" (2026-08-04) — bấm lại ĐÚNG level đang chọn = bỏ lọc (giống các chip lọc khác
+  // trong app), khác hẳn hàng chip ẩn/hiện sau nút "Tìm lọc" cũ đã gỡ.
+  mount.querySelectorAll(".level-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const lv = card.dataset.level;
+      state.level = state.level === lv ? "all" : lv;
+      mount.querySelectorAll(".level-card").forEach((c) => c.classList.toggle("active", c.dataset.level === state.level));
+      renderList();
     });
-    mount.querySelectorAll("#level-filter-row .filter-chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        mount.querySelectorAll("#level-filter-row .filter-chip").forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        state.level = chip.dataset.level;
-        renderList();
-      });
-    });
-
-    let searchDebounce = null;
-    mount.querySelector("#search-input").addEventListener("input", (e) => {
-      clearTimeout(searchDebounce);
-      searchDebounce = setTimeout(() => {
-        state.search = e.target.value.trim().toLowerCase();
-        renderList();
-      }, 200);
-    });
-  }
+  });
 
   mount.querySelectorAll(".content-tab-btn").forEach((tabBtn) => {
     tabBtn.addEventListener("click", () => {
       mount.querySelectorAll(".content-tab-btn").forEach((b) => b.classList.remove("active"));
       tabBtn.classList.add("active");
       state.contentType = tabBtn.dataset.type;
+      if (mode === "main") {
+        const titleEl = mount.querySelector("#main-list-title");
+        if (titleEl) titleEl.textContent = mainTitleText();
+      }
       renderList();
     });
   });
