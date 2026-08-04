@@ -128,8 +128,10 @@ function skeletonListHtml(count = 3) {
 
 export function renderLessons(mount, params) {
   const mode = params?.[0] === "favorite" || params?.[0] === "library" ? params[0] : "main";
+  // params[1] (2026-08-04, card "Hội thoại" ở Home mới, xem views/home.js) — cho phép mở thẳng
+  // đúng tab, vd navigate("/lessons/main/dialogue"). Không truyền -> mặc định "reading" như cũ.
   const state = {
-    contentType: "reading",
+    contentType: params?.[1] === "dialogue" ? "dialogue" : "reading",
     level: "all",
     industry: null,
     search: "",
@@ -197,12 +199,22 @@ export function renderLessons(mount, params) {
       }
 
       <div class="content-tabs sticky-tabs" role="tablist">
-        <button type="button" class="content-tab-btn active" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
-        <button type="button" class="content-tab-btn" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
+        <button type="button" class="content-tab-btn ${state.contentType === "reading" ? "active" : ""}" data-type="reading">${icon("book", { size: 17 })} Bài đọc</button>
+        <button type="button" class="content-tab-btn ${state.contentType === "dialogue" ? "active" : ""}" data-type="dialogue">${icon("message-circle", { size: 17 })} Hội thoại</button>
         ${
           mode === "favorite" || mode === "library"
             ? `<button type="button" class="content-tab-btn" data-type="writing">${icon("edit-3", { size: 17 })} Bài viết</button>
                <button type="button" class="content-tab-btn" data-type="analysis">${icon("search", { size: 17 })} Phân tích</button>`
+            : ""
+        }
+        ${
+          // Bottom nav MỚI chỉ còn đúng 4 icon (2026-08-04, Home/Tiến trình/Admin/Setting) —
+          // Yêu thích/Thư viện AI không còn là tab đáy riêng, gộp làm 2 tab phụ NGAY TRONG
+          // màn "Phổ biến" thay vì mất hẳn lối vào. "data-nav-path" (khác "data-type") để wire()
+          // biết đây là ĐIỀU HƯỚNG SANG MÀN KHÁC, không phải đổi state.contentType tại chỗ.
+          mode === "main"
+            ? `<button type="button" class="content-tab-btn" data-nav-path="/favorites">${icon("heart", { size: 17 })} Yêu thích</button>
+               <button type="button" class="content-tab-btn" data-nav-path="/ai-library">${icon("library", { size: 17 })} Thư viện AI</button>`
             : ""
         }
       </div>
@@ -243,6 +255,7 @@ export function renderLessons(mount, params) {
 
   mount.querySelectorAll(".content-tab-btn").forEach((tabBtn) => {
     tabBtn.addEventListener("click", () => {
+      if (tabBtn.dataset.navPath) return navigate(tabBtn.dataset.navPath);
       mount.querySelectorAll(".content-tab-btn").forEach((b) => b.classList.remove("active"));
       tabBtn.classList.add("active");
       state.contentType = tabBtn.dataset.type;

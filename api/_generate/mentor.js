@@ -368,6 +368,27 @@ export async function mentor_get_action(data, ctx) {
   return { content: JSON.stringify({ action: action.type, card }) };
 }
 
+// KHÔNG gọi AI — tra CÓ/CHƯA industry_skins cho 1 danh sách occupation_key (2026-08-04, màn
+// "Chọn chuyên ngành" mới, views/industrySelect.js): mỗi vị trí kế toán cần biết đã có khung
+// ~400 chủ đề (Tầng 1) hay còn "Sắp ra mắt" TRƯỚC KHI cho người dùng chọn — chỉ ĐỌC
+// industry_skins, TUYỆT ĐỐI không tự sinh gì ở đây (việc kích hoạt Tầng 1 là lệnh riêng, có xác
+// nhận chi phí, KHÔNG đi qua action này).
+export async function mentor_check_industry_skin_status(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const rawKeys = Array.isArray(data?.occupation_keys) ? data.occupation_keys.filter((k) => typeof k === "string" && k.trim()) : [];
+  if (!rawKeys.length) return { content: JSON.stringify({ status: {} }) };
+  const normalizedKeys = rawKeys.map((k) => normalizeOccupationKey(k));
+  const filterValue = "(" + normalizedKeys.map((k) => `"${k.replace(/"/g, '\\"')}"`).join(",") + ")";
+  const rows = (await restGet(`industry_skins?occupation_key=in.${encodeURIComponent(filterValue)}&select=occupation_key,level_status`)) || [];
+  const levelStatusByKey = new Map(rows.map((r) => [r.occupation_key, r.level_status || {}]));
+  const status = {};
+  rawKeys.forEach((originalKey, i) => {
+    const levelStatus = levelStatusByKey.get(normalizedKeys[i]);
+    status[originalKey] = { exists: !!levelStatus, level_status: levelStatus || {} };
+  });
+  return { content: JSON.stringify({ status }) };
+}
+
 // Bước 0 (mục 6.3): chặn CÓ ĐIỀU KIỆN khi bấm nút (+) — chỉ tính, không tự ý chặn (client tự
 // quyết định có hiện màn chặn hay bỏ qua thẳng Bước 1). Không gọi AI. Gộp CHUNG 1 lượt gọi với
 // "màn nhớ từ khoá cũ" (mục 3.4 điểm 2 Đợt 3: Trường hợp A/B) + câu mời Bước 1 (shared.invite_goal)

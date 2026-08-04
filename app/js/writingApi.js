@@ -3,8 +3,15 @@
 // trong. Xem api/_generate/writing.js cho toàn bộ logic thật (giao đề, chấm bài, lưu Yêu thích).
 import { callChatAction } from "./chatApi.js";
 
-export async function generateWritingTask(level, industry) {
-  return callAndParse("generate_writing_task", { level, industry: industry || "" });
+// "genre" (2026-08-04) — thể loại người dùng đã CHỌN TRƯỚC ở màn "Chọn dạng bài viết" (xem
+// listWritingGenres() bên dưới) — không truyền/rỗng thì AI tự do chọn như hành vi cũ.
+export async function generateWritingTask(level, industry, genre) {
+  return callAndParse("generate_writing_task", { level, industry: industry || "", genre: genre || "" });
+}
+
+// KHÔNG gọi AI — danh sách tên thể loại cố định cho màn "Chọn dạng bài viết".
+export async function listWritingGenres() {
+  return callAndParse("list_writing_genres", {});
 }
 
 export async function gradeWriting({ level, industry, task, text }) {

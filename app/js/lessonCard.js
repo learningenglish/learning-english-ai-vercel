@@ -3,6 +3,18 @@
 // "giao diện giống hệt tab Phổ biến", nên tách hàm ra đây thay vì viết lại lần 2.
 import { escapeHtml, formatDate } from "./utils.js";
 import { icon } from "./icons.js";
+import { computeLearnStatus } from "./db.js";
+
+// "chưa học/đang học/đã học" (2026-08-04, Phần A4) — chỉ vẽ badge khi lesson có nhúng sẵn
+// lesson_progress (xem PROGRESS_EMBED trong db.js) — bài không có (vd carousel "Bài đang đọc"
+// tự biết đang học rồi qua ngữ cảnh riêng) thì bỏ qua, không vẽ gì thêm.
+function learnStatusBadgeHtml(l) {
+  if (!("lesson_progress" in l)) return "";
+  const status = computeLearnStatus(l);
+  if (status === "not_started") return `<span class="learn-status-badge learn-status-not-started">Chưa học</span>`;
+  if (status === "in_progress") return `<span class="learn-status-badge learn-status-in-progress">Đang học</span>`;
+  return `<span class="learn-status-badge learn-status-done">${icon("check-circle", { size: 12 })} Đã học</span>`;
+}
 
 // Trích đoạn hiện ở thẻ: ưu tiên NỘI DUNG THẬT (câu/đoạn đầu bài) — "situation" chỉ dùng khi
 // bài cũ chưa có "content" (không nên xảy ra với dữ liệu hiện tại, chỉ là lớp phòng hờ).
@@ -38,6 +50,7 @@ export function lessonCardHtml(l, { hideFavorite = false } = {}) {
           <span class="badge">${escapeHtml(l.level)}</span>
           ${industryVal ? `<span class="muted lesson-card-industry">${escapeHtml(industryVal)}</span>` : ""}
           ${dateVal ? `<span class="muted icon-text">${icon("calendar", { size: 13 })} ${formatDate(dateVal)}</span>` : ""}
+          ${learnStatusBadgeHtml(l)}
         </div>
       </div>
       ${hideFavorite ? "" : `<button type="button" class="fav-btn ${l.is_favorite ? "is-favorite" : ""}" data-fav="${l.is_favorite}">${icon("heart", { size: 18, filled: l.is_favorite })}</button>`}

@@ -66,6 +66,10 @@ const PATHS = {
   // "Các khoá học" (2026-07-29) — thay chỗ "Máy ảnh" ở hàng lối tắt màn Phổ biến, xem
   // QUICK_ACTIONS trong views/lessons.js.
   "graduation-cap": '<path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>',
+  // Bottom nav 4 tab (2026-08-04, làm mới khung điều hướng) — "home" thay "book" cho tab
+  // Trang chủ, "shield" cho tab Admin (placeholder, chưa có tính năng thật).
+  home: '<path d="M3 11.5L12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/>',
+  shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
 };
 
 // "name": tên icon trong PATHS ở trên. "size"/"strokeWidth": tuỳ biến kích thước hiển thị.

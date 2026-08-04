@@ -1,5 +1,5 @@
 // app/js/views/login.js
-import { signInWithPassword } from "../authApi.js";
+import { signInWithPassword, startOAuthLogin } from "../authApi.js";
 import { setSession } from "../session.js";
 import { navigate } from "../router.js";
 
@@ -21,6 +21,12 @@ export function renderLogin(mount) {
           <p id="login-error" class="error-text" hidden></p>
           <button type="submit" class="btn btn-primary btn-block" id="login-submit">Đăng nhập</button>
         </form>
+        <!-- OAuth (2026-08-04) — Supabase Auth Providers (Google/Facebook), CẠNH luồng email/
+             password đã có, KHÔNG thay thế. Xem authApi.js::startOAuthLogin() cho chi tiết
+             redirect_to/domain. -->
+        <div class="login-divider"><span>hoặc</span></div>
+        <button type="button" class="btn btn-block btn-oauth" id="oauth-google-btn">Đăng nhập với Google</button>
+        <button type="button" class="btn btn-block btn-oauth" id="oauth-facebook-btn">Đăng nhập với Facebook</button>
       </div>
     </div>
   `;
@@ -37,7 +43,7 @@ export function renderLogin(mount) {
     try {
       const session = await signInWithPassword(form.email.value.trim(), form.password.value);
       setSession(session);
-      navigate("/lessons");
+      navigate("/home");
     } catch (err) {
       errorEl.textContent = err.message || "Đăng nhập thất bại.";
       errorEl.hidden = false;
@@ -46,4 +52,7 @@ export function renderLogin(mount) {
       submitBtn.textContent = "Đăng nhập";
     }
   });
+
+  mount.querySelector("#oauth-google-btn").addEventListener("click", () => startOAuthLogin("google"));
+  mount.querySelector("#oauth-facebook-btn").addEventListener("click", () => startOAuthLogin("facebook"));
 }

@@ -6,15 +6,7 @@ import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { backChevronHtml, wireBackLink } from "../header.js";
 import { getThemePreference, setThemePreference } from "../theme.js";
-import {
-  getBackgroundPreference,
-  setBackgroundPreference,
-  BACKGROUND_GROUPS,
-  getCustomBackgrounds,
-  addCustomBackground,
-  removeCustomBackground,
-  customPrefFor,
-} from "../background.js";
+import { getPalettePreference, setPalettePreference, PALETTES } from "../palette.js";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Sáng", icon: "sun" },
@@ -25,13 +17,26 @@ const THEME_OPTIONS = [
 export function renderProfile(mount) {
   const session = getSession();
   const currentTheme = getThemePreference();
-  const currentBg = getBackgroundPreference();
+  const currentPalette = getPalettePreference();
   mount.innerHTML = `
     <div class="screen">
       <div class="app-header-left">${backChevronHtml()}<h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Hồ sơ</h1></div>
       <div class="card profile-card">
         <div class="profile-email">${escapeHtml(session?.user?.email || "")}</div>
         <div id="profile-stats" class="stat-row"><div class="stat-pill muted">Đang tải...</div></div>
+      </div>
+
+      <div class="card profile-card">
+        <!-- "Ngôn ngữ" (2026-08-04) — hàng TĨNH, app hiện chỉ có tiếng Việt (không có hệ thống
+             i18n thật) nên KHÔNG xây control chọn ngôn ngữ chức năng, chỉ hiện đúng mockup. -->
+        <div class="settings-row">
+          <span class="icon-text">${icon("languages", { size: 18 })} Ngôn ngữ</span>
+          <span class="muted">Tiếng Việt</span>
+        </div>
+        <div class="settings-row settings-row-clickable" id="change-industry-row">
+          <span class="icon-text">${icon("briefcase", { size: 18 })} Đổi vị trí công việc</span>
+          ${icon("chevron-right", { size: 18 })}
+        </div>
       </div>
 
       <div class="card profile-card">
@@ -48,18 +53,30 @@ export function renderProfile(mount) {
         </div>
       </div>
 
+      <!-- Theme (Color Palette) (2026-08-04) — BỎ HẲN ảnh nền/nhóm màu nền dựng sẵn/upload ảnh
+           riêng (yêu cầu Minh: "Nền bỏ hình nền, bỏ up hình nền, code dùng nền theo bộ màu") —
+           chọn 1 trong 4 bộ màu ở đây tự đổi LUÔN cả nền full màn hình (xem
+           body::before trong style.css, đọc lại var(--purple-soft) do palette.js set), không
+           còn mục "Ảnh nền" riêng nữa. -->
       <div class="card profile-card">
-        <div class="profile-section-title">Hình nền</div>
-        <div id="bg-picker-slot"></div>
-        <p class="field-hint bg-picker-error" id="bg-picker-error" hidden></p>
-        <input type="file" id="bg-file-input" accept="image/*" hidden />
+        <div class="profile-section-title">Theme (Color Palette)</div>
+        <div class="palette-picker" id="palette-picker">
+          ${PALETTES.map(
+            (p) => `
+            <button type="button" class="palette-option ${currentPalette === p.value ? "active" : ""}" data-palette="${p.value}">
+              <span class="palette-option-swatch" style="background:${p.swatch}"></span>
+              <span>${p.label}</span>
+            </button>
+          `
+          ).join("")}
+        </div>
       </div>
 
       <button type="button" class="btn btn-danger btn-block" id="logout-btn">${icon("logout", { size: 18 })} Đăng xuất</button>
     </div>
   `;
 
-  // history.back() — Hồ sơ có thể vào từ CẢ 5 tab chính (nút cài đặt luôn có mặt), quay đúng
+  // history.back() — Hồ sơ có thể vào từ CẢ 4 tab chính (nút cài đặt luôn có mặt), quay đúng
   // về màn vừa đứng thay vì cố định 1 đích đến (giống lesson.js).
   wireBackLink(mount, () => history.back());
 
@@ -68,6 +85,11 @@ export function renderProfile(mount) {
     navigate("/login");
   });
 
+  // "Đổi vị trí công việc" (2026-08-04) — vào ĐÚNG luồng chọn lĩnh vực/vị trí đã có
+  // (views/industrySelect.js), TÁI DÙNG nguyên cơ chế "1 goal active"/gate ở đó (checkGoalGate())
+  // để khoá/xác nhận đổi lộ trình — KHÔNG viết logic riêng ở đây.
+  mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select"));
+
   mount.querySelectorAll(".theme-option").forEach((btn) => {
     btn.addEventListener("click", () => {
       setThemePreference(btn.dataset.theme);
@@ -75,93 +97,14 @@ export function renderProfile(mount) {
     });
   });
 
-  renderBgPicker(mount);
-  loadStats(mount);
-}
-
-// Khu chọn hình nền: các nhóm chủ đề có sẵn + "Ảnh của bạn" (tự thêm từ máy, tối đa 6, có
-// nút xoá từng ảnh). Render lại NGUYÊN khu này sau mỗi thao tác thêm/xoá/chọn — đơn giản
-// hơn là tự đồng bộ từng nút active/thumbnail bằng tay.
-function renderBgPicker(mount) {
-  const slot = mount.querySelector("#bg-picker-slot");
-  const errorEl = mount.querySelector("#bg-picker-error");
-  const fileInput = mount.querySelector("#bg-file-input");
-  const currentBg = getBackgroundPreference();
-  const customs = getCustomBackgrounds();
-
-  slot.innerHTML = `
-    ${BACKGROUND_GROUPS.map(
-      (g) => `
-      <div class="bg-group-label">${escapeHtml(g.label)}</div>
-      <div class="bg-picker">
-        ${g.items
-          .map(
-            (b) => `
-          <button type="button" class="bg-option ${currentBg === b.value ? "active" : ""}" data-bg="${b.value}">
-            <span class="bg-option-thumb" style="${b.file ? `background-image:url('icons/${b.file}')` : ""}"></span>
-            <span>${escapeHtml(b.label)}</span>
-          </button>
-        `
-          )
-          .join("")}
-      </div>
-    `
-    ).join("")}
-    <div class="bg-group-label">Ảnh của bạn</div>
-    <div class="bg-picker">
-      ${customs
-        .map(
-          (c) => `
-        <div class="bg-option-wrap">
-          <button type="button" class="bg-option ${currentBg === customPrefFor(c.id) ? "active" : ""}" data-bg="${customPrefFor(c.id)}">
-            <span class="bg-option-thumb" style="background-image:url('${c.dataUrl}')"></span>
-            <span>Ảnh riêng</span>
-          </button>
-          <button type="button" class="bg-option-delete" data-delete="${c.id}" aria-label="Xoá ảnh này">${icon("x-circle", { size: 16 })}</button>
-        </div>
-      `
-        )
-        .join("")}
-      <button type="button" class="bg-option bg-option-add" id="bg-add-btn">
-        <span class="bg-option-thumb bg-option-thumb-add">${icon("plus", { size: 22 })}</span>
-        <span>Thêm ảnh</span>
-      </button>
-    </div>
-  `;
-
-  slot.querySelectorAll(".bg-option[data-bg]").forEach((btn) => {
+  mount.querySelectorAll(".palette-option").forEach((btn) => {
     btn.addEventListener("click", () => {
-      setBackgroundPreference(btn.dataset.bg);
-      renderBgPicker(mount);
+      setPalettePreference(btn.dataset.palette);
+      mount.querySelectorAll(".palette-option").forEach((b) => b.classList.toggle("active", b === btn));
     });
   });
 
-  slot.querySelectorAll("[data-delete]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      removeCustomBackground(btn.dataset.delete);
-      renderBgPicker(mount);
-    });
-  });
-
-  slot.querySelector("#bg-add-btn").addEventListener("click", () => fileInput.click());
-  // Gắn onchange (ghi đè) thay vì addEventListener: renderBgPicker chạy lại nhiều lần trong
-  // 1 phiên xem Hồ sơ nhưng fileInput nằm NGOÀI slot (không bị render lại) — addEventListener
-  // sẽ cộng dồn handler, mỗi lần chọn ảnh bị thêm N lần.
-  fileInput.onchange = async () => {
-    const file = fileInput.files?.[0];
-    fileInput.value = ""; // cho phép chọn lại đúng file cũ lần sau vẫn kích hoạt change
-    if (!file) return;
-    errorEl.hidden = true;
-    const res = await addCustomBackground(file);
-    if (!res.ok) {
-      errorEl.textContent = res.message;
-      errorEl.hidden = false;
-      return;
-    }
-    setBackgroundPreference(customPrefFor(res.id));
-    renderBgPicker(mount);
-  };
+  loadStats(mount);
 }
 
 async function loadStats(mount) {

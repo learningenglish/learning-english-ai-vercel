@@ -582,6 +582,15 @@ function buildMeta(r) {
 // ====== ACTIONS xuất ra cho chat.js đăng ký vào ACTIONS map ======
 // Chỉ Student mới dùng (giống generate_lesson/analyze_user_text) — Mentor không có mô hình
 // credit/hạn mức tương ứng ở MVP này.
+
+// KHÔNG gọi AI — liệt kê tên 14 thể loại cố định cho màn "Chọn dạng bài viết" (2026-08-04, xem
+// ghi chú "genre" trong generate_writing_task() bên dưới). Đọc thẳng từ writingTopicPool.json đã
+// nạp sẵn lúc module load, không truy vấn gì thêm.
+export async function list_writing_genres(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  return { content: JSON.stringify({ genres: Object.keys(WRITING_TOPIC_POOL_BY_GENRE) }) };
+}
+
 export async function generate_writing_task(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
@@ -594,13 +603,27 @@ export async function generate_writing_task(data, ctx) {
   );
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
-  // Loại các thể loại đã giao 3-5 lượt gần đây khỏi tập mẫu TRƯỚC KHI đưa vào prompt — chặn ở
-  // NGUỒN (model không có cơ hội chọn lại dù có muốn) thay vì chỉ dặn+kiểm tra sau, mạnh hơn
-  // hẳn cách "dặn rồi hy vọng" của bản trước.
-  const recentGenres = await getRecentGenres(ctx.studentId, 5);
-  const recentGenresNorm = new Set(recentGenres.map((g) => (g || "").trim().toLowerCase()));
-  const eligiblePool = WRITING_TOPIC_POOL.filter((o) => !recentGenresNorm.has(o.genre_vi.trim().toLowerCase()));
-  const sampledPool = sampleTopicPool(eligiblePool.length ? eligiblePool : WRITING_TOPIC_POOL, TOPIC_SAMPLE_SIZE);
+  // "genre" (2026-08-04, KHÔI PHỤC lại màn "Chọn dạng bài viết" — Minh chốt lại, đảo ngược
+  // quyết định 2026-07-27 lần 3 "AI tự do chọn thể loại") — người dùng chọn TRƯỚC 1 trong các
+  // thể loại có sẵn (xem list_writing_genres() bên dưới, cùng nguồn WRITING_TOPIC_POOL_BY_GENRE
+  // này), sampledPool CHỈ lấy đúng thể loại đó cho AI viết chủ đề cụ thể — bỏ qua cơ chế loại
+  // trừ "thể loại đã giao gần đây" (cơ chế đó chỉ có ý nghĩa khi AI TỰ chọn, không áp dụng khi
+  // người dùng CHỦ Ý chọn lại đúng thể loại vừa học). KHÔNG truyền "genre" (rỗng/thiếu) -> rơi về
+  // hành vi CŨ (AI tự do chọn, loại trừ thể loại gần đây) để không phá luồng nào đang gọi thiếu.
+  const explicitGenre = typeof data.genre === "string" && WRITING_TOPIC_POOL_BY_GENRE[data.genre] ? data.genre : null;
+  let sampledPool;
+  if (explicitGenre) {
+    const poolForGenre = WRITING_TOPIC_POOL.filter((o) => o.genre_vi === explicitGenre);
+    sampledPool = sampleTopicPool(poolForGenre, TOPIC_SAMPLE_SIZE);
+  } else {
+    // Loại các thể loại đã giao 3-5 lượt gần đây khỏi tập mẫu TRƯỚC KHI đưa vào prompt — chặn ở
+    // NGUỒN (model không có cơ hội chọn lại dù có muốn) thay vì chỉ dặn+kiểm tra sau, mạnh hơn
+    // hẳn cách "dặn rồi hy vọng" của bản trước.
+    const recentGenres = await getRecentGenres(ctx.studentId, 5);
+    const recentGenresNorm = new Set(recentGenres.map((g) => (g || "").trim().toLowerCase()));
+    const eligiblePool = WRITING_TOPIC_POOL.filter((o) => !recentGenresNorm.has(o.genre_vi.trim().toLowerCase()));
+    sampledPool = sampleTopicPool(eligiblePool.length ? eligiblePool : WRITING_TOPIC_POOL, TOPIC_SAMPLE_SIZE);
+  }
 
   function isValidTaskShape(p) {
     const idx = Number(p?.chosen_index);

@@ -80,6 +80,41 @@ QUY TẮC VỀ LOẠI NỘI DUNG:
 - "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
 - "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
 
+QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
+mọi content_type, 2026-07-30):
+- Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
+  nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
+- Một nhóm là 1 CỤM Ý NGHĨA THẬT (không phải chia máy móc theo số từ cố định) — nhận diện theo
+  các loại sau, ưu tiên gộp khi khớp đúng cấu trúc:
+  * Cụm động từ (verb group): thì phức hợp ("has eaten", "is working", "will have finished"),
+    bị động ("was built", "has been repaired"), modal + động từ ("can swim", "must have
+    forgotten"), "to" + động từ nguyên mẫu, động từ + V-ing.
+  * Phrasal verb / động từ + giới từ cố định ("give up", "look after", "depend on").
+  * Cụm giới từ (prepositional phrase): giới từ + (mạo từ/sở hữu) + danh từ ("in the room", "at
+    six o'clock", "in charge of").
+  * Cụm danh từ (noun phrase): mạo từ/sở hữu + (tính từ) + danh từ ("a big house", "my old car").
+  * Danh từ riêng ghép nhiều từ ("New York City", "John Smith").
+  * Cụm cố định/collocation (fixed expression): cụm luôn đi cùng nhau như 1 khối ("by the way",
+    "of course", "a lot of", "thank you very much", "good morning").
+- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn, liên từ đứng riêng, tính từ đứng riêng...)
+  vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ gồm chính nó, "type" là loại từ
+  đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/modal/
+  interjection/number).
+- Mỗi nhóm có cấu trúc:
+  {
+    "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
+    "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
+    "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
+    "type": "loại cụm/loại từ, theo danh sách ở trên",
+    "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
+  }
+- BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
+  "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
+  "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
+  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. Với bài cấp A1/A2/B1, nếu kiểm tra này THẤT
+  BẠI, hệ thống sẽ bắt sinh lại toàn bộ bài (dùng đúng cơ chế thử lại đã có) trước khi lưu —
+  không được để sót từ nào ở 3 cấp độ này.
+
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
@@ -145,7 +180,16 @@ SCHEMA JSON:
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
       "text": "câu/đoạn tiếng Anh",
       "translation": "bản dịch tiếng Việt của câu/đoạn này",
-      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong tình huống) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên — đổi từ ngữ nhưng vẫn mở đầu bằng cách gọi tên thì/cấu trúc trước tiên vẫn tính là vi phạm). Nêu VÌ SAO câu này dùng dạng đó trong tình huống này nếu có ích, nhưng KHÔNG phải câu mở đầu. Mỗi câu phải đọc như đang phân tích RIÊNG câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man."
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong tình huống) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên — đổi từ ngữ nhưng vẫn mở đầu bằng cách gọi tên thì/cấu trúc trước tiên vẫn tính là vi phạm). Nêu VÌ SAO câu này dùng dạng đó trong tình huống này nếu có ích, nhưng KHÔNG phải câu mở đầu. Mỗi câu phải đọc như đang phân tích RIÊNG câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man.",
+      "phrase_groups": [
+        {
+          "words": ["mảng từ ĐÚNG NGUYÊN VĂN/ĐÚNG THỨ TỰ trong \"text\", xem QUY TẮC VỀ GOM CỤM TỪ"],
+          "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
+          "level": "cấp độ CEFR riêng của cụm/từ này",
+          "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
+          "word_meanings": {"từ": "nghĩa riêng bên trong cụm — CHỈ có khi nhóm >1 từ"}
+        }
+      ]
     }
   ],
   "vocabulary": [
@@ -265,3 +309,4 @@ nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho 
 5. **Sinh ảnh bìa:** nếu muốn có ảnh như danh sách bài học hiện tại, thêm vào schema trường `"image_prompt": "mô tả ảnh bằng tiếng Anh"` và dùng nó gọi API sinh ảnh riêng — đừng bắt model tạo bài kiêm luôn việc này.
 6. **Model gọi qua API:** giữ `temperature` khoảng 0.7 cho phần nội dung tự nhiên; nếu JSON hay lỗi, giảm còn 0.4.
 7. **`content[].explanation`** (bổ sung sau lần đầu tích hợp): giải thích ngữ pháp cho ĐÚNG câu/đoạn đó, sinh sẵn LÚC TẠO BÀI — để icon "Giải thích" ở màn học hiện ra ngay, không phải gọi AI lại mỗi lần bấm. Bài học tạo TRƯỚC khi có trường này sẽ không có `explanation`, app cần tự fallback gọi action `sentence_tip` cho những bài cũ đó.
+8. **`content[].phrase_groups`** (2026-07-30, "gom cụm từ khi sinh bài"): xem QUY TẮC VỀ GOM CỤM TỪ ở trên — validate coverage 100% (A1/A2/B1 bắt buộc, B2/C1 không ép) nằm trong `validatePhraseCoverage()` (`api/_generate/lesson.js`), gọi từ `validateLessonShape()` nên tự động dùng CHUNG cơ chế retry đã có (`generate_lesson()` nội bộ 1 lần + client tự gọi lại). Bài tạo TRƯỚC khi có trường này sẽ không có `phrase_groups` — `computeInteractiveSpans()` (`app/js/views/lesson.js`) tự fallback về cách khớp cũ qua `vocabulary` cho những bài đó, không vỡ.

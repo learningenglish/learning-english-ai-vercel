@@ -19,7 +19,7 @@
 //   (Việc 2), gộp vào CÙNG 1 lượt gọi grade_writing (không tách action riêng), xem
 //   api/_generate/writing.js::GRADE_SYSTEM_PROMPT phần "clean_rewrite".
 import { navigate } from "../router.js";
-import { generateWritingTask, gradeWriting, saveWritingFavorite } from "../writingApi.js";
+import { generateWritingTask, gradeWriting, saveWritingFavorite, listWritingGenres } from "../writingApi.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
@@ -30,6 +30,7 @@ import { createPlayer, isTTSSupported } from "../tts.js";
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
 const STEP_TITLES = {
+  genre: `${icon("edit-3", { size: 22 })} Chọn dạng bài viết`,
   setup: `${icon("edit-3", { size: 22 })} Luyện viết`,
   task: `${icon("edit-3", { size: 22 })} Nhiệm vụ`,
   write: `${icon("edit-3", { size: 22 })} Viết bài`,
@@ -41,7 +42,13 @@ const STEP_TITLES = {
 
 export function renderWritingPractice(mount) {
   const state = {
-    step: "setup",
+    // "genre" (2026-08-04, KHÔI PHỤC màn "Chọn dạng bài viết" — Minh chốt lại, xem ghi chú
+    // "genre" trong api/_generate/writing.js::generate_writing_task) LUÔN là bước ĐẦU TIÊN,
+    // TRƯỚC "setup" (chọn cấp độ) — thứ tự ngược lại bản 2026-07-27 (cấp độ trước, AI tự chọn
+    // thể loại sau khi bấm "AI giao nhiệm vụ").
+    step: "genre",
+    genres: null, // null = đang tải danh sách thể loại
+    genre: null, // thể loại đã CHỌN (tên tiếng Việt, khớp key WRITING_TOPIC_POOL_BY_GENRE)
     level: "B1",
     industry: "",
     task: null,
@@ -80,13 +87,22 @@ export function renderWritingPractice(mount) {
   loadAppHeaderStats(mount).then((r) => {
     if (r) headerCache = { streakText: r.streak, tierText: r.tier };
   });
+  loadGenres();
+
+  async function loadGenres() {
+    const res = await listWritingGenres();
+    state.genres = res.ok ? res.data.genres : [];
+    if (state.step === "genre") render();
+  }
 
   function render() {
     mount.innerHTML = `
       <div class="screen">
         ${appHeaderHtml(STEP_TITLES[state.step], headerCache, { showBack: true })}
         ${
-          state.step === "setup"
+          state.step === "genre"
+            ? renderGenreStep()
+            : state.step === "setup"
             ? renderSetupStep()
             : state.step === "task"
             ? renderTaskStep()
@@ -105,9 +121,34 @@ export function renderWritingPractice(mount) {
     wire();
   }
 
+  // ====== Bước 0 (2026-08-04): chọn dạng bài viết — tick chọn 1 trong các thể loại có sẵn
+  // (writingTopicPool.json qua list_writing_genres, KHÔNG gọi AI) TRƯỚC khi AI giao đề. ======
+  function renderGenreStep() {
+    if (state.genres === null) return `<p class="muted">Đang tải...</p>`;
+    return `
+      <div class="genre-list">
+        ${state.genres
+          .map(
+            (g) => `
+          <button type="button" class="genre-row ${state.genre === g ? "active" : ""}" data-genre="${escapeHtml(g)}">
+            <span class="genre-row-check">${state.genre === g ? icon("check-circle", { size: 20, filled: true }) : ""}</span>
+            <span class="genre-row-label">${escapeHtml(g)}</span>
+          </button>
+        `
+          )
+          .join("")}
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="genre-continue-btn" ${state.genre ? "" : "disabled"}>Tiếp tục</button>
+    `;
+  }
+
   // ====== Bước 1: chọn cấp độ + lĩnh vực (tuỳ chọn) ======
   function renderSetupStep() {
     return `
+      <div class="current-goal-row">
+        <span>Dạng bài viết: <strong>${escapeHtml(state.genre)}</strong></span>
+        <button type="button" class="link-btn" id="setup-change-genre-btn">Đổi</button>
+      </div>
       <label class="field">
         <span class="field-question">Bạn đang ở cấp độ nào?</span>
       </label>
@@ -535,7 +576,10 @@ export function renderWritingPractice(mount) {
   function wire() {
     wireAppHeader(mount);
     wireBackLink(mount, () => {
-      if (state.step === "task") {
+      if (state.step === "setup") {
+        state.step = "genre";
+        render();
+      } else if (state.step === "task") {
         state.step = "setup";
         render();
       } else if (state.step === "write") {
@@ -553,13 +597,28 @@ export function renderWritingPractice(mount) {
       }
     });
 
-    if (state.step === "setup") wireSetupStep();
+    if (state.step === "genre") wireGenreStep();
+    else if (state.step === "setup") wireSetupStep();
     else if (state.step === "task") wireTaskStep();
     else if (state.step === "write") wireWriteStep();
     else if (state.step === "result") wireResultStep();
     else if (state.step === "detail") wireDetailStep();
     else if (state.step === "clean") wireCleanStep();
     else wireReferenceStep();
+  }
+
+  function wireGenreStep() {
+    mount.querySelectorAll(".genre-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        state.genre = row.dataset.genre;
+        render();
+      });
+    });
+    mount.querySelector("#genre-continue-btn").addEventListener("click", () => {
+      if (!state.genre) return;
+      state.step = "setup";
+      render();
+    });
   }
 
   function wireSetupStep() {
@@ -571,6 +630,10 @@ export function renderWritingPractice(mount) {
     });
     mount.querySelector("#industry-input").addEventListener("input", (e) => (state.industry = e.target.value));
     mount.querySelector("#setup-submit-btn").addEventListener("click", () => requestTask());
+    mount.querySelector("#setup-change-genre-btn").addEventListener("click", () => {
+      state.step = "genre";
+      render();
+    });
   }
 
   function wireTaskStep() {
@@ -718,7 +781,7 @@ export function renderWritingPractice(mount) {
     submitBtns.forEach((b) => b && (b.disabled = true));
     resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> AI đang chọn nhiệm vụ...</div>`;
 
-    const res = await generateWritingTask(state.level, state.industry);
+    const res = await generateWritingTask(state.level, state.industry, state.genre);
     submitBtns.forEach((b) => b && (b.disabled = false));
     if (!res.ok) {
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;

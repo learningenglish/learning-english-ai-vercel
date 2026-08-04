@@ -168,6 +168,11 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     onStateChange: (s) => {
       updateAudioBarUI(s);
       ensureProgressTimer(s.playing);
+      // "Đã học" (2026-08-04) = nghe TRỌN VẸN audio thật, không phải chỉ bấm Play — s.justEnded
+      // chỉ true ĐÚNG 1 lần lúc tts.js xác nhận đã phát hết toàn bộ playlist (file ghép sẵn HOẶC
+      // fallback Web Speech, xem ghi chú tại tts.js::justEnded). Đứng NGOÀI "if showAllContent
+      // return" bên dưới vì đây không liên quan gì tới trang/khung đang hiển thị.
+      if (s.justEnded) saveProgress({ fullyListened: true });
       if (state.showAllContent || s.itemIndex === state.page) return;
       // "state.page" LUÔN lưu chỉ số CÂU thật (khớp completed_paragraphs/progress_page dùng ở
       // nơi khác, xem ghi chú ttsPlayer.load()) — chỉ khác NHAU giữa 2 lượt gọi ở đơn vị TRANG
@@ -322,7 +327,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
                 <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
                 ${contentActionsHtml(i)}
               </div>
-              <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
+              <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>
               ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
             `
               )
@@ -354,7 +359,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
                   <span class="speaker-name">${pages[i]?.speaker ? escapeHtml(pages[i].speaker) : ""}</span>
                   ${contentActionsHtml(i)}
                 </div>
-                <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(pages[i]?.text || "", lesson.vocabulary || [])}</div>
+                <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(pages[i]?.text || "", lesson.vocabulary || [], pages[i]?.phrase_groups)}</div>
                 ${state.showTranslation ? `<div class="content-translation">${escapeHtml(pages[i]?.translation || "")}</div>` : ""}
               </div>
             `
@@ -385,7 +390,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
               <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
               ${contentActionsHtml(pageIdx)}
             </div>
-            <div class="content-text" data-item-idx="${pageIdx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [])}</div>
+            <div class="content-text" data-item-idx="${pageIdx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>
             ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
           </div>
         `;
@@ -395,7 +400,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
 
       body.querySelectorAll(".content-text").forEach((el) => {
         const itemIdx = Number(el.dataset.itemIdx);
-        wireInteractiveWords(el, pages[itemIdx]?.text || "", genderHints[itemIdx]);
+        wireInteractiveWords(el, pages[itemIdx]?.text || "", genderHints[itemIdx], pages[itemIdx]?.phrase_groups);
       });
       body.querySelectorAll(".sentence-icon-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {
@@ -501,9 +506,11 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   function prefetchAllLessonWords() {
     (lesson.content || []).forEach((item) => {
       if (!item?.text) return;
-      computeInteractiveSpans(item.text, lesson.vocabulary || []).forEach((s) => {
-        // "s.entry" — từ/cụm này ĐÃ có nghĩa sẵn trong lesson.vocabulary (sinh cùng lúc tạo bài
-        // hoặc đã có người tra/lưu trước đó), showWordTooltip() dùng thẳng KHÔNG cần gọi AI.
+      computeInteractiveSpans(item.text, lesson.vocabulary || [], item.phrase_groups).forEach((s) => {
+        // "s.entry" — từ/cụm này ĐÃ có nghĩa sẵn (trong lesson.vocabulary, hoặc trong
+        // phrase_groups gắn sẵn lúc sinh bài — xem phraseGroupToEntry() — CẢ từ đơn không tô
+        // màu cũng có entry giờ, xem ghi chú "highlight" ở computeInteractiveSpans()), tooltip
+        // dùng thẳng KHÔNG cần gọi AI.
         if (s.entry) return;
         scheduleLookup(s.text, item.text);
       });
@@ -689,8 +696,8 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // thứ tự khớp 1-1 theo index, cho phép lấy lại "entry" (mục lesson.vocabulary đã sinh SẴN lúc
   // tạo bài — word/meaning/type/example) mà renderInteractiveHtml() vốn đã tính nhưng không
   // truyền tiếp xuống đây. Có "entry" -> hiện tooltip NGAY, không gọi AI/không qua cache.
-  function wireInteractiveWords(container, sentence, genderHint) {
-    const spans = computeInteractiveSpans(sentence, lesson.vocabulary || []);
+  function wireInteractiveWords(container, sentence, genderHint, phraseGroups) {
+    const spans = computeInteractiveSpans(sentence, lesson.vocabulary || [], phraseGroups);
     container.querySelectorAll("[data-token-idx]").forEach((span) => {
       const idx = Number(span.dataset.tokenIdx);
       const word = span.textContent;
@@ -724,7 +731,18 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // prefetchAllLessonWords lệch nhau) mới tự gọi API riêng làm phương án cuối.
   async function showWordTooltip(anchorEl, word, sentence, genderHint, vocabEntry) {
     const cacheKey = `${word.toLowerCase()}|${sentence}`;
-    let data = vocabEntry ? { level: lesson.level, meaning: vocabEntry.meaning } : wordLookupCache.get(cacheKey);
+    // 2026-07-30 ("gom cụm từ khi sinh bài") — "vocabEntry" từ phrase_groups mang theo ĐỦ
+    // level/type/word_meanings riêng của chính cụm/từ này (không còn hardcode lesson.level như
+    // trước — 1 câu B1 vẫn có thể chứa 1 cụm cố định A1 quen thuộc, cấp độ RIÊNG mới đúng).
+    let data = vocabEntry
+      ? {
+          level: vocabEntry.level || lesson.level,
+          meaning: vocabEntry.meaning,
+          type: vocabEntry.type,
+          word_meanings: vocabEntry.word_meanings,
+          is_multiword: vocabEntry.is_multiword,
+        }
+      : wordLookupCache.get(cacheKey);
 
     if (!data) {
       showPopoverHtml(anchorEl, `<div class="word-popover-loading"><span class="spinner spinner-sm"></span></div>`);
@@ -751,7 +769,10 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
       return;
     }
-    persistLookedUpWord(word, data);
+    // Từ/cụm đến từ phrase_groups đã NẰM SẴN vĩnh viễn trong content của bài — không phải "vừa
+    // tra mới", không cần lưu thêm vào lesson.vocabulary/DB (tránh lưu tràn lan mọi từ chức
+    // năng như "the"/"is"/"a" chỉ vì người dùng bấm thử).
+    if (!vocabEntry?.fromPhraseGroups) persistLookedUpWord(word, data);
     showPopoverHtml(
       anchorEl,
       `
@@ -761,6 +782,20 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="Đọc từ này">${icon("volume", { size: 14 })}</button>` : ""}
       </div>
       <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
+      ${
+        data.is_multiword
+          ? `
+        <div class="word-popover-phrase-tag">${escapeHtml(data.type || "Cụm từ")}</div>
+        ${
+          data.word_meanings
+            ? `<div class="word-popover-breakdown">${Object.entries(data.word_meanings)
+                .map(([w, m]) => `<span class="word-popover-breakdown-item"><b>${escapeHtml(w)}</b>: ${escapeHtml(m)}</span>`)
+                .join("")}</div>`
+            : ""
+        }
+      `
+          : ""
+      }
       ${data.collocation ? `<div class="word-popover-colloc">${escapeHtml(data.collocation)}</div>` : ""}
     `
     );
@@ -983,20 +1018,24 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     saveProgress();
   }
 
-  function saveProgress() {
+  function saveProgress({ fullyListened = false } = {}) {
     // Tin tức (2026-07-28) — bài KHÔNG thuộc user_id nào (public, "news_lessons"), không có
     // tiến trình cá nhân để lưu (lesson_progress FK tới "lessons", không tới "news_lessons").
     if (isNews) return;
     const total = (lesson.exercises || []).length;
     const allDone = total > 0 && state.completedExercises.size === total;
-    upsertLessonProgress(lesson.id, {
+    const patch = {
       completed_paragraphs: state.page,
       completed_exercises: Array.from(state.completedExercises),
       exercise_results: state.exerciseResults,
       xp_earned: state.xpEarned,
       last_opened_at: new Date().toISOString(),
       completed_at: allDone ? new Date().toISOString() : null,
-    }).catch(() => {
+    };
+    // "Đã học" (2026-08-04, migration 033) — CHỈ ghi khi thật sự vừa nghe hết (không ghi đè lại
+    // null mỗi lần saveProgress() khác chạy vì lý do khác, giữ mốc CŨ nếu đã từng đạt trước đó).
+    if (fullyListened) patch.fully_listened_at = new Date().toISOString();
+    upsertLessonProgress(lesson.id, patch).catch(() => {
       // Không chặn UI vì 1 lần ghi progress lỗi mạng — lần thao tác kế tiếp sẽ ghi lại.
     });
   }
@@ -1093,10 +1132,70 @@ function tokenizeWords(text) {
 // dùng cho 1 cụm thì không dùng lại cho cụm khác). Từ còn lại (không thuộc cụm nào) vẫn bấm
 // riêng từng từ như cũ. Dùng CHUNG cho dựng HTML (renderInteractiveHtml) lẫn tra trước
 // (prefetchAllLessonWords) để chỉ có 1 nơi định nghĩa "thế nào là khớp cụm".
-function computeInteractiveSpans(text, vocabulary) {
+// Dựng entry hiển thị từ 1 phần tử "phrase_groups" (2026-07-30, "gom cụm từ khi sinh bài") —
+// KHÔNG phải AI call, dữ liệu đã có sẵn trong bài. "highlight" tách RIÊNG khỏi việc có dữ liệu
+// tra cứu hay không: cụm nhiều từ LUÔN tô màu (giữ đúng hành vi "gộp cụm" cũ); từ ĐƠN chỉ tô
+// màu khi CŨNG khớp "lesson.vocabulary" (không đổi ngưỡng "từ nào đáng tô màu" đã có) — nhưng
+// MỌI từ (kể cả không tô màu) vẫn có đủ nghĩa/cấp độ để tra ngay khi bấm, không cần gọi AI.
+function phraseGroupToEntry(group, vocabMap) {
+  const words = Array.isArray(group?.words) ? group.words : [];
+  const wholeText = words.join(" ");
+  const isMultiWord = words.length > 1;
+  const vocabMatch = !isMultiWord ? findVocabEntry(wholeText, vocabMap) : null;
+  return {
+    word: wholeText,
+    meaning: group.meaning || vocabMatch?.meaning || "",
+    level: group.level || vocabMatch?.level || "",
+    type: group.type || vocabMatch?.type || "",
+    word_meanings: isMultiWord && group.word_meanings ? group.word_meanings : null,
+    is_multiword: isMultiWord,
+    is_specialized: !!vocabMatch?.is_specialized,
+    highlight: isMultiWord || !!vocabMatch,
+    fromPhraseGroups: true, // xem persistLookedUpWord()/showWordTooltip() — không lưu lại vào
+    // lesson.vocabulary/DB như từ tra mới, vì dữ liệu này đã NẰM SẴN vĩnh viễn trong content
+    // của bài (không có gì mới để "lưu thêm"), tránh lưu tràn lan mọi từ chức năng (the/is/a...).
+  };
+}
+
+// Ghép "tokens" (đã tokenize theo "text") với "phraseGroups" (nhãn cụm AI gắn sẵn lúc sinh bài)
+// theo ĐÚNG THỨ TỰ tuần tự — KHÔNG cần khớp lại bằng cách dò tìm (khác hẳn nhánh "vocabulary"
+// bên dưới, vốn phải TỰ SUY ĐOÁN vị trí bằng cách dò text) vì phraseGroups đã được sinh CÙNG
+// LÚC với chính câu này, thứ tự đảm bảo đúng. Trả về null nếu có bất kỳ sai lệch nào (từ trong
+// nhóm không khớp đúng token kế tiếp, hoặc còn dư/thiếu token) — B2/C1 KHÔNG bắt buộc phủ 100%
+// (xem validatePhraseCoverage phía server) nên vẫn có thể lệch ở 2 cấp đó; lệch thì RƠI VỀ cách
+// khớp "vocabulary" cũ bên dưới, không hiển thị sai/thiếu.
+function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap) {
+  const spans = [];
+  let tIdx = 0;
+  for (const group of phraseGroups) {
+    const words = Array.isArray(group?.words) ? group.words : [];
+    if (!words.length) continue;
+    for (const w of words) {
+      if (tIdx >= tokens.length || tokens[tIdx].word.toLowerCase() !== String(w).toLowerCase()) return null;
+      tIdx++;
+    }
+    const startTok = tokens[tIdx - words.length];
+    const endTok = tokens[tIdx - 1];
+    spans.push({ text: text.slice(startTok.start, endTok.end), start: startTok.start, end: endTok.end, entry: phraseGroupToEntry(group, vocabMap) });
+  }
+  if (tIdx !== tokens.length) return null; // còn token của câu chưa được phủ hết -> không dùng
+  return spans;
+}
+
+// "phraseGroups" (tuỳ chọn, 2026-07-30) — nhãn cụm AI gắn sẵn cho ĐÚNG phần tử content này lúc
+// sinh bài, xem docs/prompt-ai-tao-bai-hoc.md mục "QUY TẮC VỀ GOM CỤM TỪ". ƯU TIÊN dùng nếu có
+// VÀ phủ đúng đủ toàn câu (validate lại ở client cho chắc, phòng ca B2/C1 sót từ) — CHÍNH XÁC
+// tuyệt đối, không suy đoán. Bài CŨ (trước khi có trường này, hoặc lệch) rơi về cách khớp
+// "vocabulary" cũ phía dưới, hành vi giữ nguyên y hệt trước đây.
+function computeInteractiveSpans(text, vocabulary, phraseGroups) {
   const { tokens } = tokenizeWords(text);
   if (!tokens.length) return [];
   const vocabMap = buildVocabMap(vocabulary);
+
+  if (Array.isArray(phraseGroups) && phraseGroups.length) {
+    const spansFromGroups = spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap);
+    if (spansFromGroups) return spansFromGroups;
+  }
 
   const phraseEntries = (vocabulary || [])
     .filter((w) => w.word && /\s/.test(w.word.trim()))
@@ -1145,16 +1244,20 @@ function computeInteractiveSpans(text, vocabulary) {
 // Bọc TẤT CẢ từ/cụm trong "text" thành span rê/chạm được — không chỉ riêng từ trong
 // "vocabulary". Từ/cụm khớp vocabulary (kể cả biến thể s/es/ed/ing với từ đơn) vẫn tô màu
 // nổi bật; từ thường khác vẫn tương tác được nhưng không tô màu (chữ đen).
-function renderInteractiveHtml(text, vocabulary) {
+// "s.entry.highlight === false" (2026-07-30, nhánh phraseGroups) — CỐ Ý phân biệt với "không có
+// entry": từ đơn không đáng chú ý vẫn CÓ entry (để tra được nghĩa/cụm ngay không cần gọi AI)
+// nhưng KHÔNG tô màu — khác "undefined" (nhánh vocabulary cũ, mọi entry tồn tại đều tô màu như
+// trước, không đổi hành vi bài cũ).
+function renderInteractiveHtml(text, vocabulary, phraseGroups) {
   if (!text) return "";
-  const spans = computeInteractiveSpans(text, vocabulary);
+  const spans = computeInteractiveSpans(text, vocabulary, phraseGroups);
   if (!spans.length) return escapeHtml(text);
 
   let html = "";
   let cursor = 0;
   spans.forEach((s, i) => {
     html += escapeHtml(text.slice(cursor, s.start));
-    const cls = s.entry ? (s.entry.is_specialized ? "vocab-highlight-specialized" : "vocab-highlight") : "hover-word";
+    const cls = s.entry && s.entry.highlight !== false ? (s.entry.is_specialized ? "vocab-highlight-specialized" : "vocab-highlight") : "hover-word";
     html += `<span class="${cls}" data-token-idx="${i}">${escapeHtml(s.text)}</span>`;
     cursor = s.end;
   });

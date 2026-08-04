@@ -23,6 +23,13 @@ export async function checkGoalGate() {
   return callAndParse("mentor_check_goal_gate", {});
 }
 
+// Không gọi AI — tra CÓ/CHƯA industry_skins cho 1 danh sách occupation_key (2026-08-04, màn
+// "Chọn chuyên ngành" mới, views/industrySelect.js) để hiện đúng badge "Sắp ra mắt"/"Đã có nội
+// dung" cho từng vị trí kế toán.
+export async function checkIndustrySkinStatus(occupationKeys) {
+  return callAndParse("mentor_check_industry_skin_status", { occupation_keys: occupationKeys });
+}
+
 // AI CALL #1 — suy luận chân dung nghề từ câu trả lời tự do của người dùng.
 export async function inferGoalProfile(rawText, level) {
   return callAndParse("mentor_infer_goal", { raw_text: rawText, level: level || null });

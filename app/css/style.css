@@ -109,10 +109,14 @@ textarea {
   color: inherit;
 }
 
-/* Nền minh hoạ full màn hình, KHÔNG dùng background-attachment:fixed trực tiếp trên body —
-   thuộc tính đó nổi tiếng lỗi/không phủ hết khi cuộn trên Safari/Chrome di động (viewport
-   động do thanh địa chỉ ẩn/hiện). Dùng 1 lớp ::before position:fixed phủ đúng viewport,
-   luôn hiển thị "full" bất kể trang cuộn dài bao nhiêu hay thiết bị nào. */
+/* Nền full màn hình (2026-08-04 — BỎ HẲN ảnh minh hoạ + upload ảnh riêng, app/js/background.js
+   không còn được gọi nữa — nền giờ là 1 dải gradient MÀU theo đúng Theme Color Palette đang
+   chọn, đọc lại var(--purple-soft)/var(--bg-fallback) đã có sẵn nên tự đổi theo khi người dùng
+   đổi palette ở Setting, không cần biến CSS riêng nào khác). KHÔNG dùng
+   background-attachment:fixed trực tiếp trên body — thuộc tính đó nổi tiếng lỗi/không phủ hết
+   khi cuộn trên Safari/Chrome di động (viewport động do thanh địa chỉ ẩn/hiện). Dùng 1 lớp
+   ::before position:fixed phủ đúng viewport, luôn hiển thị "full" bất kể trang cuộn dài bao
+   nhiêu hay thiết bị nào. */
 body::before {
   content: "";
   position: fixed;
@@ -131,15 +135,7 @@ body::before {
   height: 100vh;
   height: 100lvh;
   z-index: -1;
-  /* --bg-scene-image set bởi app/js/background.js (đường dẫn TÍNH TỪ index.html) — biến
-     mặc định ở đây (tính từ file CSS này) chỉ dùng khi JS chưa kịp chạy/bị chặn. Có thể là
-     "none" nếu người dùng chọn nền "Trơn" ở Hồ sơ. */
-  background-image: var(--bg-scene-image, url("../icons/bg-scene.svg"));
-  background-size: cover;
-  background-position: top center;
-  background-repeat: no-repeat;
-  opacity: var(--bg-scene-opacity);
-  transition: opacity 0.2s ease;
+  background: linear-gradient(180deg, var(--purple-soft) 0%, var(--bg-fallback) 55%);
 }
 
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
@@ -1761,6 +1757,34 @@ textarea:focus {
   font-size: 0.8rem;
 }
 
+/* Dòng cụm (2026-07-30, "gom cụm từ khi sinh bài") — hiện khi từ vừa bấm là 1 CỤM nhiều từ đã
+   được AI gắn nhãn sẵn lúc sinh bài (xem phraseGroupToEntry() trong views/lesson.js). Nhãn
+   loại cụm nhỏ (phrasal verb/cụm giới từ...) + bảng nghĩa riêng từng từ bên trong cụm. */
+.word-popover-phrase-tag {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--purple-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.word-popover-breakdown {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.word-popover-breakdown-item b {
+  color: var(--text);
+  font-weight: 700;
+}
+
 .vocab-list,
 .grammar-list,
 .exercises-list {
@@ -2668,4 +2692,326 @@ textarea:focus {
   flex-shrink: 0;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== Làm mới khung điều hướng (2026-08-04) — Home/Chọn chuyên ngành/Setting mới ===== */
+
+.home-greeting {
+  margin: 18px 0 2px;
+}
+
+.home-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.home-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 18px 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text);
+}
+
+.home-card-icon {
+  color: var(--purple);
+  background: var(--purple-soft);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-card-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.home-card-sub {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* Màn "Chọn chuyên ngành" — danh mục cố định 2 tầng (views/industrySelect.js). */
+.industry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  text-align: left;
+  width: 100%;
+}
+
+.industry-select-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.industry-select-header {
+  width: 100%;
+  min-height: var(--touch-min);
+  background: none;
+  border: none;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.industry-select-icon {
+  color: var(--purple);
+  background: var(--purple-soft);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.industry-select-label {
+  flex: 1;
+}
+
+.industry-select-chevron {
+  color: var(--text-dim);
+}
+
+.industry-position-list {
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.industry-position-row {
+  width: 100%;
+  min-height: var(--touch-min);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+}
+
+.industry-position-row:last-child {
+  border-bottom: none;
+}
+
+.industry-position-row.is-coming-soon {
+  cursor: default;
+  color: var(--text-dim);
+}
+
+.industry-position-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.industry-position-label {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.industry-position-badge {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--surface-soft);
+  border-radius: 999px;
+  padding: 2px 10px;
+  flex-shrink: 0;
+}
+
+/* "Chưa học/Đang học/Đã học" (2026-08-04, Phần A4) — badge trên thẻ danh sách bài. */
+.learn-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.learn-status-not-started {
+  color: var(--text-dim);
+  background: var(--surface-soft);
+}
+
+.learn-status-in-progress {
+  color: var(--orange);
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.learn-status-done {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+/* "Chọn dạng bài viết" (2026-08-04, views/writingPractice.js) — danh sách thể loại tick chọn. */
+.genre-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.genre-row {
+  min-height: var(--touch-min);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+}
+
+.genre-row.active {
+  border-color: var(--purple);
+  background: var(--purple-soft);
+  color: var(--purple);
+}
+
+.genre-row-check {
+  width: 20px;
+  flex-shrink: 0;
+  color: var(--purple);
+}
+
+.genre-row-label {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Setting — hàng tĩnh/điều hướng (Ngôn ngữ, Đổi vị trí công việc). */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-min);
+  padding: 8px 0;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+}
+
+.settings-row-clickable {
+  cursor: pointer;
+  color: var(--text);
+}
+
+/* Theme (Color Palette) — Setting. */
+.palette-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.palette-option {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.palette-option.active {
+  border-color: var(--purple);
+  color: var(--text);
+}
+
+.palette-option-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--border);
+}
+
+/* 3 bộ màu thay thế cho "purple" mặc định (app/js/palette.js) — chỉ override --purple/
+   --purple-soft, mọi rule khác đọc lại 2 biến này nên tự động đổi theo, không cần viết thêm
+   CSS riêng cho từng thành phần (nút, tab active, badge...). */
+:root[data-palette="orange"] {
+  --purple: #f97316;
+  --purple-soft: #ffedd5;
+}
+:root[data-theme="dark"][data-palette="orange"] {
+  --purple: #fb923c;
+  --purple-soft: rgba(251, 146, 60, 0.16);
+}
+:root[data-palette="blue"] {
+  --purple: #2563eb;
+  --purple-soft: #dbeafe;
+}
+:root[data-theme="dark"][data-palette="blue"] {
+  --purple: #60a5fa;
+  --purple-soft: rgba(96, 165, 250, 0.16);
+}
+:root[data-palette="green"] {
+  --purple: #16a34a;
+  --purple-soft: #dcfce7;
+}
+:root[data-theme="dark"][data-palette="green"] {
+  --purple: #4ade80;
+  --purple-soft: rgba(74, 222, 128, 0.16);
+}
+
+/* Đăng nhập Google/Facebook (2026-08-04) — cạnh form email/password đã có. */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.btn-oauth {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  margin-bottom: 10px;
 }

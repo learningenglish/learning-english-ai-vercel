@@ -155,6 +155,11 @@ export function createPlayer({ onStateChange } = {}) {
     // estimatePositionForSeconds), hành vi y hệt trước đây — có mốc thật thì LUÔN ưu tiên dùng vì
     // chính xác tuyệt đối, không phụ thuộc tốc độ nói thật nhanh/chậm không đều.
     segmentTimes: null,
+    // Cờ TẠM (2026-08-04, "đã học" = nghe TRỌN VẸN audio thật, xem views/lesson.js::saveProgress)
+    // — true ĐÚNG 1 LẦN trong lượt notify() báo hiệu phát HẾT toàn bộ playlist (khác pause/seek
+    // giữa chừng), false ngay sau đó. Đặt ở CẢ 2 nơi audio thật sự "hết bài": fullAudioEl.onended
+    // (file ghép sẵn) VÀ goToItem() khi vượt quá item cuối (fallback Web Speech, phát từng câu).
+    justEnded: false,
   };
   // <audio> DUY NHẤT cho cả phiên khi có fullAudioUrl — KHÔNG tạo lại mỗi lần chuyển câu (khác
   // hẳn bản cũ tạo 1 Audio/câu), giữ SỐNG xuyên suốt để playPause()/setRate()/setVolume() điều
@@ -296,7 +301,9 @@ export function createPlayer({ onStateChange } = {}) {
     };
     fullAudioEl.onended = () => {
       state.playing = false;
+      state.justEnded = true;
       notify();
+      state.justEnded = false;
     };
     // Lỗi phát giữa chừng (URL hỏng/mạng chập chờn, hiếm) -> rơi về Web Speech cho ĐÚNG câu
     // đang đứng, không chặn hẳn phần còn lại của bài.
@@ -364,7 +371,9 @@ export function createPlayer({ onStateChange } = {}) {
       window.speechSynthesis.cancel();
       stopFullAudioEl();
       state.playing = false;
+      state.justEnded = true;
       notify();
+      state.justEnded = false;
       return;
     }
     state.itemIndex = index;

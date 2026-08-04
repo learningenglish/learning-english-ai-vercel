@@ -246,6 +246,41 @@ QUY TẮC VỀ LOẠI NỘI DUNG:
 - "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
 - "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
 
+QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
+mọi content_type, 2026-07-30):
+- Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
+  nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
+- Một nhóm là 1 CỤM Ý NGHĨA THẬT (không phải chia máy móc theo số từ cố định) — nhận diện theo
+  các loại sau, ưu tiên gộp khi khớp đúng cấu trúc:
+  * Cụm động từ (verb group): thì phức hợp ("has eaten", "is working", "will have finished"),
+    bị động ("was built", "has been repaired"), modal + động từ ("can swim", "must have
+    forgotten"), "to" + động từ nguyên mẫu, động từ + V-ing.
+  * Phrasal verb / động từ + giới từ cố định ("give up", "look after", "depend on").
+  * Cụm giới từ (prepositional phrase): giới từ + (mạo từ/sở hữu) + danh từ ("in the room", "at
+    six o'clock", "in charge of").
+  * Cụm danh từ (noun phrase): mạo từ/sở hữu + (tính từ) + danh từ ("a big house", "my old car").
+  * Danh từ riêng ghép nhiều từ ("New York City", "John Smith").
+  * Cụm cố định/collocation (fixed expression): cụm luôn đi cùng nhau như 1 khối ("by the way",
+    "of course", "a lot of", "thank you very much", "good morning").
+- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn, liên từ đứng riêng, tính từ đứng riêng...)
+  vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ gồm chính nó, "type" là loại từ
+  đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/modal/
+  interjection/number).
+- Mỗi nhóm có cấu trúc:
+  {
+    "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
+    "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
+    "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
+    "type": "loại cụm/loại từ, theo danh sách ở trên",
+    "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
+  }
+- BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
+  "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
+  "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
+  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. Với bài cấp A1/A2/B1, nếu kiểm tra này THẤT
+  BẠI, hệ thống sẽ bắt sinh lại toàn bộ bài (dùng đúng cơ chế thử lại đã có) trước khi lưu —
+  không được để sót từ nào ở 3 cấp độ này.
+
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
@@ -275,7 +310,16 @@ SCHEMA JSON:
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
       "text": "câu/đoạn tiếng Anh",
       "translation": "bản dịch tiếng Việt của câu/đoạn này",
-      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong tình huống) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên — đổi từ ngữ nhưng vẫn mở đầu bằng cách gọi tên thì/cấu trúc trước tiên vẫn tính là vi phạm). Nêu VÌ SAO câu này dùng dạng đó trong tình huống này nếu có ích, nhưng KHÔNG phải câu mở đầu. Mỗi câu phải đọc như đang phân tích RIÊNG câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man."
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong tình huống) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên — đổi từ ngữ nhưng vẫn mở đầu bằng cách gọi tên thì/cấu trúc trước tiên vẫn tính là vi phạm). Nêu VÌ SAO câu này dùng dạng đó trong tình huống này nếu có ích, nhưng KHÔNG phải câu mở đầu. Mỗi câu phải đọc như đang phân tích RIÊNG câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man.",
+      "phrase_groups": [
+        {
+          "words": ["mảng từ ĐÚNG NGUYÊN VĂN/ĐÚNG THỨ TỰ trong text, xem QUY TẮC VỀ GOM CỤM TỪ"],
+          "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
+          "level": "cấp độ CEFR riêng của cụm/từ này",
+          "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
+          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - CHỈ có khi nhóm >1 từ"}
+        }
+      ]
     }
   ],
   "vocabulary": [
@@ -679,7 +723,43 @@ function endsOnDanglingQuestion(content) {
   return !!last && typeof last.text === "string" && last.text.trim().endsWith("?");
 }
 
-function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkDialogueEnding } = {}) {
+// ====== Kiểm tra "phrase_groups" phủ ĐỦ 100% từ trong câu (2026-07-30, "gom cụm từ khi sinh
+// bài", yêu cầu Minh) — CHỈ bằng code, KHÔNG gọi AI. Nguyên tắc giống hệt validateB1Chunks() của
+// app cũ (learning-english-ai/app.js): ghép PHẲNG "words" của MỌI nhóm theo đúng thứ tự rồi so
+// với từ thật trong "text" — khớp TUYỆT ĐỐI (không thiếu/thừa/lặp/đảo) mới coi là ĐẠT.
+function normalizePhraseWord(w) {
+  return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
+}
+function sentenceWordTokens(text) {
+  return ((text || "").match(/[A-Za-z0-9']+/g) || []).map(normalizePhraseWord);
+}
+function itemPhraseCoverageOk(item) {
+  const realWords = sentenceWordTokens(item?.text);
+  if (!realWords.length) return true; // item rỗng/chỉ dấu câu -> không có gì để phủ, coi như đạt
+  const groups = Array.isArray(item?.phrase_groups) ? item.phrase_groups : [];
+  if (!groups.length) return false;
+  const groupWords = groups.flatMap((g) => (Array.isArray(g?.words) ? g.words : [])).map(normalizePhraseWord);
+  if (groupWords.length !== realWords.length) return false;
+  for (let i = 0; i < realWords.length; i++) {
+    if (groupWords[i] !== realWords[i]) return false;
+  }
+  return true;
+}
+// BẮT BUỘC 100% cho A1/A2/B1 (yêu cầu Minh) — B2/C1 KHÔNG ép (chấp nhận AI có thể sót từ,
+// không bắt sinh lại — yêu cầu rõ). 1 CÂU sót từ cũng đủ để coi cả bài FAIL (kiến trúc hiện tại
+// không có cơ chế "sinh lại đúng 1 câu" — generate_lesson luôn sinh nguyên bài 1 lượt gọi, nên
+// bắt sinh lại toàn bộ khi phát hiện).
+const PHRASE_COVERAGE_REQUIRED_LEVELS = new Set(["A1", "A2", "B1"]);
+function validatePhraseCoverage(parsed) {
+  if (!PHRASE_COVERAGE_REQUIRED_LEVELS.has(parsed?.level)) return { valid: true };
+  const content = Array.isArray(parsed.content) ? parsed.content : [];
+  for (let i = 0; i < content.length; i++) {
+    if (!itemPhraseCoverageOk(content[i])) return { valid: false, reason: "phrase_coverage_incomplete", itemIndex: i };
+  }
+  return { valid: true };
+}
+
+function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkDialogueEnding, checkPhraseCoverage } = {}) {
   if (!parsed || typeof parsed !== "object") return { valid: false, reason: "not_object" };
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return { valid: false, reason: "missing_title" };
   if (typeof parsed.title_vi !== "string" || !parsed.title_vi.trim()) return { valid: false, reason: "missing_title_vi" };
@@ -712,6 +792,10 @@ function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkD
   }
   if (checkDialogueEnding && parsed.content_type === "dialogue" && endsOnDanglingQuestion(parsed.content)) {
     return { valid: false, reason: "dangling_question_ending" };
+  }
+  if (checkPhraseCoverage) {
+    const phraseCoverage = validatePhraseCoverage(parsed);
+    if (!phraseCoverage.valid) return phraseCoverage;
   }
   return { valid: true };
 }
@@ -836,7 +920,12 @@ export async function callAndValidateLesson(data, targetLengthWords, minWords, m
   const parsed = r.data;
   capLessonArrays(parsed);
   const [validateMin, validateMax] = graceExpandRange(minWords, maxWords);
-  const validation = validateLessonShape(parsed, { minWords: validateMin, maxWords: validateMax, checkDialogueEnding: true });
+  const validation = validateLessonShape(parsed, {
+    minWords: validateMin,
+    maxWords: validateMax,
+    checkDialogueEnding: true,
+    checkPhraseCoverage: true,
+  });
   if (!validation.valid) {
     console.error(
       "[generate_lesson] validate FAIL:",

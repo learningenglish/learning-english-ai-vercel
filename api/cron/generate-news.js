@@ -5,7 +5,16 @@
 // chặn ai đó gọi thẳng URL public kích hoạt sinh bài tuỳ ý (tốn tiền AI vô tội vạ).
 import { generateDailyNews } from "../_generate/news.js";
 
+// CÔNG TẮC DỪNG KHẨN CẤP (2026-07-30, lệnh Minh) — chặn CỨNG ở đây làm lớp phòng thủ thứ 2,
+// phòng trường hợp lịch cron cũ trong vercel.json vẫn còn kích hoạt trước khi deploy mới (xoá
+// mục "crons") kịp lan tới. CHỈ Minh đổi lại false khi đã xác nhận kiểm soát xong.
+const EMERGENCY_KILL_SWITCH = true;
+
 export default async function handler(req, res) {
+  if (EMERGENCY_KILL_SWITCH) {
+    console.error("[cron/generate-news] EMERGENCY_KILL_SWITCH đang bật — bỏ qua, không gọi AI.");
+    return res.status(503).json({ ok: false, reason: "emergency_kill_switch" });
+  }
   const authHeader = req.headers.authorization || "";
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });

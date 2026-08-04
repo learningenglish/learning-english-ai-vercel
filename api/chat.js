@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
-import { generate_writing_task, grade_writing, save_writing_favorite } from "./_generate/writing.js";
+import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
 import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { generate_lesson_full_audio } from "./_generate/audio.js";
 import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
 import {
   mentor_get_action,
+  mentor_check_industry_skin_status,
   mentor_check_goal_gate,
   mentor_infer_goal,
   mentor_create_goal,
@@ -1281,6 +1282,8 @@ const ACTIONS = {
   analyze_user_text,
   // Luyện viết (2026-07-27) — AI giao đề + AI chấm bài, xem api/_generate/writing.js. Độc
   // lập hoàn toàn với luồng Lesson-first, không đụng gì tới generate_lesson/analyze_user_text.
+  // list_writing_genres (2026-08-04) — đọc thuần, KHÔNG gọi AI, phục vụ màn "Chọn dạng bài viết".
+  list_writing_genres,
   generate_writing_task,
   grade_writing,
   save_writing_favorite,
@@ -1306,6 +1309,9 @@ const ACTIONS = {
   // Quyết định/Lời thoại NGAY TRONG module đó — 5 action dưới đây chỉ là điểm vào, không tự
   // thêm logic nào ở đây (đúng luật "chat.js đóng băng", chỉ thêm import + entry).
   mentor_get_action,
+  // Đọc thuần industry_skins (2026-08-04, màn "Chọn chuyên ngành" mới) — KHÔNG gọi AI, xem
+  // chú thích đầy đủ tại định nghĩa hàm trong mentor.js.
+  mentor_check_industry_skin_status,
   mentor_check_goal_gate,
   mentor_infer_goal,
   mentor_create_goal,
@@ -1643,8 +1649,18 @@ const ACTIONS = {
   },
 };
 
+// ====== CÔNG TẮC DỪNG KHẨN CẤP (2026-07-30, lệnh Minh — nghi phát sinh chi phí AI bất thường)
+// ====== TRUE = CHẶN TUYỆT ĐỐI MỌI ACTION qua /api/chat (không phân biệt có gọi AI hay không) —
+// an toàn tối đa trong lúc điều tra, dễ đảo ngược (đổi lại false + deploy). CHỈ Minh được đổi
+// giá trị này lại thành false khi đã xác nhận kiểm soát xong tình huống.
+const EMERGENCY_KILL_SWITCH = true;
+
 // ====== ENTRYPOINT (Vercel handler) ======
 export default async function handler(req, res) {
+  if (EMERGENCY_KILL_SWITCH) {
+    res.status(503).json({ error: "Hệ thống tạm dừng để bảo trì, vui lòng quay lại sau." });
+    return;
+  }
   const origin = req.headers.origin || "";
   // Student App (/app/) giờ được Vercel serve CÙNG deployment với /api/chat (thay vì
   // domain GitHub Pages riêng như app cũ) — request từ /app/ vẫn có header Origin dù kỹ

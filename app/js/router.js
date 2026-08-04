@@ -31,9 +31,9 @@ async function render() {
 
   const mount = document.getElementById("view");
   mount.innerHTML = "";
-  // "/lessons" là màn chính mặc định — fallback cho hash lạ/route đã xoá (vd bookmark cũ,
-  // link cache từ trước khi đổi nav) thay vì lỗi im lặng làm trắng màn hình.
-  const renderFn = routes[path] || routes["/lessons"];
+  // "/home" là màn chính mặc định (2026-08-04) — fallback cho hash lạ/route đã xoá (vd bookmark
+  // cũ, link cache từ trước khi đổi nav) thay vì lỗi im lặng làm trắng màn hình.
+  const renderFn = routes[path] || routes["/home"];
   try {
     teardownCurrent = (await renderFn(mount, params)) || null;
   } catch (e) {

@@ -43,11 +43,27 @@ async function restFetch(path, options = {}) {
   return r.json();
 }
 
+// "chưa học/đang học/đã học" (2026-08-04, làm mới khung điều hướng, Phần A4) — embed quan hệ
+// FK lesson_progress(lesson_id) qua PostgREST (RLS tự lọc đúng user, không cần request riêng).
+// Không có row -> chưa học. Có row, fully_listened_at null -> đang học (đã mở nhưng chưa nghe
+// hết audio thật — xem migration 033). Có fully_listened_at -> đã học. Suy ra ở client
+// (computeLearnStatus() bên dưới), KHÔNG lưu cột "status" riêng nào (tránh 2 nguồn sự thật).
+const PROGRESS_EMBED = "lesson_progress(fully_listened_at,last_opened_at)";
+
+export function computeLearnStatus(lesson) {
+  const rows = lesson.lesson_progress;
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  if (!row) return "not_started";
+  return row.fully_listened_at ? "done" : "in_progress";
+}
+
 export async function listLessons({ filter = "all" } = {}) {
   // "content" nằm trong select để thẻ danh sách hiện được ĐÚNG trích đoạn nội dung thật (câu
   // đầu bài) thay vì "situation" — trường đó AI đôi khi viết kiểu mô tả meta ("Bài đọc mô tả
   // ...") thay vì tóm tắt tình huống thật, xem cardHtml() trong views/lessons.js.
-  let q = "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at&order=created_at.desc";
+  let q =
+    `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,${PROGRESS_EMBED}` +
+    "&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
   return restFetch(`lessons?${q}`);
@@ -61,7 +77,7 @@ export async function listLessons({ filter = "all" } = {}) {
 // luồng Mentor AI đã tắt UI, KHÔNG dùng để phân biệt ở đây).
 export async function listAiGeneratedLessons({ filter = "all" } = {}) {
   let q =
-    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry,goal_id" +
+    `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry,goal_id,${PROGRESS_EMBED}` +
     "&source=eq.ai_generated&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
