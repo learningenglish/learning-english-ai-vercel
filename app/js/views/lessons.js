@@ -207,16 +207,6 @@ export function renderLessons(mount, params) {
                <button type="button" class="content-tab-btn" data-type="analysis">${icon("search", { size: 17 })} Phân tích</button>`
             : ""
         }
-        ${
-          // Bottom nav MỚI chỉ còn đúng 4 icon (2026-08-04, Home/Tiến trình/Admin/Setting) —
-          // Yêu thích/Thư viện AI không còn là tab đáy riêng, gộp làm 2 tab phụ NGAY TRONG
-          // màn "Phổ biến" thay vì mất hẳn lối vào. "data-nav-path" (khác "data-type") để wire()
-          // biết đây là ĐIỀU HƯỚNG SANG MÀN KHÁC, không phải đổi state.contentType tại chỗ.
-          mode === "main"
-            ? `<button type="button" class="content-tab-btn" data-nav-path="/favorites">${icon("heart", { size: 17 })} Yêu thích</button>
-               <button type="button" class="content-tab-btn" data-nav-path="/ai-library">${icon("library", { size: 17 })} Thư viện AI</button>`
-            : ""
-        }
       </div>
 
       <div id="lessons-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
@@ -255,7 +245,6 @@ export function renderLessons(mount, params) {
 
   mount.querySelectorAll(".content-tab-btn").forEach((tabBtn) => {
     tabBtn.addEventListener("click", () => {
-      if (tabBtn.dataset.navPath) return navigate(tabBtn.dataset.navPath);
       mount.querySelectorAll(".content-tab-btn").forEach((b) => b.classList.remove("active"));
       tabBtn.classList.add("active");
       state.contentType = tabBtn.dataset.type;

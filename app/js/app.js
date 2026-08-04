@@ -46,8 +46,9 @@ registerRoute("/login", renderLogin);
 registerRoute("/home", renderHome);
 registerRoute("/industry-select", renderIndustrySelect);
 registerRoute("/lessons", renderLessons);
-registerRoute("/favorites", (mount) => renderLessons(mount, ["favorite"]));
-registerRoute("/ai-library", (mount) => renderLessons(mount, ["library"]));
+// "/favorites" + "/ai-library" (2026-08-04, Minh: "Yêu thích và Thư viện AI không dùng") — GỠ
+// route, KHÔNG xoá renderLessons() mode "favorite"/"library" (giữ nguyên, chỉ không còn ai gọi
+// tới). Lưu bài giờ đi qua icon Lưu trữ CỤC BỘ trong từng tính năng (Phân tích/Luyện viết).
 registerRoute("/create", renderCreateLesson);
 registerRoute("/create-text", renderCreateFromText);
 registerRoute("/writing", renderWritingPractice);

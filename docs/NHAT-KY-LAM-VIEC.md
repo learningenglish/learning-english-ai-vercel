@@ -37,3 +37,27 @@ Mỗi mục: ngày, việc đã làm, kết quả, việc còn dở. Cập nhậ
     DÁN VÀO SUPABASE SQL EDITOR**, sandbox không có kết nối DB.
 - Còn lại: wire `app.js` (NAV_TABS 4 icon + route mới), Setting (đổi vị trí/Theme palette/bỏ
   Background groups), CSS cho các màn mới, OAuth Google/Facebook, rồi test bằng Preview tool.
+- **Đã xong thêm (cùng ngày, sau khi Minh làm rõ yêu cầu):**
+  - Bỏ hẳn Background image picker (nhóm màu nền dựng sẵn + upload ảnh riêng) — nền giờ là
+    gradient theo đúng Theme Color Palette đang chọn (`body::before` trong style.css đọc lại
+    `--purple-soft`). `app/js/background.js` không còn được gọi (để nguyên file, không xoá).
+  - Luyện viết: khôi phục bước "Chọn dạng bài viết" (tick chọn) TRƯỚC khi AI giao nhiệm vụ —
+    action mới `list_writing_genres` (không AI) + `generate_writing_task` nhận `genre` tường
+    minh (đảo ngược quyết định 2026-07-27 "AI tự chọn thể loại").
+  - Gỡ route `/favorites` + `/ai-library` khỏi `app.js` (Minh xác nhận: "Yêu thích và Thư viện
+    AI không dùng") — `renderLessons()` mode "favorite"/"library" giữ nguyên trong code, không
+    còn ai gọi. Lưu bài giờ đi qua icon Lưu trữ CỤC BỘ trong Phân tích/Luyện viết — **CHƯA làm
+    xong** (Luyện viết đã có sẵn cơ chế lưu `writing_favorites` nhưng chưa có màn xem lại danh
+    sách đã lưu; Phân tích chưa có gì cả) — task còn dở.
+  - Đã `git commit` + `git push` lên `feature/student-app` (commit `39d810e`), Vercel tự deploy.
+    URL preview hiện tại đã xác nhận chạy đúng code mới:
+    `https://learning-english-ai-vercel-790s0fghs-learningenglishai.vercel.app` (đường dẫn app:
+    thêm `/app/`). CACHE_NAME đã bump lên v30.
+- **Việc lớn còn dở, ĐÃ HIỂU rõ yêu cầu, CHƯA làm:**
+  - Bài đọc/Hội thoại phải hiển thị theo danh sách CHỦ ĐỀ đã sinh trước (Tầng 1, ~400/vị trí) —
+    card hiện NGAY (ảnh+tiêu đề) cho MỌI chủ đề, không đợi có ai học. Bấm vào chủ đề chưa có nội
+    dung thật -> sinh on-demand (Tầng 2) rồi lưu lại; chủ đề đã có -> hiển thị luôn. Khác hẳn
+    cách lessons.js đang đọc thẳng bảng `lessons` hiện nay. Sẽ làm sau khi có dữ liệu Tầng 1
+    thật (không làm mù trước dữ liệu).
+  - Đo chi phí thật Tầng 1 rồi chạy cho 8 vị trí Kế toán — ĐANG CHỜ Minh cung cấp tài khoản
+    test thật (email/mật khẩu) để gọi API qua URL preview đã deploy ở trên.
