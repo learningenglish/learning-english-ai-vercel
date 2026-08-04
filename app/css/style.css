@@ -2694,22 +2694,110 @@ textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
-/* ===== Làm mới khung điều hướng (2026-08-04) — Home/Chọn chuyên ngành/Setting mới ===== */
+/* ===== Làm mới khung điều hướng (2026-08-04) — Home/Chọn chuyên ngành/Tiến trình mới, GIAO
+   DIỆN RIÊNG bám sát ảnh mẫu (Minh: "không phải sử dụng lại giao diện app trước") — CHỦ Ý
+   KHÔNG dùng .card/.stat-card/.filter-chip cũ ở đây. ===== */
+
+/* Màu "chip" nhận diện thể loại/lĩnh vực — CỐ ĐỊNH theo item (khác --purple/--purple-soft vốn
+   đổi theo Theme Color Palette người dùng chọn, dùng cho nút/tab active) — mỗi cặp light/dark
+   tách riêng để đủ tương phản trên nền tối. */
+:root {
+  --chip-blue: #3b82f6;
+  --chip-blue-soft: #dbeafe;
+  --chip-green: #16a34a;
+  --chip-green-soft: #dcfce7;
+  --chip-orange: #f97316;
+  --chip-orange-soft: #ffedd5;
+  --chip-purple: #8b5cf6;
+  --chip-purple-soft: #ede9fe;
+}
+:root[data-theme="dark"] {
+  --chip-blue-soft: rgba(59, 130, 246, 0.18);
+  --chip-green-soft: rgba(22, 163, 74, 0.18);
+  --chip-orange-soft: rgba(249, 115, 22, 0.18);
+  --chip-purple-soft: rgba(139, 92, 246, 0.2);
+}
+
+.home-screen {
+  padding-top: 4px;
+}
+
+.home-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+}
+
+.home-settings-btn {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
 
 .home-greeting {
-  margin: 18px 0 2px;
+  margin: 10px 0 2px;
+  font-size: 1.5rem;
+}
+
+.home-subgreeting {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+}
+
+.streak-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.streak-card-label {
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.streak-card-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.streak-card-value {
+  flex-shrink: 0;
+  font-weight: 800;
+  color: var(--purple);
+  font-size: 0.95rem;
+}
+
+.streak-card-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.streak-card-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--purple);
+  transition: width 0.3s ease;
 }
 
 .home-card-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-top: 16px;
 }
 
-.home-card {
+.feature-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   padding: 18px 14px;
@@ -2721,9 +2809,7 @@ textarea:focus {
   color: var(--text);
 }
 
-.home-card-icon {
-  color: var(--purple);
-  background: var(--purple-soft);
+.feature-card-icon {
   width: 40px;
   height: 40px;
   border-radius: 12px;
@@ -2732,17 +2818,50 @@ textarea:focus {
   justify-content: center;
 }
 
-.home-card-label {
+.feature-card-icon.chip-blue {
+  color: var(--chip-blue);
+  background: var(--chip-blue-soft);
+}
+.feature-card-icon.chip-green {
+  color: var(--chip-green);
+  background: var(--chip-green-soft);
+}
+.feature-card-icon.chip-orange {
+  color: var(--chip-orange);
+  background: var(--chip-orange-soft);
+}
+.feature-card-icon.chip-purple {
+  color: var(--chip-purple);
+  background: var(--chip-purple-soft);
+}
+
+.feature-card-label {
   font-weight: 700;
   font-size: 0.95rem;
 }
 
-.home-card-sub {
+.feature-card-sub {
   font-size: 0.78rem;
   color: var(--text-dim);
 }
 
-/* Màn "Chọn chuyên ngành" — danh mục cố định 2 tầng (views/industrySelect.js). */
+/* Màn "Chọn chuyên ngành" — danh mục cố định 2 tầng (views/industrySelect.js). GIAO DIỆN RIÊNG
+   (2026-08-04) — bỏ hẳn .screen-center cũ (flex row canh giữa, chỉ hợp cho 1 khối duy nhất như
+   thẻ đăng nhập — dùng nhầm ở đây làm tiêu đề/thẻ bị xếp NGANG chồng lên nhau). */
+.industry-select-screen {
+  padding-top: 24px;
+}
+
+.industry-select-title {
+  font-size: 1.5rem;
+  margin: 0 0 6px;
+}
+
+.industry-select-subtitle {
+  color: var(--text-dim);
+  margin: 0;
+}
+
 .industry-list {
   display: flex;
   flex-direction: column;
@@ -2754,7 +2873,7 @@ textarea:focus {
 
 .industry-select-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -2776,8 +2895,6 @@ textarea:focus {
 }
 
 .industry-select-icon {
-  color: var(--purple);
-  background: var(--purple-soft);
   width: 36px;
   height: 36px;
   border-radius: 10px;
@@ -2785,6 +2902,14 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.industry-select-icon.chip-blue {
+  color: var(--chip-blue);
+  background: var(--chip-blue-soft);
+}
+.industry-select-icon.chip-orange {
+  color: var(--chip-orange);
+  background: var(--chip-orange-soft);
 }
 
 .industry-select-label {
@@ -2871,6 +2996,124 @@ textarea:focus {
 .learn-status-done {
   color: var(--success);
   background: var(--success-soft);
+}
+
+/* ===== Tiến trình MỚI (2026-08-04, views/progress.js) — GIAO DIỆN RIÊNG, không tái dùng
+   .stat-card/.history-item/.writing-criteria-* cũ. ===== */
+.progress-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.progress-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+
+.progress-summary-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 14px 8px;
+  text-align: center;
+}
+
+.progress-summary-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--purple);
+}
+
+.progress-summary-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.progress-section-title {
+  font-weight: 700;
+  margin: 20px 0 8px;
+}
+
+.progress-bar-row {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.progress-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.progress-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--purple);
+}
+
+.progress-bar-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.progress-history-day {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 14px 0 6px;
+}
+.progress-history-day:first-child {
+  margin-top: 0;
+}
+
+.progress-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  padding: 10px 14px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.progress-history-icon {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.progress-history-icon.is-done {
+  color: var(--success);
+}
+
+.progress-history-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.progress-history-meta {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 2px;
 }
 
 /* "Chọn dạng bài viết" (2026-08-04, views/writingPractice.js) — danh sách thể loại tick chọn. */

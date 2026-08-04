@@ -23,7 +23,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
       <p class="muted">Đang tải...</p>
     </div>
   `;
-  wireBackLink(mount, () => navigate("/favorites"));
+  wireBackLink(mount, () => navigate("/writing-archive"));
   wireAppHeader(mount);
 
   if (!id) {
@@ -40,7 +40,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
   if (!favorite) {
     mount.querySelector(".screen").innerHTML =
       `${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, {}, { showBack: true })}<p class="error-text">Không tìm thấy bài viết đã lưu.</p>`;
-    wireBackLink(mount, () => navigate("/favorites"));
+    wireBackLink(mount, () => navigate("/writing-archive"));
     wireAppHeader(mount);
     return;
   }
@@ -64,7 +64,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
       <p class="muted writing-favorite-date">Đã lưu ${formatDate(favorite.created_at)}</p>
     </div>
   `;
-  wireBackLink(mount, () => navigate("/favorites"));
+  wireBackLink(mount, () => navigate("/writing-archive"));
   wireAppHeader(mount);
 }
 

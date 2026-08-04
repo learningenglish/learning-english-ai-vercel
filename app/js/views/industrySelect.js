@@ -35,8 +35,8 @@ const ACCOUNTING_POSITIONS = [
 ];
 
 const INDUSTRIES = [
-  { key: "general", label: "Tiếng Anh Giao Tiếp", icon: "message-circle", positions: null },
-  { key: "accounting", label: "Tiếng Anh Kế toán", icon: "dollar-sign", positions: ACCOUNTING_POSITIONS },
+  { key: "general", label: "Tiếng Anh Giao Tiếp", icon: "message-circle", chip: "blue", positions: null },
+  { key: "accounting", label: "Tiếng Anh Kế toán", icon: "dollar-sign", chip: "orange", positions: ACCOUNTING_POSITIONS },
 ];
 
 export function renderIndustrySelect(mount) {
@@ -73,9 +73,9 @@ export function renderIndustrySelect(mount) {
 
   function renderShell(innerHtml) {
     mount.innerHTML = `
-      <div class="screen screen-center">
-        <h1 class="screen-title">Chọn chuyên ngành để bắt đầu</h1>
-        <p class="muted">Nội dung được thiết kế riêng cho công việc của bạn</p>
+      <div class="screen industry-select-screen">
+        <h1 class="industry-select-title">Chọn chuyên ngành để bắt đầu</h1>
+        <p class="industry-select-subtitle">Nội dung được thiết kế riêng cho công việc của bạn</p>
         ${innerHtml}
       </div>
     `;
@@ -112,7 +112,7 @@ export function renderIndustrySelect(mount) {
     return `
       <div class="industry-select-card ${expanded ? "expanded" : ""}" data-industry="${ind.key}">
         <button type="button" class="industry-select-header" data-industry-toggle="${ind.key}" ${state.submitting ? "disabled" : ""}>
-          <span class="industry-select-icon">${icon(ind.icon, { size: 22 })}</span>
+          <span class="industry-select-icon chip-${ind.chip}">${icon(ind.icon, { size: 22 })}</span>
           <span class="industry-select-label">${escapeHtml(ind.label)}</span>
           ${ind.positions ? `<span class="industry-select-chevron">${icon(expanded ? "chevron-down" : "chevron-right", { size: 18 })}</span>` : ""}
         </button>

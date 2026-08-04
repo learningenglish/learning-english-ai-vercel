@@ -18,7 +18,7 @@ import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("file-text", { size: 22 })} Phân tích văn bản`, {}, { showBack: true })}
+      ${appHeaderHtml(`${icon("file-text", { size: 22 })} Phân tích văn bản`, {}, { showBack: true, archivePath: "/analysis-archive" })}
 
       <label class="field">
         <span class="field-question">Dán văn bản của bạn</span>

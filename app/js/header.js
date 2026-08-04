@@ -48,6 +48,10 @@ let sharedStatsCache = {};
 // "đưa lên cao và đồng bộ với các mục khác" — 1 hàng back riêng phía trên đẩy cả khối xuống
 // thấp hơn hẳn Yêu thích/Thư viện AI (không có back), lệch nhau. Gộp vào cùng hàng thì mọi
 // tiêu đề luôn đứng cùng 1 độ cao bất kể có back hay không.
+// opts.archivePath (2026-08-04, "Yêu thích/Thư viện AI không dùng" — Minh: mỗi tính năng có icon
+// Lưu trữ CỤC BỘ riêng thay vì 1 màn Yêu thích chung) — có giá trị -> chèn thêm 1 icon "Lưu trữ"
+// NGAY TRƯỚC nút cài đặt, bấm vào điều hướng tới đúng path đó (views/writingPractice.js ->
+// "/writing-archive", views/createFromText.js -> "/analysis-archive").
 export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
   const back = opts.showBack ? backChevronHtml() : "";
   const left = titleHtml
@@ -60,11 +64,15 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
         <div class="explorer-badge">${icon("compass", { size: 15 })} <span id="tier-label">${cache.tierText ?? "..."}</span></div>
       </div>
     `;
+  const archiveBtn = opts.archivePath
+    ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="Lưu trữ">${icon("bookmark", { size: 20 })}</button>`
+    : "";
   return `
     <div class="app-header">
       ${left}
       <div class="header-right">
         <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>
+        ${archiveBtn}
         <button type="button" class="settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
       </div>
     </div>
@@ -73,6 +81,8 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
 
 export function wireAppHeader(mount) {
   mount.querySelector("#settings-btn")?.addEventListener("click", () => navigate("/profile"));
+  const archiveBtn = mount.querySelector("#archive-btn");
+  archiveBtn?.addEventListener("click", () => navigate(archiveBtn.dataset.archivePath));
 }
 
 // Nút "<" quay lại DÙNG CHUNG cho MỌI màn con (không thuộc 5 tab chính dưới cùng) — yêu cầu

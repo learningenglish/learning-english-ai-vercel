@@ -247,3 +247,48 @@ export async function getHistory() {
     "lesson_progress?order=last_opened_at.desc&select=lesson_id,completed_at,xp_earned,last_opened_at,lessons(id,title,title_vi,level,content_type)"
   );
 }
+
+const LEVELS_ORDER = ["A1", "A2", "B1", "B2", "C1"];
+
+// Màn "Tiến trình" MỚI (2026-08-04, gộp Lịch sử+Thống kê "giống hình" — bảng tiến trình theo
+// kỹ năng × level) — % hoàn thành mỗi level = số bài đã hoàn tất (completed_at) / tổng số bài
+// đang có ở level đó cho ĐÚNG loại nội dung (reading/dialogue). Dùng "tổng số bài ĐANG CÓ"
+// (không phải tổng ~400 chủ đề cả spine) vì hiện tại danh sách bài chỉ gồm bài đã sinh — số này
+// tự tăng lên khi kho bài học lớn dần, không phải số ảo/bịa ra.
+export async function getSkillLevelBreakdown() {
+  const rows = await restFetch("lessons?select=level,content_type,lesson_progress(completed_at)");
+  const bySkill = { reading: {}, dialogue: {} };
+  for (const l of rows || []) {
+    const bucket = bySkill[l.content_type];
+    if (!bucket) continue;
+    if (!bucket[l.level]) bucket[l.level] = { total: 0, done: 0 };
+    bucket[l.level].total += 1;
+    const progressRow = Array.isArray(l.lesson_progress) ? l.lesson_progress[0] : l.lesson_progress;
+    if (progressRow?.completed_at) bucket[l.level].done += 1;
+  }
+  const toRows = (bucket) =>
+    LEVELS_ORDER.filter((lv) => bucket[lv]).map((lv) => ({
+      level: lv,
+      total: bucket[lv].total,
+      done: bucket[lv].done,
+      pct: Math.round((bucket[lv].done / bucket[lv].total) * 100),
+    }));
+  return { reading: toRows(bySkill.reading), dialogue: toRows(bySkill.dialogue) };
+}
+
+// Luyện viết — % "tiến trình" theo THỂ LOẠI = điểm trung bình các lượt chấm gần đây cho thể loại
+// đó (overall_score/100), giống ĐÚNG cách getGenreScoreStats() ở api/_generate/writing.js tính
+// "lời dẫn thông minh" — dữ liệu thật từ writing_submissions (RLS "select own" đã có sẵn, xem
+// supabase/025_writing_submissions.sql), không tự bịa số.
+export async function getWritingGenreBreakdown() {
+  const rows = await restFetch("writing_submissions?select=overall_score,task&order=created_at.desc&limit=100");
+  const byGenre = new Map();
+  for (const r of rows || []) {
+    const genre = r.task?.genre_vi || "Khác";
+    if (!byGenre.has(genre)) byGenre.set(genre, { count: 0, scoreSum: 0 });
+    const g = byGenre.get(genre);
+    g.count += 1;
+    g.scoreSum += r.overall_score || 0;
+  }
+  return Array.from(byGenre.entries()).map(([genre, g]) => ({ genre, count: g.count, pct: Math.round(g.scoreSum / g.count) }));
+}

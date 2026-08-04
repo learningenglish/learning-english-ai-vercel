@@ -21,6 +21,8 @@ import { renderCreateLesson } from "./views/createLesson.js";
 import { renderCreateFromText } from "./views/createFromText.js";
 import { renderWritingPractice } from "./views/writingPractice.js";
 import { renderWritingFavoriteDetail } from "./views/writingFavoriteDetail.js";
+import { renderWritingArchive } from "./views/writingArchive.js";
+import { renderAnalysisArchive } from "./views/analysisArchive.js";
 import { renderLessonDetail } from "./views/lesson.js";
 import { renderProgress } from "./views/progress.js";
 import { renderAdmin } from "./views/admin.js";
@@ -51,8 +53,10 @@ registerRoute("/lessons", renderLessons);
 // tới). Lưu bài giờ đi qua icon Lưu trữ CỤC BỘ trong từng tính năng (Phân tích/Luyện viết).
 registerRoute("/create", renderCreateLesson);
 registerRoute("/create-text", renderCreateFromText);
+registerRoute("/analysis-archive", renderAnalysisArchive);
 registerRoute("/writing", renderWritingPractice);
 registerRoute("/writing-favorite", renderWritingFavoriteDetail);
+registerRoute("/writing-archive", renderWritingArchive);
 registerRoute("/lesson", renderLessonDetail);
 // "Tin tức" (2026-07-28) — route RIÊNG (không phải /lesson/:id) để renderLessonDetail biết đọc
 // từ news_lessons (public) thay vì lessons cá nhân, xem opts.news trong views/lesson.js.

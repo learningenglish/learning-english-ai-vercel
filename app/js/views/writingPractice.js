@@ -98,7 +98,10 @@ export function renderWritingPractice(mount) {
   function render() {
     mount.innerHTML = `
       <div class="screen">
-        ${appHeaderHtml(STEP_TITLES[state.step], headerCache, { showBack: true })}
+        ${appHeaderHtml(STEP_TITLES[state.step], headerCache, {
+          showBack: true,
+          archivePath: state.step === "genre" || state.step === "setup" ? "/writing-archive" : undefined,
+        })}
         ${
           state.step === "genre"
             ? renderGenreStep()
