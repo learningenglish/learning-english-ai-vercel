@@ -1651,18 +1651,8 @@ const ACTIONS = {
   },
 };
 
-// ====== CÔNG TẮC DỪNG KHẨN CẤP (2026-07-30, lệnh Minh — nghi phát sinh chi phí AI bất thường)
-// ====== TRUE = CHẶN TUYỆT ĐỐI MỌI ACTION qua /api/chat (không phân biệt có gọi AI hay không) —
-// an toàn tối đa trong lúc điều tra, dễ đảo ngược (đổi lại false + deploy). CHỈ Minh được đổi
-// giá trị này lại thành false khi đã xác nhận kiểm soát xong tình huống.
-const EMERGENCY_KILL_SWITCH = true;
-
 // ====== ENTRYPOINT (Vercel handler) ======
 export default async function handler(req, res) {
-  if (EMERGENCY_KILL_SWITCH) {
-    res.status(503).json({ error: "Hệ thống tạm dừng để bảo trì, vui lòng quay lại sau." });
-    return;
-  }
   const origin = req.headers.origin || "";
   // Student App (/app/) giờ được Vercel serve CÙNG deployment với /api/chat (thay vì
   // domain GitHub Pages riêng như app cũ) — request từ /app/ vẫn có header Origin dù kỹ
