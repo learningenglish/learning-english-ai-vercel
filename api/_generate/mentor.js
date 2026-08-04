@@ -110,6 +110,50 @@ async function restCount(path) {
   return Number((r.headers.get("content-range") || "").split("/")[1] || 0);
 }
 
+// ====== TẠM THỜI (2026-08-04) — đo chi phí THẬT cho Tầng 1 (chân dung nghề + 1 chunk 20 chủ đề)
+// của "Thực tập sinh kế toán" TRƯỚC KHI chạy hàng loạt cho 8 vị trí, theo đúng yêu cầu Minh
+// ("báo cáo chính xác chi phí dựa trên số liệu thật đã đo"). KHÔNG ghi vào industry_skins (đọc
+// usage/model/durationMs trả thẳng về, không lưu gì) — XOÁ HÀM NÀY + gỡ đăng ký ở chat.js ngay
+// sau khi đo xong, đúng tiền lệ đã dùng ở bài kiểm nghiệm thu 3 ngành (xem memory
+// project-skin-acceptance-test-round1).
+export async function debug_probe_skin_cost(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const keywords = { field: "Kế toán", industry: "Kế toán doanh nghiệp", product: "Thực tập sinh kế toán" };
+  const profileRes = await generateOccupationProfile(keywords);
+  if (profileRes.status !== "ok") {
+    return { content: JSON.stringify({ profile_status: profileRes.status, profile_reason: profileRes.reason, profile: profileRes }) };
+  }
+  const level = "A1";
+  const spineLevelSlots = loadCurriculumSpine()[level];
+  const skinGeneralForLevel = loadSkinGeneral()[level];
+  const chunkRes = await generateSkinChunk({
+    occupationProfile: profileRes.data.occupation_profile,
+    level,
+    spineLevelSlots,
+    chunkIndex: 0,
+    skinGeneralForLevel,
+  });
+  return {
+    content: JSON.stringify({
+      profile: {
+        usage: profileRes.usage,
+        model: profileRes.model,
+        durationMs: profileRes.durationMs,
+        occupation_profile: profileRes.data.occupation_profile,
+      },
+      chunk: {
+        ok: chunkRes.ok,
+        usage: chunkRes.usage,
+        model: chunkRes.model,
+        durationMs: chunkRes.durationMs,
+        frames: chunkRes.frames,
+        story_chains: chunkRes.story_chains,
+        problems: chunkRes.problems,
+      },
+    }),
+  };
+}
+
 function lastNameOf(fullName) {
   const raw = (fullName || "").trim();
   return raw ? raw.split(/\s+/).slice(-1)[0] : null;
