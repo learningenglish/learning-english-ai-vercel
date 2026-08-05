@@ -316,3 +316,38 @@ Bump `CACHE_NAME` lên v38.
    `writingTopicPool.json`) — giá trị không khớp gộp chung vào "Khác".
 
 Bump `CACHE_NAME` lên v39.
+
+## 2026-08-05 (tiếp 2) — 2 bug thật từ ảnh test round 3, 1 CSS + 1 CHẶN NGƯỜI DÙNG NGHIÊM TRỌNG
+
+1. **CSS: "nền thì sáng, card tối" ở Theme Tối** — bug do CHÍNH đợt sửa "nền theo Color Palette"
+   ở round trước gây ra. Khối `:root[data-theme="dark"][data-palette="X"]` chỉ override
+   `--purple`/`--purple-soft`, KHÔNG khai `--bg-fallback`. CSS cascade tính TỪNG BIẾN riêng: khối
+   `:root[data-theme="dark"]` (gốc) và khối `:root[data-palette="X"]` (Sáng) CÙNG độ đặc thù
+   (0,2,0) — khối Sáng đứng SAU trong file nên THẮNG cho biến `--bg-fallback`, "rò rỉ" nền sáng
+   vào giao diện Tối dù card (`--surface`, không bị khối nào tranh chấp) vẫn đúng màu tối. SỬA:
+   khai rõ `--bg-fallback: #10131a` (đúng nền Tối gốc) trong CẢ 5 khối dark+palette (độ đặc thù
+   cao hơn, thắng chắc chắn). Xác nhận bằng `getComputedStyle()` qua Preview tool: cả 6 palette
+   đều đúng `#10131a` khi Tối, đúng sắc riêng khi Sáng.
+2. **Bug NGHIÊM TRỌNG tìm ra khi điều tra "Tiến trình không tải được" + "Luyện viết mất dạng
+   bài viết"** — 2 báo cáo tưởng không liên quan hoá ra CÙNG 1 NGUYÊN NHÂN GỐC: race condition
+   khi refresh access token hết hạn. `db.js::ensureValidSession()` TRƯỚC ĐÂY mỗi lượt gọi tự
+   refresh ĐỘC LẬP — Supabase refresh_token CHỈ DÙNG ĐƯỢC 1 LẦN (rotation), nên khi 1 màn gọi
+   NHIỀU `restFetch()`/`callChatAction()` CÙNG LÚC (Tiến trình: 5 lượt song song qua loadStats+
+   loadBreakdown+loadHistory; Luyện viết: loadAppHeaderStats+loadGenres) đúng lúc token vừa hết
+   hạn, TẤT CẢ đem cùng 1 refresh_token cũ đi đổi cùng lúc — chỉ lượt ĐẦU thành công, các lượt
+   SAU bị Supabase từ chối (refresh_token đã dùng) → mỗi lượt thất bại đó tự `clearSession()`,
+   XOÁ MẤT session vừa được lượt đầu lưu thành công. Viết Node script mô phỏng
+   (`localStorage`+`refreshAccessToken` giả) xác nhận: bản CŨ chạy 5 lượt đồng thời → 4/5 lượt
+   thất bại VÀ session cuối cùng bị XOÁ SẠCH (đáng lẽ còn đăng nhập) — tức bug này có thể ÂM
+   THẦM ĐĂNG XUẤT người dùng bất cứ lúc nào token hết hạn đúng lúc 1 màn gọi ≥2 API cùng lúc,
+   không chỉ riêng "Không tải được"/"mất dạng bài viết" (2 lượt "hên" chưa gặp lượt bị đăng
+   xuất hẳn). SỬA: gom mọi lượt refresh trùng thời điểm vào DÙNG CHUNG 1 Promise
+   (`refreshInFlight`) — lượt tới sau khi refresh đã bắt đầu CHỜ kết quả lượt đầu thay vì tự
+   refresh lại. Chạy lại script mô phỏng với bản đã sửa: 5 lượt đồng thời → chỉ 1 lần refresh
+   thật, cả 5 đều nhận đúng session mới, không mất session.
+   - **Chưa xác nhận được trực tiếp trên deploy thật** (sandbox không có internet ra ngoài để
+     mở được URL Vercel qua Preview tool) — chỉ xác nhận bằng code review + mô phỏng Node độc
+     lập. Nhờ Minh test lại /progress và /writing vài lần (đặc biệt sau khi để app mở lâu, token
+     có thời gian hết hạn) để xác nhận hết hẳn "Không tải được"/mất dạng bài viết.
+
+Bump `CACHE_NAME` lên v40.

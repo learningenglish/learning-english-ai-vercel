@@ -3336,9 +3336,17 @@ textarea:focus {
    body::before (đọc var(--bg-fallback) ở điểm dừng 55% của gradient, xem phía trên file) vẫn
    LUÔN 1 màu xanh dương cố định bất kể palette nào đang chọn — SỬA: mỗi palette có 1 sắc thái
    nền pastel RIÊNG cùng tông màu, độ sáng giữ tương đương bản Tím mặc định (đậm hơn 1 nấc, xem
-   ghi chú "đậm hơn để tránh mỏi mắt" ở :root gốc) chỉ đổi SẮC không đổi ĐỘ SÁNG. Chỉ áp dụng
-   Sáng (không đổi khối "dark" — nền Tối vốn đã trung tính, tinh chỉnh riêng ngoài phạm vi lần
-   này). */
+   ghi chú "đậm hơn để tránh mỏi mắt" ở :root gốc) chỉ đổi SẮC không đổi ĐỘ SÁNG.
+   BUG THẬT đã sửa (2026-08-05, Minh: "nền thì sáng, card tối, không hiểu") — khối
+   ":root[data-theme='dark'][data-palette='X']" bên dưới BAN ĐẦU chỉ override --purple/
+   --purple-soft, KHÔNG khai --bg-fallback. CSS cascade tính theo TỪNG BIẾN riêng: 2 khối
+   ":root[data-theme='dark']" (gốc, khai --bg-fallback tối) và ":root[data-palette='X']" (khối
+   này, khai --bg-fallback sáng) CÙNG ĐỘ ĐẶC THÙ (0,2,0) — khối palette đứng SAU trong file nên
+   THẮNG, khiến nền Tối bị "rò rỉ" màu nền Sáng dù card (--surface) vẫn đúng màu tối (không bị
+   ảnh hưởng vì không có khối nào tranh chấp --surface). SỬA: khai RÕ --bg-fallback tối ngay
+   trong khối ":root[data-theme='dark'][data-palette='X']" (độ đặc thù cao hơn 0,3,0, thắng chắc
+   chắn) — giữ nguyên #10131a (đúng nền Tối gốc) cho cả 5 palette, KHÔNG tự bịa thêm sắc thái tối
+   riêng (ngoài phạm vi yêu cầu, chỉ cần sửa đúng bug rò rỉ này). */
 :root[data-palette="orange"] {
   --purple: #f97316;
   --purple-soft: #ffedd5;
@@ -3347,6 +3355,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="orange"] {
   --purple: #fb923c;
   --purple-soft: rgba(251, 146, 60, 0.16);
+  --bg-fallback: #10131a;
 }
 :root[data-palette="blue"] {
   --purple: #2563eb;
@@ -3356,6 +3365,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="blue"] {
   --purple: #60a5fa;
   --purple-soft: rgba(96, 165, 250, 0.16);
+  --bg-fallback: #10131a;
 }
 :root[data-palette="green"] {
   --purple: #16a34a;
@@ -3365,6 +3375,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="green"] {
   --purple: #4ade80;
   --purple-soft: rgba(74, 222, 128, 0.16);
+  --bg-fallback: #10131a;
 }
 /* 2 bộ "màu đậm" thêm theo yêu cầu Minh (2026-08-05, cùng lúc làm đậm nền Sáng) — cùng pattern
    override --purple/--purple-soft/--bg-fallback như 3 bộ trên. */
@@ -3376,6 +3387,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="ruby"] {
   --purple: #fb7185;
   --purple-soft: rgba(251, 113, 133, 0.18);
+  --bg-fallback: #10131a;
 }
 :root[data-palette="teal"] {
   --purple: #0f766e;
@@ -3385,6 +3397,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="teal"] {
   --purple: #2dd4bf;
   --purple-soft: rgba(45, 212, 191, 0.18);
+  --bg-fallback: #10131a;
 }
 
 /* Đăng nhập Google/Facebook (2026-08-04) — cạnh form email/password đã có. */

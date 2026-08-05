@@ -7,16 +7,41 @@ import { refreshAccessToken } from "./authApi.js";
 
 // Tự refresh access_token 1 LẦN nếu đã hết hạn — KHÔNG tự lặp lại (nếu refresh_token cũng
 // hỏng thì coi như phiên đã chết, xoá session để authGuard() ở app.js đưa user về /login).
+//
+// BUG THẬT đã sửa (2026-08-05, Minh bắt được: vào /progress — màn gọi NHIỀU restFetch() CÙNG
+// LÚC nhất trong app (loadStats/loadBreakdown/loadHistory, tổng 5 lượt song song) — báo
+// "Không tải được" HÀNG LOẠT, các màn khác gọi ít lượt hơn thì không sao) — mỗi lượt gọi
+// ensureValidSession() TRƯỚC ĐÂY tự refresh ĐỘC LẬP, không biết tới nhau. Supabase refresh_token
+// CHỈ DÙNG ĐƯỢC 1 LẦN (rotation) — 5 lượt gọi cùng lúc lúc token vừa hết hạn = 5 lượt cùng đem
+// ĐÚNG 1 refresh_token cũ đi đổi, chỉ lượt ĐẦU thành công (lưu session mới), 4 lượt còn lại bị
+// Supabase từ chối (refresh_token đã dùng) → mỗi lượt thất bại đó tự ý clearSession(), XOÁ MẤT
+// session vừa được lượt đầu lưu thành công, dù người dùng vẫn đang đăng nhập hợp lệ. SỬA: gom
+// TẤT CẢ lượt gọi trùng thời điểm refresh vào DÙNG CHUNG 1 Promise refresh duy nhất
+// (refreshInFlight) — lượt nào tới sau khi refresh đã bắt đầu thì CHỜ kết quả của lượt đầu thay
+// vì tự refresh lại, không ai giẫm lên nhau.
+let refreshInFlight = null;
 export async function ensureValidSession() {
   let session = getSession();
   if (!session) return null;
   if (isSessionExpired(session)) {
+    if (!refreshInFlight) {
+      refreshInFlight = refreshAccessToken(session.refresh_token)
+        .then((refreshed) => {
+          const merged = { ...session, ...refreshed };
+          setSession(merged);
+          return merged;
+        })
+        .catch((e) => {
+          clearSession();
+          throw e;
+        })
+        .finally(() => {
+          refreshInFlight = null;
+        });
+    }
     try {
-      const refreshed = await refreshAccessToken(session.refresh_token);
-      session = { ...session, ...refreshed };
-      setSession(session);
+      session = await refreshInFlight;
     } catch {
-      clearSession();
       return null;
     }
   }
