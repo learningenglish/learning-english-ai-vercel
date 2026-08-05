@@ -21,7 +21,6 @@ import {
   mentor_mark_pronoun_asked,
   mentor_set_pronoun_style,
   mentor_get_transient_line,
-  debug_probe_skin_cost, // TẠM THỜI (2026-08-04) — xoá sau khi đo xong chi phí Tầng 1, xem ghi chú tại định nghĩa.
 } from "./_generate/mentor.js";
 
 /**
@@ -1326,7 +1325,6 @@ const ACTIONS = {
   mentor_mark_pronoun_asked,
   mentor_set_pronoun_style,
   mentor_get_transient_line,
-  debug_probe_skin_cost, // TẠM THỜI (2026-08-04) — xoá dòng này sau khi đo xong chi phí Tầng 1.
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —
