@@ -9,7 +9,7 @@
 // loadAppHeaderStats() ở ĐÚNG 1 nơi này — sửa 1 chỗ, tất cả màn tự động đồng bộ theo.
 import { navigate } from "./router.js";
 import { icon } from "./icons.js";
-import { getStreakDays, getProfileStats } from "./db.js";
+import { getStreakAndStats } from "./db.js";
 
 const XP_TIERS = [
   { min: 0, label: "Người mới" },
@@ -105,10 +105,15 @@ export function wireBackLink(mount, onBack) {
 
 // Trả về { streak, tier } (hoặc null nếu lỗi) — views/createLesson.js dùng giá trị này để
 // cache cho những lần render() lại sau (xem ghi chú "cache" ở appHeaderHtml() trên).
+// GỘP 2 lượt gọi cũ (getStreakDays()+getProfileStats(), CÙNG đọc bảng lesson_progress) thành 1
+// (2026-08-05, Minh: "rà soát các màn gọi nhiều API cùng lúc, gộp lại") — hàm này được GẦN NHƯ
+// MỌI màn có header gọi, cộng thêm bất kỳ lượt nào view đang mở TỰ gọi riêng cùng lúc (vd
+// writingPractice.js::loadGenres()) — gộp ở đây giảm ĐƯỢC 1 lượt refresh token đồng thời trên
+// TOÀN BỘ các màn đó cùng lúc, không cần sửa từng file riêng.
 export async function loadAppHeaderStats(mount) {
   try {
-    const [streak, stats] = await Promise.all([getStreakDays(), getProfileStats()]);
-    const tier = tierLabel(stats.totalXp);
+    const { streak, totalXp } = await getStreakAndStats();
+    const tier = tierLabel(totalXp);
     sharedStatsCache = { streakText: streak, tierText: tier };
     const streakEl = mount.querySelector("#streak-value");
     if (streakEl) streakEl.textContent = streak;

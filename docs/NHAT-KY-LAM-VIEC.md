@@ -351,3 +351,59 @@ Bump `CACHE_NAME` lên v39.
      có thời gian hết hạn) để xác nhận hết hẳn "Không tải được"/mất dạng bài viết.
 
 Bump `CACHE_NAME` lên v40.
+
+## 2026-08-05 (tiếp 3) — Gộp lượt gọi API + rà soát toàn app (Minh: "Tiến trình là tính toán, sao lại gọi API?")
+
+Minh hỏi đúng trọng tâm: các lượt gọi ở Tiến trình không phải AI, mà là ĐỌC DỮ LIỆU THẬT từ
+Supabase (app không có DB cục bộ, mọi thứ sống trên cloud) — nhưng đồng ý việc gọi 5 lượt riêng
+là lãng phí, yêu cầu gộp lại + rà soát toàn app.
+
+**1) `db.js`: gộp 2 hàm mới**
+- `getStreakAndStats()` — GỘP `getProfileStats()`+`getStreakDays()` (2 lượt cũ, CÙNG đọc bảng
+  `lesson_progress` chỉ khác cột) thành 1 lượt. Dùng ở `header.js::loadAppHeaderStats()` (ĐƯỢC
+  GẦN NHƯ MỌI màn có header gọi) + `home.js` + `stats.js` (file mồ côi, sửa cho khỏi dangling).
+- `getProgressOverview()` — GỘP 5 lượt cũ của màn Tiến trình (`getProfileStats`+`getStreakDays`+
+  `getSkillLevelBreakdown`+`getWritingGenreBreakdown`+`getHistory`) xuống còn 3 lượt
+  `Promise.all()` bên trong 1 hàm (KHÔNG gộp được về 1 vì 3 lượt đọc 3 BẢNG/HÌNH DẠNG dữ liệu
+  khác nhau — gộp thêm nữa cần viết SQL function riêng phía server, ngoài phạm vi lần này). Trả
+  về đủ mọi thứ Tiến trình cần trong 1 object. Dùng ở `progress.js` + `history.js` (file mồ côi).
+- `getLessonWithProgress(id)` — GỘP `getLessonById`+`getLessonProgress` (Promise.all cũ ở màn
+  Bài học chi tiết, màn MỞ NHIỀU NHẤT app) thành 1 lượt bằng embed quan hệ FK
+  (`lessons?select=*,lesson_progress(*)`), tách `lesson`/`progress` sau khi nhận về. Dùng ở
+  `lesson.js`.
+- Xoá 7 hàm cũ đã gộp hết (`getProfileStats`, `getStreakDays`, `getHistory`,
+  `getSkillLevelBreakdown`, `getWritingGenreBreakdown`, `getLessonById`, `getLessonProgress`) —
+  xác nhận qua `grep` không còn nơi nào import các tên này (kể cả file mồ côi, đã sửa hết).
+
+**2) Rà soát toàn app (dùng Explore subagent đọc hết `app/js/views/*.js` + `header.js`, đối
+chiếu `app.js::registerRoute()` để biết file nào còn route thật)** — kết quả: `header.js` (2 lượt
+→ đã gộp) và `progress.js` (5 lượt → đã gộp) là 2 điểm nóng nhất, đã sửa cả 2. Các điểm CÒN
+concurrent nhưng KHÔNG gộp được (đọc bảng khác nhau, ép tuần tự chỉ làm chậm mà không thêm an
+toàn — bug gốc refresh_token đã sửa tận gốc ở #30, `ensureValidSession()` tự gom lượt refresh
+trùng nhau rồi):
+- `home.js`: `getStreakAndStats()` + `getActiveLearningGoal()` (bảng `lesson_progress` vs
+  `learning_goals`).
+- `lessons.js`: header + `listInProgressLessons` + `renderList`, mode "library" thêm
+  `listAiGeneratedLessons`+`listGoalStatuses` (bảng `lessons`/`lesson_progress`/`learning_goals`).
+- `createLesson.js`: header + `getActiveLearningGoal`+`getGoalUsage`+`listGoals` (2 hàm sau là
+  action server qua mentorApi.js, không phải đọc bảng trực tiếp).
+- `writingPractice.js`: header + `listWritingGenres` (action server, không phải bảng).
+- `lesson.js`: sau khi tải bài xong, vẫn còn 1 chùm lượt "bắn không đợi nhau" (âm thanh/ảnh
+  bìa/tra từ trước tối đa 8 từ cùng lúc) — CHỦ Ý giữ song song vì đó là tối ưu tốc độ thật (tra
+  8 từ tuần tự sẽ chậm rõ rệt), không phải bug.
+- 5 file mồ côi (`history.js`/`stats.js`/`mentor.js`/`mentorGoal.js`/`mentorOnboarding.js`) —
+  xác nhận lại KHÔNG còn route nào trỏ tới, chỉ sửa dangling import cho khỏi vỡ nếu ai mở lại
+  sau này, không cần gộp lượt gọi (không ai chạy tới).
+
+**3) Kiểm chứng KHÔNG lệch số khi viết lại** — sandbox không gọi được Supabase thật, viết 2
+script Node độc lập mô phỏng `fetch`/`localStorage`, gọi THẲNG `db.js` thật:
+- `getProgressOverview()`/`getStreakAndStats()` đối chiếu với cách tính CŨ (5 hàm gốc chép lại
+  làm oracle) trên cùng bộ dữ liệu giả — khớp CHÍNH XÁC (totalXp/completedCount/streak/skills
+  breakdown theo level/writing breakdown theo dạng, kể cả case gộp "Khác").
+- `getLessonWithProgress()` xác nhận tách đúng `lesson`/`progress` từ embed, xử lý đúng 2 ca
+  biên (bài chưa có tiến trình nào → `progress: null`, bài không tồn tại → cả 2 đều `null`).
+- Preview tool: render trực tiếp `progress.js`/`home.js`/`lesson.js` trong browser thật, xác
+  nhận KHÔNG throw lỗi runtime nào (chỉ hiện đúng "Không tải được" vì local preview không có
+  backend thật, đúng như mong đợi).
+
+Bump `CACHE_NAME` lên v41.

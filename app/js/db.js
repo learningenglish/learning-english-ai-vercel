@@ -178,9 +178,21 @@ export async function getActiveLearningGoal() {
   return rows?.[0] || null;
 }
 
-export async function getLessonById(id) {
-  const rows = await restFetch(`lessons?id=eq.${encodeURIComponent(id)}&select=*`);
-  return rows?.[0] || null;
+// Màn "Bài học chi tiết" (views/lesson.js) — màn MỞ NHIỀU NHẤT app, TRƯỚC ĐÂY tốn 2 lượt
+// restFetch() riêng (getLessonById + getLessonProgress) chạy Promise.all cùng lúc — GỘP thành 1
+// lượt DUY NHẤT bằng embed quan hệ FK (2026-08-05, cùng đợt rà soát bug race-condition
+// refresh_token) — "lesson_progress(*)" trả mảng 0-1 phần tử (unique theo lesson_id+user_id,
+// xem upsertLessonProgress() bên dưới), tách khỏi "lesson" (xoá field thừa) trước khi trả về để
+// "lesson" giữ ĐÚNG hình dạng 1 hàng "lessons" như getLessonById() cũ, không rò rỉ field lạ ra
+// những chỗ khác dùng "lesson" (fetchAndSaveLessonCover, setLessonFavorite...).
+export async function getLessonWithProgress(id) {
+  const rows = await restFetch(`lessons?id=eq.${encodeURIComponent(id)}&select=*,lesson_progress(*)`);
+  const lesson = rows?.[0] || null;
+  if (!lesson) return { lesson: null, progress: null };
+  const progressRows = lesson.lesson_progress;
+  const progress = (Array.isArray(progressRows) ? progressRows[0] : progressRows) || null;
+  delete lesson.lesson_progress;
+  return { lesson, progress };
 }
 
 export async function setLessonFavorite(id, isFavorite) {
@@ -219,11 +231,6 @@ export async function getWritingFavoriteById(id) {
   return rows?.[0] || null;
 }
 
-export async function getLessonProgress(lessonId) {
-  const rows = await restFetch(`lesson_progress?lesson_id=eq.${encodeURIComponent(lessonId)}&select=*`);
-  return rows?.[0] || null;
-}
-
 export async function upsertLessonProgress(lessonId, patch) {
   const session = await ensureValidSession();
   if (!session) throw new Error("NOT_LOGGED_IN");
@@ -234,25 +241,27 @@ export async function upsertLessonProgress(lessonId, patch) {
   });
 }
 
-// Hồ sơ + Thống kê: tổng XP + số bài đã hoàn thành — tính trên lesson_progress của chính
-// user (RLS tự lọc, không cần truyền user_id trong query).
-export async function getProfileStats() {
-  const rows = await restFetch("lesson_progress?select=xp_earned,completed_at");
+// Header (mọi màn) + Home: tổng XP/số bài đã hoàn thành/streak — GỘP 2 lượt gọi cũ
+// (getProfileStats()+getStreakDays(), CÙNG đọc bảng lesson_progress chỉ khác cột) thành 1 lượt
+// duy nhất (2026-08-05, Minh: "rà soát các màn gọi nhiều API cùng lúc, gộp lại") — trước đó
+// header.js::loadAppHeaderStats() tự làm Promise.all() 2 lượt NÀY, cộng thêm bất kỳ lượt nào
+// view đang mở TỰ gọi riêng (vd writingPractice.js::loadGenres()) là ít nhất 3 lượt refresh
+// token cùng lúc mỗi khi mở màn — dù bug refresh_token race đã sửa tận gốc (ensureValidSession()
+// dùng chung 1 Promise refresh), gộp bớt số lượt gọi vẫn giảm tải mạng thật, không chỉ phòng
+// bug. "streak" tính giống hệt getStreakDays() cũ (suy ra từ last_opened_at, KHÔNG có cột riêng
+// lưu streak).
+export async function getStreakAndStats() {
+  const rows = await restFetch("lesson_progress?select=xp_earned,completed_at,last_opened_at");
   const totalXp = (rows || []).reduce((s, r) => s + (r.xp_earned || 0), 0);
   const completedCount = (rows || []).filter((r) => r.completed_at).length;
-  return { totalXp, completedCount };
+  const streak = computeStreakFromDates(rows || []);
+  return { totalXp, completedCount, streak };
 }
 
-// "Streak" (số ngày học liên tục) — KHÔNG có cột riêng lưu streak, tính suy ra từ các
-// ngày lịch có ít nhất 1 lần last_opened_at. Cho phép streak không rớt về 0 nếu HÔM NAY
-// chưa mở bài nào (chỉ rớt khi bỏ lỡ trọn 1 ngày) — đếm lùi từ hôm nay hoặc hôm qua.
-export async function getStreakDays() {
-  const rows = await restFetch("lesson_progress?select=last_opened_at");
-  const activeDates = new Set((rows || []).map((r) => (r.last_opened_at || "").slice(0, 10)).filter(Boolean));
-
+function computeStreakFromDates(rows) {
+  const activeDates = new Set(rows.map((r) => (r.last_opened_at || "").slice(0, 10)).filter(Boolean));
   const cursor = new Date();
   if (!activeDates.has(isoDate(cursor))) cursor.setDate(cursor.getDate() - 1);
-
   let streak = 0;
   while (activeDates.has(isoDate(cursor))) {
     streak += 1;
@@ -265,44 +274,7 @@ function isoDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-// Màn "Lịch sử" (trong Tiến trình): danh sách bài đã mở, kèm thông tin bài học qua embed quan hệ
-// FK (lesson_progress.lesson_id -> lessons), mới mở gần nhất trước. "fully_listened_at" (2026-08-05)
-// — dùng để suy ra Đã học/Chưa học THẬT (nghe hết audio tổng), thay cho completed_at/xp_earned
-// hiển thị % giả ở views/progress.js trước đó (Minh: "% và thời gian đổi lại thành dấu tick Đã
-// học/Chưa học").
-export async function getHistory() {
-  return restFetch(
-    "lesson_progress?order=last_opened_at.desc&select=lesson_id,completed_at,fully_listened_at,xp_earned,last_opened_at,lessons(id,title,title_vi,level,content_type)"
-  );
-}
-
 const LEVELS_ORDER = ["A1", "A2", "B1", "B2", "C1"];
-
-// Màn "Tiến trình" MỚI (2026-08-04, gộp Lịch sử+Thống kê "giống hình" — bảng tiến trình theo
-// kỹ năng × level) — % hoàn thành mỗi level = số bài đã hoàn tất (completed_at) / tổng số bài
-// đang có ở level đó cho ĐÚNG loại nội dung (reading/dialogue). Dùng "tổng số bài ĐANG CÓ"
-// (không phải tổng ~400 chủ đề cả spine) vì hiện tại danh sách bài chỉ gồm bài đã sinh — số này
-// tự tăng lên khi kho bài học lớn dần, không phải số ảo/bịa ra.
-export async function getSkillLevelBreakdown() {
-  const rows = await restFetch("lessons?select=level,content_type,lesson_progress(completed_at)");
-  const bySkill = { reading: {}, dialogue: {} };
-  for (const l of rows || []) {
-    const bucket = bySkill[l.content_type];
-    if (!bucket) continue;
-    if (!bucket[l.level]) bucket[l.level] = { total: 0, done: 0 };
-    bucket[l.level].total += 1;
-    const progressRow = Array.isArray(l.lesson_progress) ? l.lesson_progress[0] : l.lesson_progress;
-    if (progressRow?.completed_at) bucket[l.level].done += 1;
-  }
-  // LUÔN trả đủ 5 level (kể cả level CHƯA có bài nào) — Minh: "các level chưa đo được để ở mức
-  // 0%", KHÔNG ẩn hẳn level đó đi như bản trước (lọc theo bucket[lv] tồn tại).
-  const toRows = (bucket) =>
-    LEVELS_ORDER.map((lv) => {
-      const b = bucket[lv] || { total: 0, done: 0 };
-      return { level: lv, total: b.total, done: b.done, pct: b.total ? Math.round((b.done / b.total) * 100) : 0 };
-    });
-  return { reading: toRows(bySkill.reading), dialogue: toRows(bySkill.dialogue) };
-}
 
 // 14 DẠNG BÀI VIẾT cố định — ĐÚNG danh sách khoá trong api/_generate/writingTopicPool.json
 // (list_writing_genres trả nguyên văn tên này, cũng là GENRE_STYLES trong writingPractice.js).
@@ -325,18 +297,59 @@ const KNOWN_WRITING_GENRES = new Set([
   "Tường thuật sự việc",
 ]);
 
-// Luyện viết — % "tiến trình" theo THỂ LOẠI = điểm trung bình các lượt chấm gần đây cho thể loại
-// đó (overall_score/100), giống ĐÚNG cách getGenreScoreStats() ở api/_generate/writing.js tính
-// "lời dẫn thông minh" — dữ liệu thật từ writing_submissions (RLS "select own" đã có sẵn, xem
-// supabase/025_writing_submissions.sql), không tự bịa số. GỘP về ĐÚNG 14 dạng cố định + "Khác"
-// (2026-08-05, Minh: "chỉ liệt kê các dạng, không liệt kê tất cả các loại nhỏ trong dạng") — dữ
-// liệu cũ/test trước khi có danh mục 14 dạng cố định có "task.genre_vi" là tên chủ đề CỤ THỂ
-// (vd "đánh giá nhà hàng", "Email xin lỗi" thay vì "Đánh giá"/"Email"), không lọc sẽ ra danh sách
-// dài lộn xộn — bất kỳ giá trị nào KHÔNG khớp 14 dạng đã biết đều gộp chung vào "Khác".
-export async function getWritingGenreBreakdown() {
-  const rows = await restFetch("writing_submissions?select=overall_score,task&order=created_at.desc&limit=100");
+// Màn "Tiến trình" — TRƯỚC ĐÂY 5 lượt restFetch() riêng biệt chạy cùng lúc qua Promise.all
+// (getProfileStats/getStreakDays/getSkillLevelBreakdown/getWritingGenreBreakdown/getHistory) —
+// đúng nguyên nhân khiến bug race-condition refresh_token dễ lộ ra nhất ở màn này (Minh bắt
+// được 2026-08-05). GỘP còn 3 lượt (KHÔNG gộp được về 1 vì 3 lượt đọc 3 BẢNG/HÌNH DẠNG dữ liệu
+// khác nhau, PostgREST không aggregate chéo bảng được nếu không viết thêm 1 SQL function riêng
+// phía server — ngoài phạm vi yêu cầu này):
+//   1) "lesson_progress" (kèm embed lessons) — dùng tính CẢ Tổng XP + số bài hoàn thành + streak
+//      + "done" từng level/loại + danh sách Lịch sử — 4 việc TRƯỚC ĐÂY tốn 3 lượt riêng
+//      (getProfileStats+getStreakDays+getHistory), giờ 1 lượt là đủ vì cùng bảng.
+//   2) "lessons" (chỉ level+content_type, KHÔNG embed) — lấy TỔNG số bài mỗi level/loại (mẫu số
+//      %), tách khỏi (1) vì cần TOÀN BỘ bài kể cả bài user CHƯA từng mở (không có lesson_progress).
+//   3) "writing_submissions" — không đổi, vẫn 1 bảng riêng, không gộp được với 2 lượt trên.
+export async function getProgressOverview() {
+  const [progressRows, lessonRows, writingRows] = await Promise.all([
+    restFetch(
+      "lesson_progress?order=last_opened_at.desc&select=lesson_id,completed_at,fully_listened_at,xp_earned,last_opened_at,lessons(id,title,title_vi,level,content_type)"
+    ),
+    restFetch("lessons?select=level,content_type"),
+    restFetch("writing_submissions?select=overall_score,task&order=created_at.desc&limit=100"),
+  ]);
+
+  const totalXp = (progressRows || []).reduce((s, r) => s + (r.xp_earned || 0), 0);
+  const completedCount = (progressRows || []).filter((r) => r.completed_at).length;
+  const streak = computeStreakFromDates(progressRows || []);
+
+  const bySkill = { reading: {}, dialogue: {} };
+  for (const l of lessonRows || []) {
+    const bucket = bySkill[l.content_type];
+    if (!bucket) continue;
+    if (!bucket[l.level]) bucket[l.level] = { total: 0, done: 0 };
+    bucket[l.level].total += 1;
+  }
+  for (const r of progressRows || []) {
+    if (!r.completed_at || !r.lessons) continue;
+    const bucket = bySkill[r.lessons.content_type];
+    if (!bucket?.[r.lessons.level]) continue;
+    bucket[r.lessons.level].done += 1;
+  }
+  // LUÔN trả đủ 5 level (kể cả level CHƯA có bài nào) — Minh: "các level chưa đo được để ở mức
+  // 0%", KHÔNG ẩn hẳn level đó đi như bản trước (lọc theo bucket[lv] tồn tại).
+  const toRows = (bucket) =>
+    LEVELS_ORDER.map((lv) => {
+      const b = bucket[lv] || { total: 0, done: 0 };
+      return { level: lv, total: b.total, done: b.done, pct: b.total ? Math.round((b.done / b.total) * 100) : 0 };
+    });
+  const skills = { reading: toRows(bySkill.reading), dialogue: toRows(bySkill.dialogue) };
+
+  // GỘP về ĐÚNG 14 dạng cố định + "Khác" (2026-08-05, Minh: "chỉ liệt kê các dạng, không liệt kê
+  // tất cả các loại nhỏ trong dạng") — dữ liệu cũ/test trước khi có danh mục 14 dạng cố định có
+  // "task.genre_vi" là tên chủ đề CỤ THỂ (vd "đánh giá nhà hàng"), không lọc sẽ ra danh sách dài
+  // lộn xộn — bất kỳ giá trị nào KHÔNG khớp 14 dạng đã biết đều gộp chung vào "Khác".
   const byGenre = new Map();
-  for (const r of rows || []) {
+  for (const r of writingRows || []) {
     const raw = r.task?.genre_vi;
     const genre = raw && KNOWN_WRITING_GENRES.has(raw) ? raw : "Khác";
     if (!byGenre.has(genre)) byGenre.set(genre, { count: 0, scoreSum: 0 });
@@ -344,5 +357,7 @@ export async function getWritingGenreBreakdown() {
     g.count += 1;
     g.scoreSum += r.overall_score || 0;
   }
-  return Array.from(byGenre.entries()).map(([genre, g]) => ({ genre, count: g.count, pct: Math.round(g.scoreSum / g.count) }));
+  const writing = Array.from(byGenre.entries()).map(([genre, g]) => ({ genre, count: g.count, pct: Math.round(g.scoreSum / g.count) }));
+
+  return { totalXp, completedCount, streak, skills, writing, history: progressRows || [] };
 }

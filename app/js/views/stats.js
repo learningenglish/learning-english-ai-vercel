@@ -1,7 +1,10 @@
 // app/js/views/stats.js — tab "Thống kê": bản đơn giản (tổng XP, số bài, streak). Bản đầy
 // đủ (biểu đồ theo tuần, phân bố theo kỹ năng...) thuộc Phase 4, chưa làm ở đây — người
 // dùng chủ động chọn đưa 1 bản Thống kê tối giản lên sớm cùng lúc đổi nav.
-import { getProfileStats, getStreakDays } from "../db.js";
+// FILE MỒ CÔI (2026-08-04) — KHÔNG còn route nào trỏ tới (đã gộp vào views/progress.js), giữ
+// nguyên không xoá. Import cập nhật theo db.js 2026-08-05 (getProfileStats/getStreakDays gộp
+// thành getStreakAndStats()) để không dangling-reference, dù file này chưa ai gọi tới.
+import { getStreakAndStats } from "../db.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
 
@@ -24,10 +27,10 @@ export function renderStats(mount) {
   async function load() {
     const grid = mount.querySelector("#stats-grid");
     try {
-      const [stats, streak] = await Promise.all([getProfileStats(), getStreakDays()]);
+      const { totalXp, completedCount, streak } = await getStreakAndStats();
       const cards = grid.querySelectorAll(".stat-card-value");
-      cards[0].textContent = stats.totalXp;
-      cards[1].textContent = stats.completedCount;
+      cards[0].textContent = totalXp;
+      cards[1].textContent = completedCount;
       cards[2].textContent = streak;
     } catch {
       mount.querySelector("#stats-note").textContent = "Không tải được thống kê, thử lại sau.";

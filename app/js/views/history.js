@@ -1,6 +1,9 @@
 // app/js/views/history.js — tab "Lịch sử": danh sách bài đã mở, mới nhất trước.
+// FILE MỒ CÔI (2026-08-04) — KHÔNG còn route nào trỏ tới (đã gộp vào views/progress.js), giữ
+// nguyên không xoá. Import cập nhật theo db.js 2026-08-05 (getHistory() gộp vào
+// getProgressOverview().history) để không dangling-reference, dù file này chưa ai gọi tới.
 import { navigate } from "../router.js";
-import { getHistory } from "../db.js";
+import { getProgressOverview } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
@@ -19,7 +22,7 @@ export function renderHistory(mount) {
   async function load() {
     const listEl = mount.querySelector("#history-list");
     try {
-      const rows = await getHistory();
+      const { history: rows } = await getProgressOverview();
       if (!rows.length) {
         listEl.innerHTML = `<p class="muted">Bạn chưa học bài nào.</p>`;
         return;

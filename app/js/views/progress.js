@@ -1,11 +1,15 @@
 // app/js/views/progress.js — tab "Tiến trình" MỚI (2026-08-04, gộp Lịch sử+Thống kê "giống
 // hình" — Minh). GIAO DIỆN RIÊNG, KHÔNG tái dùng .stat-card/.history-item/.writing-criteria-*
 // cũ (xem block CSS riêng "Tiến trình mới" trong style.css) — tổng quan kỹ năng × level (thanh
-// tiến trình, dữ liệu thật từ getSkillLevelBreakdown/getWritingGenreBreakdown trong db.js) +
-// lịch sử học NHÓM THEO NGÀY bên dưới. history.js/stats.js GIỮ NGUYÊN file, không xoá, chỉ
-// không còn route/nav nào trỏ tới nữa.
+// tiến trình) + lịch sử học NHÓM THEO NGÀY bên dưới. history.js/stats.js GIỮ NGUYÊN file, không
+// xoá, chỉ không còn route/nav nào trỏ tới nữa.
+//
+// SỬA 2026-08-05 (Minh bắt bug thật: "Tiến trình không tải được" — màn này gọi 5 restFetch()
+// RIÊNG BIỆT cùng lúc qua 3 Promise.all khác nhau, đúng nguyên nhân khiến bug race-condition
+// refresh_token lộ ra rõ nhất ở đây, xem ghi chú ensureValidSession() trong db.js) — GỘP còn 1
+// lượt gọi DUY NHẤT (getProgressOverview(), tự gộp 3 lượt restFetch() bên trong nó) thay vì 5.
 import { navigate } from "../router.js";
-import { getProfileStats, getStreakDays, getHistory, getSkillLevelBreakdown, getWritingGenreBreakdown } from "../db.js";
+import { getProgressOverview } from "../db.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { wireAppHeader } from "../header.js";
@@ -57,8 +61,9 @@ function writingSectionHtml(rows) {
 }
 
 // Nhãn ngày kiểu mockup ("Hôm nay — dd/mm/yyyy", "Hôm qua — ...") — so theo NGÀY LỊCH (không
-// phải 24h trước), khớp cách getStreakDays() đang tính streak. CHỈ 2 giá trị (null nghĩa là
-// "quá cũ, không hiện" — xem lọc ở loadHistory(), Minh: "chỉ cần hôm nay và hôm qua là đủ").
+// phải 24h trước), khớp cách getProgressOverview() đang tính streak (computeStreakFromDates()
+// trong db.js). CHỈ 2 giá trị (null nghĩa là "quá cũ, không hiện" — xem lọc ở renderHistory(),
+// Minh: "chỉ cần hôm nay và hôm qua là đủ").
 function dayGroupLabel(iso) {
   const d = new Date(iso);
   const dateStr = d.toLocaleDateString("vi-VN");
@@ -95,34 +100,33 @@ export function renderProgress(mount) {
     </div>
   `;
   wireAppHeader(mount);
-  loadStats();
-  loadBreakdown();
-  loadHistory();
+  load();
 
-  async function loadStats() {
-    const grid = mount.querySelector("#progress-summary");
+  // 1 LƯỢT GỌI DUY NHẤT (getProgressOverview()) thay vì 5 lượt riêng biệt qua 3 Promise.all
+  // trước đó — dựng LẠI toàn bộ nội dung (thống kê/thanh tiến trình/lịch sử) từ CÙNG 1 kết quả,
+  // không còn 3 khối try/catch độc lập nữa (đúng ngữ nghĩa hơn: lỗi mạng giờ ảnh hưởng NGUYÊN
+  // màn thay vì lộ ra 3 thông báo lỗi lặp lại như trước).
+  async function load() {
     try {
-      const [stats, streak] = await Promise.all([getProfileStats(), getStreakDays()]);
-      const cards = grid.querySelectorAll(".progress-summary-value");
-      cards[0].textContent = stats.totalXp;
-      cards[1].textContent = stats.completedCount;
-      cards[2].textContent = streak;
-    } catch {
-      // Lỗi tải thống kê không nên chặn các khối bên dưới — cứ để "--" mặc định.
-    }
-  }
-
-  async function loadBreakdown() {
-    try {
-      const [skills, writing] = await Promise.all([getSkillLevelBreakdown(), getWritingGenreBreakdown()]);
-      mount.querySelector("#progress-reading").innerHTML = skillSectionHtml(skills.reading);
-      mount.querySelector("#progress-dialogue").innerHTML = skillSectionHtml(skills.dialogue);
-      mount.querySelector("#progress-writing").innerHTML = writingSectionHtml(writing);
+      const data = await getProgressOverview();
+      renderSummary(data);
+      mount.querySelector("#progress-reading").innerHTML = skillSectionHtml(data.skills.reading);
+      mount.querySelector("#progress-dialogue").innerHTML = skillSectionHtml(data.skills.dialogue);
+      mount.querySelector("#progress-writing").innerHTML = writingSectionHtml(data.writing);
+      renderHistory(data.history);
     } catch {
       mount.querySelector("#progress-reading").innerHTML = `<p class="error-text">Không tải được.</p>`;
       mount.querySelector("#progress-dialogue").innerHTML = `<p class="error-text">Không tải được.</p>`;
       mount.querySelector("#progress-writing").innerHTML = `<p class="error-text">Không tải được.</p>`;
+      mount.querySelector("#history-list").innerHTML = `<p class="error-text">Không tải được lịch sử học.</p>`;
     }
+  }
+
+  function renderSummary({ totalXp, completedCount, streak }) {
+    const cards = mount.querySelector("#progress-summary").querySelectorAll(".progress-summary-value");
+    cards[0].textContent = totalXp;
+    cards[1].textContent = completedCount;
+    cards[2].textContent = streak;
   }
 
   // CHỈ Hôm nay + Hôm qua (2026-08-05, Minh: "chỉ cần hôm nay và hôm qua là đủ, không cần liệt
@@ -130,41 +134,37 @@ export function renderProgress(mount) {
   // hiện icon LOẠI NỘI DUNG (Bài đọc/Hội thoại) + level + dấu tick Đã học (nghe hết audio
   // tổng, fully_listened_at)/Chưa học — THAY % và giờ (số liệu không thật/không cần thiết ở
   // đây, Minh: "% và thời gian đổi lại thành dấu tick Đã học/Chưa học").
-  async function loadHistory() {
+  function renderHistory(allRows) {
     const listEl = mount.querySelector("#history-list");
-    try {
-      const rows = (await getHistory()).filter((r) => dayGroupLabel(r.last_opened_at) !== null);
-      if (!rows.length) {
-        listEl.innerHTML = `<p class="muted">Chưa có hoạt động hôm nay hoặc hôm qua.</p>`;
-        return;
-      }
-      let lastGroup = null;
-      const parts = [];
-      for (const r of rows) {
-        const group = dayGroupLabel(r.last_opened_at);
-        if (group !== lastGroup) {
-          parts.push(`<div class="progress-history-day">${escapeHtml(group)}</div>`);
-          lastGroup = group;
-        }
-        const lesson = r.lessons;
-        const done = !!r.fully_listened_at;
-        parts.push(`
-          <div class="progress-history-item" data-id="${r.lesson_id}">
-            <span class="progress-history-icon">${icon(CONTENT_TYPE_ICON[lesson?.content_type] || "book", { size: 20 })}</span>
-            <div class="progress-history-body">
-              <div class="progress-history-title">${escapeHtml(lesson?.title_vi || lesson?.title || "(Bài học đã xoá)")}</div>
-              <div class="progress-history-meta"><span class="badge">${escapeHtml(lesson?.level || "")}</span></div>
-            </div>
-            <span class="learn-status-badge ${done ? "learn-status-done" : "learn-status-not-started"}">${done ? icon("check-circle", { size: 12 }) : ""} ${done ? "Đã học" : "Chưa học"}</span>
-          </div>
-        `);
-      }
-      listEl.innerHTML = parts.join("");
-      listEl.querySelectorAll(".progress-history-item").forEach((item) => {
-        item.addEventListener("click", () => navigate(`/lesson/${item.dataset.id}`));
-      });
-    } catch {
-      listEl.innerHTML = `<p class="error-text">Không tải được lịch sử học.</p>`;
+    const rows = (allRows || []).filter((r) => dayGroupLabel(r.last_opened_at) !== null);
+    if (!rows.length) {
+      listEl.innerHTML = `<p class="muted">Chưa có hoạt động hôm nay hoặc hôm qua.</p>`;
+      return;
     }
+    let lastGroup = null;
+    const parts = [];
+    for (const r of rows) {
+      const group = dayGroupLabel(r.last_opened_at);
+      if (group !== lastGroup) {
+        parts.push(`<div class="progress-history-day">${escapeHtml(group)}</div>`);
+        lastGroup = group;
+      }
+      const lesson = r.lessons;
+      const done = !!r.fully_listened_at;
+      parts.push(`
+        <div class="progress-history-item" data-id="${r.lesson_id}">
+          <span class="progress-history-icon">${icon(CONTENT_TYPE_ICON[lesson?.content_type] || "book", { size: 20 })}</span>
+          <div class="progress-history-body">
+            <div class="progress-history-title">${escapeHtml(lesson?.title_vi || lesson?.title || "(Bài học đã xoá)")}</div>
+            <div class="progress-history-meta"><span class="badge">${escapeHtml(lesson?.level || "")}</span></div>
+          </div>
+          <span class="learn-status-badge ${done ? "learn-status-done" : "learn-status-not-started"}">${done ? icon("check-circle", { size: 12 }) : ""} ${done ? "Đã học" : "Chưa học"}</span>
+        </div>
+      `);
+    }
+    listEl.innerHTML = parts.join("");
+    listEl.querySelectorAll(".progress-history-item").forEach((item) => {
+      item.addEventListener("click", () => navigate(`/lesson/${item.dataset.id}`));
+    });
   }
 }

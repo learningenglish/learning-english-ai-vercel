@@ -5,7 +5,7 @@
 // trong ảnh mẫu — Minh xác nhận 2026-08-04), mỗi card chỉ ĐIỀU HƯỚNG tới đúng màn đã có sẵn
 // (KHÔNG viết lại nội dung màn nào). views/mentor.js (hub Mentor AI cũ) GIỮ NGUYÊN không đụng.
 import { navigate } from "../router.js";
-import { getActiveLearningGoal, getStreakDays } from "../db.js";
+import { getActiveLearningGoal, getStreakAndStats } from "../db.js";
 import { getSession } from "../session.js";
 import { icon } from "../icons.js";
 import { escapeHtml } from "../utils.js";
@@ -22,7 +22,7 @@ const HOME_CARDS = [
 // Streak "mục tiêu tuần" (2026-08-04, thẻ riêng theo ảnh mẫu — Minh: "dựng thẻ riêng, không cần
 // ảnh") — CHƯA có khái niệm "mục tiêu/ngày" nào khác trong hệ thống, dùng mốc 7 ngày/tuần làm
 // thang đo trực quan cho thanh tiến độ (streak thật ÷ 7, chặn tối đa 100%) — số NGÀY hiển thị
-// LUÔN là số thật từ getStreakDays(), thanh chỉ là cách trực quan hoá, không phải số bịa thêm.
+// LUÔN là số thật từ getStreakAndStats(), thanh chỉ là cách trực quan hoá, không phải số bịa thêm.
 const STREAK_WEEKLY_GOAL = 7;
 
 function firstName(session) {
@@ -73,8 +73,8 @@ export function renderHome(mount) {
     btn.addEventListener("click", () => navigate(btn.dataset.path));
   });
 
-  getStreakDays()
-    .then((days) => {
+  getStreakAndStats()
+    .then(({ streak: days }) => {
       mount.querySelector("#streak-value").textContent = `${days} ngày`;
       const pct = Math.min(100, Math.round((days / STREAK_WEEKLY_GOAL) * 100));
       mount.querySelector("#streak-bar-fill").style.width = `${pct}%`;

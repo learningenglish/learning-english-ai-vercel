@@ -2,7 +2,7 @@
 // (kiến trúc Lesson-first). "Hỏi AI" (word_lookup, sentence_tip) là action lẻ, realtime,
 // không lưu — khác hoàn toàn với generate_lesson/analyze_user_text. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
-import { getLessonById, getLessonProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
+import { getLessonWithProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
 import { addLookedUpWord, getLessonFullAudioUrl, fetchAndSaveLessonCover } from "../lessonApi.js";
 import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
@@ -59,7 +59,10 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       lesson = await getNewsLessonById(lessonId);
       progress = null;
     } else {
-      [lesson, progress] = await Promise.all([getLessonById(lessonId), getLessonProgress(lessonId)]);
+      // 1 lượt gọi DUY NHẤT (2026-08-05, trước đó Promise.all(getLessonById, getLessonProgress)
+      // = 2 lượt restFetch() riêng — gộp bằng embed quan hệ FK, xem getLessonWithProgress()
+      // trong db.js, cùng đợt rà soát bug race-condition refresh_token).
+      ({ lesson, progress } = await getLessonWithProgress(lessonId));
     }
   } catch {
     mount.innerHTML = `<div class="screen"><p class="error-text">Không tải được bài học, thử lại sau.</p></div>`;
