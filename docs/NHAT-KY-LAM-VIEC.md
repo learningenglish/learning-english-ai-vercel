@@ -407,3 +407,53 @@ script Node độc lập mô phỏng `fetch`/`localStorage`, gọi THẲNG `db.j
   backend thật, đúng như mong đợi).
 
 Bump `CACHE_NAME` lên v41.
+
+## 2026-08-05 (tiếp 4) — KHẨN CẤP: điều tra chi phí OpenAI bất thường 31/7 và 1/8
+
+Minh báo "app không ai dùng 2 ngày nhưng tốn 952 + 381 requests (~$0.51)" — dừng mọi việc khác,
+điều tra ngay.
+
+**Đã làm ngay (trước khi có kết luận cuối, đúng quy trình "chặn trước, báo cáo sau"):**
+- Xoá hẳn `debug_probe_skin_cost` (action chẩn đoán tạm đo chi phí Tầng 1, sót lại từ 2026-08-04,
+  đáng lẽ phải xoá ngay sau khi đo xong) — không có bằng chứng nó là nguồn, xoá để giảm rủi ro.
+
+**Xác nhận qua test thật (không chỉ đọc code):**
+- Công tắc khẩn cấp cron tin tức: CÒN CHẶN — `POST /api/cron/generate-news` trên domain
+  production trả 503 `emergency_kill_switch`.
+- Domain "Production" (`learning-english-ai-vercel.vercel.app`) hoá ra đang chạy 1 bản build
+  ĐÓNG BĂNG từ trước — có 1 công tắc khẩn cấp KHÁC ("Hệ thống tạm dừng để bảo trì") vẫn còn hoạt
+  động trên bản đó dù đã bị gỡ khỏi code từ commit `ef26d5e0` (2026-08-04). `/api/chat` domain
+  Production hiện chặn CỨNG 100% mọi request.
+- `vercel crons ls` xác nhận KHÔNG có cron job nào đang đăng ký ở Vercel — loại trừ khả năng cron
+  đang tự chạy lặp lại hiện tại.
+
+**Sai lầm ban đầu + sửa lại:** lần đầu đọc bảng `news_lessons` bằng key CHƯA xác thực, nhận về
+rỗng, kết luận nhầm "chưa từng sinh được bài nào". Đọc lại có xác thực: bảng có 27 bài thật,
+sinh thành công rải rác 28/7, 30/7, 31/7, 1/8, 2/8 (thiếu hẳn 29/7, và im bặt từ 3/8 tới nay —
+trước cả khi công tắc khẩn cấp tồn tại, nên là lỗi thật, có thể do hết credit OpenAI).
+
+**Minh cung cấp ảnh chụp OpenAI Usage Dashboard thật** — xác nhận CHÍNH XÁC: 952 requests
+($0.29) ngày 31/7 UTC, 381 requests ($0.22) ngày 1/8 UTC, cả 2 đều mục "Responses and Chat
+Completions" — TRÙNG KHỚP với đúng 2 ngày cron sinh tin tức thành công. Nhưng tính theo code,
+1 lượt chạy đúng quy trình chỉ tốn tối đa ~13 lượt AI (1 tìm tin + tối đa 2 lượt/bài × 6 bài) —
+không đủ giải thích 952/381.
+
+**Nguyên nhân gốc tìm được:** `generateDailyNews()` KHÔNG có cơ chế kiểm tra "hôm nay đã chạy
+chưa" — mỗi lượt hàm bị gọi đều tìm tin + sinh lại TỪ ĐẦU, không nhớ gì về các lượt trước. Nếu
+hàm bị GỌI LẠI NHIỀU LẦN trong cùng 1 ngày (giả thuyết hợp lý nhất: Vercel tự retry khi function
+vượt `maxDuration` 300s — các bài B2/C1 riêng lẻ đã đo mất 27-40s/lượt, dễ chạm trần khi cộng dồn
+6 bài + retry nội bộ), mỗi lượt gọi lại đều đốt thêm ~13 lượt AI, trong khi CHỈ một vài lượt kịp
+lưu được bài trước khi function bị crash/timeout lần nữa — khớp với hiện tượng "31/7 chỉ ra 5/6
+bài, 1/8 chỉ ra 3/6 bài" (thiếu đúng bằng số lượt bị cắt giữa chừng).
+
+**Đã sửa (root-cause fix):** thêm `countTodayNewsLessons()` — cổng an toàn đọc thuần (không AI)
+ở ĐẦU `generateDailyNews()`, kiểm đã có ≥6 bài tin tức hôm nay (giờ UTC) chưa — có rồi thì dừng
+ngay, không tìm tin/gọi AI thêm lượt nào, BẤT KỂ hàm bị gọi lại bao nhiêu lần trong ngày. Xác
+nhận bằng Node script mô phỏng: gọi lại 50 lần trong "1 ngày" → tổng chỉ tốn ĐÚNG 7 lượt AI (bằng
+1 lượt chạy thật đầu tiên), không tăng theo số lần gọi lại (trước khi sửa sẽ là 350 lượt).
+
+**Còn tồn:** chưa xác nhận 100% "Vercel tự retry" có đúng là cơ chế kích hoạt hay không (Minh
+không dùng Claude Code 2 ngày đó — sandbox không có internet ra ngoài để kiểm log Vercel chi
+tiết, bị chặn bởi `ExceedsBillingLimitError` khi gọi `vercel logs`) — nhưng cổng an toàn mới
+chặn được TOÀN BỘ nhóm nguyên nhân này bất kể cơ chế kích hoạt cụ thể là gì, nên coi như đã xử
+lý xong phần có thể xử lý được từ phía code.
