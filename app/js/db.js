@@ -279,15 +279,41 @@ export async function getSkillLevelBreakdown() {
   return { reading: toRows(bySkill.reading), dialogue: toRows(bySkill.dialogue) };
 }
 
+// 14 DẠNG BÀI VIẾT cố định — ĐÚNG danh sách khoá trong api/_generate/writingTopicPool.json
+// (list_writing_genres trả nguyên văn tên này, cũng là GENRE_STYLES trong writingPractice.js).
+// Duplicate danh sách này ở đây (thay vì import JSON) vì db.js chạy ở client, cùng quy ước "mỗi
+// file tự chứa dữ liệu riêng" đã dùng cho INDUSTRY_CHIPS/GENRE_STYLES.
+const KNOWN_WRITING_GENRES = new Set([
+  "Nghị luận",
+  "Phân tích",
+  "Đánh giá",
+  "Kể chuyện",
+  "Viết thư",
+  "Báo cáo",
+  "Email",
+  "Tin nhắn",
+  "Mô tả",
+  "Hướng dẫn",
+  "Bài đăng mạng xã hội",
+  "Thư ngỏ",
+  "Ghi chú",
+  "Tường thuật sự việc",
+]);
+
 // Luyện viết — % "tiến trình" theo THỂ LOẠI = điểm trung bình các lượt chấm gần đây cho thể loại
 // đó (overall_score/100), giống ĐÚNG cách getGenreScoreStats() ở api/_generate/writing.js tính
 // "lời dẫn thông minh" — dữ liệu thật từ writing_submissions (RLS "select own" đã có sẵn, xem
-// supabase/025_writing_submissions.sql), không tự bịa số.
+// supabase/025_writing_submissions.sql), không tự bịa số. GỘP về ĐÚNG 14 dạng cố định + "Khác"
+// (2026-08-05, Minh: "chỉ liệt kê các dạng, không liệt kê tất cả các loại nhỏ trong dạng") — dữ
+// liệu cũ/test trước khi có danh mục 14 dạng cố định có "task.genre_vi" là tên chủ đề CỤ THỂ
+// (vd "đánh giá nhà hàng", "Email xin lỗi" thay vì "Đánh giá"/"Email"), không lọc sẽ ra danh sách
+// dài lộn xộn — bất kỳ giá trị nào KHÔNG khớp 14 dạng đã biết đều gộp chung vào "Khác".
 export async function getWritingGenreBreakdown() {
   const rows = await restFetch("writing_submissions?select=overall_score,task&order=created_at.desc&limit=100");
   const byGenre = new Map();
   for (const r of rows || []) {
-    const genre = r.task?.genre_vi || "Khác";
+    const raw = r.task?.genre_vi;
+    const genre = raw && KNOWN_WRITING_GENRES.has(raw) ? raw : "Khác";
     if (!byGenre.has(genre)) byGenre.set(genre, { count: 0, scoreSum: 0 });
     const g = byGenre.get(genre);
     g.count += 1;

@@ -100,10 +100,14 @@ function renderBottomNav(activePath) {
   // nhưng route KHÁC tên nên bị BỎ SÓT ở đây trước đó — nav ngoài không ẩn, che mất thanh audio
   // cố định (cả 2 cùng position:fixed đáy màn hình).
   // "/industry-select" (2026-08-04, Minh bắt lỗi thật: "giao diện lần đầu chọn chuyên ngành
-  // không có 4 icon bên dưới" — đúng ý: màn này PHẢI GIỐNG /login, là màn onboarding TRƯỚC KHI
-  // vào hẳn app, không phải 1 tab thường) — ẩn thanh điều hướng ngoài, đúng khung ảnh mẫu (màn
-  // "Chọn chuyên ngành" không có bottom nav).
-  if (activePath === "/login" || activePath === "/lesson" || activePath === "/news-lesson" || activePath === "/industry-select") {
+  // không có 4 icon bên dưới" — đúng ý: LẦN ĐẦU (onboarding, chưa có goal active, Home tự
+  // chuyển tới đây) PHẢI GIỐNG /login, không có bottom nav). SỬA 2026-08-05 (Minh: "đổi chuyên
+  // ngành thì thêm icon Home/Tiến trình... để quay lại, vì bây giờ ĐANG Ở BÊN TRONG luồng,
+  // không phải lần chọn đầu tiên") — profile.js "Đổi chuyên ngành" giờ điều hướng tới
+  // "/industry-select/change" (route CÙNG renderIndustrySelect, chỉ khác 1 segment param) — CHỈ
+  // ẩn nav cho ĐÚNG "/industry-select" trơn (lần đầu), giữ nav khi có "/change" theo sau.
+  const isIndustrySelectOnboarding = activePath === "/industry-select" && !location.hash.startsWith("#/industry-select/change");
+  if (activePath === "/login" || activePath === "/lesson" || activePath === "/news-lesson" || isIndustrySelectOnboarding) {
     nav.hidden = true;
     nav.innerHTML = "";
     return;

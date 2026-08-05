@@ -20,6 +20,18 @@ function summaryCardsHtml() {
   `;
 }
 
+// Màu thanh theo MỨC % (2026-08-05, Minh: "hình mẫu các thanh có nhiều màu, thanh chỉ 1 màu
+// không đẹp" — đối chiếu số liệu trong ảnh mẫu thật khớp ĐÚNG 1 quy luật theo mức, không phải
+// màu random: 0%→xám(chưa có gì), 1-19%→cam(mới bắt đầu), 20-59%→tím(đang tiến bộ), ≥60%→xanh lá
+// (tốt) — dùng biến "--chip-*" CỐ ĐỊNH (không đổi theo Theme Color Palette, xem style.css) vì
+// đây là MÀU Ý NGHĨA mức độ, không phải màu nhận diện thương hiệu như --purple.
+function progressTier(pct) {
+  if (pct <= 0) return "empty";
+  if (pct < 20) return "low";
+  if (pct < 60) return "mid";
+  return "high";
+}
+
 // "row" (KHÔNG còn thẻ .progress-bar-row riêng từng level, 2026-08-04 — Minh: "tất cả level
 // vào 1 card") — mỗi level/thể loại giờ chỉ là 1 KHỐI trong CÙNG 1 card bọc ngoài
 // (.progress-bars-card, xem skillSectionHtml/writingSectionHtml), phân cách bằng viền mảnh.
@@ -29,7 +41,7 @@ function barRowHtml(label, pct) {
   return `
     <div class="progress-bar-item">
       <div class="progress-bar-head"><span>${escapeHtml(label)}</span><span>${pct}%</span></div>
-      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+      <div class="progress-bar-track"><div class="progress-bar-fill progress-bar-fill-${progressTier(pct)}" style="width:${pct}%"></div></div>
     </div>
   `;
 }

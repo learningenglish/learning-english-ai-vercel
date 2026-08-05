@@ -1,9 +1,8 @@
 // app/js/views/profile.js
 import { getSession, clearSession } from "../session.js";
 import { navigate } from "../router.js";
-import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
-import { backChevronHtml, wireBackLink } from "../header.js";
+import { showToast } from "../toast.js";
 import { getThemePreference, setThemePreference } from "../theme.js";
 import { getPalettePreference, setPalettePreference, PALETTES } from "../palette.js";
 import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../fontSize.js";
@@ -24,7 +23,7 @@ export function renderProfile(mount) {
   const currentFontSize = getFontSizePreference();
   mount.innerHTML = `
     <div class="screen">
-      <div class="app-header-left">${backChevronHtml()}<h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Cài đặt</h1></div>
+      <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Cài đặt</h1>
 
       <div class="card profile-card">
         <!-- "Ngôn ngữ" (2026-08-04) — hàng TĨNH, app hiện chỉ có tiếng Việt (không có hệ thống
@@ -37,13 +36,16 @@ export function renderProfile(mount) {
           <span class="icon-text">${icon("briefcase", { size: 18 })} Đổi chuyên ngành</span>
           ${icon("chevron-right", { size: 18 })}
         </div>
-        <div class="settings-row">
+        <!-- "Tài khoản"/"Thông tin ứng dụng" (2026-08-05, sửa lỗi tràn khung — Minh: "chữ bị tràn
+             khung, dùng > như Đổi chuyên ngành, cần xem mới click") — KHÔNG hiện email/version
+             dài ngay trên hàng nữa (email dài vỡ layout), bấm vào mới hiện qua toast. -->
+        <div class="settings-row settings-row-clickable" id="account-row">
           <span class="icon-text">${icon("user", { size: 18 })} Tài khoản</span>
-          <span class="muted">${escapeHtml(session?.user?.email || "")}</span>
+          ${icon("chevron-right", { size: 18 })}
         </div>
-        <div class="settings-row">
+        <div class="settings-row settings-row-clickable" id="app-info-row">
           <span class="icon-text">${icon("info", { size: 18 })} Thông tin ứng dụng</span>
-          <span class="muted">${escapeHtml(APP_NAME)} · v${APP_VERSION}</span>
+          ${icon("chevron-right", { size: 18 })}
         </div>
       </div>
 
@@ -99,20 +101,26 @@ export function renderProfile(mount) {
     </div>
   `;
 
-  // history.back() — Cài đặt có thể vào từ CẢ 4 tab chính (nút cài đặt luôn có mặt), quay đúng
-  // về màn vừa đứng thay vì cố định 1 đích đến (giống lesson.js).
-  wireBackLink(mount, () => history.back());
+  // KHÔNG còn nút back (2026-08-05, Minh: "bỏ icon < ở Cài đặt") — Cài đặt giờ là 1 trong 4 tab
+  // CHÍNH ở bottom nav (xem app.js NAV_TABS), giống Home/Tiến trình/Admin đều không có back.
 
   mount.querySelector("#logout-btn").addEventListener("click", () => {
     clearSession();
     navigate("/login");
   });
 
-  // "Đổi chuyên ngành" (2026-08-04, đổi tên 2026-08-05 — Minh: "Đổi vị trí công việc" ->
-  // "Đổi chuyên ngành", khớp industrySelect.js đã bỏ tầng vị trí) — vào ĐÚNG luồng chọn chuyên
-  // ngành đã có (views/industrySelect.js), TÁI DÙNG nguyên cơ chế "1 goal active" ở đó — KHÔNG
-  // viết logic riêng ở đây.
-  mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select"));
+  // "/industry-select/change" (2026-08-05, khác "/industry-select" trơn — Minh: "đổi chuyên
+  // ngành đang ở BÊN TRONG luồng, không phải lần chọn đầu tiên, cần icon Home/Tiến trình... để
+  // quay lại") — cùng renderIndustrySelect(), chỉ khác app.js::renderBottomNav() đọc thêm
+  // "/change" ở cuối hash để quyết định hiện/ẩn thanh điều hướng ngoài (xem app.js).
+  mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select/change"));
+
+  mount.querySelector("#account-row").addEventListener("click", () => {
+    showToast(session?.user?.email || "Chưa đăng nhập");
+  });
+  mount.querySelector("#app-info-row").addEventListener("click", () => {
+    showToast(`${APP_NAME} · v${APP_VERSION}`);
+  });
 
   mount.querySelectorAll(".theme-option[data-theme]").forEach((btn) => {
     btn.addEventListener("click", () => {

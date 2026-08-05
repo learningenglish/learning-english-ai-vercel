@@ -6,8 +6,11 @@
 :root {
   /* 2026-08-05 (Minh: "nền sáng làm đậm hơn để tránh mỏi mắt") — hạ độ sáng nền/viền nhẹ
      (không đổi qua Tối, --surface thẻ vẫn trắng để card nổi khối rõ hơn trên nền đậm hơn 1 nấc
-     này). */
-  --bg-fallback: #d9e6f2;
+     này). "--bg-fallback" tím nhạt vì Tím là palette MẶC ĐỊNH (data-palette="purple" không có
+     khối override riêng bên dưới — dùng thẳng giá trị gốc ở đây) — 5 palette còn lại override
+     đúng biến này (xem khối ":root[data-palette=...]" cuối file, 2026-08-05, Minh: "nền phải
+     đúng màu chủ đạo color palette, không phải luôn luôn xanh dương"). */
+  --bg-fallback: #ddd7f2;
   --surface: #ffffff;
   --surface-soft: #eef1f7;
   --border: #d7dce6;
@@ -3148,6 +3151,18 @@ textarea:focus {
   border-radius: 999px;
   background: var(--purple);
 }
+/* Màu theo MỨC % (2026-08-05, thay 1 màu --purple duy nhất — xem progressTier() trong
+   progress.js) — dùng "--chip-*" CỐ ĐỊNH (không đổi theo Theme Color Palette), vì đây là màu Ý
+   NGHĨA mức độ tiến bộ, không phải màu nhận diện thương hiệu. */
+.progress-bar-fill-low {
+  background: var(--chip-orange);
+}
+.progress-bar-fill-mid {
+  background: var(--chip-purple);
+}
+.progress-bar-fill-high {
+  background: var(--chip-green);
+}
 
 .progress-history-day {
   font-weight: 700;
@@ -3314,12 +3329,20 @@ textarea:focus {
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--border);
 }
 
-/* 3 bộ màu thay thế cho "purple" mặc định (app/js/palette.js) — chỉ override --purple/
-   --purple-soft, mọi rule khác đọc lại 2 biến này nên tự động đổi theo, không cần viết thêm
-   CSS riêng cho từng thành phần (nút, tab active, badge...). */
+/* 3 bộ màu thay thế cho "purple" mặc định (app/js/palette.js) — override --purple/--purple-soft
+   (mọi rule khác đọc lại 2 biến này nên tự động đổi theo, không cần viết thêm CSS riêng cho
+   từng thành phần: nút, tab active, badge...) + "--bg-fallback" (2026-08-05, Minh: "nền chính
+   phải đúng màu chủ đạo color palette" — trước đó CHỈ đổi --purple/--purple-soft, nền
+   body::before (đọc var(--bg-fallback) ở điểm dừng 55% của gradient, xem phía trên file) vẫn
+   LUÔN 1 màu xanh dương cố định bất kể palette nào đang chọn — SỬA: mỗi palette có 1 sắc thái
+   nền pastel RIÊNG cùng tông màu, độ sáng giữ tương đương bản Tím mặc định (đậm hơn 1 nấc, xem
+   ghi chú "đậm hơn để tránh mỏi mắt" ở :root gốc) chỉ đổi SẮC không đổi ĐỘ SÁNG. Chỉ áp dụng
+   Sáng (không đổi khối "dark" — nền Tối vốn đã trung tính, tinh chỉnh riêng ngoài phạm vi lần
+   này). */
 :root[data-palette="orange"] {
   --purple: #f97316;
   --purple-soft: #ffedd5;
+  --bg-fallback: #f5e2ce;
 }
 :root[data-theme="dark"][data-palette="orange"] {
   --purple: #fb923c;
@@ -3328,6 +3351,7 @@ textarea:focus {
 :root[data-palette="blue"] {
   --purple: #2563eb;
   --purple-soft: #dbeafe;
+  --bg-fallback: #d7e6f7;
 }
 :root[data-theme="dark"][data-palette="blue"] {
   --purple: #60a5fa;
@@ -3336,16 +3360,18 @@ textarea:focus {
 :root[data-palette="green"] {
   --purple: #16a34a;
   --purple-soft: #dcfce7;
+  --bg-fallback: #dcf0e0;
 }
 :root[data-theme="dark"][data-palette="green"] {
   --purple: #4ade80;
   --purple-soft: rgba(74, 222, 128, 0.16);
 }
 /* 2 bộ "màu đậm" thêm theo yêu cầu Minh (2026-08-05, cùng lúc làm đậm nền Sáng) — cùng pattern
-   override --purple/--purple-soft như 3 bộ trên. */
+   override --purple/--purple-soft/--bg-fallback như 3 bộ trên. */
 :root[data-palette="ruby"] {
   --purple: #9f1239;
   --purple-soft: #fce7ef;
+  --bg-fallback: #f6dbe3;
 }
 :root[data-theme="dark"][data-palette="ruby"] {
   --purple: #fb7185;
@@ -3354,6 +3380,7 @@ textarea:focus {
 :root[data-palette="teal"] {
   --purple: #0f766e;
   --purple-soft: #ccfbf1;
+  --bg-fallback: #d5f0ec;
 }
 :root[data-theme="dark"][data-palette="teal"] {
   --purple: #2dd4bf;

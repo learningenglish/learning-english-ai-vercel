@@ -283,3 +283,36 @@ Bump `CACHE_NAME` lên v37.
 
 Thêm icon mới `user`/`info` (`icons.js`). Thêm `app/js/fontSize.js` vào `SHELL_FILES` (sw.js).
 Bump `CACHE_NAME` lên v38.
+
+## 2026-08-05 (tiếp) — 6 phản hồi từ ảnh test thật round 2 (đợt "tiếp" ở trên)
+
+1. **Chữ tràn khung ở "Tài khoản"** — email dài làm vỡ layout hàng `.settings-row`. Đổi "Tài
+   khoản"/"Thông tin ứng dụng" (`profile.js`) sang dạng `>` giống "Đổi chuyên ngành" (không hiện
+   giá trị dài ngay trên hàng nữa) — bấm vào mới hiện qua `showToast()`.
+2. **Bỏ icon `<` ở Cài đặt** — Cài đặt giờ là 1 trong 4 tab CHÍNH ở bottom nav (Home/Tiến
+   trình/Admin/Setting), không cần back nữa, giống 3 tab còn lại đều không có back.
+3. **"Đổi chuyên ngành" cần hiện lại bottom nav khi đang ở giữa luồng** — trước đó `/industry-
+   select` LUÔN ẩn bottom nav (đúng cho lần đầu onboarding, chưa có gì để quay lại) nhưng cũng ẩn
+   luôn khi vào từ Setting > "Đổi chuyên ngành" (lúc này đã có sẵn 1 lộ trình, đang ở TRONG luồng,
+   cần cách quay lại). Sửa: `profile.js` điều hướng sang `/industry-select/change` (cùng
+   `renderIndustrySelect()`, chỉ thêm 1 segment) — `app.js::renderBottomNav()` CHỈ ẩn nav khi hash
+   là ĐÚNG `#/industry-select` trơn, giữ nav khi có `/change` theo sau.
+4. **Nền chính phải đúng màu Color Palette** — trước đó chỉ `--purple`/`--purple-soft` đổi theo
+   palette, còn `--bg-fallback` (điểm dừng dưới của gradient nền toàn màn hình, `body::before`)
+   LUÔN cố định 1 màu xanh dương bất kể palette nào — Minh test bằng palette Cam thấy nền vẫn xanh.
+   Thêm `--bg-fallback` riêng cho MỌI palette (kể cả Tím mặc định, đổi giá trị gốc ở `:root` sang
+   tím nhạt) — mỗi palette 1 sắc thái pastel cùng tông, cùng độ sáng như bản "đậm hơn" đã chỉnh
+   trước đó, chỉ đổi SẮC không đổi ĐỘ SÁNG. Xác nhận qua `getComputedStyle` đổi đúng theo
+   `data-palette` (Cam → `#f5e2ce`, Rêu đậm → `#d5f0ec`, ...).
+5. **Progress bars nhiều màu theo mức, không phải 1 màu** — đối chiếu số liệu ảnh mẫu tham khảo,
+   phát hiện quy luật thật (không phải màu random): 0%→xám, 1-19%→cam, 20-59%→tím, ≥60%→xanh lá.
+   Thêm `progressTier()` trong `progress.js` + class `.progress-bar-fill-low/-mid/-high` dùng biến
+   `--chip-*` CỐ ĐỊNH (không đổi theo Theme Color Palette — đây là màu Ý NGHĨA mức độ, khác
+   `--purple` là màu nhận diện thương hiệu).
+6. **Luyện viết: gộp về đúng dạng, không liệt kê chủ đề nhỏ** — `getWritingGenreBreakdown()`
+   (`db.js`) trước đó group thẳng theo `task.genre_vi` thô, dữ liệu cũ/test có giá trị là CHỦ ĐỀ
+   CỤ THỂ (vd "đánh giá nhà hàng", "Email xin lỗi") thay vì DẠNG BÀI VIẾT ("Đánh giá", "Email") →
+   ra danh sách dài lộn xộn. Thêm `KNOWN_WRITING_GENRES` (đúng 14 khoá trong
+   `writingTopicPool.json`) — giá trị không khớp gộp chung vào "Khác".
+
+Bump `CACHE_NAME` lên v39.
