@@ -457,3 +457,71 @@ không dùng Claude Code 2 ngày đó — sandbox không có internet ra ngoài 
 tiết, bị chặn bởi `ExceedsBillingLimitError` khi gọi `vercel logs`) — nhưng cổng an toàn mới
 chặn được TOÀN BỘ nhóm nguyên nhân này bất kể cơ chế kích hoạt cụ thể là gì, nên coi như đã xử
 lý xong phần có thể xử lý được từ phía code.
+
+## 2026-08-05 (tiếp 5) — Tìm ra nguyên nhân THẬT (không phải cron) + sửa gốc kiến trúc tra từ
+
+Minh cung cấp CSV export thật từ OpenAI Usage Dashboard (`num_model_requests` theo model/ngày)
+— bằng chứng CHÍNH XÁC, không còn phỏng đoán:
+- 31/7 UTC: 952 requests = 3 (gpt-4.1, cron tin tức) + **922 (gpt-4o-mini)** + 6 (key khác) +
+  1 (search) + 20 (TTS).
+- 1/8 UTC: 381 requests = **377 (gpt-4o-mini)** + 3 (gpt-4.1) + 1 (search).
+- Cron tin tức chỉ đúng ~3-7 lượt/ngày như thiết kế — KHÔNG phải nguồn. Đính chính lại nhận định
+  sai ở lượt trước (giả thuyết cron retry storm) — số liệu thật KHÔNG khớp giả thuyết đó (chi phí
+  "web search tool calls" chỉ $0.03/ngày ≈ 1 lượt tìm tin, không phải hàng chục lượt).
+- 922/377 request gpt-4o-mini có prompt hệ thống DÀI được cache ~88-90% + output CỰC NGẮN
+  (~35-53 token/lượt) — khớp CHÍNH XÁC đặc điểm `word_lookup` (bảng CEFR dài cache lại, chỉ 1
+  từ+1 câu mỗi lượt, `maxTokens:150`). Xác nhận thêm bằng cách đếm ngược: 1668 từ `source:
+  "user_lookup"` đã lưu trong `lessons`/`news_lessons` — 1 bài ~300-600 từ có thể tự kích hoạt
+  50-200+ lượt AI chỉ từ việc MỞ bài 1 lần (`prefetchAllLessonWords()` tự tra TOÀN BỘ từ CHƯA có
+  dữ liệu, không giới hạn).
+
+**Sửa gốc kiến trúc (yêu cầu Minh, đính chính 2 lần cho tới đúng ý)** — phân tích cụm từ 1 LẦN
+DUY NHẤT lúc TẠO BÀI (không phải mỗi lần bấm):
+1. `api/_generate/lesson.js`: tách `PHRASE_GROUPS_RULES` (khối luật gom cụm — verb group/
+   phrasal verb/cụm giới từ/cụm danh từ/danh từ riêng/collocation, đã có sẵn từ 30/7 nhưng nằm
+   cứng trong 1 prompt) thành hằng số DÙNG CHUNG cho `generate_lesson`/`analyze_user_text` VÀ
+   hàm vá mới — sửa 1 chỗ, không lệch luật. Mở rộng `PHRASE_COVERAGE_REQUIRED_LEVELS` từ chỉ
+   A1/A2/B1 → MỌI cấp độ (B2/C1 trước đây được miễn ép coverage — giờ bắt buộc, vì mục tiêu mới
+   là bài MỚI 0% cần AI khi bấm, không phân biệt cấp độ).
+2. Action mới `analyze_lesson_phrase_groups` — "vá" bài CŨ (133 lessons + 27 news_lessons, phát
+   hiện qua kiểm tra thật: **CẢ 160 bài đều thiếu `phrase_groups`**, tính năng 30/7 xây xong
+   nhưng chưa từng thực sự chạy) — CHỈ gửi AI các câu THIẾU (bỏ qua câu đã đủ, tiết kiệm token),
+   1 LƯỢT GỌI AI CHO CẢ BÀI (không phải 1 lượt/từ), validate coverage + 1 lần thử lại, PATCH
+   thẳng vào `lessons`/`news_lessons`. Kiểm ownership cho bài cá nhân, mở cho mọi tài khoản với
+   bài Tin tức (cùng mô hình quyền `add_news_vocab_word`).
+3. `app/js/views/lesson.js`: BỎ HẲN `prefetchAllLessonWords()` + toàn bộ hàng đợi
+   `pendingLookups`/`scheduleLookup`/`wordLookupCache` (dead code sau khi bỏ). Bấm vào từ CÓ dữ
+   liệu (`phrase_groups` sinh sẵn hoặc đã vá) → đọc thẳng, 0 lượt AI. Bấm vào từ CHƯA có (bài cũ)
+   → `ensurePhraseGroupsPatched()` vá CẢ BÀI 1 lần, nhiều lượt bấm liên tiếp lúc đang vá dùng
+   CHUNG 1 promise (không tạo thêm lượt gọi). Vá xong → vẽ lại nội dung (`renderContentBodyFn`)
+   để MỌI từ khác trong bài cũng được cập nhật, tìm lại đúng span vừa bấm qua
+   `data-item-idx`/`data-token-idx`. Gỡ luôn `word_lookup` khỏi `api/chat.js` (file
+   `wordLookup.js` giữ nguyên, đánh dấu mồ côi) + `addLookedUpWord`/`persistLookedUpWord` (dead
+   code, không còn điểm gọi nào) — `add_vocab_word`/`add_news_vocab_word` giữ đăng ký (vô hại,
+   có thể tái dùng sau).
+   - **Bug thật tự bắt được lúc code**: viết nhầm `pages[itemIdx]`/`panel.querySelector` trong
+     các hàm mới — `pages`/`panel` là biến CỤC BỘ của `renderContentTab()`, còn hàm mới lại nằm
+     NGOÀI closure đó (xác nhận bằng đếm ngoặc `{}/}` thật, không đoán) — sửa lại dùng
+     `lesson.content`/`mount.querySelector` (đúng scope).
+
+**Kiểm chứng — không chỉ đọc code:**
+- 5 test case Node (mock AI + Supabase) cho `analyze_lesson_phrase_groups()`: chỉ gửi câu thiếu,
+  0 lượt AI khi đã đủ, thử lại đúng 1 lần khi coverage thiếu, KHÔNG lặp vô hạn khi thử lại vẫn
+  thất bại.
+- Test end-to-end THẬT trên trình duyệt (Preview tool, mock `fetch` đếm lượt gọi `/api/chat`):
+  bấm 3 từ có sẵn dữ liệu ("cats"/"I"/"like") → 0 lượt AI; bấm từ đầu tiên thiếu dữ liệu ("She")
+  → đúng 1 lượt AI, tooltip hiện đúng; bấm tiếp từ khác cùng câu vừa vá ("hard") → VẪN 0 lượt AI
+  thêm, tooltip đúng dữ liệu mới vá. Khớp ĐÚNG cả 3 tiêu chí nghiệm thu Minh đề ra.
+
+**Báo cáo chi phí trước/sau:**
+- TRƯỚC: 952+381 = 1333 request/2 ngày (thật, đã xảy ra) — không có giới hạn trên, mỗi lượt mở
+  lại/bấm lại đều có thể tốn thêm.
+- SAU: 0% lượt bấm cần AI vĩnh viễn (bài mới sinh sẵn dữ liệu; bài cũ sau 1 lần vá cũng 0%).
+  Chi phí "vá" 1 LẦN cho TOÀN BỘ 160 bài cũ hiện có (nếu người dùng lần lượt mở hết, KHÔNG tự
+  động chạy hàng loạt) — ước lượng dựa trên quy mô token thật đã quan sát (đối chiếu chi phí
+  gpt-4o-mini cỡ 1 lượt sinh bài thật trong CSV, ~$0.01-0.02/lượt): **160 lượt × ~$0.01-0.02 ≈
+  $1.6-3.2 TỔNG, MỘT LẦN DUY NHẤT, KHÔNG BAO GIỜ LẶP LẠI** (khác hẳn 1333 request/2 ngày không
+  giới hạn trước đó) — con số ước lượng, không phải đo thật (sandbox không gọi được OpenAI thật
+  để đo chính xác).
+
+Bump `CACHE_NAME` lên v42.

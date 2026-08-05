@@ -1,3 +1,9 @@
+// api/_generate/wordLookup.js — FILE MỒ CÔI (2026-08-05, "sửa gốc tính năng tra từ") — action
+// "word_lookup" đã bị GỠ khỏi ACTIONS map trong api/chat.js, KHÔNG còn ai gọi tới nữa. Nguyên
+// nhân thật gây chi phí bất thường 952+381 request ngày 31/7-1/8: mỗi lượt bấm từ CHƯA có dữ
+// liệu gọi AI RIÊNG cho ĐÚNG 1 từ đó (không giới hạn số lượt/bài) — thay bằng
+// analyze_lesson_phrase_groups() trong lesson.js (vá CẢ BÀI 1 lần duy nhất, 0 lượt AI cho các
+// lượt bấm sau). Giữ nguyên file, không xoá, theo đúng quy ước dự án cho code mồ côi.
 // api/_generate/wordLookup.js — action "word_lookup": tra 1 từ/cụm trong ngữ cảnh 1 câu,
 // trả về ĐÚNG 3 thứ cho tooltip rê chuột ở màn Bài học: cấp độ CEFR, nghĩa ngắn gọn, cụm
 // từ đi kèm (nếu có). KHÔNG dùng lại word_tip/word_explain có sẵn trong chat.js vì cả 2 đều

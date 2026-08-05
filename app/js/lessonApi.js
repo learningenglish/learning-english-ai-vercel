@@ -40,26 +40,13 @@ async function callAndParse(action, payload) {
   }
 }
 
-// Tra 1 từ/cụm trong bài (word_lookup, dù do người dùng bấm hay do prefetchAllLessonWords()
-// chạy nền — xem views/lesson.js) -> tự thêm vào bảng Từ vựng của bài, nhóm "Đã tra" (xem
-// VOCAB_VIEWS trong views/lesson.js) — lưu THẬT vào vocabulary (không chỉ hiện tạm trong phiên
-// xem), để LẦN SAU mở lại bài (kể cả người khác, với bài Tin tức dùng chung) vẫn có sẵn, không
-// tốn lượt AI tra lại — đây là điều kiện để "prefetch cả bài lúc mở" không lặp lại chi phí AI
-// mỗi lần mở bài (2026-07-29). Fire-and-forget như fetchAndSaveLessonCover bên dưới — lỗi mạng
-// ở bước lưu không nên làm hỏng trải nghiệm tra từ (tooltip đã hiện xong trước khi gọi hàm này).
-// "isNews" — bài Tin tức (news_lessons, KHÔNG user_id, dùng chung mọi tài khoản) phải ghi qua
-// action RIÊNG (add_news_vocab_word, không lọc theo chủ sở hữu), xem api/_generate/vocab.js.
-export async function addLookedUpWord(lessonId, word, lookup, isNews) {
-  try {
-    await callChatAction(isNews ? "add_news_vocab_word" : "add_vocab_word", {
-      lesson_id: lessonId,
-      word,
-      meaning: lookup?.meaning || "",
-      level: lookup?.level || null,
-    });
-  } catch {
-    // Im lặng — xem ghi chú ở trên.
-  }
+// "Vá" phrase_groups cho bài CŨ (2026-08-05, "sửa gốc tính năng tra từ") — gọi ĐÚNG 1 LẦN khi
+// người dùng bấm vào 1 từ mà bài CHƯA có dữ liệu sẵn (bài sinh trước khi có tính năng gom cụm
+// từ, xem phraseGroupToEntry() trong views/lesson.js) — phân tích LẠI CẢ BÀI trong 1 lượt gọi
+// AI DUY NHẤT, lưu thẳng vào bài, THAY HẲN word_lookup cũ (gọi AI riêng cho MỖI từ mỗi lần bấm —
+// nguyên nhân thật gây 952+381 request bất thường 31/7-1/8, xem docs/NHAT-KY-LAM-VIEC.md).
+export async function analyzeLessonPhraseGroups(lessonId, isNews) {
+  return callAndParse("analyze_lesson_phrase_groups", { lesson_id: lessonId, is_news: !!isNews });
 }
 
 // Âm thanh chất lượng cao trả phí — chỉ trả "eligible:true" cho bài đọc/hội thoại CÓ lĩnh vực

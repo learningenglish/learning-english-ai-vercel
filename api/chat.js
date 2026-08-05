@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text } from "./_generate/lesson.js";
+import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups } from "./_generate/lesson.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
-import { word_lookup } from "./_generate/wordLookup.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { generate_lesson_full_audio } from "./_generate/audio.js";
 import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
@@ -1280,6 +1279,13 @@ const ACTIONS = {
   // tự deploy thành endpoint riêng né qua gate JWT/CORS bên dưới — xem chú thích đầu file đó.
   generate_lesson,
   analyze_user_text,
+  // "Vá" phrase_groups cho bài CŨ (2026-08-05, "sửa gốc tính năng tra từ") — THAY HẲN
+  // word_lookup (đã GỠ khỏi ACTIONS, xem api/_generate/wordLookup.js — file giữ nguyên không
+  // xoá nhưng không còn action nào gọi tới) — nguyên nhân thật gây 952+381 request bất thường
+  // 31/7-1/8 (mỗi lượt bấm từ CHƯA có dữ liệu gọi AI riêng cho ĐÚNG 1 từ đó). Giờ bấm vào từ
+  // chưa có dữ liệu -> phân tích LẠI CẢ BÀI 1 lượt duy nhất, lưu lại — 0 lượt AI cho mọi lượt
+  // bấm SAU, xem chi tiết tại định nghĩa hàm trong lesson.js.
+  analyze_lesson_phrase_groups,
   // Luyện viết (2026-07-27) — AI giao đề + AI chấm bài, xem api/_generate/writing.js. Độc
   // lập hoàn toàn với luồng Lesson-first, không đụng gì tới generate_lesson/analyze_user_text.
   // list_writing_genres (2026-08-04) — đọc thuần, KHÔNG gọi AI, phục vụ màn "Chọn dạng bài viết".
@@ -1287,17 +1293,17 @@ const ACTIONS = {
   generate_writing_task,
   grade_writing,
   save_writing_favorite,
-  // Tooltip rê chuột trong màn Bài học: level CEFR + nghĩa ngắn + cụm từ đi kèm cho 1 từ,
-  // khác word_tip/word_explain có sẵn (2 action đó trả text tự do dài, không có level).
-  word_lookup,
   // Ảnh bìa bài học Student App: tìm từ nguồn MIỄN PHÍ theo tiêu đề (thay DALL-E — quyết
   // định chi phí 2026-07-18) rồi lưu URL vào đúng hàng lesson — xem api/_generate/coverImage.js.
   // set_lesson_cover_image tách riêng vì client bị REVOKE UPDATE cột cover_image_url trực
   // tiếp (chỉ is_favorite mở cho client, xem supabase/019_lessons.sql).
   search_lesson_cover_image,
   set_lesson_cover_image,
-  // Người học bấm tra 1 từ trong bài -> tự thêm vào "vocabulary" của bài đó (nhóm "Đã tra"),
-  // xem api/_generate/vocab.js. Bản "_news" ghi vào news_lessons (công khai, không user_id).
+  // Thêm 1 từ vào "vocabulary" của bài (nhóm "Đã tra"), xem api/_generate/vocab.js. Bản "_news"
+  // ghi vào news_lessons (công khai, không user_id). MỒ CÔI (2026-08-05, "sửa gốc tính năng tra
+  // từ") — client KHÔNG còn gọi tới nữa (word_lookup/persistLookedUpWord đã bỏ, tra từ giờ đọc
+  // thẳng "phrase_groups" đã lưu sẵn, xem lesson.js) — giữ đăng ký lại (không xoá) vì vô hại,
+  // có thể tái dùng sau này cho 1 nút "tự thêm từ vào Đã tra" thủ công nếu cần.
   add_vocab_word,
   add_news_vocab_word,
   // Âm thanh chất lượng cao trả phí (CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư viện AI) — 1

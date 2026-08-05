@@ -165,6 +165,48 @@ function orNone(v) {
 }
 
 // ====== PROMPT 1: generate_lesson — nguyên văn docs/prompt-ai-tao-bai-hoc.md, KHÔNG sửa. ======
+// TÁCH RIÊNG (2026-08-05, "sửa gốc tính năng tra từ" — Minh) — khối luật GOM CỤM TỪ này TRƯỚC
+// ĐÂY nằm thẳng trong GENERATE_LESSON_SYSTEM_PROMPT (không tái dùng được) — giờ dùng CHUNG cho
+// CẢ 2 nơi: (1) sinh bài mới (generate_lesson/analyze_user_text, như trước), (2) "vá" phrase_
+// groups cho bài CŨ chưa có (analyzeLessonPhraseGroups() bên dưới) — đảm bảo 2 nơi KHÔNG BAO GIỜ
+// lệch luật nhau (sửa 1 chỗ, cả 2 tự cập nhật).
+const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
+mọi content_type, 2026-07-30):
+- Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
+  nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
+- Một nhóm là 1 CỤM Ý NGHĨA THẬT (không phải chia máy móc theo số từ cố định) — nhận diện theo
+  các loại sau, ưu tiên gộp khi khớp đúng cấu trúc:
+  * Cụm động từ (verb group): thì phức hợp ("has eaten", "is working", "will have finished"),
+    bị động ("was built", "has been repaired"), modal + động từ ("can swim", "must have
+    forgotten"), "to" + động từ nguyên mẫu, động từ + V-ing.
+  * Phrasal verb / động từ + giới từ cố định ("give up", "look after", "depend on").
+  * Cụm giới từ (prepositional phrase): giới từ + (mạo từ/sở hữu) + danh từ ("in the room", "at
+    six o'clock", "in charge of").
+  * Cụm danh từ (noun phrase): mạo từ/sở hữu + (tính từ) + danh từ ("a big house", "my old car").
+  * Danh từ riêng ghép nhiều từ ("New York City", "John Smith").
+  * Cụm cố định/collocation (fixed expression): cụm luôn đi cùng nhau như 1 khối ("by the way",
+    "of course", "a lot of", "thank you very much", "good morning").
+- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn, liên từ đứng riêng, tính từ đứng riêng...)
+  vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ gồm chính nó, "type" là loại từ
+  đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/modal/
+  interjection/number).
+- Mỗi nhóm có cấu trúc:
+  {
+    "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
+    "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
+    "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
+    "type": "loại cụm/loại từ, theo danh sách ở trên",
+    "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
+  }
+- BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
+  "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
+  "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
+  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. NẾU KIỂM TRA NÀY THẤT BẠI, hệ thống sẽ bắt
+  làm lại (sinh lại toàn bộ bài, hoặc với "vá" bài cũ — thử lại đúng lượt gọi đó) — không được
+  để sót từ nào, ở BẤT KỲ cấp độ nào (2026-08-05: bỏ ngoại lệ B2/C1 trước đây, xem ghi chú
+  PHRASE_COVERAGE_REQUIRED_LEVELS bên dưới — mục tiêu MỚI là 0 lượt gọi AI khi người dùng bấm
+  vào từ, nên KHÔNG được phép còn từ nào thiếu dữ liệu ở bất kỳ cấp độ nào nữa).`;
+
 const GENERATE_LESSON_SYSTEM_PROMPT = `Bạn là chuyên gia soạn giáo trình tiếng Anh cho người Việt, bám sát khung CEFR.
 
 NHIỆM VỤ: Tạo một bài học tiếng Anh hoàn chỉnh theo yêu cầu của người dùng.
@@ -246,40 +288,7 @@ QUY TẮC VỀ LOẠI NỘI DUNG:
 - "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
 - "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
 
-QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
-mọi content_type, 2026-07-30):
-- Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
-  nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
-- Một nhóm là 1 CỤM Ý NGHĨA THẬT (không phải chia máy móc theo số từ cố định) — nhận diện theo
-  các loại sau, ưu tiên gộp khi khớp đúng cấu trúc:
-  * Cụm động từ (verb group): thì phức hợp ("has eaten", "is working", "will have finished"),
-    bị động ("was built", "has been repaired"), modal + động từ ("can swim", "must have
-    forgotten"), "to" + động từ nguyên mẫu, động từ + V-ing.
-  * Phrasal verb / động từ + giới từ cố định ("give up", "look after", "depend on").
-  * Cụm giới từ (prepositional phrase): giới từ + (mạo từ/sở hữu) + danh từ ("in the room", "at
-    six o'clock", "in charge of").
-  * Cụm danh từ (noun phrase): mạo từ/sở hữu + (tính từ) + danh từ ("a big house", "my old car").
-  * Danh từ riêng ghép nhiều từ ("New York City", "John Smith").
-  * Cụm cố định/collocation (fixed expression): cụm luôn đi cùng nhau như 1 khối ("by the way",
-    "of course", "a lot of", "thank you very much", "good morning").
-- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn, liên từ đứng riêng, tính từ đứng riêng...)
-  vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ gồm chính nó, "type" là loại từ
-  đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/modal/
-  interjection/number).
-- Mỗi nhóm có cấu trúc:
-  {
-    "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
-    "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
-    "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
-    "type": "loại cụm/loại từ, theo danh sách ở trên",
-    "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
-  }
-- BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
-  "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
-  "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
-  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. Với bài cấp A1/A2/B1, nếu kiểm tra này THẤT
-  BẠI, hệ thống sẽ bắt sinh lại toàn bộ bài (dùng đúng cơ chế thử lại đã có) trước khi lưu —
-  không được để sót từ nào ở 3 cấp độ này.
+${PHRASE_GROUPS_RULES}
 
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
@@ -745,11 +754,13 @@ function itemPhraseCoverageOk(item) {
   }
   return true;
 }
-// BẮT BUỘC 100% cho A1/A2/B1 (yêu cầu Minh) — B2/C1 KHÔNG ép (chấp nhận AI có thể sót từ,
-// không bắt sinh lại — yêu cầu rõ). 1 CÂU sót từ cũng đủ để coi cả bài FAIL (kiến trúc hiện tại
-// không có cơ chế "sinh lại đúng 1 câu" — generate_lesson luôn sinh nguyên bài 1 lượt gọi, nên
-// bắt sinh lại toàn bộ khi phát hiện).
-const PHRASE_COVERAGE_REQUIRED_LEVELS = new Set(["A1", "A2", "B1"]);
+// BẮT BUỘC 100% mọi cấp độ (2026-08-05, MỞ RỘNG từ chỉ A1/A2/B1 — "sửa gốc tính năng tra từ":
+// mục tiêu MỚI là bài MỚI sinh ra 0% lượt bấm nào còn cần gọi AI, kể cả B2/C1 — TRƯỚC ĐÂY B2/C1
+// được miễn vì lo sinh lại tốn thêm lượt/thời gian, nhưng giờ "tra từ" không còn round-trip AI
+// riêng nữa nên bắt buộc coverage đầy đủ quan trọng hơn). 1 CÂU sót từ cũng đủ để coi cả bài
+// FAIL (kiến trúc hiện tại không có cơ chế "sinh lại đúng 1 câu" — generate_lesson luôn sinh
+// nguyên bài 1 lượt gọi, nên bắt sinh lại toàn bộ khi phát hiện).
+const PHRASE_COVERAGE_REQUIRED_LEVELS = new Set(VALID_LEVELS);
 function validatePhraseCoverage(parsed) {
   if (!PHRASE_COVERAGE_REQUIRED_LEVELS.has(parsed?.level)) return { valid: true };
   const content = Array.isArray(parsed.content) ? parsed.content : [];
@@ -1060,6 +1071,113 @@ export async function analyze_user_text(data, ctx) {
 // thị thời gian/token/chi phí ước tính lúc đo Phase 0/3, KHÔNG lưu vào bảng "lessons".
 function buildMeta(r) {
   return { usage: r.usage || null, openai_duration_ms: r.durationMs, model: r.model };
+}
+
+// ====== "Vá" phrase_groups cho bài CŨ (2026-08-05, "sửa gốc tính năng tra từ" — Minh) ======
+// Bối cảnh: TRƯỚC ĐÂY bấm 1 từ chưa có dữ liệu -> gọi AI CHO ĐÚNG TỪ ĐÓ mỗi lần bấm
+// (word_lookup, xem api/_generate/wordLookup.js — đã gỡ khỏi luồng bấm, XEM ghi chú ở đó) —
+// nguyên nhân thật gây 952+381 request bất thường 31/7-1/8 (điều tra thật, không phải suy đoán,
+// xem docs/NHAT-KY-LAM-VIEC.md). KIẾN TRÚC MỚI: bấm vào từ CHƯA có dữ liệu -> phân tích LẠI
+// TOÀN BỘ các câu/đoạn CÒN THIẾU của CHÍNH bài đó trong 1 LƯỢT GỌI AI DUY NHẤT, PATCH thẳng vào
+// hàng "lessons"/"news_lessons" — CHỈ tốn ĐÚNG 1 LẦN/BÀI (không phải 1 lần/từ), mọi lượt bấm SAU
+// (từ khác, kể cả người dùng khác với bài Tin tức dùng chung) đọc thẳng dữ liệu đã lưu, 0 lượt AI.
+const PHRASE_GROUPS_ANALYZE_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích cụm từ tiếng Anh cho người học Việt Nam.
+
+${PHRASE_GROUPS_RULES}
+
+NHIỆM VỤ: Với DANH SÁCH câu/đoạn tiếng Anh ĐỘC LẬP được đánh số dưới đây (KHÔNG phải 1 bài liền
+mạch — CHỈ phân tích cụm từ theo quy tắc trên, TUYỆT ĐỐI KHÔNG viết lại/sửa/rút gọn nội dung câu),
+trả về "phrase_groups" cho ĐÚNG MỖI câu.
+
+QUY TẮC ĐẦU RA:
+- Trả về DUY NHẤT 1 JSON hợp lệ, không chữ nào khác, không bọc \`\`\`.
+- Schema: {"items": [{"index": <số thứ tự câu, ĐÚNG như đề bài>, "phrase_groups": [...]}]} — PHẢI
+  có ĐỦ VÀ ĐÚNG SỐ LƯỢNG câu đã cho, đúng thứ tự "index".`;
+
+function buildPhraseGroupsUserPrompt(items) {
+  return items.map((it, i) => `[${i}] "${it.text}"`).join("\n");
+}
+
+async function callAnalyzePhraseGroups(items) {
+  const r = await generateStructuredJSON({
+    maxTokens: 6000,
+    temperature: 0.3,
+    messages: [
+      { role: "system", content: PHRASE_GROUPS_ANALYZE_SYSTEM_PROMPT },
+      { role: "user", content: buildPhraseGroupsUserPrompt(items) },
+    ],
+  });
+  if (!r.ok) return { ok: false, reason: "call_or_parse_failed" };
+  const resultItems = Array.isArray(r.data?.items) ? r.data.items : null;
+  if (!resultItems || resultItems.length !== items.length) return { ok: false, reason: "item_count_mismatch" };
+  for (let i = 0; i < items.length; i++) {
+    const match = resultItems.find((x) => x.index === i) || resultItems[i];
+    if (!itemPhraseCoverageOk({ text: items[i].text, phrase_groups: match?.phrase_groups })) {
+      return { ok: false, reason: "phrase_coverage_incomplete", itemIndex: i };
+    }
+  }
+  return { ok: true, items: resultItems };
+}
+
+// "is_news": true -> "news_lessons" (public, KHÔNG kiểm ownership — cùng mô hình quyền
+// add_news_vocab_word() trong vocab.js, ai đã đăng nhập cũng vá được vì dữ liệu dùng chung).
+// false -> "lessons" cá nhân, PHẢI đúng chủ sở hữu (lọc "user_id=eq.ctx.studentId" ngay trong
+// query, khớp 0 hàng thì coi như không tìm thấy, không rò rỉ bài người khác).
+export async function analyze_lesson_phrase_groups(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
+
+  const table = data.is_news ? "news_lessons" : "lessons";
+  const ownerFilter = data.is_news ? "" : `&user_id=eq.${encodeURIComponent(ctx.studentId)}`;
+  const selectRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}${ownerFilter}&select=content`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+  );
+  if (!selectRes.ok) {
+    console.error("analyze_lesson_phrase_groups select error:", selectRes.status, await selectRes.text());
+    return { error: "Không đọc được bài học.", status: 502 };
+  }
+  const rows = await selectRes.json();
+  const content = rows?.[0]?.content;
+  if (!Array.isArray(content)) return { error: "Không tìm thấy bài học.", status: 404 };
+
+  // CHỈ gửi AI các câu/đoạn CHƯA đủ dữ liệu — item nào đã đạt coverage (vd bài B2/C1 sinh giai
+  // đoạn trước khi ép 100% may mắn đã đủ, hoặc 1 lượt vá TRƯỚC ĐÓ đã xử lý xong) thì GIỮ NGUYÊN,
+  // không tốn thêm token phân tích lại.
+  const missingIdx = content.map((it, i) => (itemPhraseCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
+  if (!missingIdx.length) {
+    return { content: JSON.stringify({ content }) };
+  }
+  const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
+
+  let result = await callAnalyzePhraseGroups(toAnalyze);
+  if (!result.ok) result = await callAnalyzePhraseGroups(toAnalyze); // 1 lần thử lại, cùng input
+  if (!result.ok) {
+    console.error("[analyze_lesson_phrase_groups] thất bại sau 2 lượt:", result.reason);
+    return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
+  }
+
+  missingIdx.forEach((origIdx, i) => {
+    const match = result.items.find((x) => x.index === i) || result.items[i];
+    content[origIdx] = { ...content[origIdx], phrase_groups: match.phrase_groups };
+  });
+
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}${ownerFilter}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ content }),
+  });
+  if (!patchRes.ok) {
+    console.error("analyze_lesson_phrase_groups patch error:", patchRes.status, await patchRes.text());
+    return { error: "Phân tích xong nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
+  }
+
+  return { content: JSON.stringify({ content }) };
 }
 
 // ============================================================
