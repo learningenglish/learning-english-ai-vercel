@@ -102,10 +102,36 @@ async function insertNewsLesson(row) {
   return rows?.[0] || null;
 }
 
+// Đã sinh đủ/gần đủ bài hôm nay chưa — CỔNG AN TOÀN thêm 2026-08-05 (điều tra chi phí bất
+// thường 31/7 và 1/8: 952 + 381 lượt gọi OpenAI trong 1 ngày, trong khi 1 lượt chạy đúng quy
+// trình chỉ cần tối đa ~13 lượt/ngày — tức chênh lệch chỉ giải thích được nếu hàm này bị GỌI
+// LẠI TOÀN BỘ TỪ ĐẦU nhiều lần trong CÙNG 1 ngày, vd Vercel tự retry khi function vượt
+// maxDuration/crash — generateDailyNews() TRƯỚC ĐÂY không hề biết "hôm nay đã chạy chưa", mỗi
+// lượt gọi lại đều tìm tin + sinh lại từ đầu, không có gì ngăn). CHỈ kiểm ĐẾM, không đọc nội
+// dung — 1 lượt restFetch thuần, không tốn AI.
+async function countTodayNewsLessons() {
+  const startOfDayUtc = new Date();
+  startOfDayUtc.setUTCHours(0, 0, 0, 0);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/news_lessons?published_at=gte.${startOfDayUtc.toISOString()}&select=id`, {
+    headers: { ...SERVICE_HEADERS, Prefer: "count=exact" },
+    method: "HEAD",
+  });
+  if (!r.ok) return 0; // Lỗi đếm -> coi như 0 (an toàn hơn: thà chạy thêm 1 lượt dư còn hơn bỏ sót cả ngày).
+  return Number((r.headers.get("content-range") || "").split("/")[1] || 0);
+}
+
 // Điều phối cả ngày — gọi TỪ api/cron/generate-news.js. Trả về báo cáo tổng kết (số tin tìm
 // được, số bài sinh thành công/thất bại kèm lý do) để cron endpoint log lại được, dễ chẩn đoán
 // nếu 1 ngày nào đó ra ít hơn 6 bài.
 export async function generateDailyNews() {
+  // CỔNG AN TOÀN (xem countTodayNewsLessons() ở trên) — đã đủ CONTENT_TYPES_TODAY.length bài
+  // hôm nay rồi thì DỪNG NGAY, không tìm tin/gọi AI thêm 1 lượt nào — dù hàm này bị gọi lại bao
+  // nhiêu lần trong ngày (retry/trigger trùng lặp/gọi tay nhầm) cũng chỉ tốn AI ĐÚNG 1 lần/ngày.
+  const alreadyToday = await countTodayNewsLessons();
+  if (alreadyToday >= CONTENT_TYPES_TODAY.length) {
+    return { ok: true, reason: "already_generated_today", existingCount: alreadyToday };
+  }
+
   const searchResult = await searchTodayNews();
   if (!searchResult.ok) {
     return { ok: false, reason: "web_search_failed", detail: searchResult.error };
