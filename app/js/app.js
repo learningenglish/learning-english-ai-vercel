@@ -12,6 +12,7 @@ import { completeOAuthSession } from "./authApi.js";
 import { registerRoute, startRouter, navigate } from "./router.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
 import { applyPalette } from "./palette.js";
+import { applyFontSize } from "./fontSize.js";
 import { icon } from "./icons.js";
 import { renderLogin } from "./views/login.js";
 import { renderHome } from "./views/home.js";
@@ -31,6 +32,7 @@ import { renderProfile } from "./views/profile.js";
 applyTheme();
 watchSystemTheme();
 applyPalette();
+applyFontSize();
 
 // Mentor AI (Đợt 3) đã TẮT UI 2026-07-23 (chất lượng thật không đạt, "như spam" — quyết định
 // của Minh) — form "Tạo bài học" tự nhập (views/createLesson.js) vẫn dùng được, vào qua card

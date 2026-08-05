@@ -13,6 +13,9 @@ export const PALETTES = [
   { value: "orange", label: "Cam ấm", swatch: "#f97316" },
   { value: "blue", label: "Xanh dương", swatch: "#2563eb" },
   { value: "green", label: "Xanh lá", swatch: "#16a34a" },
+  // 2 bộ "màu đậm" thêm 2026-08-05 (Minh: "thêm một vài color palette màu đậm").
+  { value: "ruby", label: "Đỏ ruby đậm", swatch: "#9f1239" },
+  { value: "teal", label: "Xanh rêu đậm", swatch: "#0f766e" },
 ];
 
 export function getPalettePreference() {

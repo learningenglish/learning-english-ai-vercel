@@ -1,12 +1,15 @@
 // app/js/views/profile.js
 import { getSession, clearSession } from "../session.js";
-import { getProfileStats } from "../db.js";
 import { navigate } from "../router.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { backChevronHtml, wireBackLink } from "../header.js";
 import { getThemePreference, setThemePreference } from "../theme.js";
 import { getPalettePreference, setPalettePreference, PALETTES } from "../palette.js";
+import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../fontSize.js";
+
+const APP_NAME = "Learning English AI";
+const APP_VERSION = "1.0.0";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Sáng", icon: "sun" },
@@ -18,13 +21,10 @@ export function renderProfile(mount) {
   const session = getSession();
   const currentTheme = getThemePreference();
   const currentPalette = getPalettePreference();
+  const currentFontSize = getFontSizePreference();
   mount.innerHTML = `
     <div class="screen">
-      <div class="app-header-left">${backChevronHtml()}<h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Hồ sơ</h1></div>
-      <div class="card profile-card">
-        <div class="profile-email">${escapeHtml(session?.user?.email || "")}</div>
-        <div id="profile-stats" class="stat-row"><div class="stat-pill muted">Đang tải...</div></div>
-      </div>
+      <div class="app-header-left">${backChevronHtml()}<h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Cài đặt</h1></div>
 
       <div class="card profile-card">
         <!-- "Ngôn ngữ" (2026-08-04) — hàng TĨNH, app hiện chỉ có tiếng Việt (không có hệ thống
@@ -34,8 +34,16 @@ export function renderProfile(mount) {
           <span class="muted">Tiếng Việt</span>
         </div>
         <div class="settings-row settings-row-clickable" id="change-industry-row">
-          <span class="icon-text">${icon("briefcase", { size: 18 })} Đổi vị trí công việc</span>
+          <span class="icon-text">${icon("briefcase", { size: 18 })} Đổi chuyên ngành</span>
           ${icon("chevron-right", { size: 18 })}
+        </div>
+        <div class="settings-row">
+          <span class="icon-text">${icon("user", { size: 18 })} Tài khoản</span>
+          <span class="muted">${escapeHtml(session?.user?.email || "")}</span>
+        </div>
+        <div class="settings-row">
+          <span class="icon-text">${icon("info", { size: 18 })} Thông tin ứng dụng</span>
+          <span class="muted">${escapeHtml(APP_NAME)} · v${APP_VERSION}</span>
         </div>
       </div>
 
@@ -53,9 +61,24 @@ export function renderProfile(mount) {
         </div>
       </div>
 
+      <!-- "Kích thước chữ" (2026-08-05, mới) — cùng cơ chế theme/palette (app/js/fontSize.js),
+           co giãn TOÀN app vì mọi cỡ chữ đều dùng đơn vị rem. -->
+      <div class="card profile-card">
+        <div class="profile-section-title">Kích thước chữ</div>
+        <div class="theme-picker" id="font-size-picker">
+          ${FONT_SIZES.map(
+            (f) => `
+            <button type="button" class="theme-option ${currentFontSize === f.value ? "active" : ""}" data-font-size="${f.value}">
+              <span>${f.label}</span>
+            </button>
+          `
+          ).join("")}
+        </div>
+      </div>
+
       <!-- Theme (Color Palette) (2026-08-04) — BỎ HẲN ảnh nền/nhóm màu nền dựng sẵn/upload ảnh
            riêng (yêu cầu Minh: "Nền bỏ hình nền, bỏ up hình nền, code dùng nền theo bộ màu") —
-           chọn 1 trong 4 bộ màu ở đây tự đổi LUÔN cả nền full màn hình (xem
+           chọn 1 trong các bộ màu ở đây tự đổi LUÔN cả nền full màn hình (xem
            body::before trong style.css, đọc lại var(--purple-soft) do palette.js set), không
            còn mục "Ảnh nền" riêng nữa. -->
       <div class="card profile-card">
@@ -76,7 +99,7 @@ export function renderProfile(mount) {
     </div>
   `;
 
-  // history.back() — Hồ sơ có thể vào từ CẢ 4 tab chính (nút cài đặt luôn có mặt), quay đúng
+  // history.back() — Cài đặt có thể vào từ CẢ 4 tab chính (nút cài đặt luôn có mặt), quay đúng
   // về màn vừa đứng thay vì cố định 1 đích đến (giống lesson.js).
   wireBackLink(mount, () => history.back());
 
@@ -85,15 +108,23 @@ export function renderProfile(mount) {
     navigate("/login");
   });
 
-  // "Đổi vị trí công việc" (2026-08-04) — vào ĐÚNG luồng chọn lĩnh vực/vị trí đã có
-  // (views/industrySelect.js), TÁI DÙNG nguyên cơ chế "1 goal active"/gate ở đó (checkGoalGate())
-  // để khoá/xác nhận đổi lộ trình — KHÔNG viết logic riêng ở đây.
+  // "Đổi chuyên ngành" (2026-08-04, đổi tên 2026-08-05 — Minh: "Đổi vị trí công việc" ->
+  // "Đổi chuyên ngành", khớp industrySelect.js đã bỏ tầng vị trí) — vào ĐÚNG luồng chọn chuyên
+  // ngành đã có (views/industrySelect.js), TÁI DÙNG nguyên cơ chế "1 goal active" ở đó — KHÔNG
+  // viết logic riêng ở đây.
   mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select"));
 
-  mount.querySelectorAll(".theme-option").forEach((btn) => {
+  mount.querySelectorAll(".theme-option[data-theme]").forEach((btn) => {
     btn.addEventListener("click", () => {
       setThemePreference(btn.dataset.theme);
-      mount.querySelectorAll(".theme-option").forEach((b) => b.classList.toggle("active", b === btn));
+      mount.querySelectorAll(".theme-option[data-theme]").forEach((b) => b.classList.toggle("active", b === btn));
+    });
+  });
+
+  mount.querySelectorAll(".theme-option[data-font-size]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setFontSizePreference(btn.dataset.fontSize);
+      mount.querySelectorAll(".theme-option[data-font-size]").forEach((b) => b.classList.toggle("active", b === btn));
     });
   });
 
@@ -103,19 +134,4 @@ export function renderProfile(mount) {
       mount.querySelectorAll(".palette-option").forEach((b) => b.classList.toggle("active", b === btn));
     });
   });
-
-  loadStats(mount);
-}
-
-async function loadStats(mount) {
-  const slot = mount.querySelector("#profile-stats");
-  try {
-    const { totalXp, completedCount } = await getProfileStats();
-    slot.innerHTML = `
-      <div class="stat-pill icon-text">${icon("star", { size: 15, filled: true })} Tổng XP: <strong>${totalXp}</strong></div>
-      <div class="stat-pill icon-text">${icon("book-open", { size: 15 })} Bài đã học: <strong>${completedCount}</strong></div>
-    `;
-  } catch {
-    slot.innerHTML = `<div class="stat-pill muted">Không tải được thống kê.</div>`;
-  }
 }

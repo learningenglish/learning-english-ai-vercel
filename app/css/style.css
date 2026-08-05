@@ -4,10 +4,13 @@
    Mobile-first, một cột, vùng chạm tối thiểu 44px. */
 
 :root {
-  --bg-fallback: #eaf4ff;
+  /* 2026-08-05 (Minh: "nền sáng làm đậm hơn để tránh mỏi mắt") — hạ độ sáng nền/viền nhẹ
+     (không đổi qua Tối, --surface thẻ vẫn trắng để card nổi khối rõ hơn trên nền đậm hơn 1 nấc
+     này). */
+  --bg-fallback: #d9e6f2;
   --surface: #ffffff;
-  --surface-soft: #f5f7fb;
-  --border: #e6e9f0;
+  --surface-soft: #eef1f7;
+  --border: #d7dce6;
   --text: #1f2937;
   --text-dim: #6b7280;
   --purple: #7c5cff;
@@ -2724,10 +2727,6 @@ textarea:focus {
   --chip-purple-soft: rgba(139, 92, 246, 0.2);
 }
 
-.home-screen {
-  padding-top: 4px;
-}
-
 .home-topbar {
   display: flex;
   align-items: center;
@@ -2737,7 +2736,12 @@ textarea:focus {
 
 /* 2026-08-04 — trước là 1 chip màu tím nhỏ riêng, giờ dùng ĐÚNG .screen-title/.app-header-title
    (Minh: "đồng bộ với các mục khác về font chữ và vị trí hiển thị") — chỉ chỉnh lại margin cho
-   khớp layout Home (đứng trên "Xin chào", không phải trong hàng .app-header). */
+   khớp layout Home (đứng trên "Xin chào", không phải trong hàng .app-header). SỬA 2026-08-05
+   (Minh: "dòng Anh Văn CN Kế Toán hiện cao hơn dòng Tiến Trình, dời Xin chào xuống để đồng bộ")
+   — BỎ hẳn ".home-screen{padding-top:4px}" riêng (Home giờ dùng padding-top 20px MẶC ĐỊNH của
+   .screen như mọi màn khác) — cộng margin-top 6px ở đây khớp ĐÚNG vị trí dòng ".progress-title"
+   ở màn Tiến trình (canh giữa trong hàng cao 40px, cùng padding-top 20px). "Xin chào" phía dưới
+   tự dời xuống theo, không cần chỉnh riêng. */
 .home-track-title {
   margin: 6px 0 0;
 }
@@ -2937,9 +2941,10 @@ textarea:focus {
   color: var(--chip-orange);
 }
 
-/* Màn "Chọn chuyên ngành" — danh mục cố định 2 tầng (views/industrySelect.js). GIAO DIỆN RIÊNG
-   (2026-08-04) — bỏ hẳn .screen-center cũ (flex row canh giữa, chỉ hợp cho 1 khối duy nhất như
-   thẻ đăng nhập — dùng nhầm ở đây làm tiêu đề/thẻ bị xếp NGANG chồng lên nhau). */
+/* Màn "Chọn chuyên ngành" — danh mục cố định 1 tầng, PHẲNG (views/industrySelect.js, bỏ tầng
+   "vị trí" 2026-08-05). GIAO DIỆN RIÊNG (2026-08-04) — bỏ hẳn .screen-center cũ (flex row canh
+   giữa, chỉ hợp cho 1 khối duy nhất như thẻ đăng nhập — dùng nhầm ở đây làm tiêu đề/thẻ bị xếp
+   NGANG chồng lên nhau). */
 .industry-select-screen {
   padding-top: 24px;
 }
@@ -2963,19 +2968,16 @@ textarea:focus {
   width: 100%;
 }
 
-.industry-select-card {
+/* Danh sách PHẲNG 1 tầng (2026-08-05, bỏ accordion "lĩnh vực -> vị trí" — Minh: "chỉ dùng
+   chuyên ngành") — mỗi chuyên ngành 1 hàng ĐỘC LẬP (thay .industry-select-card bọc ngoài +
+   .industry-select-header bên trong của bản accordion cũ), không còn xổ ra danh sách con. */
+.industry-select-row {
+  width: 100%;
+  min-height: var(--touch-min);
   background: var(--surface);
   border: none;
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-.industry-select-header {
-  width: 100%;
-  min-height: var(--touch-min);
-  background: none;
-  border: none;
   padding: 16px;
   display: flex;
   align-items: center;
@@ -2984,6 +2986,13 @@ textarea:focus {
   color: var(--text);
   font-weight: 700;
   font-size: 0.95rem;
+  text-align: left;
+}
+
+.industry-select-row.is-coming-soon {
+  cursor: default;
+  color: var(--text-dim);
+  font-weight: 600;
 }
 
 .industry-select-icon {
@@ -3018,53 +3027,6 @@ textarea:focus {
 
 .industry-select-label {
   flex: 1;
-}
-
-.industry-select-chevron {
-  color: var(--text-dim);
-}
-
-.industry-position-list {
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-}
-
-.industry-position-row {
-  width: 100%;
-  min-height: var(--touch-min);
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  color: var(--text);
-  text-align: left;
-}
-
-.industry-position-row:last-child {
-  border-bottom: none;
-}
-
-.industry-position-row.is-coming-soon {
-  cursor: default;
-  color: var(--text-dim);
-}
-
-.industry-position-radio {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  flex-shrink: 0;
-}
-
-.industry-position-label {
-  flex: 1;
-  font-size: 0.9rem;
 }
 
 .industry-position-badge {
@@ -3156,42 +3118,35 @@ textarea:focus {
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  padding: 4px 14px;
+  padding: 2px 14px;
 }
 
+/* Thu gọn (2026-08-05, Minh: "giao diện thiết kế chiếm quá nhiều không gian so với hình mẫu")
+   — padding 12px->7px, bỏ viền ngăn cách + dòng phụ "x bài đã học" (xem barRowHtml() trong
+   progress.js), chỉ còn nhãn/%/thanh mảnh sát nhau đúng độ gọn của hình mẫu tham khảo. */
 .progress-bar-item {
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
-}
-.progress-bar-item:first-child {
-  border-top: none;
+  padding: 7px 0;
 }
 
 .progress-bar-head {
   display: flex;
   justify-content: space-between;
   font-weight: 600;
-  margin-bottom: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
 }
 
 .progress-bar-track {
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: var(--surface-soft);
   overflow: hidden;
-  margin-bottom: 6px;
 }
 
 .progress-bar-fill {
   height: 100%;
   border-radius: 999px;
   background: var(--purple);
-}
-
-.progress-bar-sub {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-dim);
 }
 
 .progress-history-day {
@@ -3220,19 +3175,30 @@ textarea:focus {
   flex-shrink: 0;
   color: var(--text-dim);
 }
-.progress-history-icon.is-done {
-  color: var(--success);
+
+/* "body" chiếm hết khoảng giữa (2026-08-05, thêm badge Đã học/Chưa học bên phải thay % + giờ
+   cũ) — min-width:0 để tiêu đề dài vẫn co lại đúng thay vì đẩy badge tràn ra ngoài thẻ. */
+.progress-history-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .progress-history-title {
   font-weight: 600;
   font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .progress-history-meta {
   font-size: 0.78rem;
   color: var(--text-dim);
   margin-top: 2px;
+}
+
+.progress-history-item .learn-status-badge {
+  flex-shrink: 0;
 }
 
 /* "Chọn dạng bài viết" (2026-08-04, views/writingPractice.js) — danh sách thể loại tick chọn. */
@@ -3374,6 +3340,24 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="green"] {
   --purple: #4ade80;
   --purple-soft: rgba(74, 222, 128, 0.16);
+}
+/* 2 bộ "màu đậm" thêm theo yêu cầu Minh (2026-08-05, cùng lúc làm đậm nền Sáng) — cùng pattern
+   override --purple/--purple-soft như 3 bộ trên. */
+:root[data-palette="ruby"] {
+  --purple: #9f1239;
+  --purple-soft: #fce7ef;
+}
+:root[data-theme="dark"][data-palette="ruby"] {
+  --purple: #fb7185;
+  --purple-soft: rgba(251, 113, 133, 0.18);
+}
+:root[data-palette="teal"] {
+  --purple: #0f766e;
+  --purple-soft: #ccfbf1;
+}
+:root[data-theme="dark"][data-palette="teal"] {
+  --purple: #2dd4bf;
+  --purple-soft: rgba(45, 212, 191, 0.18);
 }
 
 /* Đăng nhập Google/Facebook (2026-08-04) — cạnh form email/password đã có. */

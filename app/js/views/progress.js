@@ -6,7 +6,7 @@
 // không còn route/nav nào trỏ tới nữa.
 import { navigate } from "../router.js";
 import { getProfileStats, getStreakDays, getHistory, getSkillLevelBreakdown, getWritingGenreBreakdown } from "../db.js";
-import { escapeHtml, formatDate } from "../utils.js";
+import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { wireAppHeader } from "../header.js";
 
@@ -23,28 +23,30 @@ function summaryCardsHtml() {
 // "row" (KHÔNG còn thẻ .progress-bar-row riêng từng level, 2026-08-04 — Minh: "tất cả level
 // vào 1 card") — mỗi level/thể loại giờ chỉ là 1 KHỐI trong CÙNG 1 card bọc ngoài
 // (.progress-bars-card, xem skillSectionHtml/writingSectionHtml), phân cách bằng viền mảnh.
-function barRowHtml(label, pct, subLabel) {
+// BỎ dòng phụ "x bài đã học" (2026-08-05, Minh: "giao diện thiết kế chiếm quá nhiều không gian
+// so với hình mẫu") — chỉ còn nhãn + % + thanh, ĐÚNG độ gọn của hình mẫu tham khảo.
+function barRowHtml(label, pct) {
   return `
     <div class="progress-bar-item">
       <div class="progress-bar-head"><span>${escapeHtml(label)}</span><span>${pct}%</span></div>
       <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
-      <p class="progress-bar-sub">${escapeHtml(subLabel)}</p>
     </div>
   `;
 }
 
 function skillSectionHtml(rows) {
   if (!rows.length) return `<p class="muted">Chưa có bài nào.</p>`;
-  return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.level, r.pct, `${r.done}/${r.total} bài đã học`)).join("")}</div>`;
+  return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.level, r.pct)).join("")}</div>`;
 }
 
 function writingSectionHtml(rows) {
   if (!rows.length) return `<p class="muted">Chưa có bài luyện viết nào.</p>`;
-  return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.genre, r.pct, `${r.count} bài đã chấm`)).join("")}</div>`;
+  return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.genre, r.pct)).join("")}</div>`;
 }
 
-// Nhãn ngày kiểu mockup ("Hôm nay — dd/mm/yyyy", "Hôm qua — ...", còn lại là ngày thường) —
-// so theo NGÀY LỊCH (không phải 24h trước), khớp cách getStreakDays() đang tính streak.
+// Nhãn ngày kiểu mockup ("Hôm nay — dd/mm/yyyy", "Hôm qua — ...") — so theo NGÀY LỊCH (không
+// phải 24h trước), khớp cách getStreakDays() đang tính streak. CHỈ 2 giá trị (null nghĩa là
+// "quá cũ, không hiện" — xem lọc ở loadHistory(), Minh: "chỉ cần hôm nay và hôm qua là đủ").
 function dayGroupLabel(iso) {
   const d = new Date(iso);
   const dateStr = d.toLocaleDateString("vi-VN");
@@ -52,8 +54,10 @@ function dayGroupLabel(iso) {
   const diffDays = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
   if (diffDays === 0) return `Hôm nay — ${dateStr}`;
   if (diffDays === 1) return `Hôm qua — ${dateStr}`;
-  return dateStr;
+  return null;
 }
+
+const CONTENT_TYPE_ICON = { reading: "book", dialogue: "message-circle" };
 
 export function renderProgress(mount) {
   mount.innerHTML = `
@@ -109,12 +113,17 @@ export function renderProgress(mount) {
     }
   }
 
+  // CHỈ Hôm nay + Hôm qua (2026-08-05, Minh: "chỉ cần hôm nay và hôm qua là đủ, không cần liệt
+  // kê tất cả") — lọc bỏ NGAY các ngày cũ hơn (dayGroupLabel() trả null cho ngày đó). Mỗi dòng
+  // hiện icon LOẠI NỘI DUNG (Bài đọc/Hội thoại) + level + dấu tick Đã học (nghe hết audio
+  // tổng, fully_listened_at)/Chưa học — THAY % và giờ (số liệu không thật/không cần thiết ở
+  // đây, Minh: "% và thời gian đổi lại thành dấu tick Đã học/Chưa học").
   async function loadHistory() {
     const listEl = mount.querySelector("#history-list");
     try {
-      const rows = await getHistory();
+      const rows = (await getHistory()).filter((r) => dayGroupLabel(r.last_opened_at) !== null);
       if (!rows.length) {
-        listEl.innerHTML = `<p class="muted">Bạn chưa học bài nào.</p>`;
+        listEl.innerHTML = `<p class="muted">Chưa có hoạt động hôm nay hoặc hôm qua.</p>`;
         return;
       }
       let lastGroup = null;
@@ -126,17 +135,15 @@ export function renderProgress(mount) {
           lastGroup = group;
         }
         const lesson = r.lessons;
-        const done = !!r.completed_at;
+        const done = !!r.fully_listened_at;
         parts.push(`
           <div class="progress-history-item" data-id="${r.lesson_id}">
-            <span class="progress-history-icon ${done ? "is-done" : ""}">${icon(done ? "check-circle" : "book", { size: 20 })}</span>
+            <span class="progress-history-icon">${icon(CONTENT_TYPE_ICON[lesson?.content_type] || "book", { size: 20 })}</span>
             <div class="progress-history-body">
               <div class="progress-history-title">${escapeHtml(lesson?.title_vi || lesson?.title || "(Bài học đã xoá)")}</div>
-              <div class="progress-history-meta">
-                <span class="badge">${escapeHtml(lesson?.level || "")}</span>
-                ${formatDate(r.last_opened_at)} · ${done ? `+${r.xp_earned || 0} XP` : "đang học dở"}
-              </div>
+              <div class="progress-history-meta"><span class="badge">${escapeHtml(lesson?.level || "")}</span></div>
             </div>
+            <span class="learn-status-badge ${done ? "learn-status-done" : "learn-status-not-started"}">${done ? icon("check-circle", { size: 12 }) : ""} ${done ? "Đã học" : "Chưa học"}</span>
           </div>
         `);
       }

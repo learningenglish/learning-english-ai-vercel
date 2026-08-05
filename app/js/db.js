@@ -240,11 +240,14 @@ function isoDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-// Màn "Lịch sử": danh sách bài đã mở, kèm thông tin bài học qua embed quan hệ FK
-// (lesson_progress.lesson_id -> lessons), mới mở gần nhất trước.
+// Màn "Lịch sử" (trong Tiến trình): danh sách bài đã mở, kèm thông tin bài học qua embed quan hệ
+// FK (lesson_progress.lesson_id -> lessons), mới mở gần nhất trước. "fully_listened_at" (2026-08-05)
+// — dùng để suy ra Đã học/Chưa học THẬT (nghe hết audio tổng), thay cho completed_at/xp_earned
+// hiển thị % giả ở views/progress.js trước đó (Minh: "% và thời gian đổi lại thành dấu tick Đã
+// học/Chưa học").
 export async function getHistory() {
   return restFetch(
-    "lesson_progress?order=last_opened_at.desc&select=lesson_id,completed_at,xp_earned,last_opened_at,lessons(id,title,title_vi,level,content_type)"
+    "lesson_progress?order=last_opened_at.desc&select=lesson_id,completed_at,fully_listened_at,xp_earned,last_opened_at,lessons(id,title,title_vi,level,content_type)"
   );
 }
 

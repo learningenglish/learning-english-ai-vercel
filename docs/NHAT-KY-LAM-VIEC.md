@@ -244,3 +244,42 @@ Bump `CACHE_NAME` lên v36.
    này, chỉ không còn UI để đặt).
 
 Bump `CACHE_NAME` lên v37.
+
+## 2026-08-05 — 6 phản hồi từ ảnh mẫu thật (Progress/Setting/chuyên ngành/Home)
+
+1. **Progress bars quá chiếm không gian** — `progress.js`/`style.css`: bỏ hẳn dòng phụ
+   "x bài đã học" dưới mỗi thanh (`barRowHtml()` không còn tham số `subLabel`), giảm padding
+   `.progress-bar-item` 12px→7px, bỏ viền ngăn cách giữa các khối — khớp độ gọn hình mẫu tham khảo.
+2. **Lịch sử học đơn giản hoá** — CHỈ còn nhóm "Hôm nay"/"Hôm qua" (`dayGroupLabel()` trả `null`
+   cho ngày cũ hơn, `loadHistory()` lọc bỏ trước khi vẽ). Mỗi dòng đổi từ %+giờ (số liệu không
+   thật) sang icon loại nội dung (Bài đọc/Hội thoại) + badge Đã học/Chưa học THẬT (dựa
+   `fully_listened_at`, không phải `completed_at`) — `db.js::getHistory()` thêm cột
+   `fully_listened_at` vào select.
+3. **Setting → "Cài đặt"**: đổi tiêu đề "Hồ sơ"→"Cài đặt" (khớp nhãn tab "Setting" ở bottom nav).
+   Bỏ hẳn khối "Thống kê ...XP" (Tổng XP/Bài đã học, trùng với màn Tiến trình — `getProfileStats`
+   không còn gọi ở đây). Thêm hàng tĩnh "Tài khoản" (hiện email) + "Thông tin ứng dụng" (tên +
+   phiên bản app), cùng phong cách `.settings-row` như "Ngôn ngữ" (chưa có màn quản lý tài khoản
+   thật để điều hướng tới). Thêm "Kích thước chữ" (Nhỏ/Trung bình/Lớn) — file mới
+   `app/js/fontSize.js` (cùng cơ chế localStorage + set thuộc tính như theme.js/palette.js, áp
+   dụng qua `font-size` % trên `<html>`, mọi cỡ chữ trong app dùng rem nên tự co giãn theo).
+   "Đổi vị trí công việc" → "Đổi chuyên ngành" (khớp mục 5 bên dưới).
+4. **UI sáng "đậm hơn" để đỡ mỏi mắt** (làm rõ qua AskUserQuestion — Minh: "ở chế độ nền sáng,
+   làm đậm hơn, thêm color palette màu đậm") — hạ nhẹ `--bg-fallback`/`--surface-soft`/`--border`
+   trong `:root` (giữ `--surface` thẻ trắng để nổi khối rõ hơn trên nền đậm hơn 1 nấc), KHÔNG đổi
+   theme Tối. Thêm 2 bộ Color Palette mới "Đỏ ruby đậm"/"Xanh rêu đậm" (`palette.js`+`style.css`,
+   6 bộ tổng cộng).
+5. **Bỏ tầng "vị trí công việc"** (Minh: "chỉ dùng chuyên ngành. Cụ thể: Kế toán, Điều dưỡng,...
+   không còn vị trí công việc nữa") — `industrySelect.js` viết lại: bỏ hẳn accordion lĩnh vực→vị
+   trí, danh sách giờ PHẲNG 1 tầng, mỗi chuyên ngành bấm chọn thẳng. 8 occupation_profile Kế toán
+   cũ GỘP thành 1 `ACCOUNTING_PROFILE` duy nhất (merged_occupation="Kế toán", phạm vi+thuật ngữ
+   trải rộng sổ sách/công nợ/kho/bán hàng/thuế/ngân hàng để nội dung sinh ra vẫn phong phú dù
+   không còn chọn riêng từng vị trí). CSS accordion cũ (`.industry-select-card/-header`,
+   `.industry-position-list/-row/-radio/-label`) thay bằng `.industry-select-row` phẳng.
+6. **Đồng bộ vị trí dòng track title ở Home với Tiến trình** — bỏ hẳn
+   `.home-screen{padding-top:4px}` riêng (Home giờ dùng padding-top 20px mặc định của `.screen`
+   như mọi màn khác) — đo bằng `getBoundingClientRect()` qua Preview tool xác nhận tâm dòng tiêu
+   đề lệch <1px so với `.progress-title` ở màn Tiến trình sau khi sửa (trước đó lệch ~18px, cao
+   hơn hẳn). "Xin chào" tự dời xuống theo, không cần chỉnh riêng.
+
+Thêm icon mới `user`/`info` (`icons.js`). Thêm `app/js/fontSize.js` vào `SHELL_FILES` (sw.js).
+Bump `CACHE_NAME` lên v38.
