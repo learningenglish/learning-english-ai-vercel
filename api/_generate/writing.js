@@ -11,7 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { SUPABASE_URL } from "./_shared.js";
+import { SUPABASE_URL, PRO_GATE_ENFORCED } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
 import { resolveOwnedGoalId } from "./lesson.js";
 
@@ -52,14 +52,15 @@ function wordCount(text) {
 // ====== Hạn mức 3 lượt/ngày — CHỐT của Minh 2026-07-27: "giao nhiệm vụ" (generate_writing_task)
 // VÀ "chấm bài viết" (grade_writing) MỖI hành động giới hạn RIÊNG 3 lượt/ngày (không cộng
 // chung), ĐỘC LẬP hoàn toàn với DAILY_LESSON_LIMIT (lesson.js) — không đụng/đổi cơ chế đó.
-// Cổng "chỉ Student Pro" giữ nguyên như đề xuất ban đầu (nhất quán với generate_lesson/
-// analyze_user_text). Đếm bằng 2 bảng riêng: "writing_task_requests" (mỗi lượt GIAO ĐỀ thành
-// công = 1 dòng, xem supabase/026_writing_task_requests.sql) và "writing_submissions" (mỗi
-// lượt CHẤM thành công = 1 dòng, đã có sẵn) — giống HỆT cách checkDailyLessonLimit() đếm bảng
-// "lessons".
+// Cổng "chỉ Student Pro" VỐN giữ nguyên như đề xuất ban đầu (nhất quán với generate_lesson/
+// analyze_user_text) — TẮT theo yêu cầu Minh (2026-08-07, "Tắt tính năng gói Pro"), xem
+// PRO_GATE_ENFORCED trong _shared.js. Đếm bằng 2 bảng riêng: "writing_task_requests" (mỗi lượt
+// GIAO ĐỀ thành công = 1 dòng, xem supabase/026_writing_task_requests.sql) và
+// "writing_submissions" (mỗi lượt CHẤM thành công = 1 dòng, đã có sẵn) — giống HỆT cách
+// checkDailyLessonLimit() đếm bảng "lessons".
 //
-// TẠM THỜI TẮT enforce số lượng (Minh: "đang xây và chạy thử không giới hạn") — cổng Pro VẪN
-// hoạt động bình thường (không đụng), CHỈ phần đếm 3 lượt/ngày bị bỏ qua. Đặt lại
+// TẠM THỜI TẮT enforce số lượng (Minh: "đang xây và chạy thử không giới hạn") — CHỈ phần đếm 3
+// lượt/ngày bị bỏ qua, tách biệt với cổng Pro ở trên (2 cờ độc lập). Đặt lại
 // WRITING_LIMIT_ENFORCED = true khi chuẩn bị phát hành thật, KHÔNG cần sửa gì khác.
 const WRITING_LIMIT_ENFORCED = false;
 const DAILY_WRITING_LIMIT = 3;
@@ -85,7 +86,7 @@ async function checkDailyWritingLimit(studentId, table, exhaustedMessage) {
   try {
     const student = await getStudentPlan(studentId);
     if (!student) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
-    if (student.plan !== "pro") return { allowed: false, message: "Tính năng Luyện viết chỉ dành cho gói Pro." };
+    if (PRO_GATE_ENFORCED && student.plan !== "pro") return { allowed: false, message: "Tính năng Luyện viết chỉ dành cho gói Pro." };
     if (!WRITING_LIMIT_ENFORCED) return { allowed: true, used: 0 };
 
     const sinceISO = startOfTodayVN().toISOString();

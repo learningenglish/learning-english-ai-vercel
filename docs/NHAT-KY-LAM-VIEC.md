@@ -717,3 +717,37 @@ hiện đúng số NGAY khi chuyển màn (test bằng click thật trong SPA, k
 xác nhận cuối.
 
 Bump `CACHE_NAME` lên v45.
+
+## 2026-08-07 (tiếp) — Tắt cổng "chỉ gói Pro", đặt kimchinamvn@gmail.com = Pro
+
+Minh: "Tắt tính năng gói Pro. Mặc định tài khoản kimchinamvn@gmail.com là gói Pro".
+
+Rà soát toàn bộ hệ thống `students.plan` (free/basic/pro, `007_student_tiers.sql`) tìm ra ĐÚNG 4
+chỗ CHẶN CỨNG "phải là Pro mới dùng được" (khác `consume_student_credit` — bảng phân tích câu,
+free/basic vẫn dùng được chỉ ít suất hơn, KHÔNG chặn hẳn, nên KHÔNG đụng tới):
+1. `api/_generate/lesson.js::checkDailyLessonLimit` — generate_lesson ("Tạo bài học").
+2. `api/_generate/lesson.js::checkDailyTextAnalysisLimit` — analyze_user_text ("Tôi có văn bản").
+3. `api/_generate/writing.js::checkDailyWritingLimit` — generate_writing_task + grade_writing
+   (Luyện viết).
+4. RPC `consume_student_exam_credit` (`015_student_pro_exams.sql`) — tự tạo đề.
+
+**Sửa (theo đúng khuôn `WRITING_LIMIT_ENFORCED` đã có sẵn trong writing.js, không phát minh
+pattern mới):** thêm cờ `PRO_GATE_ENFORCED = false` trong `api/_generate/_shared.js` (dùng chung
+cho lesson.js/writing.js), bọc cả 3 điều kiện JS bằng cờ này. RPC không đọc được biến JS nên viết
+migration `036_disable_pro_exam_gate.sql` (create-or-replace, bỏ hẳn nhánh chặn trong function).
+**Bật lại Pro sau này**: đổi `PRO_GATE_ENFORCED` thành `true` (JS) + chạy lại function gốc có
+nhánh chặn (SQL, hướng dẫn ngay trong comment migration 036) — không cần sửa gì khác.
+
+**CỐ Ý GIỮ NGUYÊN** mọi hạn mức SỐ LƯỢNG (10 bài/ngày, 40 lượt phân tích/ngày, 300 credit đề/
+tháng...) — đây là cơ chế chống phình chi phí AI, không phải "tính năng gói Pro", tắt nhầm phần
+này sẽ lặp lại đúng rủi ro đợt điều tra chi phí 952/381 request trước đó.
+
+`supabase/one-off_set_kimchinamvn_pro_2026-08-07.sql` — set `plan='pro'` cho
+kimchinamvn@gmail.com. KHÔNG đổi default cột `plan` (vẫn 'free' cho user mới) — vì cổng Pro đã
+tắt hoàn toàn nên mọi tài khoản đều dùng được như Pro rồi, không cần đổi schema default; chỉ set
+riêng plan của Minh để có sẵn giá trị đúng khi/nếu bật lại cổng sau này.
+
+**Việc còn dở:** Minh cần chạy `036_disable_pro_exam_gate.sql` +
+`one-off_set_kimchinamvn_pro_2026-08-07.sql` trên Supabase SQL Editor (phần JS tự có hiệu lực khi
+deploy, không cần Minh làm gì thêm). Chưa test lại thật cả 4 tính năng sau khi tắt cổng — CẦN
+Minh xác nhận (đặc biệt tự tạo đề, vì RPC không verify được cục bộ như phần JS).

@@ -14,7 +14,7 @@
 // Vì vậy hằng số nhỏ (SUPABASE_URL) được COPY nguyên văn từ chat.js — đặt ở
 // api/_generate/_shared.js để các module khác trong CÙNG thư mục _generate/ dùng chung.
 // Gọi AI đi qua api/_shared/aiProvider.js (lớp trừu tượng OpenAI/Gemini dùng chung toàn repo).
-import { SUPABASE_URL } from "./_shared.js";
+import { SUPABASE_URL, PRO_GATE_ENFORCED } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
 
 // SPEC ghi sổ, CHƯA triển khai (2026-07-19 — xem project_ai_model_routing_spec trong memory):
@@ -54,10 +54,11 @@ function startOfTodayVN() {
   return new Date(midnightVN - VN_TZ_OFFSET_MS);
 }
 
-// Tính năng tự tạo bài (generate_lesson/analyze_user_text) là đặc quyền gói Student PRO
+// Tính năng tự tạo bài (generate_lesson/analyze_user_text) VỐN là đặc quyền gói Student PRO
 // (499.000đ/tháng, "tự học độc lập, không cần Mentor" — xem project_business_model_pricing
-// trong memory) — Student Basic gắn với 1 Mentor, không có quyền này. Credit engine cũ đã
-// gate đúng qua cột students.plan; giữ nguyên cổng đó, chỉ đổi phần "còn bao nhiêu suất".
+// trong memory) — cổng "phải là Pro" TẮT theo yêu cầu Minh (2026-08-07, "Tắt tính năng gói
+// Pro"), xem PRO_GATE_ENFORCED trong _shared.js — chỉ cần đổi false->true ở đó để bật lại,
+// KHÔNG sửa gì ở đây. Hạn mức SỐ LƯỢNG (DAILY_LESSON_LIMIT) vẫn giữ nguyên, không tắt.
 async function checkDailyLessonLimit(studentId) {
   try {
     const studentRes = await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=plan`, {
@@ -69,7 +70,7 @@ async function checkDailyLessonLimit(studentId) {
     }
     const student = (await studentRes.json())?.[0];
     if (!student) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
-    if (student.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo bài chỉ dành cho gói Pro." };
+    if (PRO_GATE_ENFORCED && student.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo bài chỉ dành cho gói Pro." };
 
     const sinceISO = startOfTodayVN().toISOString();
     const countRes = await fetch(
@@ -124,7 +125,7 @@ async function checkDailyTextAnalysisLimit(studentId) {
     }
     const student = (await studentRes.json())?.[0];
     if (!student) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
-    if (student.plan !== "pro") return { allowed: false, message: "Tính năng phân tích văn bản chỉ dành cho gói Pro." };
+    if (PRO_GATE_ENFORCED && student.plan !== "pro") return { allowed: false, message: "Tính năng phân tích văn bản chỉ dành cho gói Pro." };
 
     const sinceISO = startOfTodayVN().toISOString();
     const countRes = await fetch(
