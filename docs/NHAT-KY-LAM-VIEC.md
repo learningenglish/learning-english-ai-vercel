@@ -642,3 +642,31 @@ lưu đủ 48 file, không còn lỗi install.
   nhưng CHƯA có bằng chứng thực nghiệm cho bước nghiệm thu #2 Minh yêu cầu.
 
 Bump `CACHE_NAME` lên v44.
+
+## 2026-08-07 — Bug thật: đăng nhập Google lần đầu bị xếp nhầm vai trò "mentor" thay vì "student"
+
+**Triệu chứng** (Minh báo, kèm ảnh): đăng nhập Google thành công (redirect đúng sau khi sửa
+Supabase Redirect URLs), nhưng bấm chọn Chuyên ngành báo toast "Chỉ áp dụng cho Student."
+
+**Nguyên nhân thật** (đọc code, không đoán): `handle_new_user()` — trigger Postgres chạy khi có
+`auth.users` mới (migration `006_rename_tutor_to_mentor.sql` mục 5a) — đọc
+`raw_user_meta_data->>'role'`, KHÔNG có key này thì **mặc định `'mentor'`**, insert vào bảng
+`mentors` thay vì `students`. `app/js/authApi.js` xác nhận: app này **không có bước signup nào**
+(chỉ `signInWithPassword`/OAuth/`refreshAccessToken`) tự gắn `role:'student'` cho user mới —
+nghĩa là **MỌI tài khoản Google/Facebook đăng nhập lần đầu qua app Student đều bị xếp nhầm vai
+trò**, không phải ca hiếm của riêng Minh. `getUserRole()` (api/chat.js) tra `mentors` trước
+`students` → set `ctx.studentId = null` cho các tài khoản này → mọi action yêu cầu Student (tạo
+Chuyên ngành, sinh bài, phân tích, luyện viết...) lỗi "Chỉ áp dụng cho Student." vĩnh viễn.
+
+**Sửa:**
+- `supabase/035_new_signups_default_to_student.sql` — đổi mặc định trigger `'mentor'` ->
+  `'student'` (app này giờ CHỈ phục vụ Student, toàn bộ UI Mentor AI đã tắt/archive từ
+  2026-07-23/2026-08-06 — không còn lý do 1 user đăng nhập qua đây lại là mentor mới). Chỉ ảnh
+  hưởng user MỚI từ nay, không đụng dữ liệu cũ.
+- `supabase/one-off_fix_mentor_to_student_2026-08-07.sql` — script chạy 1 lần, KHÔNG phải
+  migration đánh số, sửa đúng tài khoản Google của Minh đã bị xếp nhầm TRƯỚC KHI có bản sửa trên
+  (chuyển hàng từ `mentors` sang `students`, giữ nguyên `auth.users.id` nên không mất tài khoản
+  đăng nhập). Cần điền đúng email Gmail trước khi chạy.
+
+**Việc còn dở:** cần Minh chạy CẢ 2 file trên (035 trước, rồi one-off script điền email), sau đó
+thử lại chọn Chuyên ngành trên tài khoản Google thật.
