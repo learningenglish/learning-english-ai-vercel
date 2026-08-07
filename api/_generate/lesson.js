@@ -509,18 +509,6 @@ export function pickTargetLengthWords(minWords, maxWords) {
   return Math.round(low + Math.random() * (maxWords - low));
 }
 
-// Biên nới lỏng cho VALIDATOR (không đổi khoảng hiển thị cho model, chỉ nới NGƯỠNG TỪ CHỐI) —
-// vì giờ mỗi bài nhắm 1 điểm ngẫu nhiên khác nhau trong khoảng thay vì luôn nhắm 1 điểm cố định
-// có biên an toàn dựng sẵn (trước đây hay "nhắm nửa trên" để chắc chắn đạt sàn), dao động tự
-// nhiên quanh điểm nhắm ngẫu nhiên đó có thể lệch nhẹ ra ngoài khoảng CEFR chính thức mà vẫn là
-// bài TỐT, không nên bị từ chối cứng. 12% mỗi đầu là mức vừa phải: đủ cho dao động tự nhiên
-// (vd A1 60-90 -> vùng chấp nhận thật ~53-101), không đủ rộng để A1 lạc sang vùng A2.
-const LENGTH_VALIDATE_GRACE_PERCENT = 0.12;
-
-function graceExpandRange(minWords, maxWords) {
-  return [Math.round(minWords * (1 - LENGTH_VALIDATE_GRACE_PERCENT)), Math.round(maxWords * (1 + LENGTH_VALIDATE_GRACE_PERCENT))];
-}
-
 function buildGenerateLessonUserPrompt(data) {
   const contentTypeVi = data.content_type === "dialogue" ? "hội thoại" : "bài đọc";
   const unitLabel = data.content_type === "dialogue" ? "lượt thoại" : "câu/đoạn";
@@ -724,19 +712,23 @@ function totalContentWords(content) {
   return (content || []).reduce((sum, item) => sum + wordCount(item?.text), 0);
 }
 
-// endsOnDanglingQuestion: lượt thoại CUỐI CÙNG của 1 bài hội thoại không được là câu hỏi
-// chưa có lời đáp — theo định nghĩa đây luôn là lượt cuối, nên "kết thúc bằng dấu ?" ĐÃ ĐỦ
-// để coi là treo (không có lượt nào sau nó để trả lời). Lỗi thật đã gặp: bài kết ở "Will I
-// get paid for this delivery?" rồi hết.
+// endsOnDanglingQuestion — GIỮ LẠI hàm (dùng ở nơi khác/tham khảo) nhưng KHÔNG còn dùng để
+// chặn/sinh lại bài (xem ghi chú "GỠ BỎ VALIDATOR KỸ THUẬT CỨNG" ở validateLessonShape() bên
+// dưới, 2026-08-07) — 1 bài hội thoại kết ở câu hỏi chưa đáp là vấn đề CẤU TRÚC/CHẤT LƯỢNG,
+// đúng phạm vi "Nguyên tắc 3 — Cấu trúc hoàn chỉnh" của Giám khảo (lesson-judge-criteria.md),
+// không phải lỗi kỹ thuật cần đếm-và-từ-chối.
 function endsOnDanglingQuestion(content) {
   const last = (content || [])[content.length - 1];
   return !!last && typeof last.text === "string" && last.text.trim().endsWith("?");
 }
 
-// ====== Kiểm tra "phrase_groups" phủ ĐỦ 100% từ trong câu (2026-07-30, "gom cụm từ khi sinh
-// bài", yêu cầu Minh) — CHỈ bằng code, KHÔNG gọi AI. Nguyên tắc giống hệt validateB1Chunks() của
-// app cũ (learning-english-ai/app.js): ghép PHẲNG "words" của MỌI nhóm theo đúng thứ tự rồi so
-// với từ thật trong "text" — khớp TUYỆT ĐỐI (không thiếu/thừa/lặp/đảo) mới coi là ĐẠT.
+// ====== "phrase_groups" phủ từ trong câu (2026-07-30, "gom cụm từ khi sinh bài") — hàm GIỮ
+// NGUYÊN, vẫn dùng để TÍNH xem 1 item đã đủ dữ liệu tooltip hay chưa (analyze_lesson_phrase_
+// groups — "vá 1 lần" cho bài thiếu, xem phía dưới file) — NHƯNG KHÔNG CÒN dùng để chặn/sinh
+// lại CẢ BÀI ở validateLessonShape() nữa (xem ghi chú ở đó, 2026-08-07: đây là dữ liệu phục vụ
+// TOOLTIP, một tính năng độc lập với chất lượng nội dung bài học — bài phủ chưa đủ 100% lúc
+// sinh thì đơn giản là sẽ được "vá 1 lần" khi người dùng bấm vào từ đầu tiên còn thiếu, ĐÚNG
+// CƠ CHẾ đã xây cho bài CŨ, không có lý do gì bài MỚI phải bị chặn nghiêm khắc hơn bài cũ).
 function normalizePhraseWord(w) {
   return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
 }
@@ -755,15 +747,9 @@ function itemPhraseCoverageOk(item) {
   }
   return true;
 }
-// BẮT BUỘC 100% mọi cấp độ (2026-08-05, MỞ RỘNG từ chỉ A1/A2/B1 — "sửa gốc tính năng tra từ":
-// mục tiêu MỚI là bài MỚI sinh ra 0% lượt bấm nào còn cần gọi AI, kể cả B2/C1 — TRƯỚC ĐÂY B2/C1
-// được miễn vì lo sinh lại tốn thêm lượt/thời gian, nhưng giờ "tra từ" không còn round-trip AI
-// riêng nữa nên bắt buộc coverage đầy đủ quan trọng hơn). 1 CÂU sót từ cũng đủ để coi cả bài
-// FAIL (kiến trúc hiện tại không có cơ chế "sinh lại đúng 1 câu" — generate_lesson luôn sinh
-// nguyên bài 1 lượt gọi, nên bắt sinh lại toàn bộ khi phát hiện).
-const PHRASE_COVERAGE_REQUIRED_LEVELS = new Set(VALID_LEVELS);
+// dùng bởi analyze_lesson_phrase_groups() ("vá 1 lần") — KHÔNG còn dùng để chặn generate_lesson,
+// xem ghi chú "GỠ BỎ VALIDATOR KỸ THUẬT CỨNG" ở validateLessonShape() ngay bên dưới.
 function validatePhraseCoverage(parsed) {
-  if (!PHRASE_COVERAGE_REQUIRED_LEVELS.has(parsed?.level)) return { valid: true };
   const content = Array.isArray(parsed.content) ? parsed.content : [];
   for (let i = 0; i < content.length; i++) {
     if (!itemPhraseCoverageOk(content[i])) return { valid: false, reason: "phrase_coverage_incomplete", itemIndex: i };
@@ -771,7 +757,35 @@ function validatePhraseCoverage(parsed) {
   return { valid: true };
 }
 
-function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkDialogueEnding, checkPhraseCoverage } = {}) {
+// ============================================================
+// GỠ BỎ VALIDATOR KỸ THUẬT CỨNG (2026-08-07, quyết định Minh — xem
+// docs/NHAT-KY-LAM-VIEC.md mục cùng ngày) — bối cảnh: slot #3 Kế toán A1 fail 11/11 lần vì
+// phrase_coverage (dữ liệu phục vụ TOOLTIP, một tính năng ĐỘC LẬP không liên quan gì tới việc
+// bài có chất lượng hay không) bị nhét làm điều kiện CHẶN/SINH LẠI CẢ BÀI. Đây là dấu hiệu rộng
+// hơn: dùng validator kỹ thuật cứng (đếm từ, đếm cụm, đạt/không đạt theo công thức) để đánh giá
+// CHẤT LƯỢNG NỘI DUNG — 2 việc khác bản chất. Áp dụng lại đúng mô hình đã THÀNH CÔNG với kho lời
+// thoại Mentor AI (api/_generate/mentor-lines/judge-criteria.md, Đợt 3 2026-07-21): bỏ liệt kê
+// quy tắc/công thức cứng, thay bằng nguyên tắc bậc cao cho GIÁM KHẢO (AI, xem
+// lesson-judge-criteria.md) tự suy luận.
+//
+// GIỮ LẠI (Đúng "cần thiết tối thiểu" — JSON hợp lệ/không rỗng, KHÔNG phải chỉ số chất lượng):
+// title/title_vi/level/content_type/content/vocabulary/grammar/exercises đúng hình dạng.
+//
+// GỠ (từng là "đẹp trên giấy", không phản ánh chất lượng thật, đẩy sang phạm vi Giám khảo):
+// - word_count_out_of_range (đếm từ khớp bảng CEFR tuyệt đối) — thuộc "Nguyên tắc 6: đúng trình
+//   độ CEFR một cách TỰ NHIÊN" của Giám khảo, không phải phép đếm.
+// - dangling_question_ending (hội thoại kết ở câu hỏi treo) — thuộc "Nguyên tắc 3: cấu trúc
+//   hoàn chỉnh".
+// - phrase_coverage_incomplete — KHÔNG liên quan chất lượng, chỉ phục vụ tooltip; bài phủ chưa
+//   đủ 100% lúc sinh vẫn được LƯU bình thường, tự "vá 1 lần" khi người dùng bấm từ còn thiếu
+//   (analyze_lesson_phrase_groups, đã có sẵn, dùng CHUNG cơ chế với bài cũ).
+//
+// KHÔNG ĐỤNG word_count_deviation (analyze_user_text riêng) — đây KHÔNG phải chỉ số thẩm mỹ, mà
+// là kiểm tra ĐỘ TRUNG THỰC: bài phân tích phải phản ánh ĐỦ văn bản GỐC người dùng dán vào,
+// không bị AI cắt bớt/bịa thêm — thuộc nhóm "cần thiết tối thiểu", không phải chất lượng chủ
+// quan, nên vẫn giữ.
+// ============================================================
+function validateLessonShape(parsed, { expectedWords } = {}) {
   if (!parsed || typeof parsed !== "object") return { valid: false, reason: "not_object" };
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return { valid: false, reason: "missing_title" };
   if (typeof parsed.title_vi !== "string" || !parsed.title_vi.trim()) return { valid: false, reason: "missing_title_vi" };
@@ -787,27 +801,14 @@ function validateLessonShape(parsed, { expectedWords, minWords, maxWords, checkD
   if (!Array.isArray(parsed.grammar)) return { valid: false, reason: "grammar_not_array" };
   if (!Array.isArray(parsed.exercises) || !parsed.exercises.length) return { valid: false, reason: "empty_exercises" };
 
-  // minWords/maxWords (bảng độ dài theo cấp CEFR, generate_lesson dùng) ưu tiên hơn
-  // expectedWords±% (analyze_user_text vẫn dùng riêng — kiểm nội dung PHẢN ÁNH ĐỦ văn bản
-  // GỐC người dùng dán vào, không liên quan bảng cấp độ nào cả).
-  if (typeof minWords === "number" && typeof maxWords === "number") {
-    const actualWords = totalContentWords(parsed.content);
-    if (actualWords < minWords || actualWords > maxWords) {
-      return { valid: false, reason: "word_count_out_of_range", actualWords, minWords, maxWords };
-    }
-  } else if (typeof expectedWords === "number" && expectedWords > 0) {
+  // expectedWords±% — CHỈ analyze_user_text dùng (kiểm ĐỘ TRUNG THỰC với văn bản GỐC, xem ghi
+  // chú khối "GỠ BỎ VALIDATOR..." phía trên) — generate_lesson KHÔNG còn truyền tham số này.
+  if (typeof expectedWords === "number" && expectedWords > 0) {
     const actualWords = totalContentWords(parsed.content);
     const deviation = Math.abs(actualWords - expectedWords) / expectedWords;
     if (deviation > WORD_COUNT_DEVIATION_LIMIT) {
       return { valid: false, reason: "word_count_deviation", actualWords, expectedWords };
     }
-  }
-  if (checkDialogueEnding && parsed.content_type === "dialogue" && endsOnDanglingQuestion(parsed.content)) {
-    return { valid: false, reason: "dangling_question_ending" };
-  }
-  if (checkPhraseCoverage) {
-    const phraseCoverage = validatePhraseCoverage(parsed);
-    if (!phraseCoverage.valid) return phraseCoverage;
   }
   return { valid: true };
 }
@@ -935,22 +936,13 @@ export async function callAndValidateLesson(data, targetLengthWords, minWords, m
   }
   const parsed = r.data;
   capLessonArrays(parsed);
-  const [validateMin, validateMax] = graceExpandRange(minWords, maxWords);
-  const validation = validateLessonShape(parsed, {
-    minWords: validateMin,
-    maxWords: validateMax,
-    checkDialogueEnding: true,
-    checkPhraseCoverage: true,
-  });
+  // CHỈ còn validate HÌNH DẠNG (JSON đúng cấu trúc/không rỗng) — KHÔNG còn đếm từ/đếm cụm/kiểm
+  // câu kết, xem khối "GỠ BỎ VALIDATOR KỸ THUẬT CỨNG" ở validateLessonShape(). minWords/maxWords/
+  // targetLengthWords VẪN truyền vào PROMPT phía trên (buildGenerateLessonUserPrompt, hướng dẫn
+  // MỀM cho model) — chỉ không còn dùng để CHẶN/SINH LẠI bài dựa trên đếm từ tuyệt đối nữa.
+  const validation = validateLessonShape(parsed);
   if (!validation.valid) {
-    console.error(
-      "[generate_lesson] validate FAIL:",
-      validation.reason,
-      validation.actualWords,
-      `target=${targetLengthWords}`,
-      `cefr_range=[${minWords},${maxWords}]`,
-      `validate_range=[${validateMin},${validateMax}]`
-    );
+    console.error("[generate_lesson] validate FAIL:", validation.reason, validation.actualWords, `target=${targetLengthWords}`);
     return { ok: false, reason: validation.reason, actualWords: validation.actualWords };
   }
   return { ok: true, parsed, meta: buildMeta(r) };
@@ -985,13 +977,13 @@ export async function generate_lesson(data, ctx) {
   const firstTarget = pickTargetLengthWords(minWords, maxWords);
   let result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
 
+  // "retryTarget" không còn cần thích ứng theo lý do lỗi (2026-08-07, sau khi gỡ validator đếm
+  // từ cứng) — validate giờ chỉ còn kiểm HÌNH DẠNG JSON, nên lượt retry chỉ còn ý nghĩa "thử lại
+  // 1 lượt gọi AI mới, hi vọng lần này trả đúng cấu trúc" (call_or_parse_failed/empty_*...),
+  // không cần đổi target độ dài giữa 2 lượt nữa.
   if (!result.ok && Date.now() - attemptStartedAt < 25000) {
-    const retryTarget =
-      result.reason === "word_count_out_of_range" && result.actualWords < minWords
-        ? Math.round(minWords + (maxWords - minWords) * 0.1)
-        : firstTarget;
-    console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `firstTarget=${firstTarget}`, `retryTarget=${retryTarget}`, `tier=${tier}`);
-    result = await callAndValidateLesson(data, retryTarget, minWords, maxWords, tier);
+    console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `target=${firstTarget}`, `tier=${tier}`);
+    result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
   }
 
   if (!result.ok) {

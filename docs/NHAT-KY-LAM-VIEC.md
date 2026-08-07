@@ -751,3 +751,53 @@ riêng plan của Minh để có sẵn giá trị đúng khi/nếu bật lại c
 `one-off_set_kimchinamvn_pro_2026-08-07.sql` trên Supabase SQL Editor (phần JS tự có hiệu lực khi
 deploy, không cần Minh làm gì thêm). Chưa test lại thật cả 4 tính năng sau khi tắt cổng — CẦN
 Minh xác nhận (đặc biệt tự tạo đề, vì RPC không verify được cục bộ như phần JS).
+
+## 2026-08-07 (tiếp) — Sinh thử Kế toán A1, phát hiện bug thật + xây cơ chế giám sát chất lượng
+
+**Sinh thử Kế toán A1** (theo yêu cầu Minh, đích thân trên bản deploy thật, tài khoản test): tạo
+goal "Kế toán" level="A1" (KHÔNG qua UI — `industrySelect.js` hiện KHÔNG truyền `level` khi tạo
+goal, mọi goal tạo qua UI đều rơi về mặc định B1; gọi thẳng action `mentor_create_goal` với
+level="A1" để test đúng yêu cầu — đây là 1 gap UI riêng, CHƯA sửa, cần Minh xác nhận có cần thêm
+bước chọn cấp độ vào `industrySelect.js` hay không). Gọi `mentor_next_lesson` lặp lại 5 lần:
+slot #1, #2 thành công; **slot #3 fail 11/11 lần liên tiếp**. Đọc `vercel logs` thật (không đoán)
+→ nguyên nhân: `phrase_coverage_incomplete` (10/11) + `word_count_out_of_range` (1/11).
+
+**Chẩn đoán gốc:** `phrase_coverage` (yêu cầu 100% từ phải gắn nhãn cụm — dữ liệu phục vụ
+TOOLTIP, xem kiến trúc tra từ 2026-08-06) bị dùng làm điều kiện CHẶN việc SINH BÀI — 2 việc khác
+bản chất bị nhét chung 1 cơ chế. Đây là ví dụ cụ thể của vấn đề rộng hơn: dùng validator kỹ
+thuật cứng (đếm từ, đếm cụm) để đánh giá CHẤT LƯỢNG NỘI DUNG.
+
+**Rà lại lịch sử:** liệt kê đầy đủ file "đóng băng" thật (`curriculum_spine.json`,
+`grammar-catalog.js` + 4 file phụ trợ — duyệt 2026-07-19, KHÔNG đụng) vs. validator trong
+`lesson.js` (chưa từng thật sự "đóng băng", sửa nhiều lần). Phát hiện: yêu cầu phủ 100% cụm từ
+từng CHỈ áp dụng A1/A2/B1 (2026-07-30), bị MỞ RỘNG ra cả B2/C1 trong đúng commit sửa lỗi chi phí
+952/381 (`614b496`, 2026-08-05) — không có ghi nhận duyệt riêng, và `docs/prompt-ai-tao-bai-hoc.md`
+không được cập nhật theo (lệch tài liệu/code).
+
+**QUYẾT ĐỊNH (Minh):** áp dụng lại mô hình đã THÀNH CÔNG với kho lời thoại Mentor AI
+(`api/_generate/mentor-lines/judge-criteria.md`, 2026-07-21 — invite_goal từ lệch 13-28/30 thành
+đồng đều 29/30 mọi giọng sau khi bỏ danh sách quy tắc cứng, thay bằng nguyên tắc bậc cao).
+
+**Việc 1 — Gỡ validator kỹ thuật cứng (`api/_generate/lesson.js`, ĐÃ SỬA):**
+- Gỡ hoàn toàn khỏi điều kiện chặn: `word_count_out_of_range` (đếm từ khớp bảng CEFR),
+  `dangling_question_ending` (hội thoại kết ở câu hỏi treo), `phrase_coverage_incomplete`.
+- GIỮ: kiểm hình dạng JSON tối thiểu (title/level/content_type/content/vocabulary/grammar/
+  exercises không rỗng/đúng kiểu) — đây là "cần thiết tối thiểu", không phải chỉ số chất lượng.
+- GIỮ RIÊNG `word_count_deviation` cho `analyze_user_text` — đây là kiểm ĐỘ TRUNG THỰC với văn
+  bản GỐC người dùng dán vào (không bị AI cắt/bịa), khác bản chất với việc áp target CEFR tùy ý.
+- `phrase_groups` vẫn được yêu cầu trong prompt (hướng dẫn MỀM), bài phủ chưa đủ 100% vẫn được
+  LƯU bình thường — tự "vá 1 lần" khi người dùng bấm từ còn thiếu (cơ chế đã có sẵn từ
+  2026-08-06, dùng CHUNG cho bài mới lẫn bài cũ).
+- Dọn code chết đi kèm (`graceExpandRange`, nhánh retry-target thích ứng theo word-count).
+- Đồng bộ lại `docs/prompt-ai-tao-bai-hoc.md` mục 8 (đang lệch, xem trên).
+
+**Việc 2 — Giám khảo chất lượng (draft, CHƯA chạy, CHƯA gộp vào generate_lesson):**
+- `api/_generate/lesson-judge-criteria.md` — 7 nguyên tắc bậc cao (dựa trên bản nháp Minh, viết
+  TỔNG QUÁT không hardcode riêng cho Kế toán — áp dụng được mọi lĩnh vực + tiếng Đức/Trung tương
+  lai) + phép thử "nếu tôi là người học thật..." + định dạng trả về JSON `{verdict, reason}`.
+- `api/_generate/lessonJudge.js` — hàm `judgeLessonQuality(lesson, context)`, đọc thẳng file .md
+  làm system prompt (sửa nguyên tắc chỉ cần sửa 1 chỗ), 1 lượt gọi AI/bài, trả `{passed, reason}`.
+- **CHƯA gọi từ đâu cả** — chỉ dựng sẵn cho Việc 3.
+
+**⏸️ DỪNG LẠI xin duyệt bộ nguyên tắc (Việc 2) TRƯỚC khi sinh mẫu (Việc 3)** — đúng yêu cầu Minh,
+chưa sinh thêm bài nào, chưa chạy giám khảo lần nào.
