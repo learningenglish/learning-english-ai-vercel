@@ -5,12 +5,12 @@
 // thêm 1 màn liệt kê để xem lại, mở từng mục qua route "/writing-favorite" có sẵn
 // (views/writingFavoriteDetail.js).
 //
-// SỬA 2026-08-06 (tái cấu trúc theo cây mới, Minh: "Luyện viết -> danh sách nội dung đã luyện
-// viết", CỦA ĐÚNG Chuyên ngành đang active) — lọc theo goal_id đang active (kèm chính sách
-// "goal_id null cũng hiện", xem ghi chú listWritingFavorites() trong db.js — CẦN migration
-// 034_writing_favorites_goal_id.sql đã chạy). Đây giờ là ĐÍCH ĐẾN CHÍNH của nhánh "Luyện viết" ở
-// Home (trước đây Home trỏ thẳng "/writing", màn này chỉ là "Lưu trữ" phụ) — thêm nút "+" header
-// dẫn tới "/writing" để luyện viết bài mới.
+// SỬA 2026-08-06 rồi RÚT LẠI 2026-08-07 (Minh: "Home -> Luyện viết (icon) + -> Luyện viết
+// (Không icon). Bị dư thừa") — đợt 08-06 từng đổi màn này thành đích đến CHÍNH của Home (thêm
+// nút "+" dẫn qua /writing) — Minh xác nhận không cần, quay lại đúng vai trò "Lưu trữ" phụ ban
+// đầu (vào từ icon Lưu trữ trong views/writingPractice.js, opts.archivePath). CHỈ giữ lại phần
+// lọc theo goal_id đang active (yêu cầu gốc "Luyện viết -> danh sách của đúng Chuyên ngành" vẫn
+// còn hiệu lực — CẦN migration 034_writing_favorites_goal_id.sql đã chạy).
 import { navigate } from "../router.js";
 import { listWritingFavorites, getActiveLearningGoal } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
@@ -26,11 +26,11 @@ const KIND_LABELS = {
 export async function renderWritingArchive(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("edit-3", { size: 22 })} Luyện viết`, {}, { showBack: true, createPath: "/writing" })}
+      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Lưu trữ`, undefined, { showBack: true })}
       <div id="writing-archive-list"><p class="muted">Đang tải...</p></div>
     </div>
   `;
-  wireBackLink(mount, () => navigate("/home"));
+  wireBackLink(mount, () => history.back());
   wireAppHeader(mount);
 
   const listEl = mount.querySelector("#writing-archive-list");
@@ -38,7 +38,7 @@ export async function renderWritingArchive(mount) {
     const goal = await getActiveLearningGoal().catch(() => null);
     const rows = await listWritingFavorites({ goalId: goal?.id });
     if (!rows.length) {
-      listEl.innerHTML = `<p class="muted">Chưa lưu bài viết nào. Bấm "+" ở góc trên để bắt đầu luyện viết.</p>`;
+      listEl.innerHTML = `<p class="muted">Chưa lưu bài viết nào.</p>`;
       return;
     }
     listEl.innerHTML = rows

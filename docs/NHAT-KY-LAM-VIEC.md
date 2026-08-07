@@ -670,3 +670,50 @@ Chuyên ngành, sinh bài, phân tích, luyện viết...) lỗi "Chỉ áp dụ
 
 **Việc còn dở:** cần Minh chạy CẢ 2 file trên (035 trước, rồi one-off script điền email), sau đó
 thử lại chọn Chuyên ngành trên tài khoản Google thật.
+
+Sau khi chạy 2 file trên vẫn báo lỗi — chẩn đoán qua SELECT chỉ đọc (Minh chạy, dán kết quả):
+`kimchinamvn@gmail.com` (tạo 2026-08-04) vẫn `is_mentor=true, is_student=false` — script one-off
+lần đầu chắc chắn chưa chạy trúng (khả năng cao do chưa thay placeholder email). Đưa lại đúng câu
+SQL đã điền sẵn email thật, không cần Minh tự sửa gì nữa.
+
+## 2026-08-07 (tiếp) — 9 việc từ phản hồi trực tiếp trên bản deploy thật
+
+Minh test trực tiếp bản vừa tái cấu trúc, phản hồi 9 điểm:
+
+1-5. **Rút lại toàn bộ cơ chế "+"/màn trung gian đã tự ý thêm ở đợt 08-06** — Minh: "Tôi không hề
+   yêu cầu tách thành luồng dấu + cho những cái không đúng luồng". Home -> Bài đọc/Hội thoại: gỡ
+   nút "+" (header.js bỏ hẳn `opts.createPath`/`createBtn`, cơ chế thêm sai hôm trước, chưa từng
+   được yêu cầu). Home -> Phân tích/Luyện viết: bỏ luôn việc trỏ qua analysisArchive.js/
+   writingArchive.js làm đích chính — 2 card trỏ THẲNG lại `/create-text`/`/writing` như trước tái
+   cấu trúc; 2 màn "Lưu trữ" quay về đúng vai trò phụ (vào qua icon Lưu trữ có sẵn trong 2 màn tạo
+   mới đó), chỉ giữ lại phần lọc theo goal_id đang active (phần thật sự được yêu cầu).
+6. **Bug thật: streak badge nháy "--" khi chuyển màn** — root cause: `appHeaderHtml(title, {}, opts)`
+   — TRUYỀN `{}` làm tham số cache thay vì bỏ trống (mặc định `sharedStatsCache`) — lỗi này có ở
+   CẢ 5 chỗ trong code (3 chỗ tôi mới thêm hôm 08-06: lessons.js/analysisArchive.js/
+   writingArchive.js, CỘNG 2 chỗ đã tồn tại từ trước: writingFavoriteDetail.js x3/
+   createFromText.js — không phải lỗi mới, có sẵn trong code cũ, chỉ giờ mới bị bắt). Sửa tất cả
+   thành bỏ tham số (dùng mặc định). THÊM `header.js::primeSharedStats()` — Home tự vẽ streak-card
+   riêng (không qua appHeaderHtml()) nên trước đây KHÔNG BAO GIỜ "làm ấm" sharedStatsCache; giờ
+   Home tự gọi hàm mới này ngay sau khi tải xong, để màn ĐẦU TIÊN mở sau Home (luôn từ Home, vì đó
+   là trang chính) cũng đọc được số thật ngay, không riêng gì các lần chuyển tiếp theo.
+7. Đổi TOÀN BỘ `font-weight: 700` còn lại trong style.css (36 chỗ) thành `600`, khớp font Minh
+   khen ở tiêu đề mục.
+8. Màn "Chọn chuyên ngành": canh giữa tiêu đề+phụ đề, xuống dòng đúng vị trí Minh chỉ định.
+9. **Bug thật NGHIÊM TRỌNG: chọn "Tiếng Anh Giao Tiếp" lại tạo ra goal "Kế toán"** — root cause:
+   `industrySelect.js::selectGeneral()` gọi `autoCreateGoal()` (action `mentor_auto_goal`) — hàm
+   này KHÔNG hề tạo goal tổng quát, nó LẤY LẠI `occupation_profile` của `learning_goals` GẦN NHẤT
+   (bất kể active/archived) làm mẫu — đúng ý nghĩa gốc "để AI tự chọn giúp" của luồng nhập tự do
+   CŨ khi bỏ trống ô nhập (mentorGoal.js, đã archive), hoàn toàn SAI ngữ cảnh khi dùng cho nút
+   "Tiếng Anh Giao Tiếp" ở màn mới — nếu lần gần nhất là "Kế toán", bấm "Giao Tiếp" sẽ tạo lại
+   ĐÚNG goal Kế toán. Sửa: dựng thẳng 1 `GENERAL_PROFILE` cố định trong industrySelect.js, gọi
+   `createGoal()` (cùng action `selectPosition()` cho Kế toán đã dùng, luôn archive goal cũ +
+   INSERT mới hoàn toàn) — đúng yêu cầu "mỗi chuyên ngành là 1 luồng độc lập, tạo mới cho mỗi
+   chuyên ngành", không còn tái sử dụng/suy luận từ goal nào khác.
+
+**Đã verify qua trình duyệt (server tĩnh cục bộ)**: 4 card Home đúng path, "+" đã biến mất, streak
+hiện đúng số NGAY khi chuyển màn (test bằng click thật trong SPA, không reload), font-weight 600
+ở cả tiêu đề mục lẫn tên bài học, màn Chọn chuyên ngành canh giữa + xuống dòng đúng. **CHƯA verify
+được** điểm 9 (tạo goal) trên server tĩnh vì cần `/api/chat` thật (backend) — cần deploy thật để
+xác nhận cuối.
+
+Bump `CACHE_NAME` lên v45.

@@ -53,7 +53,7 @@ export function renderLessons(mount, params) {
 
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`<span>${titleText}</span>`, {}, { showBack: true, createPath: "/create" })}
+      ${appHeaderHtml(`<span>${titleText}</span>`, undefined, { showBack: true })}
 
       <div class="level-card-row">
         ${LEVEL_CARDS.map(

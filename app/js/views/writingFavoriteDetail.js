@@ -19,7 +19,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
   const id = params?.[0];
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, {}, { showBack: true })}
+      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, undefined, { showBack: true })}
       <p class="muted">Đang tải...</p>
     </div>
   `;
@@ -39,7 +39,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
   }
   if (!favorite) {
     mount.querySelector(".screen").innerHTML =
-      `${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, {}, { showBack: true })}<p class="error-text">Không tìm thấy bài viết đã lưu.</p>`;
+      `${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, undefined, { showBack: true })}<p class="error-text">Không tìm thấy bài viết đã lưu.</p>`;
     wireBackLink(mount, () => navigate("/writing-archive"));
     wireAppHeader(mount);
     return;
@@ -51,7 +51,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
 
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} ${escapeHtml(title)}`, {}, { showBack: true })}
+      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} ${escapeHtml(title)}`, undefined, { showBack: true })}
 
       <div class="card writing-task-card writing-card">
         <div class="writing-genre-badge">${escapeHtml(task.genre_vi || "")} <span class="level-pill">${escapeHtml(favorite.level)}</span></div>

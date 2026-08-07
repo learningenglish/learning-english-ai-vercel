@@ -10,13 +10,14 @@
 // PHẲNG 1 TẦNG, mỗi chuyên ngành bấm chọn thẳng, không còn accordion xổ ra vị trí con (khác hẳn
 // bản trước có 8 vị trí Kế toán riêng biệt). "Kế toán" giờ là 1 occupation_profile DUY NHẤT gộp
 // chung phạm vi nghiệp vụ của cả 8 vị trí cũ (soạn tay, KHÔNG gọi AI để suy luận) — chọn xong gọi
-// THẲNG createGoal(profile, ...), giống hệt cơ chế "Giao tiếp" (autoCreateGoal). Tầng 2 (400 chủ
-// đề) vẫn sinh LƯỜI theo chunk khi có người thật bấm học (ensureSkinChunk có sẵn trong mentor.js).
+// THẲNG createGoal(profile, ...), giống hệt cơ chế "Giao tiếp" (xem GENERAL_PROFILE bên dưới,
+// SỬA 2026-08-07 sau khi phát hiện bug thật dùng nhầm autoCreateGoal()). Tầng 2 (400 chủ đề) vẫn
+// sinh LƯỜI theo chunk khi có người thật bấm học (ensureSkinChunk có sẵn trong mentor.js).
 //
 // Các chuyên ngành KHÁC (Minh: "ghi ra và cho toggle... để sắp ra mắt") — CHỈ để tham khảo/đúng
 // khung ảnh mẫu, KHÔNG chọn được, bấm vào báo "Sắp ra mắt" vĩnh viễn.
 import { navigate } from "../router.js";
-import { autoCreateGoal, createGoal } from "../mentorApi.js";
+import { createGoal } from "../mentorApi.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { showToast } from "../toast.js";
@@ -79,6 +80,26 @@ const OTHER_INDUSTRIES = [
   { key: "marketing", label: "Marketing", icon: "star", chip: "purple" },
 ];
 
+// "GENERAL_PROFILE" (2026-08-07, sửa BUG THẬT — Minh: "Tôi chọn chuyên ngành Tiếng Anh Giao
+// Tiếp: nhưng hiển thị luồng Anh văn chuyên ngành Kế toán") — selectGeneral() TRƯỚC ĐÂY gọi
+// autoCreateGoal() (action mentor_auto_goal), nhưng hàm đó KHÔNG hề tạo goal "Giao tiếp" — nó
+// LẤY LẠI occupation_profile của learning_goals GẦN NHẤT (bất kể active hay archived) làm mẫu,
+// đúng ý nghĩa gốc "Bạn cứ để tôi tự chọn giúp" của luồng nhập tự do CŨ (mentorGoal.js, đã
+// archive) khi người dùng bỏ trống ô nhập — nếu lần gần nhất là "Kế toán", bấm "Giao Tiếp" ở
+// MÀN NÀY sẽ vô tình TẠO LẠI ĐÚNG GOAL KẾ TOÁN, không phải Giao Tiếp. Sửa: dựng thẳng profile
+// "chung" tại đây (khớp GENERAL_OCCUPATION_PROFILE trong api/_generate/mentor.js) rồi gọi
+// createGoal() y hệt selectPosition() bên dưới — ĐÚNG yêu cầu "mỗi chuyên ngành là 1 luồng độc
+// lập, tạo mới luồng cho mỗi chuyên ngành", không tái sử dụng/suy luận từ goal cũ nào cả.
+const GENERAL_PROFILE = {
+  is_general: true,
+  is_fixed_catalog: true,
+  merged_occupation: null,
+  primary_communication_scope: "giao tiếp tiếng Anh trong nhiều tình huống hàng ngày",
+  interlocutors: [],
+  core_terms: [],
+  confidence: { merged_occupation: "thấp", interlocutors: "thấp", core_terms: "thấp" },
+};
+
 const INDUSTRIES = [
   { key: "general", label: "Tiếng Anh Giao Tiếp", icon: "message-circle", chip: "blue", real: true },
   { key: "accounting", label: "Kế toán", icon: "dollar-sign", chip: "orange", real: true, profile: ACCOUNTING_PROFILE },
@@ -100,8 +121,8 @@ export function renderIndustrySelect(mount) {
   function render() {
     mount.innerHTML = `
       <div class="screen industry-select-screen">
-        <h1 class="industry-select-title">Chọn chuyên ngành để bắt đầu</h1>
-        <p class="industry-select-subtitle">Nội dung được thiết kế riêng cho công việc của bạn</p>
+        <h1 class="industry-select-title">Chọn chuyên ngành<br />để bắt đầu</h1>
+        <p class="industry-select-subtitle">Nội dung được thiết kế riêng<br />cho công việc của bạn</p>
         <div class="industry-list">
           ${INDUSTRIES.map((ind) => industryRowHtml(ind)).join("")}
         </div>
@@ -140,7 +161,7 @@ export function renderIndustrySelect(mount) {
     if (state.submitting) return;
     state.submitting = true;
     render();
-    const res = await autoCreateGoal();
+    const res = await createGoal(GENERAL_PROFILE, "Tiếng Anh Giao Tiếp", null);
     if (!res.ok) {
       state.submitting = false;
       render();

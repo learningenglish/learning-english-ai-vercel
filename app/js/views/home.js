@@ -9,22 +9,22 @@ import { getActiveLearningGoal, getStreakAndStats } from "../db.js";
 import { getSession } from "../session.js";
 import { icon } from "../icons.js";
 import { escapeHtml } from "../utils.js";
+import { primeSharedStats } from "../header.js";
 
 // "chip" = màu icon vuông bo góc riêng cho từng card, KHÔNG đổi theo Theme Color Palette (màu
 // nhận diện thể loại, cố định) — khác hẳn --purple (accent chọn được) dùng cho nút/tab active.
-// SỬA 2026-08-06 (tái cấu trúc theo cây mới — Minh: "Chuyên ngành -> Bài học/Hội thoại/Phân
-// tích/Luyện viết") — 4 card giữ NGUYÊN thứ tự/nhãn, chỉ đổi lại "path":
-// - "reading"/"dialogue": route "/lessons" đổi tham số đầu tiên từ mode ("main") sang thẳng
-//   content_type ("reading"/"dialogue", xem views/lessons.js viết lại hoàn toàn) — bỏ mode.
-// - "analyze": trỏ tới "/analysis-archive" (danh sách đã phân tích của Chuyên ngành đang active)
-//   thay vì thẳng "/create-text" (màn tạo mới) — đúng cây "Phân tích -> danh sách nội dung đã
-//   phân tích"; màn danh sách có nút "+" dẫn qua "/create-text" khi cần tạo mới.
-// - "writing": trỏ tới "/writing-archive" (danh sách đã luyện viết), cùng lý do như "analyze".
+// SỬA 2026-08-07 (Minh: "Tôi không hề yêu cầu tách thành luồng dấu + cho những cái không đúng
+// luồng... Home -> Luyện viết (icon) + -> Luyện viết (Không icon). Bị dư thừa") — RÚT LẠI đợt
+// 2026-08-06 (từng đổi "analyze"/"writing" trỏ qua analysisArchive.js/writingArchive.js trước,
+// thêm 1 màn "Lưu trữ" trung gian + nút "+") — 2 card này trỏ THẲNG lại vào đúng màn tạo mới như
+// TRƯỚC tái cấu trúc, KHÔNG qua màn danh sách trung gian nữa. Xem lại
+// createFromText.js/writingPractice.js — đã có sẵn icon Lưu trữ riêng (archivePath) dẫn qua
+// analysisArchive.js/writingArchive.js NGAY TRONG màn tạo mới, không cần lặp lại ở Home.
 const HOME_CARDS = [
   { id: "reading", label: "Bài đọc", sub: "Rèn luyện kỹ năng đọc hiểu", icon: "book", path: "/lessons/reading", chip: "blue" },
   { id: "dialogue", label: "Hội thoại", sub: "Thực hành giao tiếp thực tế", icon: "message-circle", path: "/lessons/dialogue", chip: "green" },
-  { id: "analyze", label: "Phân tích", sub: "AI phân tích và đánh giá", icon: "flask", path: "/analysis-archive", chip: "orange" },
-  { id: "writing", label: "Luyện viết", sub: "Luyện viết theo chủ đề", icon: "edit-3", path: "/writing-archive", chip: "purple" },
+  { id: "analyze", label: "Phân tích", sub: "AI phân tích và đánh giá", icon: "flask", path: "/create-text", chip: "orange" },
+  { id: "writing", label: "Luyện viết", sub: "Luyện viết theo chủ đề", icon: "edit-3", path: "/writing", chip: "purple" },
 ];
 
 // Streak "mục tiêu tuần" (2026-08-04, thẻ riêng theo ảnh mẫu — Minh: "dựng thẻ riêng, không cần
@@ -88,10 +88,16 @@ export function renderHome(mount) {
   });
 
   getStreakAndStats()
-    .then(({ streak: days }) => {
+    .then(({ streak: days, totalXp }) => {
       mount.querySelector("#streak-value").textContent = `${days} ngày`;
       const pct = Math.min(100, Math.round((days / STREAK_WEEKLY_GOAL) * 100));
       mount.querySelector("#streak-bar-fill").style.width = `${pct}%`;
+      // 2026-08-07 (Minh bắt bug thật: "Chuỗi ngày học ở ngoài là 0, nhưng vào trong là --") —
+      // Home KHÔNG dùng appHeaderHtml() nên trước đây không hề "làm ấm" sharedStatsCache (xem
+      // header.js) — màn ĐẦU TIÊN mở sau Home (luôn là Home, vì đó là trang chính sau đăng
+      // nhập) luôn thấy badge streak "--" dù Home đã có số thật. Làm ấm cache NGAY TẠI ĐÂY bằng
+      // đúng số vừa tải, không cần gọi mạng thêm lần nữa.
+      primeSharedStats(days, totalXp);
     })
     .catch(() => {
       mount.querySelector("#streak-value").textContent = "0 ngày";

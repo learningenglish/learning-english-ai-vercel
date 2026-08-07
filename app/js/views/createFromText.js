@@ -18,7 +18,7 @@ import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`Văn bản`, {}, { showBack: true, archivePath: "/analysis-archive" })}
+      ${appHeaderHtml(`Văn bản`, undefined, { showBack: true, archivePath: "/analysis-archive" })}
 
       <label class="field">
         <span class="field-question">Dán văn bản của bạn</span>

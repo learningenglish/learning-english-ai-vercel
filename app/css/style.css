@@ -269,7 +269,7 @@ body::before {
    ".field > span" ở trên để KHÔNG bị đè ngược lại font-size/color/margin mặc định. */
 .field > .field-question {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.4;
   margin-bottom: 8px;
@@ -551,7 +551,7 @@ textarea:focus {
   border-radius: 999px;
   padding: 3px 10px;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   box-shadow: var(--shadow-card);
 }
 
@@ -568,7 +568,7 @@ textarea:focus {
   background: var(--surface);
   border-radius: 999px;
   padding: 6px 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--orange);
   box-shadow: var(--shadow-card);
   white-space: nowrap;
@@ -730,7 +730,7 @@ textarea:focus {
 .section-label-tab {
   display: inline-flex;
   align-items: center;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
   color: var(--purple);
   padding-bottom: 8px;
@@ -839,7 +839,7 @@ textarea:focus {
    Toàn app vẫn chỉ 1 font-family duy nhất (--font-main); khác biệt trước là do TEXT-TRANSFORM
    chứ không phải font, sửa ở đây là đủ. */
 .continue-card-title {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.78rem;
   margin-bottom: 2px;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
@@ -947,7 +947,7 @@ textarea:focus {
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
   font-size: 0.62rem;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 999px;
   letter-spacing: 0.02em;
@@ -1009,7 +1009,7 @@ textarea:focus {
   background: none;
   border: none;
   padding: 6px 2px 10px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.78rem;
   color: var(--text-dim);
   cursor: pointer;
@@ -1073,7 +1073,7 @@ textarea:focus {
 }
 
 .result-title {
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
 }
 
@@ -1278,7 +1278,7 @@ textarea:focus {
    tiêu đề dài/ngắn khác nhau trước đây khiến thẻ wrap 1-2 dòng, chiều cao card KHÔNG đều nhau
    khi xếp danh sách — ellipsis cắt gọn, mọi card cùng 1 chiều cao cố định. */
 .lesson-card-title {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
   margin-bottom: 4px;
   overflow: hidden;
@@ -1365,7 +1365,7 @@ textarea:focus {
   border-radius: 999px;
   padding: 2px 10px;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* "#N" thứ tự bài trong khung giáo trình (2026-08-06, spine_slot — xem lessonCard.js) — CỐ
@@ -1505,7 +1505,7 @@ textarea:focus {
 .audio-time {
   flex-shrink: 0;
   font-size: 0.66rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-dim);
   white-space: nowrap;
 }
@@ -1617,7 +1617,7 @@ textarea:focus {
 
 .speaker-name {
   color: var(--purple);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .content-text {
@@ -1759,7 +1759,7 @@ textarea:focus {
 .word-popover-level[data-level="C1"] { background: #ef4444; }
 
 .word-popover-word {
-  font-weight: 700;
+  font-weight: 600;
   flex: 1;
 }
 
@@ -1787,7 +1787,7 @@ textarea:focus {
   display: inline-block;
   margin-top: 6px;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--purple);
   background: var(--purple-soft);
   padding: 2px 8px;
@@ -1805,7 +1805,7 @@ textarea:focus {
 
 .word-popover-breakdown-item b {
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .vocab-list,
@@ -1838,7 +1838,7 @@ textarea:focus {
 }
 
 .vocab-word {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.05rem;
 }
 
@@ -1938,7 +1938,7 @@ textarea:focus {
 }
 
 .profile-email {
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 10px;
 }
 
@@ -1956,7 +1956,7 @@ textarea:focus {
 }
 
 .profile-section-title {
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 12px;
   color: var(--text-dim);
   font-size: 0.85rem;
@@ -2038,7 +2038,7 @@ textarea:focus {
 
 .bg-group-label {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-dim);
   margin: 12px 0 6px;
 }
@@ -2124,7 +2124,7 @@ textarea:focus {
 }
 
 .history-title {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .history-date {
@@ -2222,7 +2222,7 @@ textarea:focus {
 }
 
 .director-card-title {
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 6px;
   line-height: 1.4;
 }
@@ -2294,7 +2294,7 @@ textarea:focus {
 
 .mentor-result-line-3 {
   color: var(--purple);
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 18px;
 }
 
@@ -2352,7 +2352,7 @@ textarea:focus {
   align-items: center;
   gap: 8px;
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--purple);
   background: var(--purple-soft);
   padding: 4px 10px;
@@ -2370,7 +2370,7 @@ textarea:focus {
 
 .writing-topic-en {
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.4;
   margin: 0 0 6px;
 }
@@ -2391,7 +2391,7 @@ textarea:focus {
 }
 
 .writing-section-title {
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 10px;
 }
 
@@ -2457,7 +2457,7 @@ textarea:focus {
 }
 
 .writing-tier-label {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
   color: var(--purple);
   background: var(--purple-soft);
@@ -2510,7 +2510,7 @@ textarea:focus {
 .writing-criteria-head {
   display: flex;
   justify-content: space-between;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 6px;
 }
 
@@ -2555,7 +2555,7 @@ textarea:focus {
 
 .w-seg-unnatural strong {
   color: var(--success);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Câu CẦN CẢI THIỆN (không sai) — giữ nguyên câu gốc, KHÔNG gạch ngang, chỉ tô nền vàng/be
@@ -2623,7 +2623,7 @@ textarea:focus {
 }
 
 .writing-pattern-structure {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--purple);
   margin-bottom: 4px;
 }
@@ -2652,7 +2652,7 @@ textarea:focus {
 
 .writing-favorite-kind {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--purple);
   background: var(--purple-soft);
   padding: 2px 10px;
@@ -2661,7 +2661,7 @@ textarea:focus {
 
 .writing-favorite-score {
   margin-left: auto;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-dim);
   font-size: 0.85rem;
 }
@@ -2812,7 +2812,7 @@ textarea:focus {
 }
 
 .streak-card-label {
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 10px;
 }
 
@@ -2899,7 +2899,7 @@ textarea:focus {
 }
 
 .feature-card-label {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
 }
 
@@ -2987,14 +2987,18 @@ textarea:focus {
   padding-top: 24px;
 }
 
+/* Canh giữa (2026-08-07, Minh: đối chiếu ảnh mẫu — tiêu đề/phụ đề màn Chọn chuyên ngành canh
+   giữa, không canh trái như mặc định). */
 .industry-select-title {
   font-size: 1.5rem;
   margin: 0 0 6px;
+  text-align: center;
 }
 
 .industry-select-subtitle {
   color: var(--text-dim);
   margin: 0;
+  text-align: center;
 }
 
 .industry-list {
@@ -3022,7 +3026,7 @@ textarea:focus {
   gap: 12px;
   cursor: pointer;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
   text-align: left;
 }
@@ -3082,7 +3086,7 @@ textarea:focus {
   align-items: center;
   gap: 3px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
 }
@@ -3202,7 +3206,7 @@ textarea:focus {
 }
 
 .progress-history-day {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.82rem;
   color: var(--text-dim);
   margin: 14px 0 6px;
