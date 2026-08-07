@@ -1,11 +1,18 @@
-// app/js/views/writingArchive.js — "Lưu trữ" CỤC BỘ cho Luyện viết (2026-08-04, thay chỗ tab
-// "Bài viết" trong Yêu thích cũ, đã gỡ — Minh: "Luyện viết có icon Lưu trữ bài Tham khảo, bài
+// app/js/views/writingArchive.js — nhánh "Luyện viết" dưới Chuyên ngành (2026-08-04, thay chỗ
+// tab "Bài viết" trong Yêu thích cũ, đã gỡ — Minh: "Luyện viết có icon Lưu trữ bài Tham khảo, bài
 // đã sửa"). Đọc THẲNG writing_favorites qua RLS (đã có sẵn, xem listWritingFavorites() trong
 // db.js) — KHÔNG đổi cơ chế lưu (save_writing_favorite trong api/_generate/writing.js), chỉ
 // thêm 1 màn liệt kê để xem lại, mở từng mục qua route "/writing-favorite" có sẵn
 // (views/writingFavoriteDetail.js).
+//
+// SỬA 2026-08-06 (tái cấu trúc theo cây mới, Minh: "Luyện viết -> danh sách nội dung đã luyện
+// viết", CỦA ĐÚNG Chuyên ngành đang active) — lọc theo goal_id đang active (kèm chính sách
+// "goal_id null cũng hiện", xem ghi chú listWritingFavorites() trong db.js — CẦN migration
+// 034_writing_favorites_goal_id.sql đã chạy). Đây giờ là ĐÍCH ĐẾN CHÍNH của nhánh "Luyện viết" ở
+// Home (trước đây Home trỏ thẳng "/writing", màn này chỉ là "Lưu trữ" phụ) — thêm nút "+" header
+// dẫn tới "/writing" để luyện viết bài mới.
 import { navigate } from "../router.js";
-import { listWritingFavorites } from "../db.js";
+import { listWritingFavorites, getActiveLearningGoal } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
@@ -19,18 +26,19 @@ const KIND_LABELS = {
 export async function renderWritingArchive(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Lưu trữ`, {}, { showBack: true })}
+      ${appHeaderHtml(`${icon("edit-3", { size: 22 })} Luyện viết`, {}, { showBack: true, createPath: "/writing" })}
       <div id="writing-archive-list"><p class="muted">Đang tải...</p></div>
     </div>
   `;
-  wireBackLink(mount, () => history.back());
+  wireBackLink(mount, () => navigate("/home"));
   wireAppHeader(mount);
 
   const listEl = mount.querySelector("#writing-archive-list");
   try {
-    const rows = await listWritingFavorites();
+    const goal = await getActiveLearningGoal().catch(() => null);
+    const rows = await listWritingFavorites({ goalId: goal?.id });
     if (!rows.length) {
-      listEl.innerHTML = `<p class="muted">Chưa lưu bài viết nào.</p>`;
+      listEl.innerHTML = `<p class="muted">Chưa lưu bài viết nào. Bấm "+" ở góc trên để bắt đầu luyện viết.</p>`;
       return;
     }
     listEl.innerHTML = rows

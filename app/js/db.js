@@ -82,6 +82,11 @@ export function computeLearnStatus(lesson) {
   return row.fully_listened_at ? "done" : "in_progress";
 }
 
+// MỒ CÔI (2026-08-06, tái cấu trúc theo cây mới) — chỉ dùng cho mode "favorite" của
+// views/lessons.js BẢN CŨ (đã lưu ở _archive/old-nav/lessons.js), nhánh "Yêu thích" riêng không
+// còn thuộc cây cấu trúc mới (Chuyên ngành -> Bài học/Hội thoại/Phân tích/Luyện viết). Giữ
+// nguyên hàm (không xoá, is_favorite vẫn còn trên schema, dữ liệu không mất) phòng khi cần dùng
+// lại, hiện KHÔNG còn nơi nào gọi tới.
 export async function listLessons({ filter = "all" } = {}) {
   // "content" nằm trong select để thẻ danh sách hiện được ĐÚNG trích đoạn nội dung thật (câu
   // đầu bài) thay vì "situation" — trường đó AI đôi khi viết kiểu mô tả meta ("Bài đọc mô tả
@@ -100,12 +105,26 @@ export async function listLessons({ filter = "all" } = {}) {
 // api/_generate/lesson.js::buildLessonInsertRow(), luôn được set khi insert nên lọc được
 // chắc chắn, không cần suy luận qua content_type hay goal_id (goal_id chỉ dành riêng cho
 // luồng Mentor AI đã tắt UI, KHÔNG dùng để phân biệt ở đây).
-export async function listAiGeneratedLessons({ filter = "all" } = {}) {
+// "goalId" (2026-08-06, tái cấu trúc theo cây mới — Minh: "Bài học/Hội thoại đã sinh: xếp đúng
+// theo Chuyên ngành (goal đang active)") — lọc CHỈ bài thuộc goal đang active, CỘNG bài
+// goal_id=null (sinh TRƯỚC khi hệ thống Chuyên ngành tồn tại — createLesson.js tự nhập KHÔNG
+// qua next_slot vẫn không gắn goal_id) — quyết định: bài "mồ côi goal" này vẫn hiện dưới BẤT KỲ
+// Chuyên ngành nào đang active thay vì biến mất hẳn khỏi màn hình (dữ liệu vẫn còn trong DB,
+// không muốn tạo cảm giác "mất bài" cho người dùng cũ) — xem docs/NHAT-KY-LAM-VIEC.md mục
+// 2026-08-06 để biết lý do đầy đủ. Không truyền goalId (hoặc null) -> KHÔNG lọc gì thêm (dùng
+// cho các chỗ khác vẫn cần TOÀN BỘ, nếu có).
+export async function listAiGeneratedLessons({ filter = "all", goalId = null } = {}) {
+  // "spine_slot" (2026-08-06, Minh: "mỗi chuyên ngành là trọn bộ giáo trình, cần đánh số #1,#2..
+  // để rà soát") — chỉ bài sinh qua next_slot/khung giáo trình (mentor_next_lesson ->
+  // generate_lesson, xem spine_slot trong api/_generate/lesson.js) mới có giá trị (vị trí 1-based
+  // TRONG ĐÚNG level đó, theo curriculum_spine.json) — bài tự nhập/phân tích văn bản có
+  // spine_slot=null, lessonCard.js tự ẩn số khi null.
   let q =
-    `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry,goal_id,${PROGRESS_EMBED}` +
+    `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry,goal_id,spine_slot,${PROGRESS_EMBED}` +
     "&source=eq.ai_generated&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
+  if (goalId) q += `&or=(goal_id.eq.${encodeURIComponent(goalId)},goal_id.is.null)`;
   return restFetch(`lessons?${q}`);
 }
 
@@ -114,11 +133,14 @@ export async function listAiGeneratedLessons({ filter = "all" } = {}) {
 // kê riêng, chỉ lẫn trong danh sách chung theo Bài đọc/Hội thoại. Lọc theo lessons.source=
 // 'user_text' (enum cố định, xem buildLessonInsertRow trong api/_generate/lesson.js) — cùng
 // pattern với listAiGeneratedLessons() ở trên, chỉ khác giá trị "source".
-export async function listTextAnalyzedLessons({ filter = "all" } = {}) {
+// "goalId" (2026-08-06, tái cấu trúc theo cây mới) — cùng chính sách "goal_id khớp HOẶC null"
+// đã áp dụng cho listAiGeneratedLessons() ở trên, xem ghi chú đầy đủ ở đó.
+export async function listTextAnalyzedLessons({ filter = "all", goalId = null } = {}) {
   let q =
-    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at" +
+    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id" +
     "&source=eq.user_text&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
+  if (goalId) q += `&or=(goal_id.eq.${encodeURIComponent(goalId)},goal_id.is.null)`;
   return restFetch(`lessons?${q}`);
 }
 
@@ -127,6 +149,10 @@ export async function listTextAnalyzedLessons({ filter = "all" } = {}) {
 // tự đối chiếu qua lessons.goal_id để biết 1 nhóm lĩnh vực có đang "đã dừng" hay không. Chỉ
 // id+status (đủ dùng, không cần thêm field), số dòng nhỏ (giới hạn 5 lĩnh vực trọn đời + vài
 // dòng "Giao tiếp tổng quát").
+// MỒ CÔI (2026-08-06, tái cấu trúc theo cây mới) — chỉ dùng cho carousel "Lĩnh vực" của
+// views/lessons.js BẢN CŨ (đã lưu ở _archive/old-nav/lessons.js) để gắn nhãn "Đã dừng", nhánh đó
+// không còn thuộc cây cấu trúc mới (giờ CHỈ 1 Chuyên ngành active tại 1 thời điểm, không cần so
+// sánh nhiều lĩnh vực cùng lúc nữa). Giữ nguyên hàm, hiện KHÔNG còn nơi nào gọi tới.
 export async function listGoalStatuses() {
   return restFetch("learning_goals?select=id,status&order=created_at.desc");
 }
@@ -147,14 +173,18 @@ export async function listMentorLibraryLessons({ filter = "all" } = {}) {
 // last_opened_at) nhưng CHƯA hoàn thành (completed_at rỗng), mới mở gần nhất trước. Trả kèm
 // completed_paragraphs/completed_exercises để tính % tiến độ ở lessonCard.js, không cần gọi
 // thêm request nào khác.
-export async function listInProgressLessons({ limit = 6 } = {}) {
+// "goalId" (2026-08-06, tái cấu trúc theo cây mới) — cùng chính sách "goal_id khớp HOẶC null"
+// (xem ghi chú ở listAiGeneratedLessons()) nhưng lọc Ở CLIENT sau khi tải (PostgREST không lọc
+// dễ dàng theo cột của quan hệ EMBED lồng nhau bằng "or=()" — mảng này luôn nhỏ, limit mặc định
+// 6, lọc ở client không đáng kể về hiệu năng). "goal_id" thêm vào select embed để lọc được.
+export async function listInProgressLessons({ limit = 6, goalId = null } = {}) {
   const rows = await restFetch(
     "lesson_progress?completed_at=is.null&last_opened_at=not.is.null&order=last_opened_at.desc" +
       `&limit=${limit}` +
-      "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at)"
+      "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id)"
   );
   return (rows || [])
-    .filter((r) => r.lessons)
+    .filter((r) => r.lessons && (!goalId || !r.lessons.goal_id || r.lessons.goal_id === goalId))
     .map((r) => ({
       ...r.lessons,
       progress_page: r.completed_paragraphs || 0,
@@ -205,6 +235,11 @@ export async function setLessonFavorite(id, isFavorite) {
 // "Tin tức" (2026-07-28, mục con dưới Phổ biến) — bảng RIÊNG "news_lessons" (migration 029,
 // public-read, KHÔNG user_id) — 2 hàm CHỦ Ý TÁCH khỏi listLessons()/getLessonById() ở trên
 // (khác bảng hẳn, không phải chỉ khác filter) để không lẫn lộn 2 nguồn dữ liệu.
+// PHẦN LỚN MỒ CÔI (2026-08-06, tái cấu trúc theo cây mới — Minh: "loại bỏ Tin tức/Phổ biến hoàn
+// toàn khỏi luồng đang chạy") — route "/news-lesson" đã gỡ khỏi app.js, KHÔNG còn màn nào điều
+// hướng tới listNewsLessons(). getNewsLessonById() vẫn còn 1 lời gọi mồ côi trong views/lesson.js
+// (nhánh isNews, cũng không còn ai kích hoạt được nữa vì thiếu route) — giữ nguyên 2 hàm + bảng
+// news_lessons trong DB (không xoá dữ liệu), chỉ không còn đường vào từ UI.
 export async function listNewsLessons({ filter = "all", category = null } = {}) {
   let q = "select=id,title,title_vi,level,content_type,situation,content,category,cover_image_url,published_at&order=published_at.desc";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
@@ -220,10 +255,15 @@ export async function getNewsLessonById(id) {
 // Tab "Bài viết" trong Yêu thích (Việc 3/Item 7, 2026-07-27) — đọc trực tiếp qua RLS "select
 // own" (giống listLessons() ở trên), GHI (lưu mới) bắt buộc qua action save_writing_favorite
 // trong api/_generate/writing.js (service role), xem supabase/028_writing_favorites.sql.
-export async function listWritingFavorites() {
-  return restFetch(
-    "writing_favorites?select=id,kind,variant,level,industry,task,overall_score,created_at&order=created_at.desc"
-  );
+// "goalId" (2026-08-06, tái cấu trúc theo cây mới — Minh: "Luyện viết: xếp vào nhánh của đúng
+// Chuyên ngành") — CẦN migration 034_writing_favorites_goal_id.sql chạy trước (thêm cột
+// "goal_id", trước đó bảng này KHÔNG có cột này) — nếu chưa chạy, truyền goalId sẽ làm request
+// lỗi 400 "column does not exist" giống hệt ca "fully_listened_at"/migration 033 trước đó. Cùng
+// chính sách "goal_id khớp HOẶC null" như các hàm list khác ở trên.
+export async function listWritingFavorites({ goalId = null } = {}) {
+  let q = "select=id,kind,variant,level,industry,task,overall_score,created_at,goal_id&order=created_at.desc";
+  if (goalId) q += `&or=(goal_id.eq.${encodeURIComponent(goalId)},goal_id.is.null)`;
+  return restFetch(`writing_favorites?${q}`);
 }
 
 export async function getWritingFavoriteById(id) {

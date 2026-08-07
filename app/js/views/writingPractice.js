@@ -20,6 +20,7 @@
 //   api/_generate/writing.js::GRADE_SYSTEM_PROMPT phần "clean_rewrite".
 import { navigate } from "../router.js";
 import { generateWritingTask, gradeWriting, saveWritingFavorite, listWritingGenres } from "../writingApi.js";
+import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
@@ -89,7 +90,16 @@ export function renderWritingPractice(mount) {
     savedClean: false,
     savedReference: false,
     cleanCoverImage: null, // Item 3 (2026-07-27) — ảnh minh hoạ CHỈ cho Bài viết hoàn chỉnh (khá/giỏi), tải LƯỜI khi mở màn đó, tái dùng pipeline ảnh miễn phí có sẵn (search_lesson_cover_image).
+    goalId: null, // 2026-08-06, tái cấu trúc theo cây mới — tải NGẦM ngay dưới đây, dùng khi lưu (saveFavorite()).
   };
+  getActiveLearningGoal()
+    .then((g) => {
+      state.goalId = g?.id || null;
+    })
+    .catch(() => {
+      // Lỗi mạng lúc tải goal đang active không nên chặn cả luồng luyện viết — lưu bài vẫn hoạt
+      // động bình thường, chỉ không gắn được goal_id (server tự hiểu là null, không lỗi).
+    });
 
   // Cache streak/tier SAU khi tải xong 1 lần (xem header.js::appHeaderHtml() tham số "cache")
   // — render() gọi lại nhiều lần mỗi khi đổi bước, nếu không cache header sẽ nhảy về "--"/"..."
@@ -753,6 +763,7 @@ export function renderWritingPractice(mount) {
       task: state.task,
       overallScore: state.grading.overall_score,
       content,
+      goalId: state.goalId,
     });
     if (!res.ok) {
       if (slot) slot.innerHTML = `<p class="field-hint field-hint-error">${escapeHtml(res.error || "Lưu thất bại, vui lòng thử lại.")}</p>`;

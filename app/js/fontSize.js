@@ -8,6 +8,7 @@ export const FONT_SIZES = [
   { value: "small", label: "Nhỏ", scale: "87.5%" },
   { value: "medium", label: "Trung bình", scale: "100%" },
   { value: "large", label: "Lớn", scale: "112.5%" },
+  { value: "xlarge", label: "Lớn nhất", scale: "125%" },
 ];
 
 export function getFontSizePreference() {

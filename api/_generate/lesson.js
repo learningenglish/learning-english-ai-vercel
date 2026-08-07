@@ -845,7 +845,11 @@ function buildLessonInsertRow(parsed, { userId, source, goalId, skinId, spineSlo
 // đó thật sự thuộc về CHÍNH ctx.studentId trước khi gắn — nếu không, âm thầm bỏ qua (coi
 // như không có goal_id) thay vì lỗi cả lượt tạo bài, tránh 1 client cố tình gắn bài vào
 // goal_id của người khác (learning_goals.id không có gì ràng buộc theo user ở tầng FK).
-async function resolveOwnedGoalId(goalId, userId) {
+// "export" (2026-08-06, tái cấu trúc theo cây mới) — TÁI DÙNG nguyên hàm này cho
+// analyze_user_text() bên dưới (Phân tích) LẪN save_writing_favorite() trong writing.js (Luyện
+// viết), cả 2 đều cần gắn goal_id đang active + xác nhận sở hữu giống hệt generate_lesson,
+// không viết lại logic kiểm tra ownership 1 lần nữa.
+export async function resolveOwnedGoalId(goalId, userId) {
   if (!goalId) return null;
   try {
     const r = await fetch(
@@ -1061,7 +1065,11 @@ export async function analyze_user_text(data, ctx) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
-  const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "user_text" }));
+  // "goal_id" (2026-08-06, tái cấu trúc theo cây mới — Minh: "Phân tích: xếp vào nhánh của đúng
+  // Chuyên ngành đang active") — TÙY CHỌN, xác nhận sở hữu giống hệt generate_lesson (xem
+  // resolveOwnedGoalId ở trên) trước khi gắn, KHÔNG lỗi cả lượt phân tích nếu goal_id sai/thiếu.
+  const goalId = await resolveOwnedGoalId(data.goal_id, ctx.studentId);
+  const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "user_text", goalId }));
   if (!saved) return { error: "Phân tích thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
 
   return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };

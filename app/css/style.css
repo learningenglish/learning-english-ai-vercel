@@ -187,6 +187,10 @@ body::before {
 
 .screen-title {
   font-size: 1.4rem;
+  /* 600 thay vì mặc định 700 của thẻ <h1> (2026-08-06, Minh đối chiếu ảnh mẫu: "chữ tiêu đề
+     mảnh, không mập ngang" — cùng lý do đã áp dụng cho .progress-summary-value/.progress-
+     section-title trước đó, xem ghi chú ở đó). */
+  font-weight: 600;
   margin: 0 0 16px;
   color: var(--text);
 }
@@ -1364,6 +1368,13 @@ textarea:focus {
   font-weight: 700;
 }
 
+/* "#N" thứ tự bài trong khung giáo trình (2026-08-06, spine_slot — xem lessonCard.js) — CỐ
+   ĐỊNH xám trung tính (không dùng --purple, tránh lấn át badge level là thông tin chính) */
+.badge-slot {
+  background: var(--surface-soft);
+  color: var(--text-dim);
+}
+
 /* ===== Lesson detail ===== */
 .lesson-header-row {
   display: flex;
@@ -1904,6 +1915,24 @@ textarea:focus {
 }
 
 /* ===== Profile ===== */
+/* Đồng bộ "hàng ngang trên" của card đầu tiên với Tiến trình/Admin (2026-08-06, Minh bắt bug
+   thật: "bị nhảy khi chuyển qua lại") — .app-header (Admin, header.js) và .home-topbar (Tiến
+   trình) đều là hàng cao 44px (var(--touch-min), do có nút tròn 44px bên cạnh tiêu đề) trước
+   khi tới card đầu tiên; ở Cài đặt, tiêu đề đứng MỘT MÌNH (không có nút tròn) nên hàng chỉ cao
+   bằng đúng chữ, thấp hơn 44px — card đầu tiên vì vậy trồi lên cao hơn ~30px so với 2 màn kia,
+   tạo cảm giác giật khi chuyển tab. "> " (direct child của .screen) để KHÔNG trúng nhầm h1 cùng
+   class lồng trong .app-header (header.js, dùng cho các màn khác) hay .home-track-title (Home,
+   đã canh riêng ở khối CSS ".home-track-title"). */
+.screen > .screen-title.app-header-title:not(.home-track-title) {
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  /* ".app-header-title{margin:0}" (dùng cho ngữ cảnh nằm TRONG .app-header, hàng đã tự lo
+     khoảng cách) vô tình xoá luôn margin-bottom 16px cần thiết ở đây — bù lại đúng bằng, khớp
+     margin-bottom mặc định của .screen-title mà chỉ riêng .app-header-title đã ghi đè mất. */
+  margin-bottom: 16px;
+}
+
 .profile-card {
   margin-bottom: 18px;
 }
@@ -1939,6 +1968,12 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+
+/* Kích thước chữ có 4 mức (2026-08-06, thêm "Lớn nhất") — #font-size-picker tái dùng
+   .theme-picker nhưng cần 4 cột thay vì 3, tránh phần tử thứ 4 rớt lẻ xuống hàng riêng. */
+#font-size-picker {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .theme-option {
@@ -3074,6 +3109,8 @@ textarea:focus {
   align-items: center;
   gap: 8px;
   font-size: 1.2rem;
+  /* 600 thay 700 mặc định của <h1> — xem ghi chú ở .screen-title, cùng đợt sửa 2026-08-06. */
+  font-weight: 600;
   margin: 0;
 }
 
@@ -3345,8 +3382,15 @@ textarea:focus {
    THẮNG, khiến nền Tối bị "rò rỉ" màu nền Sáng dù card (--surface) vẫn đúng màu tối (không bị
    ảnh hưởng vì không có khối nào tranh chấp --surface). SỬA: khai RÕ --bg-fallback tối ngay
    trong khối ":root[data-theme='dark'][data-palette='X']" (độ đặc thù cao hơn 0,3,0, thắng chắc
-   chắn) — giữ nguyên #10131a (đúng nền Tối gốc) cho cả 5 palette, KHÔNG tự bịa thêm sắc thái tối
-   riêng (ngoài phạm vi yêu cầu, chỉ cần sửa đúng bug rò rỉ này). */
+   chắn) — LÚC ĐÓ vẫn giữ nguyên #10131a (nền Tối gốc trung tính) cho cả 5 palette, cố ý ngoài
+   phạm vi yêu cầu khi đó.
+   SỬA TIẾP 2026-08-06 (Minh bắt bug thật: "dùng nền cam nhưng nền chính là cam trộn chung với
+   nền khác (xanh hoặc tím)") — dùng CHUNG 1 màu #10131a trung tính cho MỌI palette ở Tối chính
+   là nguyên nhân: gradient body::before đi từ var(--purple-soft) MỜ (alpha 0.16-0.18, gần như
+   trong suốt) xuống thẳng #10131a — phần lớn màn hình chỉ thấy đúng màu xanh-đen trung tính đó
+   bất kể palette nào, KHÔNG phải "nền cam" như Minh chọn. Mỗi palette giờ có 1 --bg-fallback tối
+   RIÊNG, cùng độ sáng gần #10131a (không làm chói mắt/lệch hẳn tông Tối) nhưng ngả đúng sắc của
+   palette đó, để gradient khớp 1 tông nhất quán từ trên xuống dưới, không "trộn" 2 màu khác hệ. */
 :root[data-palette="orange"] {
   --purple: #f97316;
   --purple-soft: #ffedd5;
@@ -3355,7 +3399,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="orange"] {
   --purple: #fb923c;
   --purple-soft: rgba(251, 146, 60, 0.16);
-  --bg-fallback: #10131a;
+  --bg-fallback: #1c150f;
 }
 :root[data-palette="blue"] {
   --purple: #2563eb;
@@ -3365,7 +3409,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="blue"] {
   --purple: #60a5fa;
   --purple-soft: rgba(96, 165, 250, 0.16);
-  --bg-fallback: #10131a;
+  --bg-fallback: #0f1420;
 }
 :root[data-palette="green"] {
   --purple: #16a34a;
@@ -3375,7 +3419,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="green"] {
   --purple: #4ade80;
   --purple-soft: rgba(74, 222, 128, 0.16);
-  --bg-fallback: #10131a;
+  --bg-fallback: #0f1a15;
 }
 /* 2 bộ "màu đậm" thêm theo yêu cầu Minh (2026-08-05, cùng lúc làm đậm nền Sáng) — cùng pattern
    override --purple/--purple-soft/--bg-fallback như 3 bộ trên. */
@@ -3387,7 +3431,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="ruby"] {
   --purple: #fb7185;
   --purple-soft: rgba(251, 113, 133, 0.18);
-  --bg-fallback: #10131a;
+  --bg-fallback: #1c1015;
 }
 :root[data-palette="teal"] {
   --purple: #0f766e;
@@ -3397,7 +3441,7 @@ textarea:focus {
 :root[data-theme="dark"][data-palette="teal"] {
   --purple: #2dd4bf;
   --purple-soft: rgba(45, 212, 191, 0.18);
-  --bg-fallback: #10131a;
+  --bg-fallback: #0e1a1a;
 }
 
 /* Đăng nhập Google/Facebook (2026-08-04) — cạnh form email/password đã có. */

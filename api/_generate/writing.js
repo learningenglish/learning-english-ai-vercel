@@ -13,6 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SUPABASE_URL } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
+import { resolveOwnedGoalId } from "./lesson.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -876,6 +877,11 @@ export async function save_writing_favorite(data, ctx) {
   if (!data.task || typeof data.task !== "object") return { error: "Thiếu đề bài.", status: 400 };
   if (!data.content || typeof data.content !== "object") return { error: "Thiếu nội dung.", status: 400 };
 
+  // "goal_id" (2026-08-06, tái cấu trúc theo cây mới — Minh: "Luyện viết: xếp vào nhánh của
+  // đúng Chuyên ngành đang active") — CẦN migration 034_writing_favorites_goal_id.sql đã chạy
+  // (thêm cột "goal_id" vào writing_favorites, trước đó không có). TÁI DÙNG resolveOwnedGoalId
+  // từ lesson.js, cùng cách generate_lesson/analyze_user_text đã làm, không viết lại.
+  const goalId = await resolveOwnedGoalId(data.goal_id, ctx.studentId);
   const saved = await insertWritingFavorite({
     user_id: ctx.studentId,
     kind: data.kind,
@@ -885,6 +891,7 @@ export async function save_writing_favorite(data, ctx) {
     task: data.task,
     overall_score: Number.isFinite(data.overall_score) ? data.overall_score : null,
     content: data.content,
+    goal_id: goalId,
   });
   if (!saved) return { error: "Lưu thất bại, vui lòng thử lại.", status: 502 };
 

@@ -67,16 +67,23 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
   const archiveBtn = opts.archivePath
     ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="Lưu trữ">${icon("bookmark", { size: 20 })}</button>`
     : "";
-  // "archiveBtn" ĐỨNG TRƯỚC streak-badge (2026-08-04, Minh: "icon lưu trữ nằm bên trái icon
-  // chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — streak-badge giờ LUÔN kề
-  // ngay cạnh nút cài đặt (2 phần tử LUÔN có mặt trên mọi màn), archiveBtn (chỉ có ở 1-2 màn)
-  // chèn thêm vào bên TRÁI thay vì xen giữa — vị trí streak so với nút cài đặt không đổi dù màn
-  // có/không có nút Lưu trữ.
+  // "createBtn" (2026-08-06, tái cấu trúc theo cây mới) — nút "+" chung cho các màn DANH SÁCH
+  // dưới 1 nhánh (Bài học/Hội thoại/Phân tích/Luyện viết) dẫn tới đúng màn TẠO MỚI của nhánh đó
+  // (vd "/create", "/create-text", "/writing") — TÁI DÙNG nguyên khuôn archiveBtn phía trên
+  // (cùng vị trí, cùng class .settings-btn, chỉ khác data-attribute/icon), không viết lại.
+  const createBtn = opts.createPath
+    ? `<button type="button" class="settings-btn" id="create-btn" data-create-path="${opts.createPath}" aria-label="Tạo mới">${icon("plus", { size: 20 })}</button>`
+    : "";
+  // "archiveBtn"/"createBtn" ĐỨNG TRƯỚC streak-badge (2026-08-04, Minh: "icon lưu trữ nằm bên
+  // trái icon chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — streak-badge giờ
+  // LUÔN kề ngay cạnh nút cài đặt (2 phần tử LUÔN có mặt trên mọi màn), 2 nút phụ này (chỉ có ở
+  // 1-2 màn, KHÔNG BAO GIỜ cùng lúc trên 1 màn) chèn thêm vào bên TRÁI thay vì xen giữa — vị trí
+  // streak so với nút cài đặt không đổi dù màn có/không có nút phụ.
   return `
     <div class="app-header">
       ${left}
       <div class="header-right">
-        ${archiveBtn}
+        ${archiveBtn}${createBtn}
         <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>
         <button type="button" class="settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
       </div>
@@ -88,6 +95,8 @@ export function wireAppHeader(mount) {
   mount.querySelector("#settings-btn")?.addEventListener("click", () => navigate("/profile"));
   const archiveBtn = mount.querySelector("#archive-btn");
   archiveBtn?.addEventListener("click", () => navigate(archiveBtn.dataset.archivePath));
+  const createBtn = mount.querySelector("#create-btn");
+  createBtn?.addEventListener("click", () => navigate(createBtn.dataset.createPath));
 }
 
 // Nút "<" quay lại DÙNG CHUNG cho MỌI màn con (không thuộc 5 tab chính dưới cùng) — yêu cầu

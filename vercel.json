@@ -3,9 +3,6 @@
     "api/chat.js": {
       "maxDuration": 120,
       "includeFiles": "api/_generate/**/*.json"
-    },
-    "api/cron/generate-news.js": {
-      "maxDuration": 300
     }
   },
   "rewrites": [

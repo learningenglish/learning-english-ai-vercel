@@ -60,9 +60,11 @@ registerRoute("/writing", renderWritingPractice);
 registerRoute("/writing-favorite", renderWritingFavoriteDetail);
 registerRoute("/writing-archive", renderWritingArchive);
 registerRoute("/lesson", renderLessonDetail);
-// "Tin tức" (2026-07-28) — route RIÊNG (không phải /lesson/:id) để renderLessonDetail biết đọc
-// từ news_lessons (public) thay vì lessons cá nhân, xem opts.news trong views/lesson.js.
-registerRoute("/news-lesson", (mount, params) => renderLessonDetail(mount, params, { news: true }));
+// "/news-lesson" (Tin tức) — GỠ route 2026-08-06 (tái cấu trúc theo cây mới, Minh: "loại bỏ Tin
+// tức/Phổ biến hoàn toàn khỏi luồng đang chạy"). renderLessonDetail(...,{news:true}) trong
+// views/lesson.js VẪN CÒN (không xoá, mồ côi) — không còn route nào gọi tới nữa. Xem
+// _archive/news-feature/ cho cron + logic sinh tin đã lưu trữ, docs/NHAT-KY-LAM-VIEC.md mục
+// 2026-08-06 cho lý do đầy đủ. Dữ liệu news_lessons trong DB KHÔNG bị xoá.
 // "/history"+"/stats" gộp vào "/progress" (2026-08-04) — GIỮ 2 route cũ, trỏ tới cùng màn mới,
 // để link/bookmark cũ (nếu có) không vỡ, thay vì xoá hẳn.
 registerRoute("/progress", renderProgress);
@@ -95,10 +97,8 @@ function renderBottomNav(activePath) {
   const nav = document.getElementById("bottom-nav");
   // Màn Bài học chi tiết tự vẽ thanh audio CỐ ĐỊNH ở đúng vị trí này (tab "Nội dung") —
   // ẩn thanh điều hướng ngoài đi để không chồng 2 thanh cùng lúc (yêu cầu người dùng). "/news-
-  // lesson" (2026-07-29, bug thật Minh bắt được: bài Tin tức KHÔNG thấy thanh audio) — dùng
-  // CHUNG renderLessonDetail()/thanh audio với "/lesson" (xem opts.news trong views/lesson.js)
-  // nhưng route KHÁC tên nên bị BỎ SÓT ở đây trước đó — nav ngoài không ẩn, che mất thanh audio
-  // cố định (cả 2 cùng position:fixed đáy màn hình).
+  // lesson" (2026-08-06, route đã gỡ hẳn — xem registerRoute ở trên) KHÔNG còn cần kiểm ở đây
+  // nữa, activePath không bao giờ khớp giá trị đó.
   // "/industry-select" (2026-08-04, Minh bắt lỗi thật: "giao diện lần đầu chọn chuyên ngành
   // không có 4 icon bên dưới" — đúng ý: LẦN ĐẦU (onboarding, chưa có goal active, Home tự
   // chuyển tới đây) PHẢI GIỐNG /login, không có bottom nav). SỬA 2026-08-05 (Minh: "đổi chuyên
@@ -107,7 +107,7 @@ function renderBottomNav(activePath) {
   // "/industry-select/change" (route CÙNG renderIndustrySelect, chỉ khác 1 segment param) — CHỈ
   // ẩn nav cho ĐÚNG "/industry-select" trơn (lần đầu), giữ nav khi có "/change" theo sau.
   const isIndustrySelectOnboarding = activePath === "/industry-select" && !location.hash.startsWith("#/industry-select/change");
-  if (activePath === "/login" || activePath === "/lesson" || activePath === "/news-lesson" || isIndustrySelectOnboarding) {
+  if (activePath === "/login" || activePath === "/lesson" || isIndustrySelectOnboarding) {
     nav.hidden = true;
     nav.innerHTML = "";
     return;

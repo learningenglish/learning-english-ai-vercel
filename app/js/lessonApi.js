@@ -22,8 +22,12 @@ import { computeGenderHints } from "./tts.js";
 // "level" KHÔNG còn là tham số (2026-07-27) — bỏ hẳn bước người dùng khai báo cấp độ trước khi
 // phân tích, AI tự đọc văn bản và tự xác định level, trả lại trong lesson.level (xem
 // api/_generate/lesson.js::ANALYZE_TEXT_SYSTEM_PROMPT mục "TỰ PHÂN LOẠI CẤP ĐỘ").
-export async function createLessonFromText(userText) {
-  return callAndParse("analyze_user_text", { user_text: userText });
+// "goalId" (2026-08-06, tái cấu trúc theo cây mới) — TÙY CHỌN, gắn bài phân tích vào đúng
+// Chuyên ngành đang active (views/createFromText.js tự đọc getActiveLearningGoal() trước khi
+// gọi) — server tự xác nhận sở hữu (resolveOwnedGoalId trong lesson.js), không có/sai thì âm
+// thầm lưu goal_id=null, không lỗi cả lượt phân tích.
+export async function createLessonFromText(userText, goalId) {
+  return callAndParse("analyze_user_text", { user_text: userText, goal_id: goalId || null });
 }
 
 export async function createLessonFromAI(payload) {

@@ -20,7 +20,10 @@ export async function gradeWriting({ level, industry, task, text }) {
 
 // kind: "detailed" | "complete" (kèm variant "clean_rewrite"|"reference_essay" khi complete) —
 // xem supabase/028_writing_favorites.sql.
-export async function saveWritingFavorite({ kind, variant, level, industry, task, overallScore, content }) {
+// "goalId" (2026-08-06, tái cấu trúc theo cây mới) — TÙY CHỌN, gắn bài Luyện viết vào đúng
+// Chuyên ngành đang active (views/writingPractice.js tự đọc getActiveLearningGoal()), cùng cách
+// createLessonFromText() đã làm cho Phân tích.
+export async function saveWritingFavorite({ kind, variant, level, industry, task, overallScore, content, goalId }) {
   return callAndParse("save_writing_favorite", {
     kind,
     variant: variant || undefined,
@@ -29,6 +32,7 @@ export async function saveWritingFavorite({ kind, variant, level, industry, task
     task,
     overall_score: Number.isFinite(overallScore) ? overallScore : null,
     content,
+    goal_id: goalId || null,
   });
 }
 

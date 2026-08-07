@@ -45,6 +45,7 @@ export function lessonCardHtml(l, { hideFavorite = false } = {}) {
         <div class="lesson-card-title">${escapeHtml(l.title_vi || l.title)}</div>
         ${excerpt ? `<div class="lesson-card-sub">${escapeHtml(excerpt)}</div>` : ""}
         <div class="lesson-card-meta">
+          ${Number.isInteger(l.spine_slot) ? `<span class="badge badge-slot">#${l.spine_slot}</span>` : ""}
           <span class="badge">${escapeHtml(l.level)}</span>
           ${learnStatusBadgeHtml(l)}
         </div>

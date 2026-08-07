@@ -11,6 +11,7 @@
 // — màn đó thuộc Phase B-H đang khoá, không đụng) trước khi cho vào xem bài.
 import { navigate } from "../router.js";
 import { createLessonFromText, fetchAndSaveLessonCover } from "../lessonApi.js";
+import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
 
@@ -65,7 +66,10 @@ export function renderCreateFromText(mount) {
     const btn = mount.querySelector("#paste-submit-btn");
     btn.disabled = true;
     resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang phân tích...</div>`;
-    const res = await createLessonFromText(text);
+    // "goal_id" (2026-08-06, tái cấu trúc theo cây mới) — gắn bài phân tích vào đúng Chuyên
+    // ngành đang active để hiện đúng nhánh Phân tích của Chuyên ngành đó (xem analysisArchive.js).
+    const activeGoal = await getActiveLearningGoal().catch(() => null);
+    const res = await createLessonFromText(text, activeGoal?.id);
     btn.disabled = false;
     if (!res.ok) {
       resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra.")}</div>`;

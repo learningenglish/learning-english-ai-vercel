@@ -21,6 +21,12 @@ const SPEEDS = [0.75, 1, 1.25, 1.5];
 // cá nhân, tắt hẳn lưu tiến trình + nút Yêu thích (2 thứ đó gắn với user_id, không áp dụng được
 // cho nội dung dùng chung) — MỌI phần còn lại (tooltip từ vựng, TTS, bài tập trong phiên xem)
 // hoạt động Y HỆT bài cá nhân vì cùng 1 hình dạng dữ liệu (content/vocabulary/grammar/exercises).
+// MỒ CÔI (2026-08-06, tái cấu trúc theo cây mới) — route "/news-lesson" đã gỡ khỏi app.js
+// (Minh: "loại bỏ Tin tức/Phổ biến hoàn toàn khỏi luồng đang chạy"), KHÔNG còn nơi nào gọi
+// renderLessonDetail() với opts.news=true nữa — "isNews" bên dưới luôn là false trong thực tế.
+// GIỮ NGUYÊN toàn bộ nhánh isNews (nhiều chỗ rải rác trong file, không sửa từng chỗ để tránh
+// rủi ro cho luồng bài cá nhân đang dùng thật) — chỉ đánh dấu mồ côi ở đây, xem
+// docs/NHAT-KY-LAM-VIEC.md mục 2026-08-06.
 export async function renderLessonDetail(mount, params, opts = {}) {
   const isNews = !!opts.news;
   const lessonId = params?.[0];

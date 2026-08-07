@@ -525,3 +525,120 @@ DUY NHẤT lúc TẠO BÀI (không phải mỗi lần bấm):
   để đo chính xác).
 
 Bump `CACHE_NAME` lên v42.
+
+## 2026-08-06 — Sửa 8 lỗi UI thật (báo cáo bằng ảnh chụp) + tái cấu trúc TOÀN BỘ luồng theo cây mới
+
+### Phần 1 — 8 lỗi UI (Minh gửi 6 ảnh chụp máy thật)
+
+Tất cả verify trực tiếp trên trình duyệt (đăng nhập tài khoản test, đo `getBoundingClientRect()`/
+computed style thật, không chỉ đọc code):
+
+1. **Home bị chớp** — dòng "Anh văn chuyên ngành..." dùng `hidden` (gỡ khỏi layout hoàn toàn) rồi
+   mới hiện sau khi tải xong, đẩy nội dung xuống đột ngột. Sửa: `visibility:hidden` + giữ chỗ sẵn
+   (`app/js/views/home.js`).
+2. **"Tiến trình: Không tải được"** — KHÔNG phải trạng thái chờ, lỗi 400 thật: cột
+   `lesson_progress.fully_listened_at` chưa tồn tại (migration 033 viết sẵn nhưng chưa chạy). Đã
+   yêu cầu Minh chạy — **Minh xác nhận đã chạy xong**, verify lại: Tiến trình load đúng dữ liệu
+   thật (Tổng XP/Bài đã học/Streak).
+3. **Kích thước chữ** — thêm mức "Lớn nhất" (125%), grid 4 cột (`app/js/fontSize.js`,
+   `app/css/style.css`).
+4. **Color Palette trộn màu ở chế độ Tối** — cả 5 bộ màu dùng chung 1 nền `#10131a` trung tính ở
+   Tối (quyết định cũ, cố ý giới hạn phạm vi lúc đó) — gradient từ màu palette (mờ, alpha ~0.16)
+   xuống thẳng màu trung tính đó, nhìn như "trộn 2 tông". Mỗi palette giờ có `--bg-fallback` tối
+   riêng cùng tông (`app/css/style.css`).
+5. **Font tiêu đề mập** — `<h1>` mặc định đậm 700; đổi `.screen-title`/`.progress-title` về 600.
+6. **Card đầu tiên nhảy vị trí giữa Setting/Tiến trình/Admin** — 3 kiểu header khác chiều cao
+   (Cài đặt thiếu nút tròn 44px). Canh về cùng `min-height:44px`, verify top=80px khớp nhau.
+7. **Đã học/Chưa học không hiện** — phát hiện lỗi SÂU hơn vẻ ngoài: `lesson_progress.lesson_id`
+   có khoá ngoại CHỈ trỏ `lessons`, KHÔNG trỏ `news_lessons` — mọi lượt ghi tiến trình cho bài
+   Tin tức (nguồn chính của "Phổ biến" lúc đó) đều 409 FK violation, âm thầm thất bại (test ghi
+   thử, xác nhận lỗi thật). Vấn đề này **TỰ HẾT** sau Phần 2 (Tin tức bị loại khỏi luồng chính).
+8. **Đánh số bài học #1,#2...** — phát hiện backend đã có sẵn cột `spine_slot` (vị trí 1-based
+   trong `curriculum_spine.json` theo đúng level, set bởi `mentor_next_lesson`) nhưng client
+   chưa đọc. Thêm vào query + badge `#N` trên card (`app/js/db.js`, `app/js/lessonCard.js`).
+
+### Phần 2 — Tái cấu trúc TOÀN BỘ luồng theo cây MỚI
+
+Yêu cầu Minh: `Chuyên ngành (active, khoá 1 vị trí) -> Bài học/Hội thoại (theo Level) + Phân
+tích + Luyện viết`, loại Tin tức/Yêu thích cũ/Thư viện AI cũ/Lịch sử riêng khỏi luồng chính,
+**archive code không xoá, KHÔNG xoá dữ liệu**.
+
+**Đã archive (di chuyển, không xoá) vào `_archive/`:**
+| File gốc | Vị trí mới | Lý do |
+|---|---|---|
+| `api/cron/generate-news.js` | `_archive/news-feature/cron-generate-news.js` | Endpoint Vercel Cron thật — chuyển ra khỏi `api/` để KHÔNG THỂ bị gọi lại được nữa (trước chỉ chặn bằng `EMERGENCY_KILL_SWITCH`, endpoint vẫn tồn tại) |
+| `api/_generate/news.js` | `_archive/news-feature/news.js` | Logic sinh tin tức, chỉ được gọi từ file trên |
+| `app/js/views/lessons.js` (bản gốc) | `_archive/old-nav/lessons.js` | Thay hẳn bằng bản viết lại (xem dưới); bản gốc giữ nguyên logic Yêu thích/Thư viện AI/carousel Lĩnh vực/Tin tức để tham khảo sau |
+| `app/js/views/mentor.js`, `mentorGoal.js`, `mentorOnboarding.js` | `_archive/old-nav/` | Đã mồ côi từ 2026-07-23 (Mentor AI tắt UI), xác nhận KHÔNG còn import nào trong `app/js` |
+| `app/js/views/history.js`, `stats.js` | `_archive/old-nav/` | Đã mồ côi từ 2026-08-04 (gộp vào `/progress`), xác nhận KHÔNG còn import nào |
+
+Dữ liệu `news_lessons` trong DB **KHÔNG bị xoá** — chỉ không còn màn nào hiển thị.
+
+**Route/vercel.json:**
+- Gỡ `"api/cron/generate-news.js"` khỏi `vercel.json` functions{} — xác nhận KHÔNG có mục
+  `crons` nào trong file (đã gỡ từ đợt điều tra chi phí 2026-08-05, không phải việc mới).
+- Gỡ route `/news-lesson` khỏi `app.js` — verify: vào `#/news-lesson/x` rơi về `/home` (router
+  fallback), không lỗi.
+- `views/lesson.js` (màn xem bài chi tiết, dùng chung cho cá nhân + Tin tức qua `opts.news`) —
+  GIỮ NGUYÊN nhánh `isNews` (rải rác nhiều chỗ, rủi ro sửa cao so với lợi ích), chỉ đánh dấu mồ
+  côi bằng 1 comment — không còn route nào set được `opts.news=true` nữa.
+
+**Viết lại hoàn toàn `app/js/views/lessons.js`** — route `/lessons/:contentType`
+("reading"/"dialogue", không còn "mode"), CHỈ 1 chế độ duy nhất, lọc theo `goal_id` của Chuyên
+ngành đang active. Bỏ: mode "favorite"/"library", carousel Lĩnh vực, Quick Actions, tab Tin tức.
+Giữ: Level chip row, carousel "Bài học gần đây" (scope theo goal_id).
+
+**Chính sách dữ liệu cũ (goal_id):** bài/nội dung có `goal_id=null` (sinh TRƯỚC khi hệ thống
+Chuyên ngành tồn tại — `analyze_user_text` chưa từng gắn goal_id, `createLesson.js` tự nhập cũng
+không) **VẪN HIỂN THỊ dưới BẤT KỲ Chuyên ngành nào đang active**, thay vì biến mất hay bị nhóm
+riêng "Chưa phân loại" — quyết định vì không muốn tạo cảm giác "mất bài" cho dữ liệu cũ, áp dụng
+đồng nhất cho cả 4 nhánh (`&or=(goal_id.eq.X,goal_id.is.null)` trong `db.js`).
+
+**Phân tích + Luyện viết — gắn goal_id lúc TẠO MỚI (đi từ nay về sau):**
+- `analyze_user_text` (lesson.js) + `save_writing_favorite` (writing.js): thêm tham số
+  `goal_id`, tái dùng `resolveOwnedGoalId()` (export từ lesson.js, đã có sẵn cho
+  `generate_lesson`) để xác nhận sở hữu — không viết lại logic.
+- `createFromText.js`/`writingPractice.js` (client): tự đọc `getActiveLearningGoal()`, gửi kèm.
+- **`writing_favorites` KHÔNG có cột `goal_id`** — viết migration MỚI
+  `supabase/034_writing_favorites_goal_id.sql` (additive, `goal_id uuid references
+  learning_goals`). **CẦN MINH CHẠY TRƯỚC KHI DEPLOY** — thiếu cột này, `listWritingFavorites()`
+  400 lỗi ngay (đã verify: `/writing-archive` hiện "Không tải được danh sách đã lưu." — giống
+  hệt ca 033 trước đó, không phải lỗi code).
+- **Đính chính về "writing_task_requests"**: bảng này (migration 026) chỉ là bộ ĐẾM hạn mức giao
+  đề (`id`, `user_id`, `created_at` — comment gốc "không cần lưu nội dung"), KHÔNG có cột nội
+  dung nào. Nhánh "Luyện viết" thực tế đọc `writing_favorites` (nội dung đã LƯU rõ ràng qua nút
+  Lưu) — đúng dữ liệu `writingArchive.js` đã hiển thị từ trước, không phải nguồn mới.
+
+**`analysisArchive.js`/`writingArchive.js`** — đổi từ màn "Lưu trữ" phụ thành ĐÍCH ĐẾN CHÍNH của
+nhánh Phân tích/Luyện viết (Home 2 card này trỏ thẳng vào đây thay vì `/create-text`/`/writing`),
+lọc theo goal_id active, thêm nút "+" header (cơ chế MỚI `opts.createPath` trong `header.js`, TÁI
+DÙNG nguyên khuôn `opts.archivePath` có sẵn) dẫn tới màn tạo mới.
+
+**Bug thật tự bắt được khi rà soát (không phải yêu cầu, phát hiện thêm):** `app/sw.js`
+`SHELL_FILES` vẫn liệt kê 5 đường dẫn vừa archive (`views/mentor.js`, `mentorGoal.js`,
+`mentorOnboarding.js`, `history.js`, `stats.js`) — `cache.addAll()` reject TOÀN BỘ nếu 1 URL
+404, nghĩa là service worker sẽ FAIL install hoàn toàn ở lần deploy tới nếu không sửa. Đã gỡ 5
+đường dẫn chết + bổ sung 2 file đang thiếu (`writingArchive.js`, `analysisArchive.js`) — verify
+bằng cách tự đăng ký lại service worker trong trình duyệt, xác nhận cache `lea-student-shell-v44`
+lưu đủ 48 file, không còn lỗi install.
+
+**Nghiệm thu đã verify (trình duyệt thật, tài khoản test):**
+1. Home → 4 card đúng path mới, không còn Tin tức/Yêu thích/Thư viện AI/Lịch sử trong điều hướng.
+2. `/lessons/reading`, `/lessons/dialogue` → level chip + danh sách đúng goal đang active, 0 lỗi
+   console.
+3. `/analysis-archive` → danh sách đúng, nút "+" dẫn `/create-text`.
+4. `/writing-archive` → lỗi 400 ĐÚNG NHƯ DỰ ĐOÁN (chờ migration 034).
+5. `/news-lesson/x` → rơi về `/home`, không lỗi.
+6. `vercel.json` xác nhận không còn mục cron nào.
+7. Service worker install lại thành công sau khi sửa SHELL_FILES.
+
+**Việc còn dở / cần Minh:**
+- Chạy `supabase/034_writing_favorites_goal_id.sql` trước khi deploy (giống 033) — nếu không,
+  "Luyện viết" (`/writing-archive`) sẽ lỗi 400 ngay khi vào, và lưu bài viết mới cũng lỗi theo
+  (INSERT thiếu cột).
+- CHƯA test "Đổi Chuyên ngành" đầu-cuối thật (đổi goal → xác nhận cả 4 nhánh đổi theo đúng, không
+  lẫn dữ liệu) — cần tài khoản có ≥2 Chuyên ngành từng active để test được, tài khoản test hiện
+  tại chỉ có 1. Logic lọc theo `goalId` đã áp dụng nhất quán ở cả 4 nhánh nên về lý thuyết đúng,
+  nhưng CHƯA có bằng chứng thực nghiệm cho bước nghiệm thu #2 Minh yêu cầu.
+
+Bump `CACHE_NAME` lên v44.

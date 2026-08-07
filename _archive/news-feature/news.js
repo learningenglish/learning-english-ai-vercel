@@ -1,3 +1,9 @@
+// ============================================================================
+// ĐÃ LƯU TRỮ (archive) 2026-08-06 — xem ghi chú đầy đủ trong _archive/news-feature/
+// cron-generate-news.js (cùng đợt archive, cùng lý do). File CHUYỂN RA KHỎI api/_generate/ —
+// import relative bên dưới ("./lesson.js", "./_shared.js") đang trỏ theo vị trí CŨ, SẼ VỠ nếu
+// chạy nguyên trạng từ đây; cần sửa lại đường dẫn nếu sau này khôi phục.
+// ============================================================================
 // api/_generate/news.js — "Tin tức tự sinh hàng ngày" (2026-07-28, mục con MỚI dưới tab "Phổ
 // biến"). 3 bài đọc + 3 hội thoại/ngày, chủ đề lấy từ tin thời sự THẬT — AI tự tìm kiếm web
 // (web_search, xem api/_shared/aiProvider.js — ĐÃ SỬA lỗi thật + xác nhận hoạt động cùng ngày),
