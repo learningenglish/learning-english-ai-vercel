@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups } from "./_generate/lesson.js";
+import { judge_lesson_quality } from "./_generate/lessonJudge.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { generate_lesson_full_audio } from "./_generate/audio.js";
@@ -1286,6 +1287,10 @@ const ACTIONS = {
   // chưa có dữ liệu -> phân tích LẠI CẢ BÀI 1 lượt duy nhất, lưu lại — 0 lượt AI cho mọi lượt
   // bấm SAU, xem chi tiết tại định nghĩa hàm trong lesson.js.
   analyze_lesson_phrase_groups,
+  // Giám khảo chất lượng bài học (2026-08-07, thay validator kỹ thuật cứng đã gỡ khỏi
+  // lesson.js) — hiện dùng cho lô mẫu hiệu chỉnh (Việc 3), xem lessonJudge.js +
+  // lesson-judge-criteria.md. CHƯA được generate_lesson/mentor_next_lesson tự gọi.
+  judge_lesson_quality,
   // Luyện viết (2026-07-27) — AI giao đề + AI chấm bài, xem api/_generate/writing.js. Độc
   // lập hoàn toàn với luồng Lesson-first, không đụng gì tới generate_lesson/analyze_user_text.
   // list_writing_genres (2026-08-04) — đọc thuần, KHÔNG gọi AI, phục vụ màn "Chọn dạng bài viết".

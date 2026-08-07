@@ -11,9 +11,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
+import { SUPABASE_URL } from "./_shared.js";
+import { loadCurriculumSpine } from "./curriculum/skin.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const JUDGE_CRITERIA_MD = fs.readFileSync(path.join(__dirname, "lesson-judge-criteria.md"), "utf8");
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_HEADERS = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
 
 function buildJudgeUserPrompt(lesson, context) {
   const lines = [
@@ -54,4 +58,43 @@ export async function judgeLessonQuality(lesson, context = {}) {
   const verdict = r.data.verdict === "DAT" ? "DAT" : r.data.verdict === "KHONG_DAT" ? "KHONG_DAT" : null;
   if (!verdict) return { ok: false, error: "judge_invalid_verdict", raw: r.data };
   return { ok: true, passed: verdict === "DAT", reason: r.data.reason || "", meta: { model: r.model, usage: r.usage } };
+}
+
+// Action CÔNG KHAI (đăng ký trong chat.js) — dùng cho lô mẫu hiệu chỉnh Việc 3 (gọi qua trình
+// duyệt, có JWT thật, vì aiProvider.js cần OPENAI_API_KEY thật chỉ tồn tại trên Vercel, sandbox
+// không có — xem feedback_sandbox_blocks_real_api_keys trong memory). Tự tra "grammar_focus"/
+// "situation_frame" ĐÚNG của bài qua level+spine_slot (đối chiếu ngược lại curriculum_spine.json
+// đã đóng băng) — bài không có spine_slot (vd sinh qua "Tạo bài học" tự nhập) vẫn chấm được,
+// chỉ thiếu 2 trường ngữ cảnh đó, giám khảo tự dựa vào chính nội dung bài.
+export async function judge_lesson_quality(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
+
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(data.lesson_id)}&user_id=eq.${ctx.studentId}&select=*`,
+    { headers: SERVICE_HEADERS }
+  );
+  if (!r.ok) return { error: "Không đọc được bài học.", status: 502 };
+  const lesson = (await r.json())?.[0];
+  if (!lesson) return { error: "Không tìm thấy bài học.", status: 404 };
+
+  let grammarFocus = [];
+  let situationFrame = null;
+  if (Number.isInteger(lesson.spine_slot)) {
+    const spineLevels = loadCurriculumSpine();
+    const slot = (spineLevels[lesson.level] || [])[lesson.spine_slot - 1];
+    if (slot) {
+      situationFrame = slot.situation_frame;
+      grammarFocus = slot.grammar || [];
+    }
+  }
+
+  const result = await judgeLessonQuality(lesson, {
+    industry: lesson.industry,
+    isGeneral: !lesson.industry,
+    grammarFocus,
+    situationFrame,
+  });
+  if (!result.ok) return { error: "Giám khảo lỗi: " + result.error, status: 502 };
+  return { content: JSON.stringify({ lesson_id: lesson.id, level: lesson.level, spine_slot: lesson.spine_slot, ...result }) };
 }
