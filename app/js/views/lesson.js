@@ -360,14 +360,29 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // Vá "phrase_groups" NGAY LÚC MỞ BÀI thay vì đợi người dùng bấm vào từ (2026-08-08, Minh: "từ
   // phải được tra trước, không phải nhấn vào mới gọi AI") — trước đây hàm ensurePhraseGroupsPatched()
   // ở trên CHỈ chạy khi bấm trúng từ thiếu dữ liệu, nghĩa là LƯỢT BẤM ĐẦU TIÊN của người dùng luôn
-  // phải đợi 1 lượt gọi AI. Kiểm tra rẻ ở client trước (không cần khớp tuyệt đối logic server, chỉ
-  // cần đủ để quyết định có ĐÁNG gọi hay không) — bỏ qua hẳn lượt gọi mạng nếu mọi câu đã có
-  // "phrase_groups" (đại đa số bài MỚI sau khi siết prompt, xem PHRASE_GROUPS_RULES) rồi mới gọi
-  // patch, fire-and-forget, KHÔNG chặn hiển thị bài — vẽ lại nội dung khi vá xong để các từ vừa có
-  // dữ liệu được tô sẵn, không cần đợi tới lượt bấm mới thấy.
-  const needsPhraseGroupsPatch = (lesson.content || []).some(
-    (item) => (item?.text || "").trim() && (!Array.isArray(item.phrase_groups) || !item.phrase_groups.length)
-  );
+  // phải đợi 1 lượt gọi AI. Kiểm tra ở client trước — SOI ĐÚNG cùng logic "phủ đủ từ" của server
+  // (itemPhraseCoverageOk() trong api/_generate/lesson.js: ghép words của MỌI nhóm, so khớp
+  // TUẦN TỰ với chính "text" sau khi tách từ) để không bỏ sót ca coverage KHÔNG rỗng nhưng vẫn
+  // THIẾU từ (đã xác nhận có thật qua bài sinh trực tiếp: coverage 100% không được đảm bảo dù
+  // KHÔNG hạn chế cứng ở generate_lesson nữa, xem PHRASE_GROUPS_RULES) — chỉ bỏ qua lượt gọi
+  // mạng khi THẬT SỰ đã đủ dữ liệu, rồi mới gọi patch, fire-and-forget, KHÔNG chặn hiển thị bài —
+  // vẽ lại nội dung khi vá xong để các từ vừa có dữ liệu được tô sẵn, không cần đợi tới lượt bấm.
+  function normalizePhraseWordClient(w) {
+    return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
+  }
+  function itemPhraseCoverageOkClient(item) {
+    const realWords = ((item?.text || "").match(/[A-Za-z0-9']+/g) || []).map(normalizePhraseWordClient);
+    if (!realWords.length) return true;
+    const groups = Array.isArray(item?.phrase_groups) ? item.phrase_groups : [];
+    if (!groups.length) return false;
+    const groupWords = groups.flatMap((g) => (Array.isArray(g?.words) ? g.words : [])).map(normalizePhraseWordClient);
+    if (groupWords.length !== realWords.length) return false;
+    for (let i = 0; i < realWords.length; i++) {
+      if (groupWords[i] !== realWords[i]) return false;
+    }
+    return true;
+  }
+  const needsPhraseGroupsPatch = (lesson.content || []).some((item) => !itemPhraseCoverageOkClient(item));
   if (needsPhraseGroupsPatch) {
     ensurePhraseGroupsPatched().then((ok) => {
       if (ok) renderContentBodyFn?.();
