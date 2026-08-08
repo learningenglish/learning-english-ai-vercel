@@ -801,3 +801,74 @@ không được cập nhật theo (lệch tài liệu/code).
 
 **⏸️ DỪNG LẠI xin duyệt bộ nguyên tắc (Việc 2) TRƯỚC khi sinh mẫu (Việc 3)** — đúng yêu cầu Minh,
 chưa sinh thêm bài nào, chưa chạy giám khảo lần nào.
+
+**Việc 3 hoàn tất sau đó cùng ngày** (bộ nguyên tắc được duyệt, sinh 10 bài mẫu Kế toán A1-C1
+qua backend thật, chạy giám khảo — 9/10 ĐẠT, 1 KHÔNG ĐẠT bắt đúng lỗi sai trọng tâm ngữ pháp thật
+sự) — 5 bài ĐẠT đã đưa lên app cho Minh xem qua action tạm `orphan_lessons_for_preview`. Đồng
+thời phát hiện + sửa 1 bug thật: domain trần (không có `/app/`) 404 trên deploy Vercel — thêm
+redirect `/` -> `/app/` trong `vercel.json`.
+
+## 2026-08-08 — Sửa 14 điểm màn đọc bài (lesson reader) theo phản hồi thật từ Minh
+
+Minh gửi 14 yêu cầu cụ thể kèm ảnh chụp app thật + 2 file tham khảo (`prompt hiển thị.txt` — mẫu
+format "tách câu"; `cụm.txt` — 24 loại "cụm" chuẩn theo CEFR). Toàn bộ đã hoàn tất, xem chi tiết
+đầy đủ trong lịch sử git branch `feature/student-app` (nhiều commit riêng từng phần).
+
+**Khảo sát trước khi sửa phát hiện 2 điều quan trọng:**
+- `lesson.sentence_patterns` đã được AI sinh + lưu DB từ lâu nhưng CHƯA TỪNG được client hiển
+  thị — chính là "cấu trúc câu cần lưu ý" Minh muốn (mục 9), chỉ cần render, không cần field mới.
+- "Tách câu" (mục 2) mô tả đúng hình dạng `phrase_groups` đã có — chỉ cần thêm 1 cách hiển thị
+  MỚI (danh sách luôn hiện) dùng LẠI dữ liệu này, không sinh field AI mới.
+
+**Đã sửa (`app/js/views/lesson.js`, `app/js/tts.js`, `app/css/style.css`,
+`api/_generate/lesson.js`, `api/chat.js`, `app/js/lessonCard.js`, `app/js/views/lessons.js`,
+`app/js/views/analysisArchive.js`, `app/js/chatApi.js`, `app/js/lessonApi.js`):**
+1. Bỏ phân trang — nội dung luôn hiện liên tục (nhánh "Xem tất cả" cũ giờ là duy nhất).
+2. Thêm toggle "tách câu" — liệt kê `phrase_groups` theo đúng format `🔹 cụm = nghĩa`.
+3. Bỏ nút "Hỏi AI" + action `sentence_tip` (đã xoá khỏi `chat.js`, không còn nơi nào gọi).
+4. Giọng đọc TTS: AI khai báo `characters: [{name, gender}]` ngay lúc sinh bài (cột mới
+   `lessons.characters`, migration `037_lesson_characters.sql`, Minh đã chạy) — `tts.js` ưu tiên
+   dùng thẳng, chỉ rơi về đoán tên cũ khi bài không có field này. Đã verify: bài hội thoại mới
+   sinh có đủ `characters` khớp đúng giới tính từng nhân vật.
+5. Nút "Phát lại" đổi thành toggle "Lặp lại" (badge "1"), tự lặp khi hết bài lúc đang bật.
+6+7. Tra từ: viết lại HẲN `PHRASE_GROUPS_RULES` theo 24 loại cụm Minh gửi, cấm gộp nguyên câu/
+   mệnh đề vào 1 nhóm — sửa đúng gốc lỗi "tooltip hiện cả câu". Vá `phrase_groups` NGAY LÚC MỞ
+   BÀI (fire-and-forget) thay vì đợi bấm — kiểm tra coverage ở client giống hệt logic server.
+8. Từ vựng: bỏ 4 tab lọc, danh sách phẳng.
+9. Ngữ pháp: thêm khối "Cấu trúc câu đáng chú ý" từ `sentence_patterns`.
+10. Bỏ hẳn icon trái tim (màn đọc bài + thẻ danh sách + carousel "Bài đang đọc") — tính năng Yêu
+    thích không còn lối vào UI nào (giữ nguyên cột `is_favorite`/dữ liệu cũ, chỉ bỏ giao diện).
+11. Bỏ nền trắng/đổ bóng 4 tab nội dung.
+12. Viết sẵn `supabase/one-off_remove_legacy_freeform_lessons_2026-08-08.sql` (xoá bài
+    `source='ai_generated' AND spine_slot IS NULL` — đúng nhóm sinh qua form tự do cũ, KHÔNG đụng
+    `user_text`/Phân tích văn bản) — **Minh CHƯA chạy, cần tự xem số lượng rồi chạy tay**.
+13. Sửa `.lesson-card-sub`/`.continue-card-sub`: bỏ in đậm, giảm cỡ chữ rõ rệt dưới tiêu đề.
+14. Bỏ nền tròn xanh nút Play.
+
+**BUG THẬT phát hiện + sửa qua test trực tiếp trên deploy (không đoán):** rewrite
+`PHRASE_GROUPS_RULES` ban đầu (24 loại + cap ~4-5 từ/nhóm) làm hỏng độ tin cậy của action "vá"
+(`analyze_lesson_phrase_groups`) — test 1 bài C1 thật liên tục fail. Truy vết qua nhiều vòng
+`vercel logs` + log tạm thời (đã xoá sau khi xong):
+- Gửi nhiều câu/đoạn cùng lúc → JSON bị cắt ngang (chạm trần `maxTokens=6000` CHUNG toàn app,
+  không nâng trần đó) → chia nhỏ còn 1 câu/lượt gọi.
+- Model thỉnh thoảng tự sai cú pháp JSON giữa chừng → thêm lượt thử thứ 3 leo thang model mạnh
+  (tier "strong", đúng nguyên tắc "model mạnh là lưới cuối" đã dùng cho generate_lesson).
+- **Nguyên nhân gốc thật sự** (tìm ra bằng cách log raw text model trả về): tokenizer
+  (`sentenceWordTokens` server + 2 bản mirror client) không coi dấu gạch nối là ký tự từ —
+  "long-term" trong text gốc bị tách thành 2 token ("long"/"term") khi kiểm coverage, nhưng model
+  viết liền "long-term" thành 1 phần tử — luôn luôn lệch số lượng. Bài test có đúng cụm này
+  ("long-term sustainability") nên fail 100% các lượt. Sửa: dặn model rõ trong prompt phải tách
+  từ có gạch nối thành nhiều phần tử riêng (không sửa tokenizer, đỡ ảnh hưởng tooltip đang chạy
+  tốt). Verify lại: bài test qua hết cả 4 đoạn, coverage đầy đủ.
+
+**Đã verify trên deploy thật** (không chỉ đọc code): bài đọc C1 mới sinh (phrase_groups đủ, tách
+câu hiển thị đúng format), bài hội thoại mới sinh (`characters` đúng giới tính 4 nhân vật), toolbar
+Nội dung chỉ còn 2 nút, tab Từ vựng phẳng (10 mục, 0 nút lọc), tab Ngữ pháp có thêm khối cấu trúc
+câu (3 mục), không còn nút tim/nút Hỏi AI, nền nút Play phẳng.
+
+**Còn lại cho Minh:**
+- Chạy `supabase/one-off_remove_legacy_freeform_lessons_2026-08-08.sql` khi sẵn sàng (xem số
+  lượng ở câu SELECT trước).
+- "Nút audio bị lệch giữa các bài" (mục 14 vế 2) — chưa xác minh được nguyên nhân cụ thể qua đọc
+  code (không thấy khác biệt cấu trúc giữa các bài); cần Minh xác nhận lại còn thấy lệch không
+  sau đợt sửa này, kèm ảnh chụp 2 bài cụ thể nếu còn — sẽ sửa đúng nguyên nhân quan sát được.
