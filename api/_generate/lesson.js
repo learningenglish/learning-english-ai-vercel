@@ -179,6 +179,12 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo thứ tự, không lặp từ
   ở 2 nhóm. Đây là điều kiện SỐNG CÒN, quan trọng hơn việc chọn đúng loại cụm — nếu phân vân giữa
   "chọn đúng loại cụm" và "chắc chắn không sót/thừa từ nào", LUÔN ưu tiên vế sau.
+- QUAN TRỌNG — từ có DẤU GẠCH NỐI (vd "long-term", "well-known", "24-hour"): hệ thống coi dấu
+  gạch nối như dấu câu phân cách, KHÔNG phải 1 phần của từ — PHẢI tách thành 2 (hoặc nhiều) phần
+  tử RIÊNG trong "words" đúng theo từng khúc bị gạch nối tách ra (vd "long-term" -> 2 phần tử
+  "long" và "term", KHÔNG viết chung "long-term" thành 1 phần tử) — 2 phần tử đó vẫn có thể cùng
+  nằm trong 1 nhóm (words: ["long", "term"]) nếu cùng 1 cụm ý nghĩa, chỉ cần đừng viết liền 1
+  chuỗi có gạch nối.
 - Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA (để người học bấm tra nghĩa) — TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu
   thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như "Really?"), và KHÔNG gộp 2 mệnh đề độc lập
   (nối bằng and/but/so/because...) vào chung 1 nhóm — mỗi mệnh đề tách riêng theo đúng các cụm
