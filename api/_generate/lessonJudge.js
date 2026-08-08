@@ -98,3 +98,25 @@ export async function judge_lesson_quality(data, ctx) {
   if (!result.ok) return { error: "Giám khảo lỗi: " + result.error, status: 502 };
   return { content: JSON.stringify({ lesson_id: lesson.id, level: lesson.level, spine_slot: lesson.spine_slot, ...result }) };
 }
+
+// Action CÔNG KHAI — tiện ích riêng cho lô mẫu hiệu chỉnh (Việc 3): các bài mẫu được sinh lần
+// lượt dưới NHIỀU goal khác nhau (mỗi goal ứng 1 level, đã archive sau khi sinh xong level đó),
+// nên lessons.goal_id của chúng khác goal đang active hiện tại → sẽ KHÔNG hiện trong danh sách
+// bài học của app (app/js/db.js lọc "goal_id = goal đang active HOẶC goal_id IS NULL"). Đặt
+// goal_id=NULL cho đúng nhóm "bài mồ côi goal" đã có sẵn ngữ nghĩa trong hệ thống (xem comment
+// dòng ~110 app/js/db.js) — bài mồ côi hiện dưới BẤT KỲ goal nào đang active, đúng nhu cầu xem
+// mẫu trải đều nhiều level cùng lúc. CHỈ áp dụng cho lesson do chính student gọi sở hữu.
+export async function orphan_lessons_for_preview(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const lessonIds = Array.isArray(data.lesson_ids) ? data.lesson_ids.filter(Boolean) : [];
+  if (!lessonIds.length) return { error: "Thiếu 'lesson_ids'.", status: 400 };
+
+  const idsFilter = lessonIds.map((id) => encodeURIComponent(id)).join(",");
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/lessons?id=in.(${idsFilter})&user_id=eq.${ctx.studentId}`,
+    { method: "PATCH", headers: { ...SERVICE_HEADERS, "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ goal_id: null }) }
+  );
+  if (!r.ok) return { error: "Không cập nhật được.", status: 502 };
+  const updated = await r.json();
+  return { content: JSON.stringify({ updated_count: updated.length, updated_ids: updated.map((x) => x.id) }) };
+}
