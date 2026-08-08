@@ -1123,7 +1123,12 @@ async function callAnalyzePhraseGroups(items) {
       { role: "user", content: buildPhraseGroupsUserPrompt(items) },
     ],
   });
-  if (!r.ok) return { ok: false, reason: "call_or_parse_failed" };
+  if (!r.ok) {
+    // CHẨN ĐOÁN TẠM (2026-08-08, xoá sau khi xác nhận hết lỗi) — parseError không tự log raw
+    // text ở aiProvider.js, cần thấy MODEL THẬT SỰ trả về gì mới biết sửa đúng chỗ.
+    console.error("[callAnalyzePhraseGroups] fail:", { parseError: r.parseError, status: r.status, textSnippet: (r.text || "").slice(0, 800) });
+    return { ok: false, reason: "call_or_parse_failed" };
+  }
   const resultItems = Array.isArray(r.data?.items) ? r.data.items : null;
   if (!resultItems || resultItems.length !== items.length) return { ok: false, reason: "item_count_mismatch" };
   for (let i = 0; i < items.length; i++) {
