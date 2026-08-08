@@ -1116,8 +1116,9 @@ function buildPhraseGroupsUserPrompt(items) {
   return items.map((it, i) => `[${i}] "${it.text}"`).join("\n");
 }
 
-async function callAnalyzePhraseGroups(items) {
+async function callAnalyzePhraseGroups(items, tier) {
   const r = await generateStructuredJSON({
+    tier: tier || "default",
     maxTokens: 6000,
     temperature: 0.3,
     messages: [
@@ -1125,19 +1126,7 @@ async function callAnalyzePhraseGroups(items) {
       { role: "user", content: buildPhraseGroupsUserPrompt(items) },
     ],
   });
-  if (!r.ok) {
-    // CHẨN ĐOÁN TẠM (2026-08-08, xoá sau khi xác nhận hết lỗi) — parseError không tự log raw
-    // text ở aiProvider.js, cần thấy MODEL THẬT SỰ trả về gì mới biết sửa đúng chỗ.
-    const t = r.text || "";
-    console.error("[callAnalyzePhraseGroups] fail:", {
-      parseError: r.parseError,
-      status: r.status,
-      textLength: t.length,
-      finishSnippet: t.slice(-300),
-      usage: r.usage,
-    });
-    return { ok: false, reason: "call_or_parse_failed" };
-  }
+  if (!r.ok) return { ok: false, reason: "call_or_parse_failed" };
   const resultItems = Array.isArray(r.data?.items) ? r.data.items : null;
   if (!resultItems || resultItems.length !== items.length) return { ok: false, reason: "item_count_mismatch" };
   for (let i = 0; i < items.length; i++) {
@@ -1149,23 +1138,23 @@ async function callAnalyzePhraseGroups(items) {
   return { ok: true, items: resultItems };
 }
 
-// Gửi TỐI ĐA 2 câu/đoạn mỗi lượt gọi AI (2026-08-08 — phát hiện thật qua test trực tiếp: gửi cả
-// 4 đoạn C1 cùng lúc khiến JSON trả về bị CẮT NGANG, không parse được — "phrase_groups" theo bộ
-// quy tắc mới có NHIỀU nhóm nhỏ hơn (tối đa ~4-5 từ/nhóm) nên cần NHIỀU token JSON hơn hẳn cách
-// gom cụm lớn cũ, trong khi "maxTokens" của generateStructuredJSON bị trần CHUNG toàn app ở 6000
-// (aiProvider.js, không nên nâng trần đó chỉ vì 1 action). Chia nhỏ lượt gọi thay vì nâng trần —
-// mỗi lượt vẫn tự thử lại tối đa 3 lần qua callAnalyzePhraseGroups, thất bại 1 chunk thì dừng
-// TOÀN BỘ (không lưu dở dang 1 phần "vá", giữ đúng tính idempotent — lượt bấm/mở bài SAU sẽ thử
-// lại từ đầu với đúng các câu còn thiếu).
-const PHRASE_GROUPS_ANALYZE_CHUNK_SIZE = 1;
-
+// Gửi TỪNG CÂU MỘT (2026-08-08 — phát hiện thật qua nhiều vòng test trực tiếp, xem
+// docs/NHAT-KY-LAM-VIEC.md mục cùng ngày cho đầy đủ diễn biến): gửi nhiều câu/đoạn cùng lúc từng
+// gây JSON bị CẮT NGANG (chạm trần "maxTokens" CHUNG toàn app = 6000, aiProvider.js — không nên
+// nâng trần đó chỉ vì 1 action) LẪN model tự làm sai cú pháp JSON giữa chừng khi phải giữ mạch
+// nhiều nhóm dài liên tiếp. Mỗi câu 1 lượt gọi riêng, tự thử lại tối đa 3 lần — 2 lượt đầu dùng
+// model mặc định (rẻ), LƯỢT THỨ 3 LEO THANG lên model mạnh hơn (tier "strong", đúng nguyên tắc
+// "model mạnh là lưới cuối" đã áp dụng cho generate_lesson) — cho model nhiều "sức" suy luận hơn
+// đúng lúc cần nhất thay vì lặp lại y hệt 3 lần cùng model yếu. Thất bại cả 3 thì dừng TOÀN BỘ
+// (không lưu dở dang 1 phần "vá", giữ đúng tính idempotent — lượt bấm/mở bài SAU sẽ thử lại từ
+// đầu với đúng các câu còn thiếu).
 async function analyzePhraseGroupsInChunks(toAnalyze) {
   const allItems = [];
-  for (let start = 0; start < toAnalyze.length; start += PHRASE_GROUPS_ANALYZE_CHUNK_SIZE) {
-    const chunk = toAnalyze.slice(start, start + PHRASE_GROUPS_ANALYZE_CHUNK_SIZE);
+  for (let i = 0; i < toAnalyze.length; i++) {
+    const chunk = [toAnalyze[i]];
     let result = await callAnalyzePhraseGroups(chunk);
     if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
-    if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
+    if (!result.ok) result = await callAnalyzePhraseGroups(chunk, "strong");
     if (!result.ok) return { ok: false, reason: result.reason };
     allItems.push(...result.items);
   }
