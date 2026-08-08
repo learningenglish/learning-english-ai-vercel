@@ -8,5 +8,8 @@
   "rewrites": [
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/", "destination": "/app/index.html" }
+  ],
+  "redirects": [
+    { "source": "/", "destination": "/app/", "permanent": false }
   ]
 }
