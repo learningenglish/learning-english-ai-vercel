@@ -1135,6 +1135,29 @@ async function callAnalyzePhraseGroups(items) {
   return { ok: true, items: resultItems };
 }
 
+// Gửi TỐI ĐA 2 câu/đoạn mỗi lượt gọi AI (2026-08-08 — phát hiện thật qua test trực tiếp: gửi cả
+// 4 đoạn C1 cùng lúc khiến JSON trả về bị CẮT NGANG, không parse được — "phrase_groups" theo bộ
+// quy tắc mới có NHIỀU nhóm nhỏ hơn (tối đa ~4-5 từ/nhóm) nên cần NHIỀU token JSON hơn hẳn cách
+// gom cụm lớn cũ, trong khi "maxTokens" của generateStructuredJSON bị trần CHUNG toàn app ở 6000
+// (aiProvider.js, không nên nâng trần đó chỉ vì 1 action). Chia nhỏ lượt gọi thay vì nâng trần —
+// mỗi lượt vẫn tự thử lại tối đa 3 lần qua callAnalyzePhraseGroups, thất bại 1 chunk thì dừng
+// TOÀN BỘ (không lưu dở dang 1 phần "vá", giữ đúng tính idempotent — lượt bấm/mở bài SAU sẽ thử
+// lại từ đầu với đúng các câu còn thiếu).
+const PHRASE_GROUPS_ANALYZE_CHUNK_SIZE = 2;
+
+async function analyzePhraseGroupsInChunks(toAnalyze) {
+  const allItems = [];
+  for (let start = 0; start < toAnalyze.length; start += PHRASE_GROUPS_ANALYZE_CHUNK_SIZE) {
+    const chunk = toAnalyze.slice(start, start + PHRASE_GROUPS_ANALYZE_CHUNK_SIZE);
+    let result = await callAnalyzePhraseGroups(chunk);
+    if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
+    if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
+    if (!result.ok) return { ok: false, reason: result.reason };
+    allItems.push(...result.items);
+  }
+  return { ok: true, items: allItems };
+}
+
 // "is_news": true -> "news_lessons" (public, KHÔNG kiểm ownership — cùng mô hình quyền
 // add_news_vocab_word() trong vocab.js, ai đã đăng nhập cũng vá được vì dữ liệu dùng chung).
 // false -> "lessons" cá nhân, PHẢI đúng chủ sở hữu (lọc "user_id=eq.ctx.studentId" ngay trong
@@ -1166,12 +1189,9 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   }
   const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
 
-  let result = await callAnalyzePhraseGroups(toAnalyze);
-  if (!result.ok) result = await callAnalyzePhraseGroups(toAnalyze); // thử lại, cùng input
-  if (!result.ok) result = await callAnalyzePhraseGroups(toAnalyze); // 2026-08-08: thêm 1 lượt
-  // thứ 3 — quy tắc gom cụm mới (24 loại) khiến model thi thoảng trượt đúng-từng-từ ở lượt đầu.
+  const result = await analyzePhraseGroupsInChunks(toAnalyze);
   if (!result.ok) {
-    console.error("[analyze_lesson_phrase_groups] thất bại sau 3 lượt:", result.reason);
+    console.error("[analyze_lesson_phrase_groups] thất bại:", result.reason);
     return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
   }
 
