@@ -1157,7 +1157,7 @@ async function callAnalyzePhraseGroups(items) {
 // mỗi lượt vẫn tự thử lại tối đa 3 lần qua callAnalyzePhraseGroups, thất bại 1 chunk thì dừng
 // TOÀN BỘ (không lưu dở dang 1 phần "vá", giữ đúng tính idempotent — lượt bấm/mở bài SAU sẽ thử
 // lại từ đầu với đúng các câu còn thiếu).
-const PHRASE_GROUPS_ANALYZE_CHUNK_SIZE = 2;
+const PHRASE_GROUPS_ANALYZE_CHUNK_SIZE = 1;
 
 async function analyzePhraseGroupsInChunks(toAnalyze) {
   const allItems = [];
