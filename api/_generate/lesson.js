@@ -179,9 +179,11 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo thứ tự, không lặp từ
   ở 2 nhóm. Đây là điều kiện SỐNG CÒN, quan trọng hơn việc chọn đúng loại cụm — nếu phân vân giữa
   "chọn đúng loại cụm" và "chắc chắn không sót/thừa từ nào", LUÔN ưu tiên vế sau.
-- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA nhỏ (để người học bấm tra nghĩa) — TUYỆT ĐỐI KHÔNG gộp nguyên 1
-  câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như "Really?"). Ưu tiên nhóm ngắn (2-5 từ);
-  nếu không chắc 1 cụm nối dài có tự nhiên hay không, CẮT NHỎ về từng từ đơn thay vì gộp liều.
+- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA (để người học bấm tra nghĩa) — TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu
+  thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như "Really?"), và KHÔNG gộp 2 mệnh đề độc lập
+  (nối bằng and/but/so/because...) vào chung 1 nhóm — mỗi mệnh đề tách riêng theo đúng các cụm
+  nhỏ hơn bên trong nó. Ngoài 2 điều cấm này, ĐỘ DÀI nhóm không quan trọng bằng việc GIỮ ĐÚNG
+  TỪNG TỪ — không cố ép cắt nhỏ thêm nếu dễ gây sai sót khi chép lại từ.
 - Nhận diện cụm theo các nhóm quen thuộc sau (không cần nhớ hết, chỉ tham khảo để chọn nhãn
   "type" phù hợp — sai nhãn KHÔNG bị lỗi, chỉ sót/thừa từ mới bị lỗi): cụm cố định giao tiếp
   (good morning, thank you, of course); cụm động từ (has eaten, is working, can swim, must have
