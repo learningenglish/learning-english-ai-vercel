@@ -173,64 +173,26 @@ function orNone(v) {
 // lệch luật nhau (sửa 1 chỗ, cả 2 tự cập nhật).
 const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
 mọi content_type, 2026-08-08 — viết lại theo đúng phân loại "cụm" chuẩn dùng để dạy đọc-hiểu
-theo khối ý, KHÔNG phải chia theo công thức thì/ngữ pháp):
-- Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
-  nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
-  Đây là dữ liệu dùng CHO NGƯỜI HỌC BẤM VÀO TỪNG NHÓM ĐỂ TRA NGHĨA — mỗi nhóm phải là 1 ĐƠN VỊ Ý
-  NGHĨA nhỏ, KHÔNG BAO GIỜ là cả câu hay cả mệnh đề dài.
-- CẤM TUYỆT ĐỐI gộp nguyên một câu (dù câu rất ngắn, 3-5 từ) thành 1 nhóm duy nhất — không có
-  ngoại lệ "câu ngắn coi như 1 cụm cố định". Mọi câu, kể cả câu ngắn nhất, PHẢI được tách thành
-  từ 2 nhóm trở lên theo đúng ranh giới cụm tự nhiên bên dưới (trừ trường hợp câu CHỈ ĐÚNG 1 từ,
-  ví dụ "Really?" hoặc "Sure.").
-- Mỗi nhóm TỐI ĐA khoảng 4-5 từ, TRỪ đúng các cụm cố định/collocation liệt kê rõ trong danh sách
-  loại 15 bên dưới (những cụm này luôn đi liền nhau như 1 khối cố định, được phép giữ nguyên dù
-  hơi dài hơn — nhưng KHÔNG được tự bịa thêm cụm cố định ngoài đúng tinh thần các ví dụ đó).
-- NẾU KHÔNG CHẮC CHẮN một nhóm từ có đúng là 1 "cụm" theo định nghĩa dưới đây hay không: TÁCH VỀ
-  TỪNG TỪ ĐƠN riêng lẻ (mỗi từ 1 nhóm) thay vì đoán/gộp liều — thà tách nhỏ đúng còn hơn gộp sai.
-- 24 LOẠI CỤM CHUẨN (nhận diện theo cấu trúc thật của cụm, chọn ĐÚNG loại khớp nhất, ưu tiên
-  loại phù hợp cấp độ bài — A1-A2 chủ yếu dùng loại 1, 8, 15; B1 thêm loại 4, 12, 21, 24; B2+
-  thêm loại 9-11, 13-14, 16-20; C1 mới dùng loại 16 idiom/thành ngữ):
-  1. Cụm quen thuộc phải học nguyên khối (fixed social expressions): "good morning", "thank you",
-     "excuse me", "how are you", "nice to meet you", "see you later", "of course", "I'm sorry".
-  2. Cụm thì phức hợp (verb tense group): "has eaten", "had finished", "will be working", "has
-     been waiting".
-  3. Cụm bị động (passive voice): "is built", "was written", "has been repaired".
-  4. Modal verb + động từ: "can swim", "must leave", "should study", "might come".
-  5. Modal + Perfect: "must have forgotten", "should have called", "could have done".
-  6. Verb + to-infinitive: "want to go", "decide to stay", "hope to see".
-  7. Verb + V-ing: "enjoy reading", "avoid eating", "keep talking".
-  8. Cụm giới từ cơ bản (prepositional phrase): "in the room", "at six o'clock", "at home", "on
-     the table", "next to the door".
-  9. Cụm giới từ cố định (fixed prepositional phrase): "in charge of", "in front of", "because
-     of", "due to", "according to", "instead of".
-  10. Phrasal verb (động từ + trạng từ): "give up", "look after", "carry on", "put off", "turn
-      down", "look up".
-  11. Prepositional verb (động từ + giới từ cố định): "depend on", "belong to", "listen to",
-      "insist on", "apologize for".
-  12. Cụm danh từ (noun phrase — mạo từ/sở hữu + (tính từ) + danh từ): "the tall young man", "my
-      old car", "a big house", "an interesting book".
-  13. Cụm phân từ (participle phrase): "walking along the street", "built in 1990", "damaged by
-      fire".
-  14. Cụm nguyên mẫu/gerund (infinitive/gerund phrase): "to study English", "swimming every
-      morning".
-  15. Cụm cố định/collocation (fixed expression, luôn đi liền nhau): "by the way", "in fact", "a
-      lot of", "as soon as possible", "make a decision", "take a break", "pay attention".
-  16. Thành ngữ (idiom, CHỈ ở cấp cao nếu có trong bài): "break the ice", "once in a blue moon".
-  17. Cụm so sánh: "as...as", "more...than", "the most...".
-  18. Cụm liên từ song song (correlative conjunction): "not only...but also", "either...or".
-  19. Cụm mệnh đề quan hệ/danh từ/trạng ngữ (relative/noun/adverb clause, chỉ B2+): "who lives
-      here", "what he said", "because he was sick", "although it rained".
-  20. Cấu trúc đặc biệt: "There is/are...", "It is ... to...", "It takes...".
-  21. Grammar Formula Chunks cơ bản (be/have/do): "I am...", "there is/are", "I have...", "do you
-      like".
-  22. Grammar Formula mở rộng (A2): "am/is/are going to", "will + V", "have to", "would like
-      to", "used to".
-  23. Cụm tính từ cố định + giới từ: "afraid of", "interested in", "proud of", "good at".
-  24. Cụm chỉ số lượng (quantifier phrase): "a few", "a little", "plenty of", "a number of".
-- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn như "I"/"She", liên từ đứng riêng như "and"/
-  "but", tính từ đứng riêng...) vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ
-  gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/adverb/pronoun/preposition/
-  conjunction/article/auxiliary).
+theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
+- ƯU TIÊN CAO NHẤT (hệ thống KIỂM TRA BẰNG CODE, không tốn thêm lượt AI): với MỖI phần tử, ghép
+  TOÀN BỘ "words" của MỌI nhóm theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" đó
+  (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo thứ tự, không lặp từ
+  ở 2 nhóm. Đây là điều kiện SỐNG CÒN, quan trọng hơn việc chọn đúng loại cụm — nếu phân vân giữa
+  "chọn đúng loại cụm" và "chắc chắn không sót/thừa từ nào", LUÔN ưu tiên vế sau.
+- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA nhỏ (để người học bấm tra nghĩa) — TUYỆT ĐỐI KHÔNG gộp nguyên 1
+  câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như "Really?"). Ưu tiên nhóm ngắn (2-5 từ);
+  nếu không chắc 1 cụm nối dài có tự nhiên hay không, CẮT NHỎ về từng từ đơn thay vì gộp liều.
+- Nhận diện cụm theo các nhóm quen thuộc sau (không cần nhớ hết, chỉ tham khảo để chọn nhãn
+  "type" phù hợp — sai nhãn KHÔNG bị lỗi, chỉ sót/thừa từ mới bị lỗi): cụm cố định giao tiếp
+  (good morning, thank you, of course); cụm động từ (has eaten, is working, can swim, must have
+  forgotten, want to go, enjoy reading); phrasal verb (give up, look after); cụm giới từ (in the
+  room, in charge of, depend on); cụm danh từ (a big house, the tall young man); cụm phân từ/
+  nguyên mẫu (walking along the street, to study English); collocation (make a decision, a lot
+  of); thành ngữ (chỉ cấp cao); cụm so sánh/liên từ song song (as...as, not only...but also);
+  mệnh đề quan hệ/trạng ngữ (who lives here, because he was sick); cấu trúc there is/it takes;
+  cụm tính từ + giới từ cố định (afraid of, interested in); cụm chỉ số lượng (a few, plenty of).
+- Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
+  nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
 - Mỗi nhóm có cấu trúc:
   {
     "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
@@ -1205,9 +1167,11 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
 
   let result = await callAnalyzePhraseGroups(toAnalyze);
-  if (!result.ok) result = await callAnalyzePhraseGroups(toAnalyze); // 1 lần thử lại, cùng input
+  if (!result.ok) result = await callAnalyzePhraseGroups(toAnalyze); // thử lại, cùng input
+  if (!result.ok) result = await callAnalyzePhraseGroups(toAnalyze); // 2026-08-08: thêm 1 lượt
+  // thứ 3 — quy tắc gom cụm mới (24 loại) khiến model thi thoảng trượt đúng-từng-từ ở lượt đầu.
   if (!result.ok) {
-    console.error("[analyze_lesson_phrase_groups] thất bại sau 2 lượt:", result.reason);
+    console.error("[analyze_lesson_phrase_groups] thất bại sau 3 lượt:", result.reason);
     return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
   }
 
