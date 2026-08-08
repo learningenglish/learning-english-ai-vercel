@@ -4,9 +4,8 @@
 // KHÔNG còn gọi AI mỗi lần bấm (2026-08-05, "sửa gốc tính năng tra từ", xem
 // docs/NHAT-KY-LAM-VIEC.md). "sentence_tip" vẫn là action lẻ, realtime, không lưu. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
-import { getLessonWithProgress, upsertLessonProgress, setLessonFavorite, getNewsLessonById } from "../db.js";
+import { getLessonWithProgress, upsertLessonProgress, getNewsLessonById } from "../db.js";
 import { analyzeLessonPhraseGroups, getLessonFullAudioUrl, fetchAndSaveLessonCover } from "../lessonApi.js";
-import { callChatAction } from "../chatApi.js";
 import { escapeHtml } from "../utils.js";
 import { createPlayer, isTTSSupported, computeGenderHints } from "../tts.js";
 import { icon } from "../icons.js";
@@ -87,10 +86,8 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     completedExercises: new Set(progress?.completed_exercises || []),
     exerciseResults: Array.isArray(progress?.exercise_results) ? [...progress.exercise_results] : [],
     xpEarned: progress?.xp_earned || 0,
-    showAllContent: false,
     showTranslation: true, // luôn hiện dịch mặc định, tắt được qua icon
-    isFavorite: !!lesson.is_favorite,
-    vocabView: "specialized", // mặc định hiện từ chuyên ngành ở tab Từ vựng (xem VOCAB_VIEWS)
+    showChunks: false, // "tách câu" (2026-08-08) — mặc định tắt, bật qua icon cạnh nút dịch
   };
   // Tiêu đề mặc định tiếng Việt (title_vi) — tắt bản dịch thì đổi sang tiếng Anh (title),
   // nhất quán với việc ẩn/hiện bản dịch trong nội dung bài (icon "văn/A" ở tab Nội dung).
@@ -99,23 +96,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   }
 
   const ttsSupported = isTTSSupported();
-  const genderHints = computeGenderHints(lesson.content); // 1 giọng cố định/nhân vật suốt bài
-
-  // Gộp cặp lượt thoại (2026-07-30, mục 9 — Minh: "gộp mỗi CẶP hỏi-đáp vào chung 1 khung", yêu
-  // cầu lại từ Đợt 2). CHỈ áp dụng cho hội thoại (có "speaker") — bài đọc thường (không có
-  // speaker) giữ nguyên 1 đoạn/1 trang như trước, không có khái niệm "cặp". "pairIndexFor"/
-  // "pairStartIndex" quy đổi 2 chiều giữa chỉ số TRANG hiển thị (CẶP cho hội thoại, ĐOẠN cho bài
-  // đọc — chỉ dùng cục bộ trong renderContentTab() để tính phân trang/điều hướng) và chỉ số CÂU
-  // THẬT trong "lesson.content"/"ttsPlayer.items"/"state.page" (state.page LUÔN là chỉ số câu
-  // thật, KHÔNG đổi đơn vị — khớp completed_paragraphs đã lưu + progress_page dùng ở nơi khác,
-  // xem ghi chú tại chỗ gọi ttsPlayer.load()).
-  const isDialogueLesson = (lesson.content || []).some((it) => it?.speaker);
-  function pairIndexFor(itemIdx) {
-    return isDialogueLesson ? Math.floor(itemIdx / 2) : itemIdx;
-  }
-  function pairStartIndex(pageIdx) {
-    return isDialogueLesson ? pageIdx * 2 : pageIdx;
-  }
+  const genderHints = computeGenderHints(lesson.content, lesson.characters); // 1 giọng cố định/nhân vật suốt bài
 
   // Âm thanh trả phí — CHỈ bài đọc/hội thoại CÓ lĩnh vực trong Thư viện AI, xem
   // api/_generate/audio.js. "audioEligible" chặn SỚM ở client (không hỏi server cho bài rõ
@@ -155,9 +136,6 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // audio có thể đi xuyên trang khi ở chế độ "Từng câu" mà không cần tải lại player.
   let ttsLoaded = false;
   let renderContentBodyFn = null;
-  // Cập nhật CHỈ highlight câu đang đọc bên trong 1 khung cặp, KHÔNG render lại cả khung (mục 9)
-  // — gán lại mỗi lần renderContentBody() vẽ khung "Từng câu" mới, xem bên dưới.
-  let updateActiveTurnFn = null;
   // Thanh tiến trình (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s) — Web Speech API
   // không bắn sự kiện tiến trình liên tục trong lúc đọc (chỉ có onend/onstart cho MỖI utterance),
   // nên cần tự chạy 1 timer NHẸ để cập nhật thanh + nhãn thời gian mượt trong lúc đang phát;
@@ -179,25 +157,13 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       ensureProgressTimer(s.playing);
       // "Đã học" (2026-08-04) = nghe TRỌN VẸN audio thật, không phải chỉ bấm Play — s.justEnded
       // chỉ true ĐÚNG 1 lần lúc tts.js xác nhận đã phát hết toàn bộ playlist (file ghép sẵn HOẶC
-      // fallback Web Speech, xem ghi chú tại tts.js::justEnded). Đứng NGOÀI "if showAllContent
-      // return" bên dưới vì đây không liên quan gì tới trang/khung đang hiển thị.
+      // fallback Web Speech, xem ghi chú tại tts.js::justEnded).
       if (s.justEnded) saveProgress({ fullyListened: true });
-      if (state.showAllContent || s.itemIndex === state.page) return;
-      // "state.page" LUÔN lưu chỉ số CÂU thật (khớp completed_paragraphs/progress_page dùng ở
-      // nơi khác, xem ghi chú ttsPlayer.load()) — chỉ khác NHAU giữa 2 lượt gọi ở đơn vị TRANG
-      // (pairIndexFor) mới quyết định có cần render lại cả khung hay không.
-      const pairChanged = pairIndexFor(s.itemIndex) !== pairIndexFor(state.page);
-      state.page = s.itemIndex;
-      saveProgress();
-      if (pairChanged || !updateActiveTurnFn) {
-        // Sang CẶP mới (hoặc sang đoạn mới, bài đọc thường) -> đổi khung, render lại toàn bộ.
-        if (renderContentBodyFn) renderContentBodyFn();
-      } else {
-        // VẪN trong CÙNG 1 cặp (vd câu 1 -> câu 2 của cùng 1 lượt hỏi-đáp, mục 9 — Minh: "không
-        // chuyển card khi chuyển từ câu 1 sang câu 2 trong cùng 1 cặp") -> CHỈ đổi highlight bên
-        // trong khung đang hiện, không render lại (tránh giật/nhấp nháy vô ích).
-        updateActiveTurnFn(s.itemIndex);
-      }
+      // Bỏ phân trang (2026-08-08) — nội dung luôn hiện liên tục 1 khối duy nhất (xem
+      // renderContentBody() bên dưới), không còn khái niệm "trang/cặp đang xem" cần đổi khung
+      // theo audio nữa — KHÔNG còn lưu "đang đọc dở câu nào" theo từng câu trong lúc phát (chỉ
+      // còn lưu lúc mở bài + lúc nghe xong hẳn ở trên), đánh đổi đã có sẵn từ trước khi bật "Xem
+      // tất cả", giờ là hành vi mặc định.
     },
   });
 
@@ -206,7 +172,6 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       <div class="lesson-header-row">
         ${backChevronHtml()}
         <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
-        ${isNews ? "" : `<button type="button" class="lesson-fav-btn ${state.isFavorite ? "is-favorite" : ""}" id="lesson-fav-btn" aria-label="Yêu thích">${icon("heart", { size: 19, filled: state.isFavorite })}</button>`}
       </div>
       <div class="tabs sticky-tabs" role="tablist">
         <button type="button" class="tab-btn active" data-tab="content">Nội dung</button>
@@ -224,22 +189,6 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     // (Bài học / Yêu thích / Lịch sử đều dẫn tới đây), hash router hoạt động đúng với
     // Back trình duyệt nên history.back() an toàn.
     history.back();
-  });
-
-  mount.querySelector("#lesson-fav-btn")?.addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
-    const next = !state.isFavorite;
-    btn.disabled = true;
-    try {
-      await setLessonFavorite(lesson.id, next);
-      state.isFavorite = next;
-      btn.innerHTML = icon("heart", { size: 19, filled: next });
-      btn.classList.toggle("is-favorite", next);
-    } catch {
-      // Lỗi mạng cho 1 toggle nhỏ — giữ nguyên trạng thái cũ, không cần báo ồn ào.
-    } finally {
-      btn.disabled = false;
-    }
   });
 
   mount.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -267,23 +216,23 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   }
 
   // ====== Tab Nội dung ======
+  // Bỏ phân trang (2026-08-08, Minh: "bỏ tính năng hiển thị từng trang") — luôn hiện TOÀN BỘ nội
+  // dung liên tục trong 1 khối, không còn "Trang X/Y" + nút ‹›. Đây chính là nhánh "Xem tất cả"
+  // cũ (trước đây là 1 lựa chọn qua toggle, giờ là hành vi DUY NHẤT).
   function renderContentTab(panel) {
     const pages = lesson.content || [];
-    // Tổng số "trang" hiển thị ở chế độ "Từng câu" — CẶP cho hội thoại (2 câu/trang, mục 9),
-    // ĐOẠN cho bài đọc thường (không đổi, 1 câu/trang như trước).
-    const totalPages = isDialogueLesson ? Math.max(1, Math.ceil(pages.length / 2)) : Math.max(1, pages.length);
     panel.innerHTML = `
       <div class="content-toolbar">
-        <button type="button" class="icon-toggle-btn ${state.showAllContent ? "active" : ""}" id="toggle-all-btn" title="Xem tất cả">${icon("list", { size: 18 })}</button>
+        <button type="button" class="icon-toggle-btn ${state.showChunks ? "active" : ""}" id="toggle-chunks-btn" title="Tách câu">${icon("list", { size: 18 })}</button>
         <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">${icon("languages", { size: 18 })}</button>
       </div>
       <div id="content-body"></div>
       ${ttsSupported ? audioBarHtml() : ""}
     `;
 
-    panel.querySelector("#toggle-all-btn").addEventListener("click", () => {
-      state.showAllContent = !state.showAllContent;
-      panel.querySelector("#toggle-all-btn").classList.toggle("active", state.showAllContent);
+    panel.querySelector("#toggle-chunks-btn").addEventListener("click", () => {
+      state.showChunks = !state.showChunks;
+      panel.querySelector("#toggle-chunks-btn").classList.toggle("active", state.showChunks);
       renderContentBody();
     });
     panel.querySelector("#toggle-translate-btn").addEventListener("click", () => {
@@ -300,10 +249,8 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       wireAudioBar(panel);
       if (!ttsLoaded) {
         // "state.page" LUÔN là chỉ số câu THẬT (khớp completed_paragraphs đã lưu/đọc lại +
-        // progress_page dùng ở thẻ "Bài đang đọc", xem lessonCard.js) — KHÔNG đổi đơn vị thành
-        // "cặp" dù hiển thị gộp cặp (mục 9), tránh làm sai % tiến độ ở nơi khác. Việc gộp cặp
-        // chỉ ảnh hưởng CÁCH HIỂN THỊ (renderContentBody/goToPage bên dưới), không ảnh hưởng
-        // đơn vị lưu trữ.
+        // progress_page dùng ở thẻ "Bài đang đọc", xem lessonCard.js) — dùng làm vị trí BẮT ĐẦU
+        // phát khi mở lại bài đang đọc dở.
         ttsPlayer.load(
           pages.map((p, i) => ({ text: p?.text || "", genderHint: genderHints[i] })),
           Math.min(Math.max(0, state.page), Math.max(0, pages.length - 1))
@@ -316,96 +263,42 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     renderContentBodyFn = renderContentBody;
     renderContentBody();
 
+    // "Tách câu" (2026-08-08, mục 2) — liệt kê TUẦN TỰ từng nhóm trong "phrase_groups" của câu
+    // này theo đúng format file mẫu Minh gửi (🔹 cụm = nghĩa), dùng LẠI dữ liệu "phrase_groups"
+    // đã có sẵn (không cần trường AI mới) — bài chưa có đủ dữ liệu (bài cũ chưa vá xong) thì hiện
+    // 1 dòng ghi chú thay vì render rỗng.
+    function contentChunksHtml(item) {
+      const groups = Array.isArray(item?.phrase_groups) ? item.phrase_groups : [];
+      if (!groups.length) return `<div class="content-chunks muted">Chưa có dữ liệu tách câu cho câu này.</div>`;
+      return `
+        <div class="content-chunks">
+          ${groups
+            .map((g) => `<div class="content-chunk-line">🔹 ${escapeHtml((g.words || []).join(" "))} = ${escapeHtml(g.meaning || "")}</div>`)
+            .join("")}
+        </div>
+      `;
+    }
+
     function renderContentBody() {
       const body = panel.querySelector("#content-body");
-      // "idx" = chỉ số CÂU thật (đơn vị lưu trữ, xem ghi chú ttsPlayer.load ở trên). "pageIdx" =
-      // chỉ số TRANG hiển thị (CẶP cho hội thoại, mục 9) — CHỈ dùng để tính toán phân trang/điều
-      // hướng, không lưu riêng.
-      const idx = Math.min(Math.max(0, state.page), Math.max(0, pages.length - 1));
-      const pageIdx = Math.min(pairIndexFor(idx), totalPages - 1);
-
-      if (state.showAllContent) {
-        updateActiveTurnFn = null;
-        body.innerHTML = `
-          <div class="content-page">
-            ${pages
-              .map(
-                (item, i) => `
-              ${i > 0 ? '<div class="content-divider"></div>' : ""}
-              <div class="content-item-header">
-                <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
-                ${contentActionsHtml(i)}
-              </div>
-              <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>
-              ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-            `
-              )
-              .join("")}
-          </div>
-        `;
-      } else if (isDialogueLesson) {
-        // Cặp lượt thoại (mục 9) — 2 câu liên tiếp trong CÙNG 1 khung, mỗi câu đánh dấu
-        // "data-turn-idx" đúng chỉ số THẬT (để updateActiveTurnFn tô sáng đúng câu đang đọc mà
-        // không cần render lại cả khung khi chuyển từ câu 1 sang câu 2 của cùng cặp).
-        const start = pairStartIndex(pageIdx);
-        const turnIndices = [start, start + 1].filter((i) => i < pages.length);
-        const activeItemIdx = ttsSupported ? ttsPlayer.getState().itemIndex : idx;
-        body.innerHTML = `
-          <div class="content-nav">
-            <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
-            <div class="content-nav-btns">
-              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Cặp trước" ${pageIdx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
-              <button type="button" class="content-nav-btn" id="content-next-btn" title="Cặp tiếp theo" ${pageIdx === totalPages - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
-            </div>
-          </div>
-          <div class="content-page">
-            ${turnIndices
-              .map(
-                (i) => `
-              ${i > start ? '<div class="content-divider"></div>' : ""}
-              <div class="content-turn ${i === activeItemIdx ? "active-turn" : ""}" data-turn-idx="${i}">
-                <div class="content-item-header">
-                  <span class="speaker-name">${pages[i]?.speaker ? escapeHtml(pages[i].speaker) : ""}</span>
-                  ${contentActionsHtml(i)}
-                </div>
-                <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(pages[i]?.text || "", lesson.vocabulary || [], pages[i]?.phrase_groups)}</div>
-                ${state.showTranslation ? `<div class="content-translation">${escapeHtml(pages[i]?.translation || "")}</div>` : ""}
-              </div>
-            `
-              )
-              .join("")}
-          </div>
-        `;
-        body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(pageIdx - 1));
-        body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(pageIdx + 1));
-        updateActiveTurnFn = (itemIdx) => {
-          body.querySelectorAll("[data-turn-idx]").forEach((el) => {
-            el.classList.toggle("active-turn", Number(el.dataset.turnIdx) === itemIdx);
-          });
-        };
-      } else {
-        updateActiveTurnFn = null;
-        const item = pages[pageIdx];
-        body.innerHTML = `
-          <div class="content-nav">
-            <div class="content-progress muted">Trang ${pageIdx + 1}/${totalPages}</div>
-            <div class="content-nav-btns">
-              <button type="button" class="content-nav-btn" id="content-prev-btn" title="Câu trước" ${pageIdx === 0 ? "disabled" : ""}>${icon("chevron-left", { size: 20 })}</button>
-              <button type="button" class="content-nav-btn" id="content-next-btn" title="Câu tiếp theo" ${pageIdx === totalPages - 1 ? "disabled" : ""}>${icon("chevron-right", { size: 20 })}</button>
-            </div>
-          </div>
-          <div class="content-page">
+      body.innerHTML = `
+        <div class="content-page">
+          ${pages
+            .map(
+              (item, i) => `
+            ${i > 0 ? '<div class="content-divider"></div>' : ""}
             <div class="content-item-header">
               <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
-              ${contentActionsHtml(pageIdx)}
+              ${contentActionsHtml(i)}
             </div>
-            <div class="content-text" data-item-idx="${pageIdx}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>
+            <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>
             ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-          </div>
-        `;
-        body.querySelector("#content-prev-btn").addEventListener("click", () => goToPage(pageIdx - 1));
-        body.querySelector("#content-next-btn").addEventListener("click", () => goToPage(pageIdx + 1));
-      }
+            ${state.showChunks ? contentChunksHtml(item) : ""}
+          `
+            )
+            .join("")}
+        </div>
+      `;
 
       body.querySelectorAll(".content-text").forEach((el) => {
         const itemIdx = Number(el.dataset.itemIdx);
@@ -415,37 +308,11 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           const itemIdx = Number(btn.dataset.idx);
-          const item = pages[itemIdx];
-          if (btn.dataset.action === "speak") {
-            // 2026-07-30 (mục 1+2) — phát ĐÚNG đoạn audio thật đã cắt sẵn cho câu này (nếu bài
-            // đã có), KHÔNG còn luôn luôn Web Speech như trước — xem playSegment() trong tts.js.
-            ttsPlayer.playSegment(itemIdx);
-          } else {
-            showSentenceExplain(btn, item);
-          }
+          // 2026-07-30 (mục 1+2) — phát ĐÚNG đoạn audio thật đã cắt sẵn cho câu này (nếu bài đã
+          // có), KHÔNG còn luôn luôn Web Speech như trước — xem playSegment() trong tts.js.
+          ttsPlayer.playSegment(itemIdx);
         });
       });
-    }
-
-    // Chuyển trang thủ công (nút ‹/›) — "newIdx" là chỉ số TRANG (CẶP cho hội thoại, ĐOẠN cho
-    // bài đọc, xem totalPages/pairStartIndex ở trên), độc lập với việc trình duyệt có hỗ trợ
-    // đọc-to hay không. Có TTS -> đi qua ttsPlayer (nhảy tới CÂU ĐẦU của trang/cặp đích) để
-    // thanh audio + trạng thái phát luôn khớp đúng đoạn đang xem (onStateChange ở trên tự cập
-    // nhật state.page + render lại). Không có TTS -> tự cập nhật state.page rồi render lại,
-    // không đụng gì tới ttsPlayer (gọi vào sẽ lỗi vì window.speechSynthesis không tồn tại).
-    function goToPage(newIdx) {
-      const clamped = Math.max(0, Math.min(totalPages - 1, newIdx));
-      // So sánh theo ĐƠN VỊ TRANG (pairIndexFor(state.page)), KHÔNG so trực tiếp với state.page
-      // — state.page giữ chỉ số CÂU thật (xem ghi chú ttsPlayer.load ở trên), khác đơn vị với
-      // "clamped" khi đang gộp cặp.
-      if (clamped === pairIndexFor(state.page)) return;
-      if (ttsSupported) {
-        ttsPlayer.goTo(pairStartIndex(clamped));
-      } else {
-        state.page = pairStartIndex(clamped);
-        saveProgress();
-        renderContentBody();
-      }
     }
   }
 
@@ -490,30 +357,33 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     return phraseGroupsPatchPromise;
   }
 
+  // Vá "phrase_groups" NGAY LÚC MỞ BÀI thay vì đợi người dùng bấm vào từ (2026-08-08, Minh: "từ
+  // phải được tra trước, không phải nhấn vào mới gọi AI") — trước đây hàm ensurePhraseGroupsPatched()
+  // ở trên CHỈ chạy khi bấm trúng từ thiếu dữ liệu, nghĩa là LƯỢT BẤM ĐẦU TIÊN của người dùng luôn
+  // phải đợi 1 lượt gọi AI. Kiểm tra rẻ ở client trước (không cần khớp tuyệt đối logic server, chỉ
+  // cần đủ để quyết định có ĐÁNG gọi hay không) — bỏ qua hẳn lượt gọi mạng nếu mọi câu đã có
+  // "phrase_groups" (đại đa số bài MỚI sau khi siết prompt, xem PHRASE_GROUPS_RULES) rồi mới gọi
+  // patch, fire-and-forget, KHÔNG chặn hiển thị bài — vẽ lại nội dung khi vá xong để các từ vừa có
+  // dữ liệu được tô sẵn, không cần đợi tới lượt bấm mới thấy.
+  const needsPhraseGroupsPatch = (lesson.content || []).some(
+    (item) => (item?.text || "").trim() && (!Array.isArray(item.phrase_groups) || !item.phrase_groups.length)
+  );
+  if (needsPhraseGroupsPatch) {
+    ensurePhraseGroupsPatched().then((ok) => {
+      if (ok) renderContentBodyFn?.();
+    });
+  }
+
+  // Bỏ nút "Hỏi AI"/giải thích câu (2026-08-08, Minh: "bỏ tính năng Hỏi AI kế bên icon đọc câu")
+  // — chỉ còn nút đọc-to, và chỉ hiện khi trình duyệt hỗ trợ Web Speech API (không có gì để bấm
+  // nếu không hỗ trợ đọc-to).
   function contentActionsHtml(idx) {
-    if (!ttsSupported) {
-      return `<div class="content-item-actions"><button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">${icon("message-circle", { size: 15 })}</button></div>`;
-    }
+    if (!ttsSupported) return "";
     return `
       <div class="content-item-actions">
         <button type="button" class="sentence-icon-btn" data-action="speak" data-idx="${idx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>
-        <button type="button" class="sentence-icon-btn" data-action="explain" data-idx="${idx}" title="Giải thích câu này">${icon("message-circle", { size: 15 })}</button>
       </div>
     `;
-  }
-
-  // Bài học tạo SAU khi có tính năng này: "explanation" đã được AI phân tích sẵn LÚC TẠO
-  // BÀI, hiện ra NGAY không cần gọi AI lại. Bài học tạo TRƯỚC đó (chưa có trường này trong
-  // "content") vẫn cần fallback gọi sentence_tip như cũ để không bị hỏng tính năng.
-  async function showSentenceExplain(anchorEl, item) {
-    if (item?.explanation) {
-      showPopoverHtml(anchorEl, `<div class="word-popover-meaning">${escapeHtml(item.explanation)}</div>`);
-      return;
-    }
-    showPopoverHtml(anchorEl, `<div class="word-popover-meaning muted">Đang phân tích câu...</div>`);
-    const res = await callChatAction("sentence_tip", { sentence: item?.text || "" });
-    const text = res.ok ? res.content : res.error || "Không lấy được giải thích.";
-    showPopoverHtml(anchorEl, `<div class="word-popover-meaning">${escapeHtml(text)}</div>`);
   }
 
   // ====== Thanh audio (chỉ hiện khi trình duyệt hỗ trợ Web Speech API) ======
@@ -556,7 +426,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
           <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 15 })}</button>
           <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
         </div>
-        <button type="button" class="audio-btn" id="audio-replay" title="Phát lại">${icon("repeat", { size: 15 })}</button>
+        <button type="button" class="audio-btn audio-btn-loop" id="audio-replay" title="Lặp lại">${icon("repeat", { size: 15 })}<span class="audio-loop-badge">1</span></button>
         <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
       </div>
     `;
@@ -573,7 +443,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   }
 
   function wireAudioBar(panel) {
-    panel.querySelector("#audio-replay").addEventListener("click", () => ttsPlayer.replay());
+    panel.querySelector("#audio-replay").addEventListener("click", () => ttsPlayer.toggleLoop());
     panel.querySelector("#audio-play").addEventListener("click", () => ttsPlayer.playPause());
 
     // "audioSeeking" (khai báo cùng ensureProgressTimer() ở trên) — bật khi NGÓN TAY đang kéo,
@@ -635,6 +505,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     const playBtn = document.getElementById("audio-play");
     const speedBtn = document.getElementById("audio-speed");
     const volSlider = document.getElementById("audio-volume-slider");
+    const loopBtn = document.getElementById("audio-replay");
     // SỬA 2026-07-30 (ghép 1 file audio duy nhất, xem tts.js đầu file) — không còn trạng thái
     // "đang chờ audio" nào nữa (URL đã sinh sẵn từ trước hoặc chưa có -> Web Speech phát ngay,
     // cả 2 đều tức thời), bỏ hẳn spinner thay nút phát.
@@ -643,6 +514,9 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     }
     if (speedBtn) speedBtn.textContent = `${s.rate}x`;
     if (volSlider) volSlider.value = String(s.volume);
+    // Badge "1" (2026-08-08) — nút lặp lại đổi màu/nổi bật khi bật loop, đúng kiểu "repeat one"
+    // của các trình phát nhạc.
+    if (loopBtn) loopBtn.classList.toggle("active", !!s.loop);
 
     // Không đụng thanh/nhãn "elapsed" khi người dùng ĐANG kéo tay (audioSeeking) — tránh giật
     // ngược giữa chừng lúc kéo, xem wireAudioBar().
@@ -767,110 +641,94 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   }
 
   // ====== Tab Từ vựng ======
-  // "word" trong vocabulary có thể là 1 từ đơn hoặc 1 cụm từ (đúng schema "từ hoặc cụm từ"
-  // trong 2 file prompt). 4 nhóm hiển thị, ưu tiên theo thứ tự (1 từ chỉ thuộc ĐÚNG 1 nhóm):
-  // "looked_up" (người học tự tra thêm — source==="user_lookup") > "specialized"
-  // (is_specialized, MẶC ĐỊNH hiện đầu tiên vì đây là mục đích chính của bài) > "phrase"
-  // (nhiều từ) > "word" (từ đơn thường).
-  const VOCAB_VIEWS = [
-    { value: "specialized", label: "Chuyên ngành", icon: "briefcase", empty: "Bài này không có từ chuyên ngành nổi bật." },
-    { value: "phrase", label: "Cụm", icon: "languages", empty: "Bài này không có cụm từ nổi bật." },
-    { value: "word", label: "Từ", icon: "book-open", empty: "Bài này không có từ đơn nổi bật." },
-    { value: "looked_up", label: "Đã tra", icon: "bookmark", empty: "Chưa tra thêm từ nào — bấm vào từ trong bài để tra, từ đó sẽ tự xuất hiện ở đây." },
-  ];
-
-  function isPhrase(word) {
-    return /\s/.test((word || "").trim());
-  }
-
-  function categorizeVocabWord(w) {
-    if (w.source === "user_lookup") return "looked_up";
-    if (w.is_specialized) return "specialized";
-    if (isPhrase(w.word)) return "phrase";
-    return "word";
-  }
-
+  // Danh sách PHẲNG (2026-08-08, Minh: "chỉ cần hiển thị từ trong bài, không cần tách thành 4
+  // phần") — bỏ hẳn 4 tab lọc theo loại (Chuyên ngành/Cụm/Từ/Đã tra) cũ, giữ badge "chuyên
+  // ngành" (viền cam, vocab-item-specialized) inline trên từng thẻ để vẫn phân biệt được mà
+  // không cần tách màn hình riêng.
   function renderVocabularyTab(panel) {
-    panel.innerHTML = `
-      <div class="content-toolbar">
-        ${VOCAB_VIEWS.map((v) => `<button type="button" class="icon-toggle-btn" id="vocab-view-${v.value}" title="${escapeHtml(v.label)}">${icon(v.icon, { size: 15 })}</button>`).join("")}
-      </div>
-      <div id="vocab-list-body"></div>
-    `;
-    VOCAB_VIEWS.forEach((v) => {
-      panel.querySelector(`#vocab-view-${v.value}`).addEventListener("click", () => {
-        state.vocabView = v.value;
-        renderVocabBody();
-      });
-    });
-    renderVocabBody();
-
-    function renderVocabBody() {
-      VOCAB_VIEWS.forEach((v) => {
-        panel.querySelector(`#vocab-view-${v.value}`).classList.toggle("active", state.vocabView === v.value);
-      });
-      const viewDef = VOCAB_VIEWS.find((v) => v.value === state.vocabView) || VOCAB_VIEWS[0];
-      const words = (lesson.vocabulary || []).filter((w) => categorizeVocabWord(w) === state.vocabView);
-      const body = panel.querySelector("#vocab-list-body");
-      if (!words.length) {
-        body.innerHTML = `<p class="muted">${escapeHtml(viewDef.empty)}</p>`;
-        return;
-      }
-      body.innerHTML = `
-        <div class="vocab-list">
-          ${words
-            .map(
-              (w) => `
-            <div class="vocab-item ${w.is_specialized ? "vocab-item-specialized" : ""}">
-              <div class="vocab-word-row">
-                <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""}" data-word="${escapeHtml(w.word)}">
-                  ${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span>
-                </div>
-                ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">${icon("volume", { size: 15 })}</button>` : ""}
-              </div>
-              ${
-                categorizeVocabWord(w) === "phrase" && w.type
-                  ? `<div class="vocab-type-badge badge">${escapeHtml(w.type)}</div>`
-                  : `<div class="vocab-type muted">${escapeHtml(w.type || "")}</div>`
-              }
-              <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
-              <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `;
-      if (ttsSupported) {
-        // Cả icon loa lẫn bấm thẳng vào từ đều phát âm — không bắt buộc phải dùng icon.
-        body.querySelectorAll(".vocab-speak-btn, .vocab-word-clickable").forEach((el) => {
-          el.addEventListener("click", () => ttsPlayer.speakOnce(el.dataset.word));
-        });
-      }
-    }
-  }
-
-  function renderGrammarTab(panel) {
-    const points = lesson.grammar || [];
-    if (!points.length) {
-      panel.innerHTML = `<p class="muted">Bài này không có điểm ngữ pháp nổi bật để học riêng.</p>`;
+    const words = lesson.vocabulary || [];
+    if (!words.length) {
+      panel.innerHTML = `<p class="muted">Bài này không có từ vựng nổi bật.</p>`;
       return;
     }
     panel.innerHTML = `
-      <div class="grammar-list">
-        ${points
+      <div class="vocab-list">
+        ${words
           .map(
-            (g) => `
-          <div class="grammar-item">
-            <div class="grammar-name">${escapeHtml(g.name)}</div>
-            <div class="grammar-structure badge">${escapeHtml(g.structure || "")}</div>
-            <div class="grammar-explanation">${escapeHtml(g.explanation || "")}</div>
-            <div class="grammar-example muted">"${escapeHtml(g.example_from_lesson || "")}"</div>
+            (w) => `
+          <div class="vocab-item ${w.is_specialized ? "vocab-item-specialized" : ""}">
+            <div class="vocab-word-row">
+              <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""}" data-word="${escapeHtml(w.word)}">
+                ${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span>
+              </div>
+              ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">${icon("volume", { size: 15 })}</button>` : ""}
+            </div>
+            ${w.type ? `<div class="vocab-type-badge badge">${escapeHtml(w.type)}</div>` : ""}
+            <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
+            <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
           </div>
         `
           )
           .join("")}
       </div>
+    `;
+    if (ttsSupported) {
+      // Cả icon loa lẫn bấm thẳng vào từ đều phát âm — không bắt buộc phải dùng icon.
+      panel.querySelectorAll(".vocab-speak-btn, .vocab-word-clickable").forEach((el) => {
+        el.addEventListener("click", () => ttsPlayer.speakOnce(el.dataset.word));
+      });
+    }
+  }
+
+  function renderGrammarTab(panel) {
+    const points = lesson.grammar || [];
+    const patterns = lesson.sentence_patterns || [];
+    if (!points.length && !patterns.length) {
+      panel.innerHTML = `<p class="muted">Bài này không có điểm ngữ pháp nổi bật để học riêng.</p>`;
+      return;
+    }
+    panel.innerHTML = `
+      ${
+        points.length
+          ? `
+        <div class="grammar-list">
+          ${points
+            .map(
+              (g) => `
+            <div class="grammar-item">
+              <div class="grammar-name">${escapeHtml(g.name)}</div>
+              <div class="grammar-structure badge">${escapeHtml(g.structure || "")}</div>
+              <div class="grammar-explanation">${escapeHtml(g.explanation || "")}</div>
+              <div class="grammar-example muted">"${escapeHtml(g.example_from_lesson || "")}"</div>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `
+          : ""
+      }
+      ${
+        patterns.length
+          ? `
+        <div class="section-label-row"><span class="section-label-tab">Cấu trúc câu đáng chú ý</span></div>
+        <div class="grammar-list">
+          ${patterns
+            .map(
+              (p) => `
+            <div class="pattern-item">
+              <div class="grammar-name">${escapeHtml(p.pattern || "")}</div>
+              <div class="grammar-example muted">"${escapeHtml(p.example_from_lesson || "")}"</div>
+              <div class="grammar-explanation">${escapeHtml(p.note || "")}</div>
+              ${p.why_worth_it ? `<div class="pattern-why muted">${escapeHtml(p.why_worth_it)}</div>` : ""}
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `
+          : ""
+      }
     `;
   }
 

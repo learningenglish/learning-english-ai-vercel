@@ -806,26 +806,6 @@ textarea:focus {
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 45%, black 100%);
 }
 
-/* ".fav-btn.continue-card-fav" (2 class) CỐ Ý thay vì chỉ ".continue-card-fav" — selector
-   ".fav-btn" định nghĩa SAU trong file (color: var(--text-dim)) nên nếu cùng độ đặc thù
-   (specificity) sẽ đè ngược màu trắng này, icon tim chìm vào ảnh nền tối. */
-.fav-btn.continue-card-fav {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 3;
-  width: 26px;
-  height: 26px;
-  background: none;
-  color: #fff;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
-}
-
-.continue-card-fav .icon {
-  width: 15px;
-  height: 15px;
-}
-
 .continue-card-body {
   position: relative;
   z-index: 1;
@@ -848,10 +828,13 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* KHÔNG in đậm + rõ NHỎ HƠN tiêu đề (2026-08-08, Minh: "font chữ không in đậm, size nhỏ hơn
+   Tiêu đề") — trước đây cùng font-weight 600 với .continue-card-title (0.78rem) khiến 2 dòng
+   nhìn "nặng" ngang nhau, không phân cấp rõ. */
 .continue-card-sub {
   color: #ffd7a3;
-  font-weight: 600;
-  font-size: 0.7rem;
+  font-weight: 400;
+  font-size: 0.66rem;
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1286,9 +1269,13 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* KHÔNG in đậm + rõ NHỎ HƠN tiêu đề (2026-08-08, Minh: "font chữ không in đậm, size nhỏ hơn
+   Tiêu đề") — trước đây cùng font-weight 600 với .lesson-card-title (0.95rem) và không có
+   font-size riêng (ăn theo cỡ chữ mặc định), khiến 2 dòng nhìn "nặng" ngang nhau. */
 .lesson-card-sub {
   color: var(--orange);
-  font-weight: 600;
+  font-weight: 400;
+  font-size: 0.78rem;
   margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1329,35 +1316,6 @@ textarea:focus {
   100% { background-position: 0 0; }
 }
 
-/* KHÔNG còn nền tròn trắng phía sau (yêu cầu người dùng) — chỉ icon trơn, dùng drop-shadow
-   thay cho box-shadow/nền để icon vẫn nổi rõ trên mọi nền (thẻ trắng lẫn ảnh bìa carousel). */
-.fav-btn {
-  position: absolute;
-  top: 10px;
-  right: 4px;
-  width: var(--touch-min);
-  height: var(--touch-min);
-  background: none;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
-  transition: color 0.15s ease, transform 0.1s ease;
-}
-
-.fav-btn:active {
-  transform: scale(0.9);
-}
-
-.fav-btn.is-favorite,
-.lesson-fav-btn.is-favorite {
-  color: #ef4476;
-}
-
 .badge {
   display: inline-block;
   background: var(--purple-soft);
@@ -1391,22 +1349,6 @@ textarea:focus {
 
 .lesson-header-row .screen-title {
   margin: 0;
-}
-
-/* KHÔNG còn nền tròn/đổ bóng (yêu cầu người dùng) — đây chính là chỗ bị BỎ SÓT khi flat hoá
-   .fav-btn/.settings-btn trước đó: nút tim ở màn chi tiết bài dùng class RIÊNG
-   (.lesson-fav-btn, khác .fav-btn của thẻ danh sách) nên không tự động ăn theo, gây lệch hẳn
-   "nặng" (tròn+đổ bóng) so với nút "<" bên cạnh đã flat — đúng thứ người dùng chỉ ra. */
-.lesson-fav-btn {
-  flex-shrink: 0;
-  width: var(--touch-min);
-  height: var(--touch-min);
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 1.15rem;
-  cursor: pointer;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
 /* Rút gọn còn ĐÚNG 1 dòng + "..." khi tiêu đề dài (2026-07-30, mục B4) — "min-width: 0" bắt
@@ -1577,11 +1519,11 @@ textarea:focus {
   cursor: pointer;
 }
 
+/* Bỏ nền tròn xanh (2026-08-08, Minh: "bỏ nền tròn xanh của nút Play") — chỉ còn icon lớn hơn
+   các nút khác trong thanh, phẳng như phần còn lại. */
 .audio-btn-play {
   min-width: 44px;
   min-height: 44px;
-  background: var(--gradient-primary);
-  color: #fff;
   font-size: 1.1rem;
 }
 
@@ -1589,6 +1531,33 @@ textarea:focus {
   font-size: 0.75rem;
   font-weight: 800;
   min-width: 34px;
+}
+
+/* Toggle "lặp lại" (2026-08-08) — badge "1" nhỏ đè góc icon, kiểu "repeat one" của trình phát
+   nhạc; chỉ hiện rõ + đổi màu icon khi đang bật (".active", cùng convention .icon-toggle-btn). */
+.audio-btn-loop {
+  position: relative;
+}
+
+.audio-loop-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.audio-btn-loop.active {
+  color: var(--purple);
+}
+
+.audio-btn-loop.active .audio-loop-badge {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .audio-volume-wrap {
@@ -1606,12 +1575,10 @@ textarea:focus {
   z-index: 60;
 }
 
+/* Bỏ nền trắng/viền/đổ bóng (2026-08-08, Minh: "bỏ nền trắng") — chỉ còn padding để tách nội
+   dung khỏi nền chung của trang. */
 .content-page {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   padding: 18px;
-  box-shadow: var(--shadow-card);
   margin-bottom: 14px;
 }
 
@@ -1816,18 +1783,36 @@ textarea:focus {
   gap: 12px;
 }
 
+/* Bỏ nền trắng/đổ bóng (2026-08-08, Minh: "bỏ nền trắng") — giữ viền TRONG SUỐT (không phải bỏ
+   hẳn "border") để .vocab-item-specialized vẫn có chỗ tô màu cam làm badge phân biệt. Danh sách
+   cần "gap" RIÊNG (trước đây nền trắng + box-shadow đủ tách các thẻ, giờ không còn nữa). */
+.vocab-list,
+.grammar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .vocab-item,
 .grammar-item,
+.pattern-item,
 .exercise-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   padding: 14px;
-  box-shadow: var(--shadow-card);
 }
 
 .vocab-item-specialized {
   border-color: var(--orange);
+}
+
+.pattern-item {
+  border-color: var(--border);
+}
+
+.pattern-why {
+  margin-top: 4px;
+  font-style: italic;
 }
 
 .vocab-word-row {

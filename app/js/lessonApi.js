@@ -74,7 +74,7 @@ export function prefetchLessonAudio(lesson) {
   if (lesson?.source !== "ai_generated" || !lesson?.industry) return;
   const content = Array.isArray(lesson.content) ? lesson.content : [];
   if (!content.length) return;
-  const genderHints = computeGenderHints(content);
+  const genderHints = computeGenderHints(content, lesson.characters);
   getLessonFullAudioUrl(lesson.id, genderHints).catch(() => {
     // Im lặng — lỗi ở lượt sinh SỚM này không nên chặn điều hướng; views/lesson.js sẽ tự thử
     // lại lúc mở bài, và nếu vẫn lỗi thì rơi về Web Speech miễn phí, không phải lỗi hiển thị.

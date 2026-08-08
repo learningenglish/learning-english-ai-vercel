@@ -15,7 +15,7 @@
 // trước khi có hệ thống Chuyên ngành, vẫn hiện — xem chính sách "goal_id khớp HOẶC null" trong
 // db.js::listAiGeneratedLessons()).
 import { navigate } from "../router.js";
-import { listAiGeneratedLessons, listInProgressLessons, getActiveLearningGoal, setLessonFavorite } from "../db.js";
+import { listAiGeneratedLessons, listInProgressLessons, getActiveLearningGoal } from "../db.js";
 import { icon } from "../icons.js";
 import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
@@ -100,14 +100,9 @@ export function renderLessons(mount, params) {
     }
     const scroll = mount.querySelector("#continue-scroll");
     scroll.innerHTML = inType.map(continueCardHtml).join("");
-    // continueCardHtml() LUÔN vẽ sẵn nút tim (không có tuỳ chọn ẩn như lessonCardHtml) — không
-    // còn màn "Yêu thích" riêng để XEM LẠI danh sách đã tim, nhưng bấm tim ở đây vẫn phải THẬT
-    // (gọi setLessonFavorite thật) thay vì no-op giả vờ thành công, tránh nút "nói dối" người
-    // dùng — is_favorite vẫn còn nguyên trên schema, chỉ không có nơi duyệt riêng nữa.
     wireLessonCards(scroll, {
       cardSelector: ".continue-card",
       onOpen: (id) => navigate(`/lesson/${id}`),
-      onToggleFavorite: (id, nextFav) => setLessonFavorite(id, nextFav),
     });
     section.hidden = false;
   }
@@ -122,7 +117,7 @@ export function renderLessons(mount, params) {
       }.</p>`;
       return;
     }
-    listEl.innerHTML = lessons.map((l) => lessonCardHtml(l, { hideFavorite: true })).join("");
+    listEl.innerHTML = lessons.map((l) => lessonCardHtml(l)).join("");
     wireLessonCards(listEl, { onOpen: (id) => navigate(`/lesson/${id}`) });
   }
 

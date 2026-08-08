@@ -34,7 +34,7 @@ export async function renderAnalysisArchive(mount) {
       listEl.innerHTML = `<p class="muted">Chưa có bài phân tích nào được lưu.</p>`;
       return;
     }
-    listEl.innerHTML = rows.map((l) => lessonCardHtml(l, { hideFavorite: true })).join("");
+    listEl.innerHTML = rows.map((l) => lessonCardHtml(l)).join("");
     wireLessonCards(listEl, { onOpen: (id) => navigate(`/lesson/${id}`) });
   } catch {
     listEl.innerHTML = `<p class="error-text">Không tải được danh sách đã lưu.</p>`;

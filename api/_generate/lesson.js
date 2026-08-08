@@ -172,31 +172,71 @@ function orNone(v) {
 // groups cho bài CŨ chưa có (analyzeLessonPhraseGroups() bên dưới) — đảm bảo 2 nơi KHÔNG BAO GIỜ
 // lệch luật nhau (sửa 1 chỗ, cả 2 tự cập nhật).
 const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
-mọi content_type, 2026-07-30):
+mọi content_type, 2026-08-08 — viết lại theo đúng phân loại "cụm" chuẩn dùng để dạy đọc-hiểu
+theo khối ý, KHÔNG phải chia theo công thức thì/ngữ pháp):
 - Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
   nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
-- Một nhóm là 1 CỤM Ý NGHĨA THẬT (không phải chia máy móc theo số từ cố định) — nhận diện theo
-  các loại sau, ưu tiên gộp khi khớp đúng cấu trúc:
-  * Cụm động từ (verb group): thì phức hợp ("has eaten", "is working", "will have finished"),
-    bị động ("was built", "has been repaired"), modal + động từ ("can swim", "must have
-    forgotten"), "to" + động từ nguyên mẫu, động từ + V-ing.
-  * Phrasal verb / động từ + giới từ cố định ("give up", "look after", "depend on").
-  * Cụm giới từ (prepositional phrase): giới từ + (mạo từ/sở hữu) + danh từ ("in the room", "at
-    six o'clock", "in charge of").
-  * Cụm danh từ (noun phrase): mạo từ/sở hữu + (tính từ) + danh từ ("a big house", "my old car").
-  * Danh từ riêng ghép nhiều từ ("New York City", "John Smith").
-  * Cụm cố định/collocation (fixed expression): cụm luôn đi cùng nhau như 1 khối ("by the way",
-    "of course", "a lot of", "thank you very much", "good morning").
-- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn, liên từ đứng riêng, tính từ đứng riêng...)
-  vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ gồm chính nó, "type" là loại từ
-  đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/modal/
-  interjection/number).
+  Đây là dữ liệu dùng CHO NGƯỜI HỌC BẤM VÀO TỪNG NHÓM ĐỂ TRA NGHĨA — mỗi nhóm phải là 1 ĐƠN VỊ Ý
+  NGHĨA nhỏ, KHÔNG BAO GIỜ là cả câu hay cả mệnh đề dài.
+- CẤM TUYỆT ĐỐI gộp nguyên một câu (dù câu rất ngắn, 3-5 từ) thành 1 nhóm duy nhất — không có
+  ngoại lệ "câu ngắn coi như 1 cụm cố định". Mọi câu, kể cả câu ngắn nhất, PHẢI được tách thành
+  từ 2 nhóm trở lên theo đúng ranh giới cụm tự nhiên bên dưới (trừ trường hợp câu CHỈ ĐÚNG 1 từ,
+  ví dụ "Really?" hoặc "Sure.").
+- Mỗi nhóm TỐI ĐA khoảng 4-5 từ, TRỪ đúng các cụm cố định/collocation liệt kê rõ trong danh sách
+  loại 15 bên dưới (những cụm này luôn đi liền nhau như 1 khối cố định, được phép giữ nguyên dù
+  hơi dài hơn — nhưng KHÔNG được tự bịa thêm cụm cố định ngoài đúng tinh thần các ví dụ đó).
+- NẾU KHÔNG CHẮC CHẮN một nhóm từ có đúng là 1 "cụm" theo định nghĩa dưới đây hay không: TÁCH VỀ
+  TỪNG TỪ ĐƠN riêng lẻ (mỗi từ 1 nhóm) thay vì đoán/gộp liều — thà tách nhỏ đúng còn hơn gộp sai.
+- 24 LOẠI CỤM CHUẨN (nhận diện theo cấu trúc thật của cụm, chọn ĐÚNG loại khớp nhất, ưu tiên
+  loại phù hợp cấp độ bài — A1-A2 chủ yếu dùng loại 1, 8, 15; B1 thêm loại 4, 12, 21, 24; B2+
+  thêm loại 9-11, 13-14, 16-20; C1 mới dùng loại 16 idiom/thành ngữ):
+  1. Cụm quen thuộc phải học nguyên khối (fixed social expressions): "good morning", "thank you",
+     "excuse me", "how are you", "nice to meet you", "see you later", "of course", "I'm sorry".
+  2. Cụm thì phức hợp (verb tense group): "has eaten", "had finished", "will be working", "has
+     been waiting".
+  3. Cụm bị động (passive voice): "is built", "was written", "has been repaired".
+  4. Modal verb + động từ: "can swim", "must leave", "should study", "might come".
+  5. Modal + Perfect: "must have forgotten", "should have called", "could have done".
+  6. Verb + to-infinitive: "want to go", "decide to stay", "hope to see".
+  7. Verb + V-ing: "enjoy reading", "avoid eating", "keep talking".
+  8. Cụm giới từ cơ bản (prepositional phrase): "in the room", "at six o'clock", "at home", "on
+     the table", "next to the door".
+  9. Cụm giới từ cố định (fixed prepositional phrase): "in charge of", "in front of", "because
+     of", "due to", "according to", "instead of".
+  10. Phrasal verb (động từ + trạng từ): "give up", "look after", "carry on", "put off", "turn
+      down", "look up".
+  11. Prepositional verb (động từ + giới từ cố định): "depend on", "belong to", "listen to",
+      "insist on", "apologize for".
+  12. Cụm danh từ (noun phrase — mạo từ/sở hữu + (tính từ) + danh từ): "the tall young man", "my
+      old car", "a big house", "an interesting book".
+  13. Cụm phân từ (participle phrase): "walking along the street", "built in 1990", "damaged by
+      fire".
+  14. Cụm nguyên mẫu/gerund (infinitive/gerund phrase): "to study English", "swimming every
+      morning".
+  15. Cụm cố định/collocation (fixed expression, luôn đi liền nhau): "by the way", "in fact", "a
+      lot of", "as soon as possible", "make a decision", "take a break", "pay attention".
+  16. Thành ngữ (idiom, CHỈ ở cấp cao nếu có trong bài): "break the ice", "once in a blue moon".
+  17. Cụm so sánh: "as...as", "more...than", "the most...".
+  18. Cụm liên từ song song (correlative conjunction): "not only...but also", "either...or".
+  19. Cụm mệnh đề quan hệ/danh từ/trạng ngữ (relative/noun/adverb clause, chỉ B2+): "who lives
+      here", "what he said", "because he was sick", "although it rained".
+  20. Cấu trúc đặc biệt: "There is/are...", "It is ... to...", "It takes...".
+  21. Grammar Formula Chunks cơ bản (be/have/do): "I am...", "there is/are", "I have...", "do you
+      like".
+  22. Grammar Formula mở rộng (A2): "am/is/are going to", "will + V", "have to", "would like
+      to", "used to".
+  23. Cụm tính từ cố định + giới từ: "afraid of", "interested in", "proud of", "good at".
+  24. Cụm chỉ số lượng (quantifier phrase): "a few", "a little", "plenty of", "a number of".
+- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn như "I"/"She", liên từ đứng riêng như "and"/
+  "but", tính từ đứng riêng...) vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ
+  gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/adverb/pronoun/preposition/
+  conjunction/article/auxiliary).
 - Mỗi nhóm có cấu trúc:
   {
     "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
     "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
-    "type": "loại cụm/loại từ, theo danh sách ở trên",
+    "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
   }
 - BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
@@ -204,9 +244,7 @@ mọi content_type, 2026-07-30):
   "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
   thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. NẾU KIỂM TRA NÀY THẤT BẠI, hệ thống sẽ bắt
   làm lại (sinh lại toàn bộ bài, hoặc với "vá" bài cũ — thử lại đúng lượt gọi đó) — không được
-  để sót từ nào, ở BẤT KỲ cấp độ nào (2026-08-05: bỏ ngoại lệ B2/C1 trước đây, xem ghi chú
-  PHRASE_COVERAGE_REQUIRED_LEVELS bên dưới — mục tiêu MỚI là 0 lượt gọi AI khi người dùng bấm
-  vào từ, nên KHÔNG được phép còn từ nào thiếu dữ liệu ở bất kỳ cấp độ nào nữa).`;
+  để sót từ nào, ở BẤT KỲ cấp độ nào.`;
 
 const GENERATE_LESSON_SYSTEM_PROMPT = `Bạn là chuyên gia soạn giáo trình tiếng Anh cho người Việt, bám sát khung CEFR.
 
@@ -289,6 +327,14 @@ QUY TẮC VỀ LOẠI NỘI DUNG:
 - "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
 - "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
 
+QUY TẮC VỀ GIỚI TÍNH NHÂN VẬT (2026-08-08, CHỈ áp dụng khi loại nội dung là "hội thoại" — bỏ
+qua hoàn toàn với "bài đọc"): hệ thống dùng "characters" để chọn ĐÚNG giọng đọc nam/nữ cho từng
+nhân vật — liệt kê MỌI tên/vai trò xuất hiện ở trường "speaker" trong "content" (đúng NGUYÊN VĂN
+từng giá trị "speaker" đã dùng, không đổi cách viết), kèm giới tính THẬT của nhân vật đó theo
+đúng tên/vai trò/ngữ cảnh bạn vừa viết (vd "CEO"/"CFO"/"Staff" vẫn phải xác định rõ nam hay nữ
+dựa vào cách bạn đã mô tả nhân vật đó trong bài, không được bỏ trống hay đoán ngẫu nhiên) — mỗi
+nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lượt trong bài.
+
 ${PHRASE_GROUPS_RULES}
 
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
@@ -315,6 +361,9 @@ SCHEMA JSON:
   "level": "cấp độ CEFR của bài",
   "situation": "tóm tắt tình huống của bài bằng tiếng Việt, 1-2 câu (người dùng nhập hoặc AI tự tạo)",
   "content_type": "dialogue hoặc reading",
+  "characters": [
+    { "name": "ĐÚNG NGUYÊN VĂN 1 giá trị speaker đã dùng trong content", "gender": "male hoặc female" }
+  ],
   "content": [
     {
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
@@ -835,6 +884,10 @@ function buildLessonInsertRow(parsed, { userId, source, goalId, skinId, spineSlo
     vocabulary: parsed.vocabulary,
     grammar: parsed.grammar,
     sentence_patterns: Array.isArray(parsed.sentence_patterns) ? parsed.sentence_patterns : [],
+    // Giới tính nhân vật (2026-08-08) — do AI khai báo lúc sinh bài, thay cho việc tts.js phải tự
+    // đoán qua bảng tên tiếng Anh cứng (xem computeGenderHints() trong app/js/tts.js) — vai trò
+    // như "CEO"/"CFO" hay tên lạ trước đây bị đoán ngẫu nhiên, giờ có sẵn đáp án đúng.
+    characters: Array.isArray(parsed.characters) ? parsed.characters : [],
     exercises: parsed.exercises,
     notes: parsed.notes || null,
     xp_reward: Number.isFinite(parsed.xp_reward) ? parsed.xp_reward : 20,

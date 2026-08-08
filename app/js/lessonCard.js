@@ -26,13 +26,10 @@ export function lessonCardExcerpt(l) {
   return l.situation || "";
 }
 
-// "hideFavorite" (2026-07-28, "Tin tức tự sinh") — bài news_lessons KHÔNG thuộc user_id nào,
-// không có is_favorite/không PATCH được qua setLessonFavorite (khác bảng) — ẩn hẳn nút tim thay
-// vì hiện 1 nút bấm-vô-tác-dụng.
 // BỎ ngày tạo + nhãn lĩnh vực khỏi meta (2026-08-04, Minh: "chủ đề được sinh trước nên card
 // không cần đề ngày và lĩnh vực nữa, chỉ để Đã học/Chưa học") — CHỈ còn badge level + trạng
 // thái học, xem learnStatusBadgeHtml() ở trên.
-export function lessonCardHtml(l, { hideFavorite = false } = {}) {
+export function lessonCardHtml(l) {
   const excerpt = lessonCardExcerpt(l);
   return `
     <div class="lesson-card" data-id="${l.id}">
@@ -50,7 +47,6 @@ export function lessonCardHtml(l, { hideFavorite = false } = {}) {
           ${learnStatusBadgeHtml(l)}
         </div>
       </div>
-      ${hideFavorite ? "" : `<button type="button" class="fav-btn ${l.is_favorite ? "is-favorite" : ""}" data-fav="${l.is_favorite}">${icon("heart", { size: 18, filled: l.is_favorite })}</button>`}
     </div>
   `;
 }
@@ -68,7 +64,6 @@ export function continueCardHtml(l) {
     <div class="continue-card" data-id="${l.id}" ${l.cover_image_url ? `style="background-image:url('${escapeHtml(l.cover_image_url)}')"` : ""}>
       ${!l.cover_image_url ? '<div class="continue-card-fallback-bg"></div>' : ""}
       <div class="continue-card-overlay"></div>
-      <button type="button" class="fav-btn continue-card-fav ${l.is_favorite ? "is-favorite" : ""}" data-fav="${l.is_favorite}">${icon("heart", { size: 17, filled: l.is_favorite })}</button>
       <div class="continue-card-body">
         <div class="continue-card-title">${escapeHtml(l.title_vi || l.title)}</div>
         ${excerpt ? `<div class="continue-card-sub">${escapeHtml(excerpt)}</div>` : ""}
@@ -108,33 +103,11 @@ export function industryCardHtml(name, count, active, archived, coverImageUrl) {
   `;
 }
 
-// onOpen(lessonId) / onToggleFavorite(lessonId, nextFavState) -> Promise — người gọi tự lo
-// điều hướng + gọi API + quyết định render lại gì (2 màn dùng cùng thẻ nhưng khác cách phản
-// ứng: /favorites biến mất khỏi danh sách khi bỏ tim, mentor hub thì không). "cardSelector"
-// cho phép dùng chung hàm này cho cả thẻ danh sách thường (.lesson-card) lẫn thẻ carousel
-// "BÀI ĐANG ĐỌC" (.continue-card, xem continueCardHtml() ở trên) — chỉ khác class bọc ngoài.
-export function wireLessonCards(listEl, { onOpen, onToggleFavorite, cardSelector = ".lesson-card" }) {
+// onOpen(lessonId) -> Promise — người gọi tự lo điều hướng. "cardSelector" cho phép dùng chung
+// hàm này cho cả thẻ danh sách thường (.lesson-card) lẫn thẻ carousel "BÀI ĐANG ĐỌC"
+// (.continue-card, xem continueCardHtml() ở trên) — chỉ khác class bọc ngoài.
+export function wireLessonCards(listEl, { onOpen, cardSelector = ".lesson-card" }) {
   listEl.querySelectorAll(cardSelector).forEach((card) => {
-    card.addEventListener("click", (e) => {
-      if (e.target.closest(".fav-btn")) return;
-      onOpen(card.dataset.id);
-    });
-  });
-  listEl.querySelectorAll(".fav-btn").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const nowFav = btn.dataset.fav === "true";
-      btn.disabled = true;
-      try {
-        await onToggleFavorite(btn.closest(cardSelector).dataset.id, !nowFav);
-        btn.dataset.fav = String(!nowFav);
-        btn.innerHTML = icon("heart", { size: 18, filled: !nowFav });
-        btn.classList.toggle("is-favorite", !nowFav);
-      } catch {
-        // Giữ nguyên trạng thái cũ nếu lỗi mạng — không cần thông báo ồn ào cho 1 toggle nhỏ.
-      } finally {
-        btn.disabled = false;
-      }
-    });
+    card.addEventListener("click", () => onOpen(card.dataset.id));
   });
 }

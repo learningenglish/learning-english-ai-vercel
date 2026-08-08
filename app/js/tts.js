@@ -69,14 +69,20 @@ const READING_LONG_PARAGRAPH_THRESHOLD = 6;
 
 // Tính giọng cho MỖI đoạn/lượt thoại 1 LẦN khi mở bài (ổn định suốt phiên xem, dùng CHUNG cho
 // cả Web Speech miễn phí lẫn audio trả phí — xem pickOpenAIVoice() phía backend):
-// - Hội thoại: đoán theo tên nhân vật; cùng 1 người nói luôn cùng 1 giọng suốt bài. Tên không
-//   đoán được (vai trò chung chung, tên lạ) -> gán theo giới đang ÍT DÙNG HƠN để cân bằng.
+// - Hội thoại: ƯU TIÊN "characters" (2026-08-08 — AI tự khai báo giới tính từng nhân vật lúc
+//   sinh bài, xem cột lessons.characters/api/_generate/lesson.js) nếu có khớp tên speaker; đúng
+//   giới tính THẬT thay vì đoán, giải quyết đúng ca vai trò như "CEO"/"CFO" hay tên lạ trước đây
+//   rơi vào phân bổ cân bằng ngẫu nhiên (không phải giới tính thật). Bài CŨ không có
+//   "characters" (mảng rỗng/thiếu) -> rơi về heuristic tên cũ bên dưới, không đổi hành vi.
+// - Không khớp "characters": đoán theo tên nhân vật; cùng 1 người nói luôn cùng 1 giọng suốt
+//   bài. Tên không đoán được (vai trò chung chung, tên lạ) -> gán theo giới đang ÍT DÙNG HƠN để
+//   cân bằng.
 // - Bài đọc (không có speaker) — SỬA 2026-07-29 (Minh: "quá nhiều giọng trong 1 bài đọc là
 //   không ổn, tối đa 2 giọng nếu bài đọc quá dài"): bản CŨ alternate giọng MỖI ĐOẠN, một bài
 //   đọc nhiều đoạn nghe như đổi giọng liên tục dù về mặt kỹ thuật vẫn chỉ 2 giá trị nam/nữ —
 //   giờ 1 giọng DUY NHẤT suốt bài nếu ngắn (≤ READING_LONG_PARAGRAPH_THRESHOLD đoạn), dài hơn
 //   thì chia ĐÚNG 2 nửa (nửa đầu 1 giọng, nửa sau giọng còn lại) — KHÔNG còn đổi qua đổi lại.
-export function computeGenderHints(content) {
+export function computeGenderHints(content, characters) {
   const items = content || [];
   const hasSpeakers = items.some((item) => item?.speaker);
 
@@ -87,6 +93,11 @@ export function computeGenderHints(content) {
     const half = Math.ceil(items.length / 2);
     return items.map((_, i) => (i < half ? firstHalfGender : secondHalfGender));
   }
+
+  const declaredGenderMap = new Map();
+  (Array.isArray(characters) ? characters : []).forEach((c) => {
+    if (c?.name && (c.gender === "male" || c.gender === "female")) declaredGenderMap.set(c.name, c.gender);
+  });
 
   const speakerGenderMap = new Map();
   let maleCount = 0;
@@ -102,7 +113,7 @@ export function computeGenderHints(content) {
   return items.map((item) => {
     if (!item?.speaker) return assignBalanced();
     if (speakerGenderMap.has(item.speaker)) return speakerGenderMap.get(item.speaker);
-    let g = guessGenderFromName(item.speaker);
+    let g = declaredGenderMap.get(item.speaker) || guessGenderFromName(item.speaker);
     if (g === "male") maleCount += 1;
     else if (g === "female") femaleCount += 1;
     else g = assignBalanced();
@@ -141,6 +152,10 @@ export function createPlayer({ onStateChange } = {}) {
     playing: false,
     rate: 1,
     volume: 1,
+    // "loop" (2026-08-08) — bật qua toggleLoop() (nút #audio-replay đổi từ "phát lại 1 lần" sang
+    // toggle lặp), true thì tự phát lại từ đầu MỖI LẦN hết playlist thay vì dừng hẳn — xem 2 chỗ
+    // "hết bài" bên dưới (fullAudioEl.onended + goToItem() nhánh vượt quá item cuối).
+    loop: false,
     items: [],
     itemIndex: 0,
     wordOffset: 0,
@@ -300,10 +315,18 @@ export function createPlayer({ onStateChange } = {}) {
       }
     };
     fullAudioEl.onended = () => {
-      state.playing = false;
+      // Vẫn báo "vừa nghe hết" (giữ nguyên hành vi "đã học" mỗi lượt hết bài, kể cả các lượt lặp
+      // lại sau nếu đang bật loop, không chỉ lượt đầu) TRƯỚC KHI quyết định dừng hẳn hay lặp lại.
       state.justEnded = true;
       notify();
       state.justEnded = false;
+      if (state.loop) {
+        state.playing = true;
+        goToItem(0, 0);
+        return;
+      }
+      state.playing = false;
+      notify();
     };
     // Lỗi phát giữa chừng (URL hỏng/mạng chập chờn, hiếm) -> rơi về Web Speech cho ĐÚNG câu
     // đang đứng, không chặn hẳn phần còn lại của bài.
@@ -370,10 +393,17 @@ export function createPlayer({ onStateChange } = {}) {
     if (index >= state.items.length) {
       window.speechSynthesis.cancel();
       stopFullAudioEl();
-      state.playing = false;
       state.justEnded = true;
       notify();
       state.justEnded = false;
+      if (state.loop) {
+        // "state.playing" đã true (nhánh này chỉ tới từ onend lúc ĐANG phát) — goToItem(0,0) tự
+        // gọi lại speakCurrent() vì playing vẫn true, không cần set lại.
+        goToItem(0, 0);
+        return;
+      }
+      state.playing = false;
+      notify();
       return;
     }
     state.itemIndex = index;
@@ -428,22 +458,18 @@ export function createPlayer({ onStateChange } = {}) {
     back() {
       goToItem(state.itemIndex - 1, 0);
     },
-    // 2026-07-29 (Minh: "nút replay không hoạt động") — trước đây chỉ reset vị trí, CHỈ phát
-    // lại nếu ĐANG playing (goToItem() gốc không tự bật phát) — bấm lúc đang TẠM DỪNG thì
-    // không có gì xảy ra, đúng như "không hoạt động" Minh thấy. Giờ luôn BẬT phát lại bất kể
-    // đang phát hay tạm dừng — đúng nghĩa "Phát lại".
-    // SỬA LẠI 2026-07-30 (Minh: "Replay toàn bài đang chỉ replay đúng câu cuối vừa phát") —
-    // đây là nút DUY NHẤT trong thanh audio ("Phát lại" cả bài, xem #audio-replay trong
-    // views/lesson.js), phạm vi phải là TOÀN BÀI (item 0) chứ không phải đoạn ĐANG ĐỨNG
-    // (state.itemIndex, vốn chỉ đúng cho ý nghĩa "phát lại đoạn này" — không phải ý nghĩa của
-    // nút này). Icon loa từng câu (views/lesson.js, action "speak") đã đi qua speakOnce() —
-    // hoàn toàn tách biệt, không đụng state.itemIndex/state.playing — không cần sửa gì thêm.
-    replay() {
-      state.playing = true;
-      goToItem(0, 0);
+    // 2026-08-08 (Minh: "nút replay hiện nhấn vào nhảy về đầu audio như nút trở về đầu — cần
+    // toggle: bấm hiển thị số 1, sau khi đọc hết bài tự động mở lại (loop)") — thay hẳn hành vi
+    // "phát lại ngay lập tức" cũ (đổi tên "replay") bằng TOGGLE bật/tắt "loop": bấm chỉ đổi cờ
+    // "state.loop", KHÔNG tự nhảy về đầu/phát lại ngay — việc tự phát lại từ đầu chỉ xảy ra khi
+    // playlist phát HẾT trong lúc loop đang bật, xem 2 chỗ "hết bài" trong goToItem()/
+    // fullAudioEl.onended ở trên.
+    toggleLoop() {
+      state.loop = !state.loop;
+      notify();
     },
     // Nhảy thẳng tới 1 đoạn/lượt thoại bất kỳ (nút "câu trước/câu tiếp" thủ công ở tab Nội
-    // dung) — khác back()/replay() vì nhận index tuỳ ý, không chỉ lùi 1 hoặc lặp lại hiện tại.
+    // dung) — khác back() vì nhận index tuỳ ý, không chỉ lùi 1.
     goTo(index) {
       goToItem(index, 0);
     },

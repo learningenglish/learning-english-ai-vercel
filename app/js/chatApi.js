@@ -1,6 +1,6 @@
 // app/js/chatApi.js — gọi /api/chat. Generic cho MỌI action (không chỉ lesson): trả về
 // { ok, content, error, status } thô, KHÔNG tự JSON.parse "content" ở đây, vì không phải
-// mọi action đều trả JSON (vd word_tip/sentence_tip trả text thuần) — action nào cần parse
+// mọi action đều trả JSON (vd word_tip trả text thuần) — action nào cần parse
 // JSON thì tự làm ở module gọi nó (xem lessonApi.js).
 import { APP_SECRET } from "./config.js";
 import { ensureValidSession } from "./db.js";
