@@ -1346,13 +1346,19 @@ textarea:focus {
 /* SỬA 2026-08-09 (Đợt 3, mục 1 — Minh: "hình trong bài học quá lớn"): bỏ aspect-ratio 16:9 đầy
    đủ, đổi sang chiều cao CỐ ĐỊNH thấp hơn hẳn — "hình không cần hiển thị đầy đủ kích cỡ". Thêm
    "position: relative" làm điểm neo cho lớp phủ + back/tiêu đề đè lên (mục 2/3). */
+/* SỬA 2026-08-09 (Đợt 5, mục 4 — Minh: "hình bo tròn khiến nút < sát viền, không đẹp. Giải
+   pháp: hình phủ tràn 3 cạnh (trên và 2 dọc)") — trước đây bo tròn ĐỦ 4 góc + nằm trong padding
+   của ".screen" (20px 16px), khiến góc trên-trái cong ngay sát nút back. Dùng margin âm "tràn"
+   ra khỏi padding của ".screen" ở 3 cạnh (trên/trái/phải), chỉ còn bo tròn 2 góc ĐÁY (chỗ
+   chuyển tiếp xuống nội dung) — góc trên giờ vuông, khớp thẳng mép màn hình, nút back không còn
+   đụng đường cong nào nữa. */
 .lesson-cover {
   position: relative;
-  width: 100%;
+  width: calc(100% + 32px);
   height: 140px;
-  border-radius: var(--radius);
+  margin: -20px -16px 16px;
+  border-radius: 0 0 var(--radius) var(--radius);
   overflow: hidden;
-  margin-bottom: 16px;
 }
 
 .lesson-cover img {
@@ -1378,6 +1384,10 @@ textarea:focus {
    trong khi nút back CHUẨN ở màn không ảnh bìa chỉ lệch 16-8=8px. Bỏ hẳn padding-left/right ở
    đây (padding-left:0 để back-chevron thừa hưởng ĐÚNG margin -8px mặc định, khớp 16-8=8px với
    mọi nút back khác), chuyển padding ngang sang riêng ".lesson-cover-title" bên dưới. */
+/* SỬA 2026-08-09 (Đợt 5, mục 4, tiếp) — ".lesson-cover" giờ TRÀN ra khỏi padding của ".screen"
+   (bắt đầu tại x=0 thay vì x=16px như trước), nên header bên trong cần TỰ có padding-left=16px
+   để tái tạo ĐÚNG hệ toạ độ 16px của ".screen" — kết hợp margin -8px mặc định của back-chevron
+   vẫn ra đúng 8px như mọi nút back khác (16-8=8, xem ghi chú tại .back-chevron gốc). */
 .lesson-cover-header {
   position: absolute;
   inset: 0;
@@ -1385,7 +1395,7 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 4px 0 10px;
+  padding: 4px 16px 10px;
 }
 
 /* Nút back trên nền ảnh cần 1 khối nền mờ tối để không bị "chìm" khi ảnh sáng màu — khác
@@ -1399,7 +1409,6 @@ textarea:focus {
 
 .lesson-cover-title {
   margin: 0;
-  padding: 0 12px;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   display: -webkit-box;
@@ -1611,6 +1620,12 @@ textarea:focus {
   border-radius: 999px;
   background: var(--surface-soft);
 }
+/* SỬA 2026-08-09 (Đợt 5, mục 3 — Minh: "thanh audio không chạy mượt mà nhảy cóc") — thanh chỉ
+   cập nhật vị trí mỗi 500ms (progressTimer trong views/lesson.js), không có gì nội suy CHUYỂN
+   ĐỘNG giữa 2 lần cập nhật -> mắt thấy "nhảy" từng bước thay vì trượt liên tục. Thêm transition
+   CSS khớp đúng chu kỳ 500ms đó để trình duyệt tự nội suy mượt giữa 2 mốc — KHÔNG cần tăng tần
+   suất cập nhật JS (tốn CPU hơn), chỉ cần trình duyệt "vẽ nối" 2 điểm đã có sẵn. Tắt hẳn lúc
+   NGÓN TAY đang kéo (".dragging", xem wireAudioBar()) để tua không bị trễ/giật ngược. */
 .audio-progress-fill {
   position: absolute;
   left: 0;
@@ -1621,6 +1636,10 @@ textarea:focus {
   background: var(--gradient-primary);
   transform: translateY(-50%);
   pointer-events: none;
+  transition: width 0.5s linear;
+}
+.audio-progress-track.dragging .audio-progress-fill {
+  transition: none;
 }
 .audio-progress-thumb {
   position: absolute;
@@ -1632,7 +1651,12 @@ textarea:focus {
   background: var(--purple);
   box-shadow: 0 1px 4px rgba(31, 41, 55, 0.35);
   transform: translate(-50%, -50%);
+  transition: left 0.5s linear;
   pointer-events: none;
+}
+
+.audio-progress-track.dragging .audio-progress-thumb {
+  transition: none;
 }
 
 /* BUG THẬT (2026-08-08, đo được bằng getBoundingClientRect/computed padding "1px 6px" không đối
@@ -1929,36 +1953,19 @@ textarea:focus {
   cursor: pointer;
 }
 
-.word-popover-colloc {
-  margin-top: 4px;
-  color: var(--text-dim);
-  font-size: 0.8rem;
-}
-
-/* Dòng cụm (2026-07-30, "gom cụm từ khi sinh bài") — hiện khi từ vừa bấm là 1 CỤM nhiều từ đã
-   được AI gắn nhãn sẵn lúc sinh bài (xem phraseGroupToEntry() trong views/lesson.js). Nhãn
-   loại cụm nhỏ (phrasal verb/cụm giới từ...) + bảng nghĩa riêng từng từ bên trong cụm. */
-.word-popover-phrase-tag {
-  display: inline-block;
+/* Dòng ngữ cảnh cụm (2026-08-09, Đợt 5 mục 1 — thay ".word-popover-phrase-tag"/".word-popover-
+   breakdown" cũ) — tiêu đề/nghĩa chính giờ LUÔN là 1 từ (xem phraseGroupWordEntry() trong
+   views/lesson.js); dòng này CHỈ hiện PHỤ, nhỏ, khi từ đó còn nằm trong 1 cụm rộng hơn — không
+   còn là trọng tâm của tooltip như bản cũ. */
+.word-popover-phrase-context {
   margin-top: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--purple);
-  background: var(--purple-soft);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.word-popover-breakdown {
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 0.78rem;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.75rem;
   color: var(--text-dim);
 }
 
-.word-popover-breakdown-item b {
+.word-popover-phrase-context b {
   color: var(--text);
   font-weight: 600;
 }
@@ -1981,6 +1988,11 @@ textarea:focus {
   gap: 12px;
 }
 
+/* SỬA 2026-08-09 (Đợt 5, mục 2/6 — Minh: "nền của card đồng bộ với nền card Nội dung... để khi
+   chèn logo không bị ảnh hưởng"): dùng CHUNG đúng nền bán trong suốt của ".content-page" (thay
+   vì mỗi khu vực tự chọn 1 màu khác nhau — trước đó .vocab-item riêng dùng --purple-soft, còn
+   Ngữ pháp/Luyện tập không có nền gì) — đồng bộ toàn bộ thẻ nội dung, và sẵn sàng cho lúc chèn
+   logo vào nền trang (mục 12, đợt 4) mà chữ trong thẻ vẫn luôn tương phản rõ. */
 .vocab-item,
 .grammar-item,
 .pattern-item,
@@ -1988,6 +2000,7 @@ textarea:focus {
   border: 1px solid transparent;
   border-radius: var(--radius);
   padding: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 .vocab-item-specialized {
@@ -1996,13 +2009,8 @@ textarea:focus {
 
 /* Thu nhỏ khung (2026-08-08, Minh: "khung cho mỗi từ vựng quá lớn") — padding/gap nhỏ hơn hẳn
    các thẻ khác (Ngữ pháp/Luyện tập vẫn giữ 14px, ít mục hơn nên không cần thu). */
-/* SỬA 2026-08-09 (Đợt 3, mục 9/15 — Minh: "tạo card cho mỗi từ, nền KHÁC nền trang" +
-   "chuyên nghiệp hơn"): thêm nền accent nhạt (var(--purple-soft), tự đổi theo Color Palette)
-   để mỗi thẻ TÁCH BIỆT rõ khỏi nền trang thay vì chỉ có viền trong suốt gần như vô hình — dùng
-   CHUNG renderVocabularyTab() nên áp dụng đồng thời cả bài Chuyên ngành lẫn Phân tích văn bản. */
 .vocab-item {
   padding: 10px 12px;
-  background: var(--purple-soft);
 }
 
 .vocab-list {
