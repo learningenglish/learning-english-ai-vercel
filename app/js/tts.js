@@ -175,6 +175,11 @@ export function createPlayer({ onStateChange } = {}) {
     // giữa chừng), false ngay sau đó. Đặt ở CẢ 2 nơi audio thật sự "hết bài": fullAudioEl.onended
     // (file ghép sẵn) VÀ goToItem() khi vượt quá item cuối (fallback Web Speech, phát từng câu).
     justEnded: false,
+    // Cờ TẠM (2026-08-09, Đợt 4 mục 8 — Minh: "hết bài nhưng thời gian hiển thị 0:19/0:30"): bật
+    // ĐÚNG lúc justEnded (2 chỗ dưới), ép getProgress() trả THẲNG trạng thái "đầy 100%" thay vì
+    // qua công thức ước lượng/currentTime (có thể lệch vài giây do sai số làm tròn/tốc độ đọc
+    // ước lượng không khớp tuyệt đối thời điểm "onended" thật báo về).
+    justFinished: false,
   };
   // <audio> DUY NHẤT cho cả phiên khi có fullAudioUrl — KHÔNG tạo lại mỗi lần chuyển câu (khác
   // hẳn bản cũ tạo 1 Audio/câu), giữ SỐNG xuyên suốt để playPause()/setRate()/setVolume() điều
@@ -318,8 +323,10 @@ export function createPlayer({ onStateChange } = {}) {
       // Vẫn báo "vừa nghe hết" (giữ nguyên hành vi "đã học" mỗi lượt hết bài, kể cả các lượt lặp
       // lại sau nếu đang bật loop, không chỉ lượt đầu) TRƯỚC KHI quyết định dừng hẳn hay lặp lại.
       state.justEnded = true;
+      state.justFinished = true;
       notify();
       state.justEnded = false;
+      state.justFinished = false;
       if (state.loop) {
         state.playing = true;
         goToItem(0, 0);
@@ -394,8 +401,10 @@ export function createPlayer({ onStateChange } = {}) {
       window.speechSynthesis.cancel();
       stopFullAudioEl();
       state.justEnded = true;
+      state.justFinished = true;
       notify();
       state.justEnded = false;
+      state.justFinished = false;
       if (state.loop) {
         // "state.playing" đã true (nhánh này chỉ tới từ onend lúc ĐANG phát) — goToItem(0,0) tự
         // gọi lại speakCurrent() vì playing vẫn true, không cần set lại.
@@ -554,19 +563,25 @@ export function createPlayer({ onStateChange } = {}) {
     // trước (Web Speech API không có khái niệm duration thật).
     getProgress() {
       if (fullAudioEl && Number.isFinite(fullAudioEl.duration) && fullAudioEl.duration > 0) {
+        const totalSeconds = fullAudioEl.duration;
+        // "justFinished" (2026-08-09) — ép thẳng 100%/đủ giờ đúng khoảnh khắc hết bài, bất kể
+        // currentTime lúc onended có khớp tuyệt đối duration hay không.
+        if (state.justFinished) return { fraction: 1, elapsedSeconds: totalSeconds, totalSeconds };
         return {
-          fraction: Math.min(1, fullAudioEl.currentTime / fullAudioEl.duration),
+          fraction: Math.min(1, fullAudioEl.currentTime / totalSeconds),
           elapsedSeconds: fullAudioEl.currentTime,
-          totalSeconds: fullAudioEl.duration,
+          totalSeconds,
         };
       }
       const total = totalWords();
       const elapsed = wordsElapsed();
       const wordsPerSecond = WORDS_PER_SECOND_AT_RATE_1 * state.rate;
+      const totalSeconds = wordsPerSecond ? total / wordsPerSecond : 0;
+      if (state.justFinished) return { fraction: 1, elapsedSeconds: totalSeconds, totalSeconds };
       return {
         fraction: total ? Math.min(1, elapsed / total) : 0,
         elapsedSeconds: wordsPerSecond ? elapsed / wordsPerSecond : 0,
-        totalSeconds: wordsPerSecond ? total / wordsPerSecond : 0,
+        totalSeconds,
       };
     },
     // Kéo thanh tiến trình tới 1 tỉ lệ 0-1 của CẢ playlist — quy đổi ngược ra đúng

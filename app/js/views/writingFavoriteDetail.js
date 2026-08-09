@@ -3,10 +3,8 @@
 // lưu sẵn, KHÔNG gọi AI/chấm lại (đúng yêu cầu gốc "mở lại xem ĐÚNG nội dung đã lưu tại thời
 // điểm lưu"). Độc lập với views/writingPractice.js (không import qua lại) — trùng lặp nhỏ ở
 // annotatedBlockHtml() chấp nhận được, giữ 2 view tách biệt đúng phong cách 1 file/view của dự án.
-import { navigate } from "../router.js";
 import { getWritingFavoriteById } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
-import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
 
 const KIND_TITLES = {
@@ -19,11 +17,11 @@ export async function renderWritingFavoriteDetail(mount, params) {
   const id = params?.[0];
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, undefined, { showBack: true })}
+      ${appHeaderHtml(`Đã lưu`, undefined, { showBack: true })}
       <p class="muted">Đang tải...</p>
     </div>
   `;
-  wireBackLink(mount, () => navigate("/writing-archive"));
+  wireBackLink(mount, () => history.back());
   wireAppHeader(mount);
 
   if (!id) {
@@ -39,8 +37,8 @@ export async function renderWritingFavoriteDetail(mount, params) {
   }
   if (!favorite) {
     mount.querySelector(".screen").innerHTML =
-      `${appHeaderHtml(`${icon("bookmark", { size: 22 })} Đã lưu`, undefined, { showBack: true })}<p class="error-text">Không tìm thấy bài viết đã lưu.</p>`;
-    wireBackLink(mount, () => navigate("/writing-archive"));
+      `${appHeaderHtml(`Đã lưu`, undefined, { showBack: true })}<p class="error-text">Không tìm thấy bài viết đã lưu.</p>`;
+    wireBackLink(mount, () => history.back());
     wireAppHeader(mount);
     return;
   }
@@ -51,7 +49,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
 
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} ${escapeHtml(title)}`, undefined, { showBack: true })}
+      ${appHeaderHtml(`${escapeHtml(title)}`, undefined, { showBack: true })}
 
       <div class="card writing-task-card writing-card">
         <div class="writing-genre-badge">${escapeHtml(task.genre_vi || "")} <span class="level-pill">${escapeHtml(favorite.level)}</span></div>
@@ -64,7 +62,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
       <p class="muted writing-favorite-date">Đã lưu ${formatDate(favorite.created_at)}</p>
     </div>
   `;
-  wireBackLink(mount, () => navigate("/writing-archive"));
+  wireBackLink(mount, () => history.back());
   wireAppHeader(mount);
 }
 

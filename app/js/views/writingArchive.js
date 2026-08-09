@@ -14,7 +14,6 @@
 import { navigate } from "../router.js";
 import { listWritingFavorites, getActiveLearningGoal } from "../db.js";
 import { escapeHtml, formatDate } from "../utils.js";
-import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
 
 const KIND_LABELS = {
@@ -26,7 +25,7 @@ const KIND_LABELS = {
 export async function renderWritingArchive(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Lưu trữ`, undefined, { showBack: true })}
+      ${appHeaderHtml(`Lưu trữ`, undefined, { showBack: true })}
       <div id="writing-archive-list"><p class="muted">Đang tải...</p></div>
     </div>
   `;
@@ -46,7 +45,6 @@ export async function renderWritingArchive(mount) {
         const label = KIND_LABELS[r.variant] || KIND_LABELS[r.kind] || "Bài viết";
         return `
           <div class="history-item" data-id="${r.id}">
-            <div class="history-status">${icon("edit-3", { size: 22 })}</div>
             <div>
               <div class="history-title">${escapeHtml(label)}${r.task?.genre_vi ? ` — ${escapeHtml(r.task.genre_vi)}` : ""}</div>
               <div class="history-date muted">

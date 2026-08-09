@@ -12,14 +12,13 @@
 // tích -> danh sách nội dung đã phân tích của đúng Chuyên ngành" vẫn còn hiệu lực).
 import { navigate } from "../router.js";
 import { listTextAnalyzedLessons, getActiveLearningGoal } from "../db.js";
-import { icon } from "../icons.js";
 import { lessonCardHtml, wireLessonCards } from "../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
 
 export async function renderAnalysisArchive(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`${icon("bookmark", { size: 22 })} Lưu trữ`, undefined, { showBack: true })}
+      ${appHeaderHtml(`Lưu trữ`, undefined, { showBack: true })}
       <div id="analysis-archive-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
     </div>
   `;

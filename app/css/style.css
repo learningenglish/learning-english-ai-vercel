@@ -1372,6 +1372,12 @@ textarea:focus {
 
 /* Back + tiêu đề ĐÈ LÊN ảnh (mục 2/3 — nút back nay luôn ở vị trí CỐ ĐỊNH góc trên-trái như mọi
    màn khác, không còn bị đẩy xuống dưới ảnh như bản trước). */
+/* SỬA 2026-08-09 (Đợt 4, mục 7 — Minh: "nút back không khớp vị trí với các nút back khác"):
+   BUG THẬT — padding-left 12px của header + margin-left -4px của back-chevron cộng với
+   padding-left 16px CÓ SẴN của ".screen" (cha của ".lesson-cover") ra tổng lệch 16+12-4=24px,
+   trong khi nút back CHUẨN ở màn không ảnh bìa chỉ lệch 16-8=8px. Bỏ hẳn padding-left/right ở
+   đây (padding-left:0 để back-chevron thừa hưởng ĐÚNG margin -8px mặc định, khớp 16-8=8px với
+   mọi nút back khác), chuyển padding ngang sang riêng ".lesson-cover-title" bên dưới. */
 .lesson-cover-header {
   position: absolute;
   inset: 0;
@@ -1379,20 +1385,21 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 4px 12px 10px;
+  padding: 4px 0 10px;
 }
 
 /* Nút back trên nền ảnh cần 1 khối nền mờ tối để không bị "chìm" khi ảnh sáng màu — khác
-   .back-chevron mặc định (không nền) dùng ở mọi nơi khác vốn luôn nằm trên nền --surface. */
+   .back-chevron mặc định (không nền) dùng ở mọi nơi khác vốn luôn nằm trên nền --surface. Margin
+   trái KHÔNG override ở đây nữa — thừa hưởng -8px mặc định của .back-chevron gốc. */
 .lesson-cover-header .back-chevron {
   background: rgba(0, 0, 0, 0.35);
   border-radius: 999px;
   color: #fff;
-  margin-left: -4px;
 }
 
 .lesson-cover-title {
   margin: 0;
+  padding: 0 12px;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   display: -webkit-box;
@@ -1433,11 +1440,13 @@ textarea:focus {
 /* Hàng gộp tab + toggle (2026-08-08, mục 10, thay ".tabs.sticky-tabs" + ".content-toolbar" cũ
    — 2 hàng riêng chiếm quá nhiều chỗ) — 4 icon vuông bo góc (chọn mục) bên trái, tối đa 3 icon
    tròn nhỏ (đoạn gốc/dịch/tách câu, CHỈ có ý nghĩa ở tab Nội dung) bên phải. */
+/* SỬA 2026-08-09 (Đợt 4, mục 3 — Minh: "không dùng nền trắng hình chữ nhật khu vực icon, tham
+   khảo dùng icon trên màu nền"): bỏ background trắng, icon nằm thẳng trên nền trang. */
 .section-nav-row {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--surface);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1555,7 +1564,7 @@ textarea:focus {
   height: 52px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: var(--surface);
   border-radius: 999px;
   padding: 0 10px;
@@ -1702,9 +1711,15 @@ textarea:focus {
 
 /* Bỏ nền trắng/viền/đổ bóng (2026-08-08, Minh: "bỏ nền trắng") — chỉ còn padding để tách nội
    dung khỏi nền chung của trang. */
+/* SỬA 2026-08-09 (Đợt 4, mục 5 — Minh: "chữ nằm trực tiếp trên nền chính không ổn... sắp tới sẽ
+   chèn logo vào nền"): thêm nền BÁN TRONG SUỐT (không phải thẻ trắng đặc như trước khi bỏ ở đợt
+   1) chỉ đủ để chữ luôn tương phản rõ dù phía sau có ảnh nền/logo, không đảo ngược yêu cầu "bỏ
+   nền trắng" đã chốt. */
 .content-page {
   padding: 18px;
   margin-bottom: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-radius: var(--radius);
 }
 
 .speaker-name {
@@ -1714,9 +1729,12 @@ textarea:focus {
 
 /* Nhãn "Câu N" trong chế độ tách câu bài đọc (2026-08-08) — thay cho tên nhân vật (bài đọc không
    có speaker), cùng vị trí trong .content-item-header nên không cần CSS riêng ngoài màu/cỡ chữ. */
+/* SỬA 2026-08-09 (Đợt 4, mục 6 — Minh: "màu chữ Câu 1 không phù hợp Color Palette"): trước thừa
+   hưởng .muted (xám trung tính) — đổi sang màu accent theo Color Palette. */
 .sentence-number {
   font-weight: 600;
   font-size: 0.85rem;
+  color: var(--purple);
 }
 
 .content-text {

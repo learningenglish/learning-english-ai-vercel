@@ -37,7 +37,10 @@ const PATHS = {
   "skip-back": '<path d="M19 20L9 12l10-8v16z"/><path d="M5 19V5"/>',
   rewind: '<path d="M11 19l-9-7 9-7v14z"/><path d="M22 19l-9-7 9-7v14z"/>',
   play: '<path d="M6 4l14 8-14 8V4z"/>',
-  pause: '<path d="M7 4h4v16H7z"/><path d="M13 4h4v16h-4z"/>',
+  // SỬA 2026-08-09 (Đợt 4, mục 8 — Minh: "nút dừng || bị dính nhau sát không đẹp") — 2 thanh gốc
+  // cách nhau 2 đơn vị/24 viewBox, ở size nhỏ (18px) render ra ~1.5px thật, nhìn dính liền. Giãn
+  // khoảng cách gấp đôi (4 đơn vị), vẫn canh giữa đối xứng trong viewBox 24.
+  pause: '<path d="M6 4h4v16H6z"/><path d="M14 4h4v16h-4z"/>',
   "fast-forward": '<path d="M13 19l9-7-9-7v14z"/><path d="M2 19l9-7-9-7v14z"/>',
   repeat: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   "check-circle": '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/>',

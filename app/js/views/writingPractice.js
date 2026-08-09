@@ -24,33 +24,10 @@ import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { icon } from "../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
-import { showToast } from "../toast.js";
 import { callChatAction } from "../chatApi.js";
 import { createPlayer, isTTSSupported } from "../tts.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
-
-// Icon + màu chip riêng cho từng thể loại (2026-08-04, Minh: "các tab có icon giống giao diện
-// chọn ngành để đồng bộ thị giác") — khớp ĐÚNG 14 khoá trong api/_generate/writingTopicPool.json
-// (list_writing_genres trả nguyên văn tên này). Tên KHÔNG khớp map (nếu sau này thêm thể loại
-// mới) rơi về DEFAULT_GENRE_STYLE, không vỡ giao diện.
-const GENRE_STYLES = {
-  "Nghị luận": { icon: "list", chip: "blue" },
-  "Phân tích": { icon: "flask", chip: "orange" },
-  "Đánh giá": { icon: "star", chip: "purple" },
-  "Kể chuyện": { icon: "book-open", chip: "green" },
-  "Viết thư": { icon: "bookmark", chip: "blue" },
-  "Báo cáo": { icon: "briefcase", chip: "orange" },
-  Email: { icon: "file-text", chip: "purple" },
-  "Tin nhắn": { icon: "message-circle", chip: "green" },
-  "Mô tả": { icon: "compass", chip: "blue" },
-  "Hướng dẫn": { icon: "graduation-cap", chip: "orange" },
-  "Bài đăng mạng xã hội": { icon: "camera", chip: "purple" },
-  "Thư ngỏ": { icon: "file-text", chip: "green" },
-  "Ghi chú": { icon: "edit-3", chip: "blue" },
-  "Tường thuật sự việc": { icon: "book", chip: "orange" },
-};
-const DEFAULT_GENRE_STYLE = { icon: "file-text", chip: "blue" };
 
 // Bỏ icon trước tiêu đề (2026-08-04, Minh: "bỏ icon Chọn dạng bài viết") — chỉ CÒN icon ở 2
 // bước cuối (Bài viết hoàn chỉnh/Bài tham khảo, dùng "sparkles" phân biệt rõ với các bước
@@ -168,16 +145,14 @@ export function renderWritingPractice(mount) {
     return `
       <div class="genre-list">
         ${state.genres
-          .map((g) => {
-            const style = GENRE_STYLES[g] || DEFAULT_GENRE_STYLE;
-            return `
+          .map(
+            (g) => `
           <button type="button" class="genre-row ${state.genre === g ? "active" : ""}" data-genre="${escapeHtml(g)}">
-            <span class="genre-row-icon chip-${style.chip}">${icon(style.icon, { size: 18 })}</span>
             <span class="genre-row-label">${escapeHtml(g)}</span>
             ${state.genre === g ? icon("check-circle", { size: 20, filled: true }) : ""}
           </button>
-        `;
-          })
+        `
+          )
           .join("")}
       </div>
 
@@ -684,7 +659,10 @@ export function renderWritingPractice(mount) {
       state.step = "detail";
       render();
     });
-    mount.querySelector("#finish-writing-btn").addEventListener("click", () => navigate("/home"));
+    // SỬA 2026-08-09 (Đợt 4, mục 10 — Minh: "Hoàn tất nhảy về Home, mất bài vừa chấm") — về đúng
+    // Lưu trữ (nơi xem lại được bài vừa chấm nếu đã lưu) thay vì Home (không liên quan gì tới
+    // bài vừa làm).
+    mount.querySelector("#finish-writing-btn").addEventListener("click", () => navigate("/writing-archive"));
   }
 
   function wireDetailStep() {
@@ -769,8 +747,10 @@ export function renderWritingPractice(mount) {
       if (slot) slot.innerHTML = `<p class="field-hint field-hint-error">${escapeHtml(res.error || "Lưu thất bại, vui lòng thử lại.")}</p>`;
       return;
     }
+    // SỬA 2026-08-09 (Đợt 4, mục 10 — Minh: "bỏ chớp Đã lưu thừa"): bỏ toast, GIỮ đổi label nút
+    // (markSaved() + render()) — 1 tín hiệu rõ ràng, thường trực là đủ, 2 tín hiệu cho cùng 1
+    // hành động là dư.
     markSaved();
-    showToast("Đã lưu vào Yêu thích.");
     render();
   }
 

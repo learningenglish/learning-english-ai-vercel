@@ -6,6 +6,7 @@ import { showToast } from "../toast.js";
 import { getThemePreference, setThemePreference } from "../theme.js";
 import { getPalettePreference, setPalettePreference, PALETTES } from "../palette.js";
 import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../fontSize.js";
+import { getAutoScrollPreference, setAutoScrollPreference } from "../autoScroll.js";
 
 const APP_NAME = "Learning English AI";
 const APP_VERSION = "1.0.0";
@@ -21,6 +22,7 @@ export function renderProfile(mount) {
   const currentTheme = getThemePreference();
   const currentPalette = getPalettePreference();
   const currentFontSize = getFontSizePreference();
+  const currentAutoScroll = getAutoScrollPreference();
   mount.innerHTML = `
     <div class="screen">
       <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Cài đặt</h1>
@@ -75,6 +77,22 @@ export function renderProfile(mount) {
             </button>
           `
           ).join("")}
+        </div>
+      </div>
+
+      <!-- "Auto Scroll" (2026-08-09, Đợt 4 mục 8) — Minh: tự cuộn trang theo câu/đoạn đang phát
+           audio trong màn đọc bài. Đặt ở đây (không phải icon riêng trong màn đọc bài — hàng
+           toggle ở đó đã đủ 3 icon) vì đây là tuỳ chọn hành vi lâu dài, cùng nhóm với Kích thước
+           chữ/Theme hơn là toggle theo-từng-bài. -->
+      <div class="card profile-card">
+        <div class="profile-section-title">Tự cuộn theo audio</div>
+        <div class="theme-picker" id="auto-scroll-picker">
+          <button type="button" class="theme-option ${!currentAutoScroll ? "active" : ""}" data-auto-scroll="0">
+            <span>Tắt</span>
+          </button>
+          <button type="button" class="theme-option ${currentAutoScroll ? "active" : ""}" data-auto-scroll="1">
+            <span>Bật</span>
+          </button>
         </div>
       </div>
 
@@ -133,6 +151,13 @@ export function renderProfile(mount) {
     btn.addEventListener("click", () => {
       setFontSizePreference(btn.dataset.fontSize);
       mount.querySelectorAll(".theme-option[data-font-size]").forEach((b) => b.classList.toggle("active", b === btn));
+    });
+  });
+
+  mount.querySelectorAll(".theme-option[data-auto-scroll]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setAutoScrollPreference(btn.dataset.autoScroll === "1");
+      mount.querySelectorAll(".theme-option[data-auto-scroll]").forEach((b) => b.classList.toggle("active", b === btn));
     });
   });
 

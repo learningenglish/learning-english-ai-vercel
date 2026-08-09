@@ -28,6 +28,25 @@ const LEVEL_CARDS = [
   { level: "C1", sub: "Adv.", chip: "blue" },
 ];
 
+// Nhớ level đang lọc theo TỪNG loại nội dung (2026-08-09, Đợt 4 mục 11 — Minh: "lần đầu vào mặc
+// định A1 (danh sách 'Tất cả' quá dài khi có tới 400 bài), lần sau nhớ level gần nhất") — cùng
+// pattern localStorage đơn giản như app/js/palette.js/theme.js/fontSize.js, 2 key riêng vì Bài
+// đọc/Hội thoại là 2 màn khác nhau dùng CHUNG file này.
+function getLevelPreference(contentType) {
+  try {
+    return localStorage.getItem(`lea_lessons_level_${contentType}`) || "A1";
+  } catch {
+    return "A1";
+  }
+}
+function setLevelPreference(contentType, level) {
+  try {
+    localStorage.setItem(`lea_lessons_level_${contentType}`, level);
+  } catch {
+    // Lỗi lưu không nên chặn lọc trong phiên hiện tại.
+  }
+}
+
 // Khung "xương" (skeleton) thay cho dòng chữ "Đang tải..." — TÁI DÙNG nguyên hình dạng từ bản
 // gốc (cùng lý do: tránh giật bố cục khi dữ liệu về, xem _archive/old-nav/lessons.js).
 function skeletonListHtml(count = 3) {
@@ -48,7 +67,7 @@ function skeletonListHtml(count = 3) {
 
 export function renderLessons(mount, params) {
   const contentType = params?.[0] === "dialogue" ? "dialogue" : "reading";
-  const state = { level: "all" };
+  const state = { level: getLevelPreference(contentType) };
   const titleText = contentType === "dialogue" ? "Hội thoại" : "Bài đọc";
 
   mount.innerHTML = `
@@ -84,6 +103,7 @@ export function renderLessons(mount, params) {
     card.addEventListener("click", () => {
       const lv = card.dataset.level;
       state.level = state.level === lv ? "all" : lv;
+      setLevelPreference(contentType, state.level);
       mount.querySelectorAll(".level-card").forEach((c) => c.classList.toggle("active", c.dataset.level === state.level));
       renderList();
     });

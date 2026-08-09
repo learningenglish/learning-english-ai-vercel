@@ -11,6 +11,7 @@ import { createPlayer, isTTSSupported, computeGenderHints } from "../tts.js";
 import { icon } from "../icons.js";
 import { showToast } from "../toast.js";
 import { backChevronHtml, wireBackLink } from "../header.js";
+import { getAutoScrollPreference } from "../autoScroll.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
@@ -33,23 +34,30 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     mount.innerHTML = `<div class="screen"><p class="error-text">Thiếu mã bài học.</p></div>`;
     return;
   }
-  // Khung "xương" GIỐNG HÌNH DẠNG màn thật (header + tabs, mục B1 — 2026-07-30, Minh: "chớp
+  // Khung "xương" GIỐNG HÌNH DẠNG màn thật (header + hàng icon, mục B1 — 2026-07-30, Minh: "chớp
   // giao diện khi chuyển route, ví dụ vào 1 bài học") — trước đây khung chờ chỉ là 1 dòng chữ
   // giữa màn hình rỗng, khi dữ liệu về (thường rất nhanh vì Supabase REST nhẹ) toàn bộ mount bị
   // thay bằng khung THẬT khác hẳn hình dạng -> mắt người thấy như 1 cú "chớp" dù không có
   // khoảng trắng thật sự (cùng nguyên nhân/cách sửa như card lĩnh vực ở Thư viện AI trước đó:
   // giữ hình dạng ổn định xuyên suốt lúc chờ, không đổi bố cục đột ngột khi dữ liệu về).
+  // SỬA 2026-08-09 (Đợt 4, mục 2 — Minh: "chớp giao diện chữ Nội dung/Từ vựng/Ngữ pháp/Luyện tập
+  // rồi mới vào giao diện icon") — BUG THẬT: khung này vẫn dùng layout tab-chữ CŨ
+  // (.tabs.sticky-tabs + .tab-btn) từ trước khi đợt 2 đổi sang hàng icon
+  // (.section-nav-row/.section-icon-btn) — không ai cập nhật khung chờ khi đổi giao diện thật.
+  // Đây CHÍNH LÀ cú "chớp" Minh thấy, không phải cache/tab cũ như từng kết luận sai ở đợt 3.
   mount.innerHTML = `
     <div class="screen">
       <div class="lesson-header-row">
         ${backChevronHtml()}
         <h1 class="screen-title skeleton-line skeleton-shimmer" style="height:1.2em;width:60%"></h1>
       </div>
-      <div class="tabs sticky-tabs" role="tablist">
-        <button type="button" class="tab-btn active" disabled>Nội dung</button>
-        <button type="button" class="tab-btn" disabled>Từ vựng</button>
-        <button type="button" class="tab-btn" disabled>Ngữ pháp</button>
-        <button type="button" class="tab-btn" disabled>Luyện tập</button>
+      <div class="section-nav-row">
+        <div class="section-icon-tabs" role="tablist">
+          <div class="skeleton-line skeleton-shimmer" style="width:40px;height:40px;border-radius:10px"></div>
+          <div class="skeleton-line skeleton-shimmer" style="width:40px;height:40px;border-radius:10px"></div>
+          <div class="skeleton-line skeleton-shimmer" style="width:40px;height:40px;border-radius:10px"></div>
+          <div class="skeleton-line skeleton-shimmer" style="width:40px;height:40px;border-radius:10px"></div>
+        </div>
       </div>
       <div class="content-page">
         <div class="skeleton-line skeleton-shimmer" style="width:100%;height:14px;margin-bottom:10px"></div>
@@ -152,6 +160,9 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       progressTimer = null;
     }
   }
+  // "Auto Scroll" (2026-08-09, Đợt 4 mục 8) — theo dõi itemIndex ĐANG ĐỌC để cuộn trang khi đổi,
+  // chỉ 1 lần mỗi lần đổi (không cuộn lặp lại theo mỗi tick 500ms của progressTimer).
+  let lastAutoScrolledItemIdx = -1;
   const ttsPlayer = createPlayer({
     onStateChange: (s) => {
       updateAudioBarUI(s);
@@ -165,6 +176,11 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       // theo audio nữa — KHÔNG còn lưu "đang đọc dở câu nào" theo từng câu trong lúc phát (chỉ
       // còn lưu lúc mở bài + lúc nghe xong hẳn ở trên), đánh đổi đã có sẵn từ trước khi bật "Xem
       // tất cả", giờ là hành vi mặc định.
+      if (s.playing && getAutoScrollPreference() && s.itemIndex !== lastAutoScrolledItemIdx) {
+        lastAutoScrolledItemIdx = s.itemIndex;
+        const el = mount.querySelector(`.content-item-block[data-content-item-idx="${s.itemIndex}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     },
   });
 
@@ -393,20 +409,24 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     // "đọc 1 lần", KHÔNG dùng audio thật đã cắt sẵn vì đó chỉ cắt theo ĐOẠN chứ không theo câu),
     // đoạn gốc (nếu bật), bản dịch CÂU ĐÓ (nếu khớp số câu, xem splitTranslationSentences ở
     // trên), và breakdown cụm CHỈ của câu đó — đúng mẫu file Minh gửi (mục 1).
-    function readingChunkedItemHtml(item, itemIdx) {
+    function readingChunkedItemHtml(item, itemIdx, startSentenceNo) {
       const sentences = splitIntoSentences(item?.text || "");
       const buckets = bucketPhraseGroupsBySentence(sentences, item?.phrase_groups);
       const viSentences = splitTranslationSentences(item?.translation || "");
       const viMatch = viSentences.length === sentences.length;
+      // SỬA 2026-08-09 (Đợt 4, mục 9 — Minh: "tắt hết 3 toggle thì trống, hãy hiện toàn bộ nội
+      // dung thay vì trống"): tắt cả đoạn gốc lẫn dịch cùng lúc trước đây không render gì —
+      // LUÔN hiện ít nhất bản gốc trong trường hợp đó, không bao giờ để trống hẳn.
+      const forceOriginal = !state.showOriginal && !state.showTranslation;
       const perSentence = sentences
         .map(
           (sentence, sIdx) => `
         ${sIdx > 0 ? '<div class="content-divider"></div>' : ""}
         <div class="content-item-header">
-          <span class="sentence-number muted">Câu ${sIdx + 1}</span>
+          <span class="sentence-number">Câu ${startSentenceNo + sIdx}</span>
           ${ttsSupported ? `<button type="button" class="sentence-icon-btn" data-sentence-idx="${itemIdx}:${sIdx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>` : ""}
         </div>
-        ${state.showOriginal ? `<div class="content-text">${escapeHtml(sentence)}</div>` : ""}
+        ${state.showOriginal || forceOriginal ? `<div class="content-text">${escapeHtml(sentence)}</div>` : ""}
         ${state.showTranslation && viMatch ? `<div class="content-translation">${escapeHtml(viSentences[sIdx])}</div>` : ""}
         ${contentChunkLinesHtml(buckets[sIdx] || [])}
       `
@@ -419,26 +439,37 @@ export async function renderLessonDetail(mount, params, opts = {}) {
 
     function renderContentBody() {
       const body = panel.querySelector("#content-body");
+      // SỬA 2026-08-09 (Đợt 4, mục 6 — Minh: "câu nào cũng câu 1"): đếm số câu LIÊN TỤC xuyên
+      // suốt cả bài thay vì reset về 1 mỗi đoạn — bài đọc nhiều đoạn ngắn (1-2 câu/đoạn) trước
+      // đây gần như đoạn nào cũng hiện "Câu 1".
+      let sentenceCounter = 1;
+      // Mục 9 — xem ghi chú ở readingChunkedItemHtml(), áp dụng CHUNG cho cả nhánh không-chunked.
+      const forceOriginal = !state.showOriginal && !state.showTranslation;
       body.innerHTML = `
         <div class="content-page">
           ${pages
             .map((item, i) => {
-              const useChunkedReading = state.showChunks && !item?.speaker && splitIntoSentences(item?.text || "").length > 0;
+              const sentencesForItem = splitIntoSentences(item?.text || "");
+              const useChunkedReading = state.showChunks && !item?.speaker && sentencesForItem.length > 0;
+              const startSentenceNo = sentenceCounter;
+              if (useChunkedReading) sentenceCounter += sentencesForItem.length;
               return `
             ${i > 0 ? '<div class="content-divider"></div>' : ""}
+            <div class="content-item-block" data-content-item-idx="${i}">
             ${
               useChunkedReading
-                ? readingChunkedItemHtml(item, i)
+                ? readingChunkedItemHtml(item, i, startSentenceNo)
                 : `
               <div class="content-item-header">
                 <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
                 ${contentActionsHtml(i)}
               </div>
-              ${state.showOriginal ? `<div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>` : ""}
+              ${state.showOriginal || forceOriginal ? `<div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>` : ""}
               ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
               ${state.showChunks ? contentChunkLinesHtml(item?.phrase_groups || []) : ""}
             `
             }
+            </div>
           `;
             })
             .join("")}
@@ -784,6 +815,19 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         word_meanings: vocabEntry.word_meanings,
         is_multiword: vocabEntry.is_multiword,
       });
+      return;
+    }
+
+    // SỬA 2026-08-09 (Đợt 4, mục 4 — Minh: "đợi 1 hồi lâu rồi báo không tra được"): nếu lúc mount
+    // client ĐÃ xác nhận coverage đủ cho MỌI item (needsPhraseGroupsPatch===false), gọi lại
+    // ensurePhraseGroupsPatched() ở đây là VÔ ÍCH — dữ liệu vốn đã đủ, entry=null lúc này là do
+    // thuật toán khớp span (computeInteractiveSpans) chứ không phải thiếu dữ liệu, vá lại (gọi AI
+    // toàn bài, tốn vài giây) không sửa được vấn đề đó. Báo lỗi NGAY, kèm console.warn để có dấu
+    // vết debug nếu Minh gặp lại (cần dữ liệu bài cụ thể mới định vị tiếp, không đoán mò sửa
+    // thêm thuật toán khớp đã qua nhiều vòng kiểm chứng ở đợt 2/3).
+    if (!needsPhraseGroupsPatch) {
+      console.warn("[lesson] từ không có entry dù coverage đã đủ:", { lessonId: lesson.id, itemIdx, tokenIdx, word, sentence });
+      showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
       return;
     }
 
