@@ -1099,6 +1099,15 @@ function phraseGroupToEntry(group, vocabMap) {
 // nhóm không khớp đúng token kế tiếp, hoặc còn dư/thiếu token) — B2/C1 KHÔNG bắt buộc phủ 100%
 // (xem validatePhraseCoverage phía server) nên vẫn có thể lệch ở 2 cấp đó; lệch thì RƠI VỀ cách
 // khớp "vocabulary" cũ bên dưới, không hiển thị sai/thiếu.
+// BUG THẬT (2026-08-08, xác nhận qua dữ liệu sống: nhóm "Hello!" giữ nguyên dấu "!" bên trong
+// "words") — so khớp trực tiếp .toLowerCase() KHÔNG bỏ dấu câu, trong khi "tokens" (từ
+// tokenizeWords()) ĐÃ tách sạch dấu câu — "hello" (token) !== "hello!" (word có dấu) làm toàn bộ
+// span của CẢ ĐOẠN trả về null dù coverage-check (có chuẩn hoá bỏ dấu câu) coi là ĐẠT. Chuẩn hoá
+// CẢ 2 vế giống hệt itemPhraseCoverageOkClient() trước khi so khớp.
+function normalizeMatchWord(w) {
+  return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
+}
+
 function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap) {
   const spans = [];
   let tIdx = 0;
@@ -1106,7 +1115,7 @@ function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap) {
     const words = Array.isArray(group?.words) ? group.words : [];
     if (!words.length) continue;
     for (const w of words) {
-      if (tIdx >= tokens.length || tokens[tIdx].word.toLowerCase() !== String(w).toLowerCase()) return null;
+      if (tIdx >= tokens.length || normalizeMatchWord(tokens[tIdx].word) !== normalizeMatchWord(w)) return null;
       tIdx++;
     }
     const startTok = tokens[tIdx - words.length];
