@@ -1069,3 +1069,51 @@ lưu đúng localStorage; icon Pause deploy đúng bản đã giãn khoảng cá
 - Mục 8 phần audio "0:19/0:30 lúc hết bài" — đã sửa bằng cách ép thẳng 100%/đủ giờ đúng lúc
   `onended`, nhưng CHƯA nghe hết 1 bài thật tới cuối để xác nhận trực quan (chỉ verify qua đọc
   code + logic) — nhờ Minh nghe thử 1 bài tới hết để xác nhận.
+
+## 2026-08-09 (đợt 5) — 6 phản hồi, đổi hẳn kiến trúc tra từ sang theo TỪNG TỪ
+
+Minh gửi tiếp 6 phản hồi sau khi dùng thử đợt 4. Xác nhận qua dữ liệu DB thật (bài sinh ĐÚNG NGÀY
+2026-08-09, sau mọi bản sửa trước đó — không phải bài cũ) rằng mục 1 (tra từ hiện nguyên cụm/mệnh
+đề thay vì đúng 1 từ) là hành vi THIẾT KẾ CŨ, không phải bug: `spansFromPhraseGroups()` trước đây
+gộp CẢ NHÓM nhiều từ (vd mệnh đề quan hệ "who have been through so much with their partners", 9
+từ) thành 1 VÙNG BẤM DUY NHẤT — bấm bất kỳ đâu trong đó đều ra tiêu đề+nghĩa CẢ CỤM. Đây là hành
+vi "gộp cụm" kế thừa từ app cũ trước cả session này, giờ Minh yêu cầu đổi hẳn.
+
+**Đã sửa (mục 1 — thay đổi kiến trúc, không phải vá nhỏ):** `spansFromPhraseGroups()` giờ tạo 1
+SPAN RIÊNG cho MỖI TỪ trong nhóm (không còn gộp cả cụm thành 1 vùng bấm) — các từ trong CÙNG 1
+nhóm vẫn tô màu/gạch chân GIỐNG NHAU nên nhìn vẫn như 1 cụm liền mạch, nhưng giờ bấm ĐÚNG TỪ NÀO
+ra ĐÚNG nghĩa từ đó (dùng `word_meanings[word]` đã có sẵn trong dữ liệu, không cần gọi AI thêm).
+Cụm từ chứa nó vẫn hiện — nhưng chỉ là 1 dòng NGỮ CẢNH PHỤ nhỏ bên dưới (không còn là tiêu đề
+chính). Verify sống: bấm "who" trong câu ví dụ trên → tiêu đề "who", nghĩa "ai", dòng phụ "Mệnh
+đề quan hệ: who have been through so much with their partners = đã trải qua rất nhiều điều với
+bạn đời của họ".
+
+**Đã sửa (mục 2/6 — đồng bộ nền card):** `.vocab-item`/`.grammar-item`/`.pattern-item`/
+`.exercise-item` giờ dùng CHUNG đúng nền bán trong suốt của `.content-page` (trước đó mỗi khu vực
+1 màu khác nhau — Từ vựng dùng `--purple-soft`, Ngữ pháp/Luyện tập không có nền gì) — đồng bộ
+toàn app, sẵn sàng cho lúc chèn logo (mục 12, đợt 4, còn đang chờ file) mà chữ vẫn luôn tương
+phản rõ. Verify sống: đo `backgroundColor` cả 3 khu vực đều `color(srgb 1 1 1 / 0.92)`.
+
+**Đã sửa (mục 3 — audio "nhảy cóc"):** thanh/chấm tiến trình trước đó chỉ cập nhật vị trí mỗi
+500ms (đúng chu kỳ `progressTimer`) KHÔNG có gì nội suy chuyển động giữa 2 lần cập nhật → mắt
+thấy "nhảy" từng bước. Thêm CSS `transition: width/left 0.5s linear` khớp đúng chu kỳ 500ms để
+trình duyệt tự vẽ nối mượt — tắt hẳn lúc tay đang kéo (class `.dragging`) để tua không bị trễ.
+**Phát hiện + tự sửa 1 lỗi trong lúc code (trước khi deploy):** bản Edit đầu tiên vô tình THAY THẾ
+mất dòng `transform: translate(-50%, -50%)` (chỉnh tâm chấm tròn) khi thêm dòng `transition` —
+nếu không bắt kịp, chấm tròn sẽ LỆCH THẬT (đúng mô tả "nút tròn vẫn bị lệch" của Minh, nhưng do
+lỗi MỚI của bản sửa này chứ không phải lỗi cũ) — soát lại ngay trong cùng lượt sửa, thêm lại dòng
+`transform` trước khi deploy. Verify sống: đo `transform` của chấm tròn = `matrix(1,0,0,1,-6,-6)`
+(khớp đúng -50%/-50% của khối 12x12px).
+
+**Đã sửa (mục 4 — ảnh bìa bo tròn đụng nút back):** `.lesson-cover` trước đó bo tròn ĐỦ 4 góc +
+nằm trong padding của `.screen` (20px 16px) khiến góc trên-trái cong ngay sát nút back. Đổi
+sang margin âm "tràn" ra khỏi padding đó ở 3 cạnh trên/trái/phải (chỉ còn bo tròn 2 góc ĐÁY) —
+ảnh giờ khớp thẳng mép màn hình, không còn góc cong nào gần nút back. Kéo theo phải tính lại
+padding của `.lesson-cover-header`/`.lesson-cover-title` (hệ toạ độ bên trong đổi theo). Verify
+sống: đo `.lesson-cover` trái=0/phải=375=đúng bề rộng màn hình, border-radius "0px 0px 18px
+18px" (vuông trên, tròn dưới), nút back = 8px khớp đúng mọi nút back khác.
+
+**Đã sửa (mục 5):** icon tab Ngữ pháp đổi từ "hash" (#) sang "graduation-cap" (mũ tốt nghiệp,
+hợp ngữ nghĩa hơn).
+
+**Còn lại cho Minh:** mục 12 (logo) vẫn chờ file như đợt 4.
