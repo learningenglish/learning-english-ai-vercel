@@ -209,6 +209,14 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
     "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
   }
+- LỖI THẬT HAY GẶP (2026-08-09, xác nhận qua dữ liệu thật — hệ thống dùng "words" để tô sáng
+  TỪNG TỪ bấm được trong câu, 1 phần tử mảng KHÔNG được chứa nhiều hơn 1 từ): mỗi phần tử trong
+  "words" PHẢI là ĐÚNG 1 TỪ ĐƠN (hoặc 1 từ có dấu nháy như "don't", "it's" — vẫn tính là 1 từ) —
+  TUYỆT ĐỐI KHÔNG được nhét nhiều từ cách nhau bởi khoảng trắng vào CHUNG 1 chuỗi.
+  ❌ SAI: {"words": ["normal oil traffic could resume"], ...} — 1 phần tử chứa nguyên 5 từ.
+  ✅ ĐÚNG: {"words": ["normal", "oil", "traffic", "could", "resume"], ...} — 5 phần tử riêng biệt,
+  MỖI phần tử đúng 1 từ, dù cả cụm 5 từ này vẫn được coi là 1 NHÓM DUY NHẤT (1 object) mang chung
+  1 "meaning" — chỉ mảng "words" bên trong nhóm đó phải tách rời từng từ, không phải tách nhóm.
 - BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
   "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
   "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
@@ -281,6 +289,18 @@ QUY TẮC VỀ CHỦ ĐỀ (form "Tạo bài học" 2026-07-23 bỏ ô nhập Ch
   liên quan chuyên ngành gì.
 - Nếu Chủ đề là "không có" NHƯNG có Lĩnh vực: tự chọn 1 chủ đề PHÙ HỢP với đúng Lĩnh vực đó
   (không lái sang chủ đề chung chung không liên quan).
+
+QUY TẮC VỀ TÍNH THỜI SỰ (2026-08-09, Đợt 3 mục 17 — Minh phản hồi thật: bài sinh ra nhắc tới
+Excel "như thể một phát hiện/xu hướng mới", trong khi Excel là phần mềm phổ biến từ hàng chục
+năm trước, không còn gì mới mẻ để nhấn mạnh):
+- Bối cảnh bài học PHẢI phản ánh đúng thực tiễn công việc/công nghệ ĐƯƠNG ĐẠI (năm hiện tại,
+  xem "Ngày hiện tại" trong user prompt nếu có) — tránh viết như thể các công cụ/quy trình đã
+  phổ biến từ lâu là điều mới mẻ, đáng chú ý, hay hiện đại.
+- KHÔNG cấm nhắc TÊN công cụ cũ nếu THẬT SỰ vẫn được dùng phổ biến trong thực tế nghề đó (ví dụ
+  Excel vẫn là công cụ kế toán/tài chính hàng ngày) — chỉ tránh CÁCH VIẾT khiến nó nghe như phát
+  hiện/xu hướng mới ("gần đây", "hiện đại", "công cụ mới"...). Nếu ngữ cảnh phù hợp, có thể nhắc
+  tới các công cụ/thực hành thật sự đương đại hơn (tự động hoá, phần mềm đám mây, AI hỗ trợ công
+  việc...) một cách tự nhiên, không gượng ép nhồi nhét.
 
 QUY TẮC VỀ TÌNH HUỐNG:
 - Nếu người dùng cung cấp Tình huống (khác "không có"): TOÀN BỘ nội dung bài phải diễn ra
@@ -579,8 +599,14 @@ function buildGenerateLessonUserPrompt(data) {
     ? `\n\nLƯU Ý QUAN TRỌNG — "Chủ đề" ở trên là tin thời sự THẬT vừa xác minh qua tìm kiếm web (không phải hư cấu): CHỈ được dùng ĐÚNG những chi tiết/sự kiện/tên riêng ĐÃ CÓ trong "Chủ đề" — TUYỆT ĐỐI KHÔNG tự thêm bất kỳ chi tiết thời sự nào khác (tên lãnh đạo/chức vụ hiện tại, số liệu, ngày tháng, tổ chức...) không có sẵn trong "Chủ đề", vì kiến thức nền của bạn có thể đã LỖI THỜI và không đáng tin cho tin tức hiện tại. Nếu cần nhắc tới người/tổ chức KHÔNG có tên trong "Chủ đề", dùng cách gọi CHUNG CHUNG (vd "the government", "officials", "the company", "a spokesperson") thay vì tự đoán tên cụ thể.`
     : "";
 
+  // Ngày hiện tại (2026-08-09, Đợt 3 mục 17) — bơm thẳng vào prompt để "QUY TẮC VỀ TÍNH THỜI SỰ"
+  // ở system prompt có căn cứ CỤ THỂ, không phải chỉ dựa vào kiến thức nền (đã có mốc cắt) của
+  // model để tự đoán "hiện tại" là năm nào.
+  const todayVi = new Date().toLocaleDateString("vi-VN", { year: "numeric", month: "long", day: "numeric" });
+
   return `Tạo bài học theo yêu cầu sau:
 
+- Ngày hiện tại: ${todayVi}
 - Mô tả của người học: ${orNone(data.description)}
 - Cấp độ: ${data.level}
 - Chủ đề: ${orNone(data.topic)}
@@ -1070,9 +1096,9 @@ export async function analyze_user_text(data, ctx) {
 
   // (b) Gọi AI + parse + validate.
   const r = await generateStructuredJSON({
-    maxTokens: 4000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 3500 vì A1/A2 giờ cần
-    // nhiều lượt thoại hơn hẳn để đạt đủ length_words khi câu bị giới hạn ngắn (xem "LỖI THẬT
-    // HAY GẶP Ở A1/A2" trong prompt), JSON output theo đó cũng dài hơn trước.
+    maxTokens: 6000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 4000 (2026-08-09):
+    // đợt 2 vừa thêm field "phrase_groups" khá dài vào schema, lặp lại đúng lỗi lịch sử từng
+    // gặp ở generate_lesson (JSON bị cắt giữa chừng, parse fail) trước khi nâng lên 6000.
     temperature: 0.7,
     messages: [
       { role: "system", content: ANALYZE_TEXT_SYSTEM_PROMPT },

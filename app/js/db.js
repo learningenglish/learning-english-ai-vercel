@@ -310,6 +310,29 @@ function computeStreakFromDates(rows) {
   return streak;
 }
 
+// Kỷ lục streak (2026-08-09, Đợt 3 mục 14 — Minh: "Tổng XP không sử dụng, đổi thành kỉ lục ghi
+// nhận chuỗi ngày học cao nhất") — KHÁC computeStreakFromDates() ở trên (chỉ tính streak HIỆN
+// TẠI, lùi từ hôm nay/hôm qua): hàm này quét TOÀN BỘ ngày distinct đã có, tìm chuỗi liên tiếp DÀI
+// NHẤT từng đạt được trong lịch sử — không cần cột DB riêng, dùng lại đúng "rows" đã fetch sẵn.
+function computeLongestStreakFromDates(rows) {
+  const activeDates = Array.from(new Set(rows.map((r) => (r.last_opened_at || "").slice(0, 10)).filter(Boolean))).sort();
+  let longest = 0;
+  let current = 0;
+  let prevDate = null;
+  for (const dateStr of activeDates) {
+    const d = new Date(dateStr + "T00:00:00Z");
+    if (prevDate) {
+      const diffDays = Math.round((d - prevDate) / 86400000);
+      current = diffDays === 1 ? current + 1 : 1;
+    } else {
+      current = 1;
+    }
+    longest = Math.max(longest, current);
+    prevDate = d;
+  }
+  return longest;
+}
+
 function isoDate(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -361,6 +384,7 @@ export async function getProgressOverview() {
   const totalXp = (progressRows || []).reduce((s, r) => s + (r.xp_earned || 0), 0);
   const completedCount = (progressRows || []).filter((r) => r.completed_at).length;
   const streak = computeStreakFromDates(progressRows || []);
+  const longestStreak = computeLongestStreakFromDates(progressRows || []);
 
   const bySkill = { reading: {}, dialogue: {} };
   for (const l of lessonRows || []) {
@@ -399,5 +423,5 @@ export async function getProgressOverview() {
   }
   const writing = Array.from(byGenre.entries()).map(([genre, g]) => ({ genre, count: g.count, pct: Math.round(g.scoreSum / g.count) }));
 
-  return { totalXp, completedCount, streak, skills, writing, history: progressRows || [] };
+  return { totalXp, completedCount, streak, longestStreak, skills, writing, history: progressRows || [] };
 }

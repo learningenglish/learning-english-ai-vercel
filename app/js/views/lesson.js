@@ -171,9 +171,33 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // Ảnh bìa (2026-08-08, mục 8) — "lesson.cover_image_url" đã có sẵn từ trước (dùng cho thẻ danh
   // sách/carousel) nhưng CHƯA TỪNG hiện trong màn đọc bài — thêm 1 khối ảnh phủ đầu, bài chưa có
   // ảnh (chưa tìm được/lỗi lúc sinh) thì không hiện khối này, không vỡ layout.
+  // SỬA 2026-08-09 (Đợt 3, mục 1/2/3 — Minh: "hình quá lớn", "tiêu đề nên là chữ lồng trong
+  // hình", "icon < nên cố định đồng bộ toàn giao diện"): ảnh hạ thấp hẳn (không còn full 16:9)
+  // + back/tiêu đề chuyển thành LỚP PHỦ đè lên ảnh (dùng lại đúng gradient tối dần của
+  // .continue-card-overlay để chữ trắng luôn đọc được bất kể ảnh nền màu gì) — nhờ vậy nút back
+  // luôn nằm CỐ ĐỊNH ở góc trên-trái như mọi màn khác, không còn bị đẩy xuống dưới ảnh.
   function coverImageHtml() {
     if (isNews || !lesson.cover_image_url) return "";
-    return `<div class="lesson-cover"><img src="${escapeHtml(lesson.cover_image_url)}" alt="" loading="lazy" /></div>`;
+    return `
+      <div class="lesson-cover">
+        <img src="${escapeHtml(lesson.cover_image_url)}" alt="" loading="lazy" />
+        <div class="lesson-cover-overlay"></div>
+        <div class="lesson-cover-header">
+          ${backChevronHtml()}
+          <h1 class="screen-title lesson-cover-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
+        </div>
+      </div>`;
+  }
+
+  // Khi CÓ ảnh bìa, back+tiêu đề đã nằm đè lên ảnh (xem coverImageHtml() trên) — không lặp lại
+  // hàng riêng nữa. Khi KHÔNG có ảnh, giữ nguyên hàng ngang bình thường như trước.
+  function headerRowHtml() {
+    if (!isNews && lesson.cover_image_url) return "";
+    return `
+      <div class="lesson-header-row">
+        ${backChevronHtml()}
+        <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
+      </div>`;
   }
 
   // Gộp hàng tab (Nội dung/Từ vựng/Ngữ pháp/Luyện tập) VÀ hàng toolbar (đoạn gốc/dịch/tách câu,
@@ -184,10 +208,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   mount.innerHTML = `
     <div class="screen">
       ${coverImageHtml()}
-      <div class="lesson-header-row">
-        ${backChevronHtml()}
-        <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
-      </div>
+      ${headerRowHtml()}
       <div class="section-nav-row">
         <div class="section-icon-tabs" role="tablist">
           <button type="button" class="section-icon-btn active" data-tab="content" title="Nội dung">${icon("book", { size: 18 })}</button>
@@ -275,10 +296,28 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // (nhiều câu) thành từng khối riêng khi bật "tách câu" (mục 1, đúng mẫu file Minh gửi: mỗi câu
   // 1 icon loa + breakdown riêng, không phải liệt kê phẳng cả đoạn). Hội thoại không cần hàm này
   // — 1 lượt thoại đã gần như luôn là 1 câu.
+  // BUG THẬT (2026-08-09, ảnh chụp Minh gửi: "Câu 1: S." — do "U.S." bị tách làm 2 "câu" rời,
+  // regex cũ coi MỌI dấu "." là kết câu) — bảo vệ dấu "." bên trong viết tắt TRƯỚC khi tách câu:
+  // (a) chuỗi "chữ hoa + chấm" lặp ≥2 lần liền nhau (U.S., U.K., D.C., U.S.A....) — quy tắc CHUNG,
+  // không cần liệt kê hết; (b) vài viết tắt tiếng Anh thường gặp không theo mẫu (a). Thay tạm các
+  // dấu "." này bằng ký tự an toàn (không bao giờ xuất hiện trong văn bản thật), tách câu xong
+  // khôi phục lại.
+  const ABBREV_PLACEHOLDER = " ";
+  function protectAbbreviations(text) {
+    return text
+      .replace(/\b([A-Z]\.){2,}/g, (m) => m.replace(/\./g, ABBREV_PLACEHOLDER))
+      .replace(/\b(Mr|Mrs|Ms|Dr|Prof|St|Sr|Jr|vs|etc|approx|Ltd|Co|Inc)\.(?=\s)/gi, (m) => m.replace(/\./g, ABBREV_PLACEHOLDER))
+      .replace(/\b(e\.g|i\.e|a\.m|p\.m)\.(?=\s|$)/gi, (m) => m.replace(/\./g, ABBREV_PLACEHOLDER));
+  }
+  function restoreAbbreviations(text) {
+    return text.replace(new RegExp(ABBREV_PLACEHOLDER, "g"), ".");
+  }
+
   function splitIntoSentences(text) {
     if (!text) return [];
-    const matches = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g);
-    return (matches || [text]).map((s) => s.trim()).filter(Boolean);
+    const protectedText = protectAbbreviations(text);
+    const matches = protectedText.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g);
+    return (matches || [protectedText]).map((s) => restoreAbbreviations(s).trim()).filter(Boolean);
   }
 
   // Chia "phrase_groups" (đã có sẵn, phủ đủ CẢ ĐOẠN) thành từng nhóm con theo TỪNG CÂU — CHỈ xử
@@ -309,8 +348,9 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // ĐOẠN 1 lần ở cuối thay vì ghép liều sai câu.
   function splitTranslationSentences(text) {
     if (!text) return [];
-    const matches = text.match(/[^.!?…]+[.!?…]+(\s+|$)|[^.!?…]+$/g);
-    return (matches || [text]).map((s) => s.trim()).filter(Boolean);
+    const protectedText = protectAbbreviations(text);
+    const matches = protectedText.match(/[^.!?…]+[.!?…]+(\s+|$)|[^.!?…]+$/g);
+    return (matches || [protectedText]).map((s) => restoreAbbreviations(s).trim()).filter(Boolean);
   }
 
   function contentChunkLinesHtml(groups) {
@@ -318,7 +358,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     return `
       <div class="content-chunks">
         ${groups
-          .map((g) => `<div class="content-chunk-line">🔹 ${escapeHtml((g.words || []).join(" "))} = ${escapeHtml(g.meaning || "")}</div>`)
+          .map((g) => `<div class="content-chunk-line">${escapeHtml((g.words || []).join(" "))} = ${escapeHtml(g.meaning || "")}</div>`)
           .join("")}
       </div>
     `;
@@ -796,7 +836,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
             ${w.type ? `<div class="vocab-type-badge badge">${escapeHtml(w.type)}</div>` : ""}
             <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
             <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
-            ${w.example_translation ? `<div class="vocab-example-translation muted">${escapeHtml(w.example_translation)}</div>` : ""}
+            ${w.example_translation ? `<div class="vocab-example-translation muted">${icon("languages", { size: 12 })}<span>${escapeHtml(w.example_translation)}</span></div>` : ""}
           </div>
         `
           )

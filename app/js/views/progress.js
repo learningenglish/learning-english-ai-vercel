@@ -17,7 +17,7 @@ import { wireAppHeader } from "../header.js";
 function summaryCardsHtml() {
   return `
     <div class="progress-summary-grid" id="progress-summary">
-      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Tổng XP</div></div>
+      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Kỷ lục streak</div></div>
       <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Bài đã học</div></div>
       <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Streak (ngày)</div></div>
     </div>
@@ -122,9 +122,13 @@ export function renderProgress(mount) {
     }
   }
 
-  function renderSummary({ totalXp, completedCount, streak }) {
+  // SỬA 2026-08-09 (Đợt 3, mục 14 — Minh: "Tổng XP không sử dụng, đổi thành kỉ lục ghi nhận
+  // chuỗi ngày học cao nhất là mấy ngày"): ô đầu đổi từ totalXp sang longestStreak
+  // (computeLongestStreakFromDates() trong db.js) — quét toàn bộ lịch sử, KHÁC "streak" ở ô thứ
+  // 3 (chỉ tính streak HIỆN TẠI, lùi từ hôm nay/hôm qua).
+  function renderSummary({ completedCount, streak, longestStreak }) {
     const cards = mount.querySelector("#progress-summary").querySelectorAll(".progress-summary-value");
-    cards[0].textContent = totalXp;
+    cards[0].textContent = longestStreak;
     cards[1].textContent = completedCount;
     cards[2].textContent = streak;
   }
