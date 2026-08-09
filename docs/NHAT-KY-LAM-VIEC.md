@@ -992,3 +992,80 @@ cụ thể** đứng sau phần lớn phản hồi:
   tiếp không phát hiện lệch/không tìm được đường code nào còn giữ giao diện cũ. Đề nghị Minh test
   lại bằng cách ĐÓNG HẲN tab trình duyệt (không chỉ tải lại) trước khi mở lại, để loại trừ khả
   năng tab cũ giữ module JS từ trước lúc deploy.
+
+## 2026-08-09 (đợt 4) — 12 phản hồi, phát hiện lại mục "13 đợt 3" là bug thật (không phải cache) + 1 lỗi tự gây ra lúc sửa
+
+Minh gửi tiếp 12 phản hồi (màn Lưu trữ, tra từ, thanh audio, luồng Luyện viết, mặc định level,
+logo) sau khi dùng thử đợt 3. Khảo sát code thật (không đoán) tìm ra 2 phát hiện đáng chú ý:
+
+1. **Mục 2 ("chớp giao diện chữ cũ rồi mới vào giao diện icon") — ĐÂY LÀ BUG THẬT, kết luận sai ở
+   đợt 3 (từng cho là cache/tab cũ, mục 13).** Khung "xương" chờ dữ liệu (`renderLessonDetail()`
+   skeleton) vẫn dùng layout tab-chữ CŨ (`.tabs.sticky-tabs`) từ TRƯỚC khi đợt 2 đổi sang hàng
+   icon — không ai cập nhật khung chờ khi đổi giao diện thật. Sửa: khung chờ đổi sang khớp đúng
+   hàng icon hiện tại (4 khối vuông mờ placeholder). Verify sống bằng cách đọc DOM ngay các mili-
+   giây đầu sau khi gọi navigate (trước khi Supabase REST kịp trả về) — xác nhận không còn
+   `.tabs.sticky-tabs` xuất hiện dù chỉ 1 khung hình.
+2. **Nút back trên ảnh bìa lệch vị trí (mục 7) — lỗi tính toán margin thật từ đợt 3.** Cộng dồn
+   `padding-left` của `.lesson-cover-header` (12px) + `margin-left` riêng của back-chevron (-4px)
+   + `padding-left` có sẵn của `.screen` cha (16px) ra tổng lệch 24px, trong khi nút back CHUẨN
+   chỉ lệch 8px (16-8). Sửa: bỏ padding ngang ở `.lesson-cover-header`, để back-chevron thừa
+   hưởng đúng margin -8px mặc định — verify đo `getBoundingClientRect().left` 2 nút bằng nhau
+   (8px) trên deploy thật.
+
+**Sự cố tự gây ra lúc sửa mục 6 (đã phát hiện + sửa NGAY trong đợt, trước khi báo Minh):** đổi
+`renderContentBody()` gọi `splitIntoSentences()` KHÔNG ĐIỀU KIỆN (để đếm số câu liên tục) đã lộ ra
+1 lỗi thứ tự khai báo có sẵn từ đợt 3 (`ABBREV_PLACEHOLDER` khai báo SAU chỗ dùng đầu tiên,
+trước đó "vô hại" vì `splitIntoSentences()` chỉ chạy khi bật tách câu, mặc định tắt) — toàn bộ
+màn đọc bài crash "Có lỗi khi hiển thị màn hình này" khi mở BẤT KỲ bài nào. Phát hiện qua verify
+sống ngay sau khi deploy (không phải Minh báo), sửa bằng cách dời khai báo lên đầu hàm + đồng
+thời phát hiện thêm 1 lỗi PHỤ tự gây ra lúc gõ Edit: dùng nhầm ký tự khoảng trắng thường thay vì
+đúng ký tự placeholder gốc (` `, không bao giờ xuất hiện trong văn bản thật) — nếu không bắt
+kịp, mọi khoảng trắng thật trong bài sẽ bị `restoreAbbreviations()` biến thành dấu chấm, hỏng toàn
+bộ nội dung. **Đồng thời quên tăng SW cache version ở commit sửa lỗi này** (đúng lỗi đã cảnh báo
+nhiều lần trong file `sw.js`) — khiến bản sửa không lên được máy test dù đã push, phải bump thêm
+1 lần nữa (`v49`) + xoá cache/SW cũ thủ công trên trình duyệt test mới xác nhận được đã hết lỗi.
+
+**Đã sửa (Nhóm A-K, xem chi tiết trong code):**
+- A: bỏ icon bookmark cạnh tiêu đề "Lưu trữ"/"Đã lưu" (4 chỗ) + icon edit-3 cạnh mỗi mục Lưu trữ
+  Luyện viết.
+- B: khung chờ khớp layout icon-row (xem phát hiện #1 trên).
+- C: `.section-nav-row` bỏ nền trắng, icon nằm trực tiếp trên nền trang.
+- D: bỏ lượt gọi AI thừa khi tra từ mà coverage đã xác nhận đủ lúc mount — báo lỗi ngay thay vì
+  đợi 1 lượt AI vô ích, kèm `console.warn` để debug tiếp nếu Minh còn gặp ca cụ thể.
+- E: `.content-page` thêm nền bán trong suốt (92% opacity, KHÔNG phải thẻ trắng đặc như trước khi
+  bỏ ở đợt 1) — chuẩn bị sẵn cho việc chèn logo/hình nền (mục 12) mà chữ vẫn đọc được.
+- F: số câu tách câu đếm LIÊN TỤC xuyên suốt bài (không reset mỗi đoạn) + đổi màu tím theo Color
+  Palette (xem phát hiện #2 trên).
+- G: sửa lệch nút back trên ảnh bìa (xem phát hiện #2 trên).
+- H: ép thanh/giờ audio hiện đúng 100%/đủ giờ đúng khoảnh khắc kết thúc (không phụ thuộc sai số
+  ước lượng); giãn 2 thanh icon Pause (nhìn "dính nhau" ở size nhỏ) + tăng gap thanh audio; thêm
+  "Tự cuộn theo audio" trong Cài đặt (không phải icon riêng trong màn đọc bài — hàng đó đã đủ 3
+  icon).
+- I: tắt cả 3 toggle (đoạn gốc/dịch/tách câu) giờ vẫn hiện bản gốc thay vì trống hẳn.
+- J: bỏ icon cạnh tên thể loại Luyện viết; nút "Hoàn tất" sau khi chấm điểm về Lưu trữ (không phải
+  Home, tránh mất bài vừa chấm); sửa vòng lặp back Lưu trữ↔Bài đã sửa (nút back trong
+  `writingFavoriteDetail.js` dùng `navigate()` PUSH thêm lịch sử thay vì `history.back()` POP như
+  `writingArchive.js` đã làm đúng); bỏ toast "Đã lưu" dư (giữ đổi label nút, đủ rõ).
+- K: Bài đọc/Hội thoại mặc định lọc A1 lần đầu mở (400 bài mà hiện "Tất cả" sẽ rất dài), nhớ level
+  gần nhất qua `localStorage` các lần sau (2 key riêng Bài đọc/Hội thoại).
+
+**Đã verify trên deploy thật (đo DOM/localStorage trực tiếp, không chỉ đọc code):** khung chờ
+không còn `.tabs.sticky-tabs` dù đọc DOM ngay khung hình đầu tiên; nút back ảnh bìa và nút back
+thường đo `getBoundingClientRect().left` bằng nhau (8px); `.section-nav-row` nền trong suốt;
+`.content-page` nền `color-mix` 92%; tách câu 1 bài 8 câu đếm đúng 1→8 liên tục, màu tím
+`rgb(124,92,255)`; tắt cả 3 toggle vẫn còn 8 khối content-text/4507 ký tự (không trống); Lưu trữ
+Phân tích/Luyện viết không còn icon; danh sách thể loại Luyện viết không còn icon; mặc định A1 sau
+khi xoá localStorage, chọn B1 rồi rời màn quay lại vẫn nhớ B1; Cài đặt có mục "Tự cuộn theo audio"
+lưu đúng localStorage; icon Pause deploy đúng bản đã giãn khoảng cách.
+
+**Còn lại cho Minh:**
+- Mục 4 (tra từ có thể vẫn lỗi ở 1 số bài cụ thể) — đã sửa phần lãng phí gọi AI thừa, nhưng nếu
+  sau đợt này vẫn gặp "Không tra được từ" ở 1 từ/bài cụ thể, cần Minh cho biết ĐÚNG bài + từ đó để
+  đọc thẳng DB thật — cơ chế khớp span đã qua nhiều vòng sửa, khả năng cao là ca lệch mới/hiếm.
+- Mục 12 (logo "THE LIBERAL ARTS MOSAIC") — Minh xác nhận đúng logo cần dùng nhưng chưa có đường
+  dẫn file thật trên máy (ảnh chỉ hiện trong khung chat). Cần Minh lưu 2 file (bản nền trong suốt +
+  bản nền tối) vào máy và cho biết đường dẫn — đề xuất chèn vào `app/js/views/login.js` (hiện chỉ
+  có chữ "Learning English AI" thuần, chưa có logo ảnh). Chưa làm, không chặn các mục còn lại.
+- Mục 8 phần audio "0:19/0:30 lúc hết bài" — đã sửa bằng cách ép thẳng 100%/đủ giờ đúng lúc
+  `onended`, nhưng CHƯA nghe hết 1 bài thật tới cuối để xác nhận trực quan (chỉ verify qua đọc
+  code + logic) — nhờ Minh nghe thử 1 bài tới hết để xác nhận.
