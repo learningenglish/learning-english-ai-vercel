@@ -358,6 +358,7 @@ SCHEMA JSON:
       "type": "với TỪ ĐƠN: loại từ (noun, verb, adj...). Với CỤM TỪ (word có khoảng trắng): PHẢI chọn ĐÚNG 1 trong 3 nhãn sau theo cấu trúc thật của cụm — 'Cụm danh từ', 'Cụm động từ + giới từ (phrasal verb)', hoặc 'N + giới từ + N' — không dùng nhãn khác, không để trống",
       "meaning": "nghĩa tiếng Việt",
       "example": "một câu ví dụ khác với câu trong bài, đúng cấp độ",
+      "example_translation": "bản dịch tiếng Việt của chính câu \\"example\\" ở trên",
       "is_specialized": true nếu là từ chuyên ngành, false nếu là từ thường
     }
   ],
@@ -373,6 +374,7 @@ SCHEMA JSON:
     {
       "pattern": "khuôn câu có chỗ trống, viết tự nhiên (KHÔNG phải công thức trừu tượng kiểu S+V+O)",
       "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong \\"content\\" có dùng khuôn này, không bịa thêm",
+      "example_translation": "bản dịch tiếng Việt của chính câu \\"example_from_lesson\\" ở trên",
       "note": "1 câu tiếng Việt ngắn, nói khuôn này DÙNG ĐỂ LÀM GÌ trong giao tiếp thực tế — KHÔNG giải thích ngữ pháp hàn lâm",
       "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn này đáng học lại ở ĐÚNG cấp độ bài này — không mô tả lại nghĩa câu"
     }
@@ -628,6 +630,8 @@ BUỘC và là CĂN CỨ DUY NHẤT cho toàn bộ phần còn lại của bài,
   cao (B2-C1): được phép giải thích sâu hơn, dùng thuật ngữ ngữ pháp chính xác hơn, ví dụ phức
   tạp hơn. KHÔNG dùng chung 1 độ sâu giải thích bất kể văn bản dễ hay khó.
 
+${PHRASE_GROUPS_RULES}
+
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo schema dưới đây.
 - Không lời chào, không giải thích ngoài JSON, không bọc trong dấu \`\`\`.
@@ -644,7 +648,16 @@ SCHEMA JSON:
       "speaker": "chỉ có với dialogue",
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
       "translation": "bản dịch tiếng Việt",
-      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ đã xác định ở 'level': MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên). Mỗi câu đọc như đang phân tích RIÊNG câu đó. Ngắn gọn, đúng trọng tâm."
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ đã xác định ở 'level': MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên). Mỗi câu đọc như đang phân tích RIÊNG câu đó. Ngắn gọn, đúng trọng tâm.",
+      "phrase_groups": [
+        {
+          "words": ["mảng từ ĐÚNG NGUYÊN VĂN/ĐÚNG THỨ TỰ trong text, xem QUY TẮC VỀ GOM CỤM TỪ"],
+          "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
+          "level": "cấp độ CEFR riêng của cụm/từ này",
+          "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
+          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - CHỈ có khi nhóm >1 từ"}
+        }
+      ]
     }
   ],
   "vocabulary": [
@@ -654,6 +667,7 @@ SCHEMA JSON:
       "type": "với TỪ ĐƠN: loại từ (noun, verb, adj...). Với CỤM TỪ (word có khoảng trắng): PHẢI chọn ĐÚNG 1 trong 3 nhãn — 'Cụm danh từ', 'Cụm động từ + giới từ (phrasal verb)', hoặc 'N + giới từ + N' — theo đúng cấu trúc thật của cụm, không dùng nhãn khác",
       "meaning": "nghĩa tiếng Việt ĐÚNG THEO NGỮ CẢNH trong bài (không phải nghĩa phổ biến nhất)",
       "example": "một câu ví dụ mới, đơn giản, vừa cấp độ đã xác định ở 'level'",
+      "example_translation": "bản dịch tiếng Việt của chính câu \\"example\\" ở trên",
       "is_specialized": true nếu là thuật ngữ chuyên ngành, false nếu là từ thường
     }
   ],
@@ -669,6 +683,7 @@ SCHEMA JSON:
     {
       "pattern": "khuôn câu có chỗ trống, viết tự nhiên (KHÔNG phải công thức trừu tượng kiểu S+V+O)",
       "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong văn bản có dùng khuôn này, không bịa thêm",
+      "example_translation": "bản dịch tiếng Việt của chính câu \\"example_from_lesson\\" ở trên",
       "note": "1 câu tiếng Việt ngắn, nói khuôn này DÙNG ĐỂ LÀM GÌ trong giao tiếp thực tế — KHÔNG giải thích ngữ pháp hàn lâm",
       "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn này đáng học lại ở ĐÚNG cấp độ đã xác định ở 'level' — không mô tả lại nghĩa câu"
     }

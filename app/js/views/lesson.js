@@ -88,6 +88,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     xpEarned: progress?.xp_earned || 0,
     showTranslation: true, // luôn hiện dịch mặc định, tắt được qua icon
     showChunks: false, // "tách câu" (2026-08-08) — mặc định tắt, bật qua icon cạnh nút dịch
+    showOriginal: true, // "đoạn gốc" (2026-08-08, mục 7) — mặc định hiện, tắt được qua icon riêng
   };
   // Tiêu đề mặc định tiếng Việt (title_vi) — tắt bản dịch thì đổi sang tiếng Anh (title),
   // nhất quán với việc ẩn/hiện bản dịch trong nội dung bài (icon "văn/A" ở tab Nội dung).
@@ -167,17 +168,38 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     },
   });
 
+  // Ảnh bìa (2026-08-08, mục 8) — "lesson.cover_image_url" đã có sẵn từ trước (dùng cho thẻ danh
+  // sách/carousel) nhưng CHƯA TỪNG hiện trong màn đọc bài — thêm 1 khối ảnh phủ đầu, bài chưa có
+  // ảnh (chưa tìm được/lỗi lúc sinh) thì không hiện khối này, không vỡ layout.
+  function coverImageHtml() {
+    if (isNews || !lesson.cover_image_url) return "";
+    return `<div class="lesson-cover"><img src="${escapeHtml(lesson.cover_image_url)}" alt="" loading="lazy" /></div>`;
+  }
+
+  // Gộp hàng tab (Nội dung/Từ vựng/Ngữ pháp/Luyện tập) VÀ hàng toolbar (đoạn gốc/dịch/tách câu,
+  // trước đây chỉ có bên trong panel Nội dung) thành 1 HÀNG DUY NHẤT (2026-08-08, mục 10 — Minh:
+  // "chiếm không gian rất nhiều... đổi thành icon hình vuông bo góc... 3 icon tắt/mở cho icon
+  // tròn nhỏ nằm bên phải để tiết kiệm không gian"). 3 icon tắt/mở CHỈ có ý nghĩa ở tab Nội dung
+  // — ẩn hẳn (không chỉ mờ đi) khi đang xem tab khác, xem wireSectionTabs() bên dưới.
   mount.innerHTML = `
     <div class="screen">
+      ${coverImageHtml()}
       <div class="lesson-header-row">
         ${backChevronHtml()}
         <h1 class="screen-title" id="lesson-title">${escapeHtml(lessonTitleFor(state.showTranslation))}</h1>
       </div>
-      <div class="tabs sticky-tabs" role="tablist">
-        <button type="button" class="tab-btn active" data-tab="content">Nội dung</button>
-        <button type="button" class="tab-btn" data-tab="vocabulary">Từ vựng</button>
-        <button type="button" class="tab-btn" data-tab="grammar">Ngữ pháp</button>
-        <button type="button" class="tab-btn" data-tab="exercises">Luyện tập</button>
+      <div class="section-nav-row">
+        <div class="section-icon-tabs" role="tablist">
+          <button type="button" class="section-icon-btn active" data-tab="content" title="Nội dung">${icon("book", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn" data-tab="vocabulary" title="Từ vựng">${icon("book-open", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn" data-tab="grammar" title="Ngữ pháp">${icon("hash", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn" data-tab="exercises" title="Luyện tập">${icon("check-circle", { size: 18 })}</button>
+        </div>
+        <div class="section-toggle-icons" id="content-toggle-icons">
+          <button type="button" class="icon-toggle-btn ${state.showOriginal ? "active" : ""}" id="toggle-original-btn" title="Đoạn gốc">${icon("file-text", { size: 16 })}</button>
+          <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">${icon("languages", { size: 16 })}</button>
+          <button type="button" class="icon-toggle-btn ${state.showChunks ? "active" : ""}" id="toggle-chunks-btn" title="Tách câu">${icon("list", { size: 16 })}</button>
+        </div>
       </div>
       <div id="lesson-panel"></div>
     </div>
@@ -191,17 +213,47 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     history.back();
   });
 
-  mount.querySelectorAll(".tab-btn").forEach((btn) => {
+  function updateToggleIconsVisibility() {
+    const row = mount.querySelector("#content-toggle-icons");
+    if (row) row.hidden = state.tab !== "content";
+  }
+  updateToggleIconsVisibility();
+
+  mount.querySelectorAll(".section-icon-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      mount.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      mount.querySelectorAll(".section-icon-btn").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       if (state.tab === "content" && btn.dataset.tab !== "content") {
         ttsPlayer.stop();
         renderContentBodyFn = null;
       }
       state.tab = btn.dataset.tab;
+      updateToggleIconsVisibility();
       renderPanel();
     });
+  });
+
+  // 3 icon tắt/mở tab Nội dung — dời ra hàng chung (mục 10), gọi thẳng "renderContentBodyFn"
+  // (đã lưu ở scope ngoài renderContentTab() từ trước, xem let renderContentBodyFn bên dưới) để
+  // vẽ lại đúng phần thân, không cần vẽ lại cả panel.
+  mount.querySelector("#toggle-original-btn").addEventListener("click", (e) => {
+    state.showOriginal = !state.showOriginal;
+    e.currentTarget.classList.toggle("active", state.showOriginal);
+    renderContentBodyFn?.();
+  });
+  mount.querySelector("#toggle-translate-btn").addEventListener("click", (e) => {
+    state.showTranslation = !state.showTranslation;
+    e.currentTarget.classList.toggle("active", state.showTranslation);
+    renderContentBodyFn?.();
+    // Tiêu đề bài học cũng đổi theo: mặc định tiếng Việt (title_vi), tắt dịch thì hiện tiếng Anh
+    // (title) — nhất quán với việc ẩn/hiện bản dịch trong nội dung bài.
+    const titleEl = document.getElementById("lesson-title");
+    if (titleEl) titleEl.textContent = lessonTitleFor(state.showTranslation);
+  });
+  mount.querySelector("#toggle-chunks-btn").addEventListener("click", (e) => {
+    state.showChunks = !state.showChunks;
+    e.currentTarget.classList.toggle("active", state.showChunks);
+    renderContentBodyFn?.();
   });
 
   renderPanel();
@@ -219,31 +271,65 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // Bỏ phân trang (2026-08-08, Minh: "bỏ tính năng hiển thị từng trang") — luôn hiện TOÀN BỘ nội
   // dung liên tục trong 1 khối, không còn "Trang X/Y" + nút ‹›. Đây chính là nhánh "Xem tất cả"
   // cũ (trước đây là 1 lựa chọn qua toggle, giờ là hành vi DUY NHẤT).
+  // Tách câu tiếng Anh theo dấu . ! ? (giữ dấu câu lại với câu đó) — dùng để chia 1 ĐOẠN bài đọc
+  // (nhiều câu) thành từng khối riêng khi bật "tách câu" (mục 1, đúng mẫu file Minh gửi: mỗi câu
+  // 1 icon loa + breakdown riêng, không phải liệt kê phẳng cả đoạn). Hội thoại không cần hàm này
+  // — 1 lượt thoại đã gần như luôn là 1 câu.
+  function splitIntoSentences(text) {
+    if (!text) return [];
+    const matches = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g);
+    return (matches || [text]).map((s) => s.trim()).filter(Boolean);
+  }
+
+  // Chia "phrase_groups" (đã có sẵn, phủ đủ CẢ ĐOẠN) thành từng nhóm con theo TỪNG CÂU — CHỈ xử
+  // lý ở client, không cần trường AI mới. Đi tuần tự theo nhóm, cộng dồn số từ, cắt sang câu kế
+  // khi số từ cộng dồn CHẠM ĐÚNG số từ thật của câu đó (tự tokenize riêng từng câu, dùng CHUNG
+  // tokenizeWords() đã sửa để khớp số — xem BUG THẬT đầu file).
+  function bucketPhraseGroupsBySentence(sentences, phraseGroups) {
+    const groups = Array.isArray(phraseGroups) ? phraseGroups : [];
+    const sentenceWordCounts = sentences.map((s) => tokenizeWords(s).tokens.length);
+    const buckets = sentences.map(() => []);
+    let sIdx = 0;
+    let wordsUsedInSentence = 0;
+    for (const g of groups) {
+      const target = Math.min(sIdx, buckets.length - 1);
+      buckets[target].push(g);
+      wordsUsedInSentence += Array.isArray(g?.words) ? g.words.length : 0;
+      while (sIdx < sentences.length && wordsUsedInSentence >= sentenceWordCounts[sIdx]) {
+        wordsUsedInSentence -= sentenceWordCounts[sIdx];
+        sIdx++;
+      }
+    }
+    return buckets;
+  }
+
+  // Tách bản dịch tiếng Việt theo câu SONG SONG với splitIntoSentences() ở trên — chỉ DÙNG ĐƯỢC
+  // khi số câu 2 bên khớp nhau (bản dịch tự nhiên không phải lúc nào cũng giữ đúng 1-1 ranh giới
+  // câu với bản gốc) — khớp thì ghép đúng câu-với-câu, KHÔNG khớp thì hiện nguyên bản dịch CẢ
+  // ĐOẠN 1 lần ở cuối thay vì ghép liều sai câu.
+  function splitTranslationSentences(text) {
+    if (!text) return [];
+    const matches = text.match(/[^.!?…]+[.!?…]+(\s+|$)|[^.!?…]+$/g);
+    return (matches || [text]).map((s) => s.trim()).filter(Boolean);
+  }
+
+  function contentChunkLinesHtml(groups) {
+    if (!groups.length) return `<div class="content-chunks muted">Chưa có dữ liệu tách câu cho câu này.</div>`;
+    return `
+      <div class="content-chunks">
+        ${groups
+          .map((g) => `<div class="content-chunk-line">🔹 ${escapeHtml((g.words || []).join(" "))} = ${escapeHtml(g.meaning || "")}</div>`)
+          .join("")}
+      </div>
+    `;
+  }
+
   function renderContentTab(panel) {
     const pages = lesson.content || [];
     panel.innerHTML = `
-      <div class="content-toolbar">
-        <button type="button" class="icon-toggle-btn ${state.showChunks ? "active" : ""}" id="toggle-chunks-btn" title="Tách câu">${icon("list", { size: 18 })}</button>
-        <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">${icon("languages", { size: 18 })}</button>
-      </div>
       <div id="content-body"></div>
       ${ttsSupported ? audioBarHtml() : ""}
     `;
-
-    panel.querySelector("#toggle-chunks-btn").addEventListener("click", () => {
-      state.showChunks = !state.showChunks;
-      panel.querySelector("#toggle-chunks-btn").classList.toggle("active", state.showChunks);
-      renderContentBody();
-    });
-    panel.querySelector("#toggle-translate-btn").addEventListener("click", () => {
-      state.showTranslation = !state.showTranslation;
-      panel.querySelector("#toggle-translate-btn").classList.toggle("active", state.showTranslation);
-      renderContentBody();
-      // Tiêu đề bài học cũng đổi theo: mặc định tiếng Việt (title_vi), tắt dịch thì hiện
-      // tiếng Anh (title) — nhất quán với việc tắt dịch trong nội dung bài.
-      const titleEl = document.getElementById("lesson-title");
-      if (titleEl) titleEl.textContent = lessonTitleFor(state.showTranslation);
-    });
 
     if (ttsSupported) {
       wireAudioBar(panel);
@@ -263,20 +349,32 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     renderContentBodyFn = renderContentBody;
     renderContentBody();
 
-    // "Tách câu" (2026-08-08, mục 2) — liệt kê TUẦN TỰ từng nhóm trong "phrase_groups" của câu
-    // này theo đúng format file mẫu Minh gửi (🔹 cụm = nghĩa), dùng LẠI dữ liệu "phrase_groups"
-    // đã có sẵn (không cần trường AI mới) — bài chưa có đủ dữ liệu (bài cũ chưa vá xong) thì hiện
-    // 1 dòng ghi chú thay vì render rỗng.
-    function contentChunksHtml(item) {
-      const groups = Array.isArray(item?.phrase_groups) ? item.phrase_groups : [];
-      if (!groups.length) return `<div class="content-chunks muted">Chưa có dữ liệu tách câu cho câu này.</div>`;
-      return `
-        <div class="content-chunks">
-          ${groups
-            .map((g) => `<div class="content-chunk-line">🔹 ${escapeHtml((g.words || []).join(" "))} = ${escapeHtml(g.meaning || "")}</div>`)
-            .join("")}
+    // Khối "tách câu" cho 1 ĐOẠN bài đọc (nhiều câu) — mỗi câu 1 khối riêng: icon loa (Web Speech
+    // "đọc 1 lần", KHÔNG dùng audio thật đã cắt sẵn vì đó chỉ cắt theo ĐOẠN chứ không theo câu),
+    // đoạn gốc (nếu bật), bản dịch CÂU ĐÓ (nếu khớp số câu, xem splitTranslationSentences ở
+    // trên), và breakdown cụm CHỈ của câu đó — đúng mẫu file Minh gửi (mục 1).
+    function readingChunkedItemHtml(item, itemIdx) {
+      const sentences = splitIntoSentences(item?.text || "");
+      const buckets = bucketPhraseGroupsBySentence(sentences, item?.phrase_groups);
+      const viSentences = splitTranslationSentences(item?.translation || "");
+      const viMatch = viSentences.length === sentences.length;
+      const perSentence = sentences
+        .map(
+          (sentence, sIdx) => `
+        ${sIdx > 0 ? '<div class="content-divider"></div>' : ""}
+        <div class="content-item-header">
+          <span class="sentence-number muted">Câu ${sIdx + 1}</span>
+          ${ttsSupported ? `<button type="button" class="sentence-icon-btn" data-sentence-idx="${itemIdx}:${sIdx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>` : ""}
         </div>
-      `;
+        ${state.showOriginal ? `<div class="content-text">${escapeHtml(sentence)}</div>` : ""}
+        ${state.showTranslation && viMatch ? `<div class="content-translation">${escapeHtml(viSentences[sIdx])}</div>` : ""}
+        ${contentChunkLinesHtml(buckets[sIdx] || [])}
+      `
+        )
+        .join("");
+      const wholeTranslation =
+        state.showTranslation && !viMatch ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : "";
+      return perSentence + wholeTranslation;
     }
 
     function renderContentBody() {
@@ -284,33 +382,50 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       body.innerHTML = `
         <div class="content-page">
           ${pages
-            .map(
-              (item, i) => `
+            .map((item, i) => {
+              const useChunkedReading = state.showChunks && !item?.speaker && splitIntoSentences(item?.text || "").length > 0;
+              return `
             ${i > 0 ? '<div class="content-divider"></div>' : ""}
-            <div class="content-item-header">
-              <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
-              ${contentActionsHtml(i)}
-            </div>
-            <div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>
-            ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
-            ${state.showChunks ? contentChunksHtml(item) : ""}
-          `
-            )
+            ${
+              useChunkedReading
+                ? readingChunkedItemHtml(item, i)
+                : `
+              <div class="content-item-header">
+                <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
+                ${contentActionsHtml(i)}
+              </div>
+              ${state.showOriginal ? `<div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>` : ""}
+              ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
+              ${state.showChunks ? contentChunkLinesHtml(item?.phrase_groups || []) : ""}
+            `
+            }
+          `;
+            })
             .join("")}
         </div>
       `;
 
-      body.querySelectorAll(".content-text").forEach((el) => {
+      body.querySelectorAll(".content-text[data-item-idx]").forEach((el) => {
         const itemIdx = Number(el.dataset.itemIdx);
         wireInteractiveWords(el, pages[itemIdx]?.text || "", genderHints[itemIdx]);
       });
-      body.querySelectorAll(".sentence-icon-btn").forEach((btn) => {
+      body.querySelectorAll(".sentence-icon-btn[data-idx]").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           const itemIdx = Number(btn.dataset.idx);
           // 2026-07-30 (mục 1+2) — phát ĐÚNG đoạn audio thật đã cắt sẵn cho câu này (nếu bài đã
           // có), KHÔNG còn luôn luôn Web Speech như trước — xem playSegment() trong tts.js.
           ttsPlayer.playSegment(itemIdx);
+        });
+      });
+      // Icon loa TỪNG CÂU trong chế độ "tách câu" bài đọc — không có audio thật cắt theo câu,
+      // luôn Web Speech "đọc 1 lần" (giống icon loa từ vựng), không đụng playlist chính.
+      body.querySelectorAll(".sentence-icon-btn[data-sentence-idx]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const [itemIdx, sIdx] = btn.dataset.sentenceIdx.split(":").map(Number);
+          const sentence = splitIntoSentences(pages[itemIdx]?.text || "")[sIdx] || "";
+          ttsPlayer.speakOnce(sentence, genderHints[itemIdx]);
         });
       });
     }
@@ -673,7 +788,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
             (w) => `
           <div class="vocab-item ${w.is_specialized ? "vocab-item-specialized" : ""}">
             <div class="vocab-word-row">
-              <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""}" data-word="${escapeHtml(w.word)}">
+              <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""} ${w.is_specialized ? "vocab-word-specialized" : ""}" data-word="${escapeHtml(w.word)}">
                 ${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span>
               </div>
               ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">${icon("volume", { size: 15 })}</button>` : ""}
@@ -681,6 +796,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
             ${w.type ? `<div class="vocab-type-badge badge">${escapeHtml(w.type)}</div>` : ""}
             <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
             <div class="vocab-example muted">${escapeHtml(w.example || "")}</div>
+            ${w.example_translation ? `<div class="vocab-example-translation muted">${escapeHtml(w.example_translation)}</div>` : ""}
           </div>
         `
           )
@@ -730,12 +846,15 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         <div class="grammar-list">
           ${patterns
             .map(
+              // 2026-08-08 (Minh: "bỏ giải thích chữ đen và chữ nghiêng, chỉ cần thêm dịch cho ví
+              // dụ") — bỏ hẳn "note"/"why_worth_it" khỏi hiển thị (VẪN sinh ở prompt để model tự
+              // lọc chất lượng khuôn câu đáng chọn, chỉ không render ra UI nữa), chỉ còn khuôn
+              // câu + ví dụ tiếng Anh + dịch. Bài cũ chưa có "example_translation" -> ẩn dòng dịch.
               (p) => `
             <div class="pattern-item">
               <div class="grammar-name">${escapeHtml(p.pattern || "")}</div>
               <div class="grammar-example muted">"${escapeHtml(p.example_from_lesson || "")}"</div>
-              <div class="grammar-explanation">${escapeHtml(p.note || "")}</div>
-              ${p.why_worth_it ? `<div class="pattern-why muted">${escapeHtml(p.why_worth_it)}</div>` : ""}
+              ${p.example_translation ? `<div class="grammar-example-translation">${escapeHtml(p.example_translation)}</div>` : ""}
             </div>
           `
             )
@@ -925,9 +1044,15 @@ function findVocabEntry(matchedText, vocabMap) {
 
 // Tách "text" thành các token TỪ (chuỗi chữ cái/dấu nháy liên tiếp), giữ vị trí start/end
 // trong chuỗi gốc để ráp lại HTML đúng chỗ.
+// BUG THẬT (2026-08-08, xác nhận bằng test trực tiếp: bấm từ "am" trong câu có chứa "24" ở lượt
+// sau ra "Không tra được từ." dù phrase_groups phủ đủ 100%) — regex trước đây thiếu chữ số,
+// KHÔNG khớp "sentenceWordTokens()" phía server (api/_generate/lesson.js, có chữ số trong lớp ký
+// tự) dùng để sinh "words" của phrase_groups — bất kỳ đoạn nào chứa số ("24 years old", giá
+// tiền, giờ...) làm lệch toàn bộ phép so khớp CẢ ĐOẠN đó, không riêng từ chứa số. Đổi khớp CHÍNH
+// XÁC quy tắc token hoá phía server.
 function tokenizeWords(text) {
   const tokens = [];
-  const re = /[A-Za-z']+/g;
+  const re = /[A-Za-z0-9']+/g;
   let m;
   while ((m = re.exec(text || ""))) {
     tokens.push({ word: m[0], start: m.index, end: m.index + m[0].length });

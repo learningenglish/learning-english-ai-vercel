@@ -1334,6 +1334,24 @@ textarea:focus {
 }
 
 /* ===== Lesson detail ===== */
+/* Ảnh bìa đầu bài học (2026-08-08, mục 8) — "lesson.cover_image_url" đã có sẵn, chỉ chưa từng
+   render trong màn đọc bài. Bo góc, tỉ lệ ngang, bài không có ảnh thì khối này không tồn tại
+   trong DOM (xem coverImageHtml()), không chiếm chỗ/không vỡ layout. */
+.lesson-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.lesson-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .lesson-header-row {
   display: flex;
   /* "center" thay vì "flex-start" — nút "<" (khối cố định 44px, icon tự căn giữa BÊN TRONG
@@ -1363,11 +1381,55 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.content-toolbar {
+/* Hàng gộp tab + toggle (2026-08-08, mục 10, thay ".tabs.sticky-tabs" + ".content-toolbar" cũ
+   — 2 hàng riêng chiếm quá nhiều chỗ) — 4 icon vuông bo góc (chọn mục) bên trái, tối đa 3 icon
+   tròn nhỏ (đoạn gốc/dịch/tách câu, CHỈ có ý nghĩa ở tab Nội dung) bên phải. */
+.section-nav-row {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  padding: 8px 0;
   margin-bottom: 12px;
+}
+
+.section-icon-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.section-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.section-icon-btn.active {
+  color: #fff;
+  background: var(--purple);
+  border-color: var(--purple);
+}
+
+.section-toggle-icons {
+  display: flex;
+  gap: 6px;
+}
+
+.section-toggle-icons .icon-toggle-btn {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
 }
 
 .icon-toggle-btn {
@@ -1428,18 +1490,21 @@ textarea:focus {
 /* 1 HÀNG DUY NHẤT (2026-07-29, Minh: "thanh bar quá lớn, đưa icon và thanh thời gian nằm cùng
    1 hàng") — trở lại viên thuốc tròn như bản gốc trước Round 8 (chiều cao = --nav-height), chỉ
    khác là thanh kéo + nhãn thời gian giờ chiếm chỗ nút Về đoạn trước/Lùi 10s/Tiến 10s đã bỏ. */
+/* Chiều cao RIÊNG (2026-08-08, Minh: "card thanh audio bị lớn so với các icon") — trước dùng
+   chung var(--nav-height)=68px với thanh điều hướng dưới, quá cao so với icon 36-44px bên trong,
+   để lại nhiều khoảng trống thừa trên/dưới. */
 .audio-bar {
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: 12px;
-  height: var(--nav-height);
+  height: 52px;
   display: flex;
   align-items: center;
   gap: 6px;
   background: var(--surface);
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 10px;
   box-shadow: 0 12px 30px rgba(31, 41, 55, 0.15);
   z-index: 50;
 }
@@ -1507,10 +1572,16 @@ textarea:focus {
   pointer-events: none;
 }
 
+/* BUG THẬT (2026-08-08, đo được bằng getBoundingClientRect/computed padding "1px 6px" không đối
+   xứng) — thiếu flex centering khiến icon SVG bên trong dựa vào canh giữa mặc định của <button>
+   (không đảm bảo), lệch tâm hình học của nút. */
 .audio-btn {
   flex-shrink: 0;
   min-width: 36px;
   min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background: none;
   border: none;
@@ -1585,6 +1656,13 @@ textarea:focus {
 .speaker-name {
   color: var(--purple);
   font-weight: 600;
+}
+
+/* Nhãn "Câu N" trong chế độ tách câu bài đọc (2026-08-08) — thay cho tên nhân vật (bài đọc không
+   có speaker), cùng vị trí trong .content-item-header nên không cần CSS riêng ngoài màu/cỡ chữ. */
+.sentence-number {
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .content-text {
@@ -1806,13 +1884,40 @@ textarea:focus {
   border-color: var(--orange);
 }
 
+/* Thu nhỏ khung (2026-08-08, Minh: "khung cho mỗi từ vựng quá lớn") — padding/gap nhỏ hơn hẳn
+   các thẻ khác (Ngữ pháp/Luyện tập vẫn giữ 14px, ít mục hơn nên không cần thu). */
+.vocab-item {
+  padding: 10px 12px;
+}
+
+.vocab-list {
+  gap: 8px;
+}
+
+/* Màu chuyên ngành khớp đúng highlight trong đoạn văn (2026-08-08, Minh: "Từ chuyên ngành nên
+   cho màu trùng với màu nổi bật trong đoạn văn") — trước chỉ có viền cam ở card, chữ vẫn màu
+   thường. Cùng var(--orange) với .vocab-highlight-specialized (tab Nội dung). */
+.vocab-word-specialized {
+  color: var(--orange);
+}
+
+.vocab-example-translation {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
 .pattern-item {
   border-color: var(--border);
 }
 
-.pattern-why {
-  margin-top: 4px;
-  font-style: italic;
+/* Dịch cho ví dụ khuôn câu (2026-08-08) — thay cho .pattern-why đã bỏ (không còn hiện
+   note/why_worth_it, xem renderGrammarTab()). Chữ thường, không đậm/không nghiêng, giống dịch
+   trong tab Nội dung (.content-translation). */
+.grammar-example-translation {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-top: 2px;
 }
 
 .vocab-word-row {
@@ -1824,7 +1929,7 @@ textarea:focus {
 
 .vocab-word {
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .vocab-type-badge {

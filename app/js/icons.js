@@ -24,6 +24,10 @@ const PATHS = {
   flame: '<path d="M12 2c-.3 3-2.5 4.6-4 6.5C6.5 10.6 6 12.4 6 14a6 6 0 0 0 12 0c0-2-.8-3.4-2-4.7.3 1.6-.3 2.7-1 3.2.3-2.6-.6-4-1.5-5.3C13 6 12.5 4 12 2z"/>',
   volume: '<path d="M5 9v6h3.5l4.5 4V5l-4.5 4H5z"/><path d="M17 8.5a5 5 0 0 1 0 7"/><path d="M19.5 6a9 9 0 0 1 0 12"/>',
   list: '<path d="M9 6h12"/><path d="M9 12h12"/><path d="M9 18h12"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/>',
+  // "đoạn gốc" (2026-08-08, toggle ẩn/hiện văn bản tiếng Anh gốc) — trang giấy có dòng chữ, khác
+  // hẳn "list" (đang dùng cho tách câu) để không trùng hình dạng giữa 2 icon cạnh nhau.
+  "file-text":
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/>',
   languages:
     '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14.5 14.5 0 0 1 0 18"/><path d="M12 3a14.5 14.5 0 0 0 0 18"/>',
   "chevron-left": '<path d="M15 18l-6-6 6-6"/>',
