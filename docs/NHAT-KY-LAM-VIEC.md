@@ -868,7 +868,54 @@ câu (3 mục), không còn nút tim/nút Hỏi AI, nền nút Play phẳng.
 
 **Còn lại cho Minh:**
 - Chạy `supabase/one-off_remove_legacy_freeform_lessons_2026-08-08.sql` khi sẵn sàng (xem số
-  lượng ở câu SELECT trước).
-- "Nút audio bị lệch giữa các bài" (mục 14 vế 2) — chưa xác minh được nguyên nhân cụ thể qua đọc
-  code (không thấy khác biệt cấu trúc giữa các bài); cần Minh xác nhận lại còn thấy lệch không
-  sau đợt sửa này, kèm ảnh chụp 2 bài cụ thể nếu còn — sẽ sửa đúng nguyên nhân quan sát được.
+  lượng ở câu SELECT trước). **CẬP NHẬT 2026-08-08 (đợt 2): Minh đã chạy — 86 bài rác đã xoá,
+  xác nhận lại count=0. Xong hẳn, không còn việc này nữa.**
+
+## 2026-08-08 (đợt 2) — 10 phản hồi từ ảnh chụp thật (điện thoại + máy tính), 2 bug thật + SW cache quên tăng
+
+Minh gửi tiếp 10 phản hồi kèm ảnh chụp THẬT (khác ảnh preview desktop trước) sau khi dùng thử đợt
+1. Khảo sát trực tiếp trên deploy thật (không đoán) phát hiện:
+
+**Nguyên nhân gốc — quên tăng SW cache version cả đợt 1** (`app/sw.js` vẫn ở `v45` dù đã sửa rất
+nhiều `app/js`/`app/css` — đúng quy tắc bắt buộc đã ghi sẵn trong file, đợt trước bỏ sót). Tăng
+lên `v46`. Nhắc lại: PHẢI tăng version MỖI LẦN đụng app/js hoặc app/css, không được quên nữa.
+
+**2 bug thật xác nhận qua test trực tiếp trên deploy (không phải do cache):**
+1. `tokenizeWords()` (client, dùng để tính span khớp tooltip) thiếu chữ số trong regex — bất kỳ
+   câu nào chứa số ("24 years old") làm lệch toàn bộ phép so khớp. Sửa khớp đúng regex server.
+2. **Bug SÂU HƠN phát hiện thêm khi test lại sau khi sửa #1** — `spansFromPhraseGroups()` so
+   khớp RAW string (không bỏ dấu câu), trong khi coverage-check CÓ bỏ dấu câu — 1 nhóm có từ
+   "Hello!" (dính dấu chấm than) khiến coverage-check báo ĐẠT nhưng span-matching vẫn trả về
+   null cho CẢ CÂU (không phải chỉ từ "Hello!"). Đây là nguyên nhân THẬT SỰ đứng sau "Không tra
+   được từ." dai dẳng — không phải do cache, không phải do bug #1. Sửa: chuẩn hoá cả 2 vế giống
+   hệt nhau trước khi so khớp. Verify sống: bấm từ "am"/"24" trong câu có số — hiện tooltip ngay,
+   không lỗi, không quay vòng.
+
+**Việc mới:** tách "tách câu" thành từng CÂU (không phải cả đoạn, đúng mẫu file Minh gửi — mỗi câu
+1 icon loa riêng, dùng Web Speech vì audio thật chỉ cắt theo đoạn); icon tắt/mở "đoạn gốc" (thứ 3
+cạnh dịch/tách câu); ảnh bìa đầu bài (`cover_image_url` đã có sẵn, chưa từng render); gộp hàng tab
++ toolbar thành 1 hàng icon (4 vuông bo góc bên trái, tối đa 3 tròn nhỏ bên phải, tiết kiệm
+khoảng 40% chiều cao); thêm `example_translation` cho ví dụ từ vựng + cấu trúc câu (2 prompt,
+đồng bộ cả Phân tích văn bản); Ngữ pháp bỏ hẳn giải thích/chữ nghiêng (note/why_worth_it) khỏi
+UI — VẪN sinh ở prompt (dùng nội bộ để model tự lọc chất lượng khuôn câu), chỉ không hiện; từ
+chuyên ngành trong tab Từ vựng tô màu cam khớp màu highlight trong đoạn văn; audio bar giảm
+chiều cao riêng (68px→52px) + `.audio-btn` thêm flex-centering (đo được padding lệch tâm thật).
+
+**Đã verify trên deploy thật:** tooltip tra từ ổn với câu chứa số, tách câu hiện đúng 16 câu riêng
+biệt (bài A1 test) mỗi câu 1 icon loa, icon Play canh giữa tuyệt đối (offset 0,0), thanh audio cao
+52px, toggle "đoạn gốc" ẩn/hiện đúng, tab Từ vựng phẳng không còn 4 nút lọc + màu chuyên ngành,
+Ngữ pháp không còn note/why_worth_it, ảnh bìa hiện đúng, hàng icon ẩn 3 toggle khi rời tab Nội
+dung, đã sinh thử 1 bài Phân tích văn bản mới xác nhận có `phrase_groups`+`example_translation`.
+
+**Phát hiện qua test Phân tích văn bản, CHƯA khắc phục — báo Minh biết:** `phrase_groups` của bài
+Phân tích văn bản mới đôi khi vẫn gộp NGUYÊN CẢ CÂU thành 1 nhóm (type "Câu đơn", không khớp
+danh sách 24 loại đã định) — RÀNG BUỘC đã có trong prompt dùng chung (`PHRASE_GROUPS_RULES`) NHƯNG
+đây là quy tắc MỀM (không có validator code chặn cứng, đúng triết lý đã chọn từ đầu — xem đợt sửa
+"cơ chế giám sát chất lượng"), model không tuân thủ 100%. Bài Chuyên ngành (đã tune nhiều lượt
+trước) ổn định hơn hẳn; đây là lần đầu áp dụng cho Phân tích văn bản nên cần thêm vài lượt quan
+sát thực tế mới biết có cần siết thêm hay không — CHƯA sửa gì thêm ở đợt này, cần Minh xem thêm
+vài bài Phân tích thật rồi phản hồi.
+
+**Còn lại cho Minh:** không có việc bắt buộc nào — mọi thay đổi đã deploy + verify. Riêng phát
+hiện "Câu đơn" ở Phân tích văn bản (đoạn trên) cần Minh tự quan sát thêm vài bài thật trước khi
+quyết định có cần siết prompt thêm hay chấp nhận như hiện tại.
