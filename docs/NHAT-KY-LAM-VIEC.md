@@ -919,3 +919,76 @@ vài bài Phân tích thật rồi phản hồi.
 **Còn lại cho Minh:** không có việc bắt buộc nào — mọi thay đổi đã deploy + verify. Riêng phát
 hiện "Câu đơn" ở Phân tích văn bản (đoạn trên) cần Minh tự quan sát thêm vài bài thật trước khi
 quyết định có cần siết prompt thêm hay chấp nhận như hiện tại.
+
+## 2026-08-09 (đợt 3) — 17 phản hồi từ ảnh chụp thật, 4 nguyên nhân gốc + thiết kế lại ảnh bìa/icon/từ vựng/tiến trình
+
+Minh gửi tiếp 17 phản hồi kèm 9 ảnh chụp thật (devtools mobile + 2 ảnh app tham khảo) sau khi
+dùng thử đợt 2. Khảo sát trực tiếp DB thật + đo DOM thật (không đoán) tìm ra **4 nguyên nhân gốc
+cụ thể** đứng sau phần lớn phản hồi:
+
+**Nhóm A — 4 bug gốc:**
+1. `phrase_groups[].words` đôi khi nhét NHIỀU TỪ vào CHUNG 1 chuỗi (vd `["normal oil traffic
+   could resume"]` thay vì 5 phần tử riêng) — xác nhận qua DB thật 2 bài Minh chụp, đúng nguyên
+   nhân "tra từ hiện nguyên câu" (mục 5) vì `spansFromPhraseGroups()` không khớp được token nào
+   nên trả `null` cho CẢ CÂU. Sửa: thêm ví dụ SAI/ĐÚNG rõ ràng vào `PHRASE_GROUPS_RULES`.
+2. `splitIntoSentences()`/`splitTranslationSentences()` (viết ở đợt 2) tách câu tại MỌI dấu chấm
+   kể cả trong từ viết tắt ("U.S." → "U." + "S. official...") — đúng lỗi Hình 8/9 ("Câu 1: S.").
+   Bug CODE thật do tôi viết, không phải model. Sửa: thêm `protectAbbreviations()`/
+   `restoreAbbreviations()` (thay tạm dấu chấm trong viết tắt bằng ` ` trước khi tách câu,
+   khôi phục sau) — verify bằng Node test độc lập (3 câu chứa Dr./U.S./Mr./p.m./U.K. tách đúng).
+3. `.btn-block { display: flex }` (CSS) tự đè lên hành vi mặc định của `hidden` (CSS tác giả
+   LUÔN thắng CSS trình duyệt) — nút nào dùng `.btn-block` rồi bị ẩn vẫn HIỆN NGUYÊN. Đúng
+   nguyên nhân mục 11 (2 nút dính nhau ở Phân tích văn bản) — VÀ phát hiện thêm: hàng icon tắt/mở
+   (đợt 2) của tôi cũng dính lỗi y hệt. Sửa: rule global `[hidden]{display:none!important}` +
+   xoá 2 rule vá cục bộ trùng lặp (`.filter-row[hidden]`, `#bottom-nav[hidden]`).
+4. `analyze_user_text()` vẫn giữ `maxTokens:4000` dù đợt 2 vừa thêm field `phrase_groups` khá dài
+   — lặp lại đúng bug lịch sử đã từng gặp ở `generate_lesson` (JSON bị cắt giữa chừng). Sửa: nâng
+   lên 6000, khớp `MAX_TOKENS_CAP`.
+
+**Thiết kế lại (Nhóm B-F):**
+- Ảnh bìa: giảm từ aspect-ratio 16:9 đầy đủ xuống `height:140px` cố định + back/tiêu đề chuyển
+  thành lớp phủ (gradient tối, tái dùng đúng pattern `.continue-card-overlay`) đè lên ảnh — nút
+  back nay LUÔN ở vị trí cố định góc trên-trái như mọi màn khác (giải quyết luôn mục 2).
+- Icon 4 tab (`.section-icon-btn`) + 3 toggle (`.icon-toggle-btn`) trạng thái KHÔNG active: đổi
+  từ xám trung tính (`--surface-soft`/`--text-dim`) sang accent nhạt (`--purple-soft`/`--purple`,
+  tự đổi theo Color Palette) — hết "chìm".
+- Khối tách câu: 🔹 emoji → chấm tròn nhỏ vẽ bằng CSS (không viền, đồng bộ mọi thiết bị), thêm
+  `margin-top:14px` + `border-top` tách khỏi phần Dịch phía trên. **Phát hiện thêm:** `.content-
+  chunks`/`.content-chunk-line` TRƯỚC ĐÓ CHƯA TỪNG có rule CSS riêng (chỉ là div trơn) — đúng
+  nguyên nhân "quá cramped".
+- Thẻ từ vựng: thêm nền `var(--purple-soft)` (tách biệt rõ khỏi nền trang) + icon dịch nhỏ trước
+  `.vocab-example-translation` — dùng chung `renderVocabularyTab()` nên áp dụng đồng thời cả bài
+  Chuyên ngành lẫn Phân tích văn bản.
+- Tiến trình: thêm `computeLongestStreakFromDates()` (quét toàn bộ lịch sử tìm chuỗi liên tiếp
+  dài nhất, khác `computeStreakFromDates()` chỉ tính streak hiện tại) — ô "Tổng XP" đổi thành
+  "Kỷ lục streak".
+- Prompt sinh bài: thêm quy tắc tính thời sự (không viết như thể công cụ/quy trình cũ là điều
+  mới mẻ, vd Excel) + bơm "Ngày hiện tại" thật vào user prompt để model có căn cứ cụ thể.
+
+**Đã verify trên deploy thật (không chỉ đọc code):**
+- DOM thật: ảnh bìa cao đúng 140px, header overlay `position:absolute`, nút back nền mờ tối +
+  chữ trắng, `.lesson-header-row` cũ không còn render song song. Icon tab/toggle KHÔNG active đo
+  được `rgb(239,233,255)` nền + `rgb(124,92,255)` chữ (đúng `--purple-soft`/`--purple`) thay vì
+  xám cũ.
+- Bug `[hidden]` xác nhận đã hết: chuyển tab Nội dung→Từ vựng, đo `#content-toggle-icons` có
+  `hidden=true` VÀ `display:none` khớp nhau (trước sửa 2 giá trị này lệch nhau). Test tương tự
+  trên `#paste-submit-btn` (`.btn-block`, màn Phân tích văn bản) — set `hidden=true` rồi đo
+  `display:none` đúng.
+- Sinh 1 bài Phân tích văn bản MỚI qua `/api/chat` thật (không phải bài cũ) với văn bản chứa
+  nhiều viết tắt (U.S./Dr./D.C./Mr./p.m./U.K./e.g./long-term): trả về 200 (không còn "AI trả về
+  dữ liệu không hợp lệ" — xác nhận A4), tách đúng 4 câu (không vỡ tại dấu chấm viết tắt), MỌI
+  phần tử trong mọi `phrase_groups[].words` là 1 token riêng kể cả "long-term" (không còn gộp
+  nhiều từ 1 chuỗi — xác nhận A1) trên dữ liệu MỚI SINH, không phải bài cũ đã có sẵn.
+- Tiến trình: ô đầu hiện "Kỷ lục streak" = 5 (đúng ≥ streak hiện tại = 2) trên dữ liệu tài khoản
+  test thật.
+- Tách câu (bài C1 cũ có sẵn): 18 khối, 34 dòng, margin-top 14px, border-top 1px, mỗi dòng dạng
+  "cụm từ = nghĩa" đúng định dạng, không còn emoji.
+
+**Còn lại cho Minh:**
+- Vocab-example-translation icon: code đã xong (verify qua đọc code + logic hiển thị đúng khi có
+  dữ liệu) nhưng CHƯA thấy trên bài thật nào đang có `example_translation` lúc verify (các bài
+  test đều là bài cũ trước khi field này tồn tại) — sẽ tự hiện khi Minh mở 1 bài sinh SAU đợt 2.
+- Mục 7 (nút audio lệch) và mục 13 (thoáng thấy giao diện cũ) — đã điều tra kỹ ở đợt 2/3, đo trực
+  tiếp không phát hiện lệch/không tìm được đường code nào còn giữ giao diện cũ. Đề nghị Minh test
+  lại bằng cách ĐÓNG HẲN tab trình duyệt (không chỉ tải lại) trước khi mở lại, để loại trừ khả
+  năng tab cũ giữ module JS từ trước lúc deploy.
