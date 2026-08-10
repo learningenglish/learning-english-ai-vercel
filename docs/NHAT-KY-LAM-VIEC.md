@@ -1206,3 +1206,26 @@ trước".
 **Còn lại cho Minh:** đọc 4 bài mẫu (A1/A2/B1/B2) trong app thật, phản hồi về (a) chất lượng nội
 dung/độ tự nhiên, (b) có cần ưu tiên sửa vấn đề "phrase_groups phủ thiếu" ở trên không, (c) có
 muốn dành 1 phiên riêng điều tra C1 hay tạm gác lại.
+
+## 2026-08-10 (đợt 8) — Logo đậm hơn (0.3), tìm ra lý do Minh không thấy 4 bài mẫu
+
+Minh phản hồi 2 việc: (1) logo trên nền còn quá mờ, cần ít nhất 30%; (2) đã reset/thoát tài khoản
+nhiều lần vẫn không thấy bài nào được "up lên".
+
+**Đã sửa (1):** `body::after { opacity }` 0.07 → 0.3 trong `app/css/style.css`. Bump SW cache
+version v53→v54 (đụng app/css). Verify sống: `getComputedStyle(document.body, '::after').opacity`
+= `0.3` trên link test ổn định sau khi xoá SW/cache cũ.
+
+**Nguyên nhân (2) — KHÔNG phải bug, do đợt 7 tôi sinh 4 bài mẫu bằng script gọi thẳng
+`/api/chat` xác thực bằng TÀI KHOẢN TEST (`kimchinamvn+studentpro1@gmail.com`), không phải tài
+khoản thật của Minh (`kimchinamvn@gmail.com`). Bảng `lessons` lọc theo `user_id` sở hữu (xem
+`listAiGeneratedLessons()` trong `app/js/db.js`) — Minh đăng nhập bằng tài khoản thật nên không
+bao giờ thấy 4 bài đó, dù reset/xoá cache bao nhiêu lần cũng vậy (không liên quan cache). Xác
+nhận trực tiếp qua REST: đăng nhập tài khoản test, `GET /rest/v1/lessons` trả về đúng 4 bài
+(cùng id đã ghi ở đợt 7) nằm trong 10 bài gần nhất của tài khoản đó.
+
+**Còn lại cho Minh — chọn 1 trong 2 cách để xem 4 bài mẫu:**
+- (a) Đăng nhập tạm bằng tài khoản test `kimchinamvn+studentpro1@gmail.com` / `StudentPro2026!`
+  (plan Pro, dùng để test từ đợt deploy trước) để đọc trực tiếp 4 bài, hoặc
+- (b) Báo tôi biết, tôi sinh lại 4 bài tương tự dưới tài khoản thật của Minh (cần Minh đang đăng
+  nhập sẵn trong app — tôi không lưu/xin mật khẩu tài khoản thật).
