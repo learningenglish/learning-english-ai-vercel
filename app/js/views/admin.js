@@ -6,7 +6,7 @@ import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
 export function renderAdmin(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`<span style="color:var(--purple)">${icon("shield", { size: 22 })}</span> Admin`)}
+      ${appHeaderHtml(`<span style="color:var(--purple)">${icon("shield", { size: 22 })}</span> Ads`)}
       <div class="screen-center" style="padding-top:60px">
         <div class="card" style="text-align:center">
           ${icon("shield", { size: 40 })}

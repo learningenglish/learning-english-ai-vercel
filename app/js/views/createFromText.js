@@ -76,7 +76,10 @@ export function renderCreateFromText(mount) {
       return;
     }
     const lesson = res.data.lesson;
-    fetchAndSaveLessonCover(lesson);
+    // Chờ ảnh bìa sinh XONG trước khi hiện kết quả (2026-08-10, cùng lý do ở createLesson.js —
+    // Minh: "Hình bài học phải được sinh trọn vẹn trước khi up lên").
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang tải ảnh bìa...</div>`;
+    await fetchAndSaveLessonCover(lesson);
     btn.hidden = true;
     resultSlot.innerHTML = `
       <div class="result-panel result-success">

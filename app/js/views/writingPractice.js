@@ -58,10 +58,10 @@ const DEFAULT_GENRE_STYLE = { icon: "file-text", chip: "blue" };
 // trước, giữ nguyên như cũ).
 const STEP_TITLES = {
   genre: `Luyện viết`,
-  task: `${icon("edit-3", { size: 22 })} Nhiệm vụ`,
-  write: `${icon("edit-3", { size: 22 })} Viết bài`,
-  result: `${icon("edit-3", { size: 22 })} Kết quả`,
-  detail: `${icon("edit-3", { size: 22 })} Chi tiết bài viết`,
+  task: `Nhiệm vụ`,
+  write: `Viết bài`,
+  result: `Kết quả`,
+  detail: `Chi tiết bài viết`,
   clean: `${icon("sparkles", { size: 22 })} Bài viết hoàn chỉnh`,
   reference: `${icon("sparkles", { size: 22 })} Bài tham khảo`,
 };
@@ -446,11 +446,11 @@ export function renderWritingPractice(mount) {
         <button type="button" class="audio-play-btn" id="clean-audio-playpause" aria-label="${playing ? "Tạm dừng" : "Phát"}">
           ${icon(playing ? "pause" : "play", { size: 18 })}
         </button>
-        <div class="audio-progress-track" id="clean-audio-track">
-          <div class="audio-progress-fill" id="clean-audio-fill" style="width:${audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0}%"></div>
-          <div class="audio-progress-handle" id="clean-audio-handle" style="left:${audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0}%"></div>
+        <div class="clean-audio-track" id="clean-audio-track">
+          <div class="clean-audio-fill" id="clean-audio-fill" style="width:${audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0}%"></div>
+          <div class="clean-audio-handle" id="clean-audio-handle" style="left:${audioTotalSec ? (audioElapsedSec / audioTotalSec) * 100 : 0}%"></div>
         </div>
-        <span class="audio-time muted" id="clean-audio-time">${formatAudioTime(audioElapsedSec)}/${formatAudioTime(audioTotalSec)}</span>
+        <span class="clean-audio-time muted" id="clean-audio-time">${formatAudioTime(audioElapsedSec)}/${formatAudioTime(audioTotalSec)}</span>
       </div>
     `;
   }

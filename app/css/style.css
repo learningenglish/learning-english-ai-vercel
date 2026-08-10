@@ -2983,7 +2983,16 @@ textarea:focus {
   cursor: pointer;
 }
 
-.audio-progress-track {
+/* BUG THẬT (2026-08-10, Minh: "audio không chạy thời gian mà nhảy... thanh timeline màu xanh
+   bị lệch với thanh xám và nút tròn chạy") — 4 class này TRÙNG TÊN với thanh audio chính của
+   màn đọc bài (".audio-progress-track"/".audio-progress-fill"/".audio-time", xem
+   views/lesson.js::audioBarHtml() + rule tương ứng ở trên, dòng ~1645). Cùng độ đặc thù CSS
+   (chỉ 1 class), khối này nằm SAU trong file nên GHI ĐÈ property trùng tên của khối đúng phía
+   trên — ví dụ ".audio-progress-fill" ở đây đặt "top:0" (khối đúng đặt "top:50%"), khiến lớp
+   fill của THANH AUDIO CHÍNH lệch hẳn khỏi trục giữa track/thumb dù JS không đổi gì. Đổi tên
+   riêng cho thanh audio "Bài viết hoàn chỉnh" (views/writingPractice.js::renderAudioPlayerHtml)
+   để 2 tính năng không còn đụng class nhau nữa — không xoá/đổi hành vi, chỉ đổi tên. */
+.clean-audio-track {
   position: relative;
   flex: 1;
   height: 6px;
@@ -2992,7 +3001,7 @@ textarea:focus {
   cursor: pointer;
 }
 
-.audio-progress-fill {
+.clean-audio-fill {
   position: absolute;
   top: 0;
   left: 0;
@@ -3002,7 +3011,7 @@ textarea:focus {
   pointer-events: none;
 }
 
-.audio-progress-handle {
+.clean-audio-handle {
   position: absolute;
   top: 50%;
   width: 14px;
@@ -3015,7 +3024,7 @@ textarea:focus {
   cursor: grab;
 }
 
-.audio-time {
+.clean-audio-time {
   flex-shrink: 0;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;

@@ -1297,3 +1297,76 @@ giữa 2 file.
 
 Paste cả 2 vào Supabase SQL Editor rồi mới đăng nhập tài khoản thật kiểm tra — nếu chỉ chạy #2 mà
 chưa chạy #1, RLS còn cũ nên vẫn KHÔNG thấy 2 bài mẫu (vẫn thuộc tài khoản test).
+
+## 2026-08-10 (đợt 11) — 7 mục: audio, tách câu + tra từ, ảnh bìa, icon Nhiệm vụ, Admin->Ads, 2 bài mẫu #2a2/#2b1
+
+Minh gửi 7 phản hồi liền sau khi dùng thử. Khảo sát trực tiếp code cho từng mục (không đoán) —
+2 mục (1, 2+4) hoá ra là BUG THẬT cụ thể, không phải cần tinh chỉnh thêm CSS/prompt như các đợt
+sửa audio/tra từ trước.
+
+**Mục 1 — Audio "nhảy cóc", thanh xanh lệch với thanh xám/nút tròn — TÌM RA NGUYÊN NHÂN THẬT:**
+`app/css/style.css` có 2 khối CSS CÙNG TÊN class `.audio-progress-track`/`.audio-progress-fill`/
+`.audio-time` — 1 khối (dòng ~1645) là thanh audio CHÍNH của màn đọc bài (`views/lesson.js`), khối
+CÒN LẠI (dòng ~2986, cũ hơn) thực ra thuộc thanh audio của "Bài viết hoàn chỉnh" (Luyện viết,
+`views/writingPractice.js`) nhưng LỠ dùng đúng tên class trùng. Cùng độ đặc thù CSS, khối SAU
+trong file (Luyện viết) GHI ĐÈ property trùng tên của khối đúng — cụ thể `.audio-progress-fill`
+bị đặt `top:0` (đúng ra `top:50%`) khiến lớp fill của THANH AUDIO CHÍNH lệch khỏi tâm track/thumb
+dù JS không đổi gì. Đây là lý do nhiều đợt sửa CSS trước (đợt 5 mục 3...) không dứt điểm được —
+sửa đúng khối này thì khối kia (không ngờ tới, đứng cách xa >1300 dòng) vẫn thắng do đứng sau. Đã
+đổi tên riêng cho khối Luyện viết (`.clean-audio-track`/`.clean-audio-fill`/`.clean-audio-handle`/
+`.clean-audio-time`) — 2 tính năng không còn đụng nhau. Nếu sau khi deploy Minh vẫn thấy "dừng
+lưng chừng không phải cuối bài", cần thêm đúng tên bài + audio để đọc trực tiếp file audio đó.
+
+**Mục 2 + 4 — Tách câu không khớp câu gốc + tra từ không hoạt động trong "Tách câu" — CÙNG 1 GỐC:**
+Khảo sát `readingChunkedItemHtml()`/`renderContentBody()` (`views/lesson.js`) phát hiện: khối
+"Tách câu" (mỗi câu 1 khối riêng) TRƯỚC ĐÂY render câu gốc bằng `escapeHtml()` THUẦN — không hề
+bọc span tra-từ nào (khác hẳn khối đoạn-gốc dùng `renderInteractiveHtml()`) — nghĩa là MỌI từ
+trong "Tách câu" chưa từng bấm tra được, không phải do dữ liệu AI thiếu như nghi vấn cũ. Đã sửa:
+- Dùng lại `renderInteractiveHtml()` cho từng câu trong "Tách câu", với `phrase_groups` ĐÃ TÁCH
+  riêng cho đúng câu đó (`bucketPhraseGroupsBySentence()`, hàm có sẵn từ trước — trước đây chỉ
+  dùng cho phần breakdown cụm từ bên dưới, giờ dùng thêm cho cả phần tra-từ-khi-bấm).
+- Sửa `wireInteractiveWords()`/vòng lặp gắn sự kiện để nhận diện khối nào thuộc "Tách câu" (qua
+  `data-sentence-idx`) và tính lại đúng phrase_groups CỦA CÂU ĐÓ khi bấm, tránh lệch token-idx
+  với dữ liệu cả đoạn.
+- Theo đề xuất của Minh ("câu gốc: 3 câu thành 1 đoạn, phần tách: mỗi câu — phải thống nhất"):
+  bỏ hẳn phụ thuộc vào icon "Tách câu" (`state.showChunks`) để QUYẾT ĐỊNH CẤU TRÚC — giờ bài đọc
+  LUÔN hiện theo từng câu riêng (không đổi hẳn sang 1 khối cả đoạn khi bật/tắt icon nữa), CHỈ gộp
+  lại thành 1 khối cả đoạn ở đúng lúc tắt hết CẢ 3 toggle (đoạn gốc + dịch + tách câu đều tắt —
+  cơ chế "forceOriginal" có từ đợt 4, đúng ý "Hình 4" Minh gửi). Icon "Tách câu" giờ CHỈ còn quyết
+  định có hiện dòng breakdown cụm từ dưới mỗi câu hay không, không còn đổi cấu trúc khối nữa —
+  không còn "giật/nhảy" bố cục khi bật/tắt icon này.
+- **Chưa đổi gì ở tầng prompt/AI sinh bài** cho yêu cầu "tất cả từ phải dùng từ điển ngay" — cơ
+  chế tự vá coverage lúc mở bài (`ensurePhraseGroupsPatched()`, có từ trước) NÊN đã tự xử lý phần
+  lớn ca thiếu dữ liệu; phần sửa hôm nay giải quyết ĐÚNG bug UI khiến "Tách câu" không tra được
+  dù dữ liệu đủ. Nếu sau khi deploy Minh vẫn gặp từ không tra được, cần đúng tên bài + từ đó để
+  đọc thẳng dữ liệu thật (soft-validator prompt vẫn không đảm bảo 100% tuyệt đối, đã ghi nhận từ
+  đợt 7).
+
+**Mục 3 — Ảnh bìa sinh trọn vẹn trước khi hiện bài:** `views/createLesson.js` + `createFromText.js`
+— đổi `fetchAndSaveLessonCover()` từ fire-and-forget (điều hướng ngay, ảnh tới sau) sang `await`
+TRƯỚC khi điều hướng/hiện kết quả, kèm dòng chờ "Đang tải ảnh bìa..." — đảo ngược 1 quyết định cũ
+(cố tình không chặn, tránh kéo dài thời gian tạo bài) theo đúng yêu cầu mới của Minh.
+
+**Mục 5 — Icon cạnh "Nhiệm vụ":** `STEP_TITLES` trong `writingPractice.js` vẫn còn icon `edit-3`
+ở 4 bước (Nhiệm vụ/Viết bài/Kết quả/Chi tiết bài viết) dù có comment ghi "đã bỏ icon" từ 2026-08-04
+— khả năng sót lại khi khôi phục code đợt 7. Bỏ đúng 4 icon đó, giữ nguyên icon `sparkles` ở 2
+bước cuối (Bài viết hoàn chỉnh/Bài tham khảo) như comment gốc mô tả.
+
+**Mục 6 — Admin -> Ads:** đổi label tab (`app.js` NAV_TABS) + tiêu đề màn (`admin.js`) từ "Admin"
+sang "Ads". Route/path giữ `/admin` (không đổi URL).
+
+**Mục 7 — 2 bài mẫu #2a2/#2b1:** đã sinh A2 đọc "Checking Bills and Receipts" (id
+`2eeb7dd2-c71d-46d2-912e-8bec4759109c`) + B1 hội thoại "Preparing the Year-End Financial Report"
+(id `10b2657f-c1ee-4d61-bcf6-9f985d59d5cc`), cùng tài khoản test như đợt 10. Đã CẬP NHẬT (không
+tạo file mới) `supabase/one-off_reset_lessons_and_tag_new_samples_2026-08-10.sql` — gộp cả 4 id
+(2 đợt 10 + 2 đợt 11), xoá bài cũ trừ 4 id này, gắn `#1a2`/`#1b1`/`#2a2`/`#2b1`. **Nếu Minh đã tải
+xuống bản CŨ của file này trước đợt 11, dùng bản MỚI này thay thế — bản cũ chỉ loại trừ 2 id, chạy
+nhầm sẽ xoá luôn 2 bài #2a2/#2b1 vừa sinh.**
+
+**Bump SW cache v56→v57, deploy + verify sống trên link test ổn định.**
+
+**Còn lại cho Minh — vẫn 2 file SQL đang chờ (chưa cái nào chạy, y hệt đợt 10, chỉ file #2 đã cập
+nhật nội dung):**
+1. `supabase/038_lessons_shared_curriculum.sql` (đợt 9) — mở bộ giáo trình dùng chung.
+2. `supabase/one-off_reset_lessons_and_tag_new_samples_2026-08-10.sql` (bản MỚI, đợt 11) — xoá bài
+   cũ, giữ đúng 4 bài #1a2/#1b1/#2a2/#2b1.

@@ -42,7 +42,7 @@ applyFontSize();
 const NAV_TABS = [
   { path: "/home", label: "Home", icon: "home" },
   { path: "/progress", label: "Tiến trình", icon: "bar-chart" },
-  { path: "/admin", label: "Admin", icon: "shield" },
+  { path: "/admin", label: "Ads", icon: "shield" },
   { path: "/profile", label: "Setting", icon: "settings" },
 ];
 

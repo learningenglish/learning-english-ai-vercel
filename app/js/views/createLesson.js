@@ -501,7 +501,13 @@ export function renderCreateLesson(mount) {
         field: state.field || "",
         industry: state.industry || "",
       });
-      fetchAndSaveLessonCover(res.data.lesson);
+      // Chờ ảnh bìa sinh XONG trước khi điều hướng (2026-08-10, Minh: "Hình bài học phải được
+      // sinh trọn vẹn trước khi up lên") — TRƯỚC ĐÂY fire-and-forget (không chặn điều hướng),
+      // đổi thành await để người dùng không thấy bài học "trống ảnh bìa" rồi ảnh mới hiện ra
+      // sau. Audio (prefetchLessonAudio) vẫn giữ fire-and-forget như cũ — không thuộc phạm vi
+      // yêu cầu này, lesson.js đã tự có lưới đỡ gọi lại lúc mở bài nếu chưa xong.
+      resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang tải ảnh bìa...</div>`;
+      await fetchAndSaveLessonCover(res.data.lesson);
       prefetchLessonAudio(res.data.lesson);
       navigate(`/lesson/${res.data.lesson.id}`);
     } catch (e) {
