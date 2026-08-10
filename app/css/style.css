@@ -151,7 +151,18 @@ body::before {
   height: 100vh;
   height: 100lvh;
   z-index: -1;
-  background: linear-gradient(180deg, var(--purple-soft) 0%, var(--bg-fallback) 55%);
+  /* "radial-gradient... at center 38%" (2026-08-10, đợt 9 — Minh: "logo phải nằm đè trên nền, độ
+     transparent độc lập cho logo, không phải nằm dưới nền rồi bị màu nền tác động lên logo") —
+     BUG THẬT về bản chất alpha-blend: "opacity" trên body::after (logo) luôn hoà màu với BẤT KỲ
+     gì phía sau nó tại thời điểm vẽ — trước đây phía sau là dải gradient tím/hồng đậm màu
+     (--purple-soft), nên logo mờ đi trông như bị "nhuộm tím", không giữ được màu gốc dù chỉnh
+     opacity cỡ nào. Sửa bằng cách "dọn" 1 vùng gần-trung-tính (--surface, gần trắng/gần đen tuỳ
+     theme, rất ít sắc màu riêng) ĐÚNG vị trí + kích cỡ logo sẽ nằm (khớp background-position
+     "center 38%" và background-size ở body::after bên dưới) làm lớp ĐỆM ngay dưới logo — logo
+     giờ hoà màu với nền GẦN NHƯ TRUNG TÍNH đó thay vì hoà với gradient tím đậm, giữ đúng màu gốc
+     (cam/tím/xanh) hơn nhiều dù vẫn giữ được độ mờ (translucent) như Minh yêu cầu. */
+  background: radial-gradient(ellipse min(46vw, 260px) min(32vw, 180px) at center 38%, var(--surface) 0%, transparent 72%),
+    linear-gradient(180deg, var(--purple-soft) 0%, var(--bg-fallback) 55%);
 }
 
 /* Logo watermark trên NỀN toàn app (2026-08-10, Đợt 7 — Minh: "chưa thấy logo trên nền, logo là

@@ -15,7 +15,7 @@
 // trước khi có hệ thống Chuyên ngành, vẫn hiện — xem chính sách "goal_id khớp HOẶC null" trong
 // db.js::listAiGeneratedLessons()).
 import { navigate } from "../router.js";
-import { listAiGeneratedLessons, listInProgressLessons, getActiveLearningGoal } from "../db.js";
+import { listAiGeneratedLessons, listInProgressLessons } from "../db.js";
 import { icon } from "../icons.js";
 import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
@@ -143,11 +143,12 @@ export function renderLessons(mount, params) {
 
   async function load() {
     try {
-      const goal = await getActiveLearningGoal().catch(() => null);
-      const goalId = goal?.id || null;
+      // Bộ giáo trình dùng chung mọi tài khoản (2026-08-10, Minh: "tất cả bài học đều hiển thị ở
+      // tất cả tài khoản" — không còn lọc theo Chuyên ngành/goal_id của riêng user hiện tại, xem
+      // ghi chú đầy đủ ở listAiGeneratedLessons() trong db.js).
       const [lessons, inProgress] = await Promise.all([
-        listAiGeneratedLessons({ filter: contentType, goalId }),
-        listInProgressLessons({ limit: 6, goalId }).catch(() => []),
+        listAiGeneratedLessons({ filter: contentType }),
+        listInProgressLessons({ limit: 6 }).catch(() => []),
       ]);
       allLessons = lessons;
       renderContinueSection(inProgress);

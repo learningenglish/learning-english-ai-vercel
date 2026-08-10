@@ -1229,3 +1229,42 @@ nhận trực tiếp qua REST: đăng nhập tài khoản test, `GET /rest/v1/le
   (plan Pro, dùng để test từ đợt deploy trước) để đọc trực tiếp 4 bài, hoặc
 - (b) Báo tôi biết, tôi sinh lại 4 bài tương tự dưới tài khoản thật của Minh (cần Minh đang đăng
   nhập sẵn trong app — tôi không lưu/xin mật khẩu tài khoản thật).
+
+## 2026-08-10 (đợt 9) — Bộ giáo trình dùng chung mọi tài khoản, logo không còn bị nền nhuộm màu
+
+Minh chốt hướng: "đây là bộ giáo trình theo chuyên ngành... tất cả bài học đều hiển thị ở tất cả
+tài khoản" (giai đoạn test, phân gói tài khoản để sau) + logo cần "nằm đè trên nền, độ transparent
+độc lập cho logo, không phải nằm dưới nền rồi bị màu nền tác động lên logo".
+
+**1) Bộ giáo trình dùng chung (đúng nguyên nhân đợt 8 vừa tìm ra):**
+- RLS `lessons` TRƯỚC ĐÂY chỉ cho SELECT khi `auth.uid() = user_id` — bài AI sinh dưới tài khoản
+  nào chỉ tài khoản đó thấy. Migration mới `supabase/038_lessons_shared_curriculum.sql` đổi
+  policy: nguồn `ai_generated` (bộ giáo trình) mở cho MỌI tài khoản đã đăng nhập; nguồn
+  `user_text` (Phân tích văn bản cá nhân) VẪN riêng tư như cũ. **Minh cần tự paste file SQL này
+  vào Supabase SQL Editor** (đúng quy trình đã thống nhất — sandbox không có kết nối DB).
+- `app/js/db.js` (`listAiGeneratedLessons`/`listInProgressLessons`) + `app/js/views/lessons.js`:
+  bỏ toàn bộ lọc theo `goal_id` (goal_id vốn thuộc `learning_goals`, bảng CŨNG khoá theo user_id
+  riêng — dù RLS mở, lọc goal_id kiểu cũ vẫn sẽ ẩn bài của tài khoản khác). Bài đọc/Hội thoại giờ
+  liệt kê TOÀN BỘ theo level+loại nội dung, không phân biệt ai đã tạo.
+- **Nợ kỹ thuật ghi nhận, CHƯA xử lý:** `is_favorite` là 1 cột chung trên dòng `lessons` dùng
+  chung — 1 tài khoản bấm Yêu thích sẽ đổi trạng thái cho MỌI tài khoản khác cùng thấy dòng đó
+  (không tách theo từng người). Ngoài phạm vi yêu cầu hôm nay (chỉ về hiển thị bài học), nêu ra để
+  Minh biết trước khi có ai phàn nàn "Yêu thích tự nhiên bật/tắt".
+
+**2) Logo không còn bị nền nhuộm màu:**
+- Nguyên nhân đúng: `opacity` trên `body::after` (logo) luôn HOÀ MÀU với bất kỳ thứ gì vẽ ngay
+  phía sau nó — trước đó là dải gradient tím/hồng khá đậm màu (`--purple-soft`), nên logo dù chỉnh
+  opacity cỡ nào cũng nhìn như bị nhuộm tím, mất màu gốc. Đây là quy luật vật lý của phép chồng màu
+  trong suốt (alpha compositing), không phải lỗi thiếu z-index.
+- Sửa bằng cách "dọn" 1 mảng gần-trung-tính (`--surface`, gần trắng ở nền sáng/gần đen ở nền tối,
+  gần như không có sắc màu riêng) đúng vị trí + kích cỡ logo (khớp `background-position`/
+  `background-size` của logo) làm lớp đệm ngay dưới, qua `radial-gradient` cộng thêm vào
+  `body::before`. Logo giờ hoà màu với nền GẦN TRUNG TÍNH thay vì gradient tím đậm — giữ đúng màu
+  gốc rõ hơn nhiều dù vẫn mờ/translucent như yêu cầu.
+
+**Bump SW cache v54→v55 (đụng app/js + app/css), deploy + verify sống trên link test ổn định.**
+
+**Còn lại cho Minh:** paste `supabase/038_lessons_shared_curriculum.sql` vào Supabase SQL Editor
+để bộ giáo trình thật sự dùng chung (code đã sẵn sàng, chỉ chờ migration chạy) — sau khi chạy,
+đăng nhập tài khoản thật sẽ thấy đúng 4 bài mẫu đợt 7 (và mọi bài AI sinh khác) mà không cần đăng
+nhập tài khoản test nữa.

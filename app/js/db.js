@@ -107,13 +107,18 @@ export async function listLessons({ filter = "all" } = {}) {
 // luồng Mentor AI đã tắt UI, KHÔNG dùng để phân biệt ở đây).
 // "goalId" (2026-08-06, tái cấu trúc theo cây mới — Minh: "Bài học/Hội thoại đã sinh: xếp đúng
 // theo Chuyên ngành (goal đang active)") — lọc CHỈ bài thuộc goal đang active, CỘNG bài
-// goal_id=null (sinh TRƯỚC khi hệ thống Chuyên ngành tồn tại — createLesson.js tự nhập KHÔNG
-// qua next_slot vẫn không gắn goal_id) — quyết định: bài "mồ côi goal" này vẫn hiện dưới BẤT KỲ
-// Chuyên ngành nào đang active thay vì biến mất hẳn khỏi màn hình (dữ liệu vẫn còn trong DB,
-// không muốn tạo cảm giác "mất bài" cho người dùng cũ) — xem docs/NHAT-KY-LAM-VIEC.md mục
-// 2026-08-06 để biết lý do đầy đủ. Không truyền goalId (hoặc null) -> KHÔNG lọc gì thêm (dùng
-// cho các chỗ khác vẫn cần TOÀN BỘ, nếu có).
-export async function listAiGeneratedLessons({ filter = "all", goalId = null } = {}) {
+// "goalId" KHÔNG còn dùng để lọc (2026-08-10, Minh: "đây là bộ giáo trình theo chuyên ngành,
+// tất cả bài học đều hiển thị ở tất cả tài khoản" — giai đoạn test, chưa phân gói) — TRƯỚC ĐÂY
+// lọc theo goal_id CỦA CHÍNH user hiện tại (learning_goals là bảng riêng theo user_id, xem
+// 020_mentor_ai.sql), nghĩa là bài do tài khoản A sinh sẽ KHÔNG hiện cho tài khoản B dù cùng 1
+// chuyên ngành thật — đúng nguyên nhân Minh không thấy bài mẫu sinh bằng tài khoản test. Đã bỏ
+// điều kiện lọc goal_id ở query lẫn ở RLS (migration 038_lessons_shared_curriculum.sql, Minh tự
+// chạy) — "lessons" nguồn 'ai_generated' giờ là 1 bộ giáo trình DÙNG CHUNG, xem được bởi BẤT KỲ
+// tài khoản đã đăng nhập nào, không còn khoá theo user_id. "lessons" nguồn 'user_text' (Phân
+// tích văn bản cá nhân người dùng tự dán vào) VẪN RIÊNG TƯ, không đụng tới ở đây. Tham số
+// "goalId" giữ lại trong chữ ký hàm (không dùng) để không phải sửa lessons.js ngay — dọn sau khi
+// Minh xác nhận hướng phân gói tài khoản (câu "sau khi test xong... phân gói tài khoản").
+export async function listAiGeneratedLessons({ filter = "all" } = {}) {
   // "spine_slot" (2026-08-06, Minh: "mỗi chuyên ngành là trọn bộ giáo trình, cần đánh số #1,#2..
   // để rà soát") — chỉ bài sinh qua next_slot/khung giáo trình (mentor_next_lesson ->
   // generate_lesson, xem spine_slot trong api/_generate/lesson.js) mới có giá trị (vị trí 1-based
@@ -124,7 +129,6 @@ export async function listAiGeneratedLessons({ filter = "all", goalId = null } =
     "&source=eq.ai_generated&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
-  if (goalId) q += `&or=(goal_id.eq.${encodeURIComponent(goalId)},goal_id.is.null)`;
   return restFetch(`lessons?${q}`);
 }
 
@@ -173,18 +177,18 @@ export async function listMentorLibraryLessons({ filter = "all" } = {}) {
 // last_opened_at) nhưng CHƯA hoàn thành (completed_at rỗng), mới mở gần nhất trước. Trả kèm
 // completed_paragraphs/completed_exercises để tính % tiến độ ở lessonCard.js, không cần gọi
 // thêm request nào khác.
-// "goalId" (2026-08-06, tái cấu trúc theo cây mới) — cùng chính sách "goal_id khớp HOẶC null"
-// (xem ghi chú ở listAiGeneratedLessons()) nhưng lọc Ở CLIENT sau khi tải (PostgREST không lọc
-// dễ dàng theo cột của quan hệ EMBED lồng nhau bằng "or=()" — mảng này luôn nhỏ, limit mặc định
-// 6, lọc ở client không đáng kể về hiệu năng). "goal_id" thêm vào select embed để lọc được.
-export async function listInProgressLessons({ limit = 6, goalId = null } = {}) {
+// "goalId" KHÔNG còn dùng để lọc (2026-08-10, cùng lý do ở listAiGeneratedLessons() phía trên —
+// bộ giáo trình dùng chung, không còn khoá theo goal_id/user_id). "lesson_progress" đã tự khoá
+// theo user hiện tại qua RLS (chỉ đọc được tiến độ CỦA CHÍNH MÌNH), nên danh sách trả về ở đây
+// LUÔN chỉ gồm bài chính người dùng này đã mở, không cần lọc thêm theo goal.
+export async function listInProgressLessons({ limit = 6 } = {}) {
   const rows = await restFetch(
     "lesson_progress?completed_at=is.null&last_opened_at=not.is.null&order=last_opened_at.desc" +
       `&limit=${limit}` +
       "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id)"
   );
   return (rows || [])
-    .filter((r) => r.lessons && (!goalId || !r.lessons.goal_id || r.lessons.goal_id === goalId))
+    .filter((r) => r.lessons)
     .map((r) => ({
       ...r.lessons,
       progress_page: r.completed_paragraphs || 0,
