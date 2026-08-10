@@ -1370,3 +1370,46 @@ nhật nội dung):**
 1. `supabase/038_lessons_shared_curriculum.sql` (đợt 9) — mở bộ giáo trình dùng chung.
 2. `supabase/one-off_reset_lessons_and_tag_new_samples_2026-08-10.sql` (bản MỚI, đợt 11) — xoá bài
    cũ, giữ đúng 4 bài #1a2/#1b1/#2a2/#2b1.
+
+## 2026-08-10 (đợt 12) — Cả 2 SQL đã chạy; breakdown thiếu, tooltip chờ, logo tối sai file
+
+Minh xác nhận đã chạy cả 2 file SQL đợt 9+11. Gửi tiếp 4 phản hồi sau khi dùng thử #2a2/#2b1.
+
+**Mục 1 — #2b1 (hội thoại) phần tách câu hiển thị KHÔNG ĐẦY ĐỦ, #2a2 (bài đọc) thì đủ — cùng 1
+bài, khác nhau do đâu:** `contentChunkLinesHtml()` (`views/lesson.js`) — hàm vẽ danh sách bullet
+breakdown cụm từ CHỈ in ra ĐÚNG những gì `phrase_groups` (AI sinh) liệt kê, KHÔNG có gì bù cho từ
+bị thiếu — nếu AI phủ chưa hết 100% (vấn đề CHẤT LƯỢNG SINH BÀI đã ghi nhận từ đợt 7, "hướng dẫn
+mềm" không chặn cứng được), phần còn thiếu ĐƠN GIẢN BIẾN MẤT, không có dòng nào cho chúng. Bài
+#2a2 "đủ" chỉ vì MAY (AI phủ đúng 100% câu đó), #2b1 thì không — KHÔNG phải bài đọc có cơ chế
+riêng tốt hơn hội thoại, mà là PHẦN TRA TỪ (`computeInteractiveSpans`) đã có lưới đỡ riêng (rơi về
+khớp từng từ qua vocabulary khi phrase_groups không khớp) từ trước — chỉ riêng breakdown bullet là
+CHƯA có lưới đỡ. Đã thêm: so khớp tuần tự `phrase_groups` với văn bản thật, phần THỪA sau điểm
+khớp cuối được thêm 1 dòng riêng (tra qua `lesson.vocabulary` nếu có, không có thì hiện thẳng từ)
+— áp dụng CHUNG cho cả bài đọc (tách câu) và hội thoại (theo lượt), không chỉ riêng hội thoại.
+
+**Mục 2 — Bấm từ không hiện NGAY từ cần tra:** đúng lúc lesson cần "vá" phrase_groups (coverage
+CHƯA đủ 100% lúc sinh, cùng nguyên nhân mục 1), khung chờ CŨ chỉ hiện 1 spinner trống — KHÔNG có
+tên từ/level nào cả trong lúc chờ vài giây AI vá lại toàn bài. Đã sửa: hiện NGAY tên từ + badge
+cấp độ (tạm dùng cấp độ cả bài) + dòng "Đang tải nghĩa..." thay cho spinner trống — người dùng
+biết NGAY app đã nhận đúng từ mình bấm, nghĩa thật sẽ thế vào ngay khi vá xong. **Chưa đụng tới
+kiến trúc "vá 1 lần lúc mở bài" (`ensurePhraseGroupsPatched`)** — đây là cơ chế đã chốt từ trước,
+không hard-block sinh bài theo coverage (quyết định Minh 2026-08-07, xem `GỠ BỎ VALIDATOR KỸ THUẬT
+CỨNG` trong `api/_generate/lesson.js`) — sửa hôm nay chỉ cải thiện CẢM GIÁC chờ, không xoá độ chờ
+thật (vẫn cần 1 lượt gọi AI khi coverage thiếu, không có cách nào tránh được mà không tự ý lật lại
+quyết định đó).
+
+**Mục 3 — Audio đã ổn,** Minh xác nhận không cần sửa gì thêm.
+
+**Mục 4 — Logo nền tối sai:** kiểm lại kết luận đợt 7 ("logo-dark.png có nền đen ĐẶC, không dùng
+được") — **KẾT LUẬN ĐÓ SAI.** Giải mã byte thật của file (đọc PNG + zlib inflate trực tiếp, không
+chỉ xem preview) xác nhận `logo-dark.png` LÀ PNG trong suốt chuẩn (RGBA, nền alpha=0, chỉ chữ/hình
+gần alpha=255) — lỗi nhận định trước đó khi chỉ xem qua preview. Nguyên nhân thật của "logo nền
+tối bị lỗi": code khoá CẢ 2 theme dùng CHUNG `logo-light.png` (chữ màu TỐI, đọc được trên nền
+sáng) — trên nền tối, chữ tối trên nền tối gần như vô hình. Đã thêm rule
+`:root[data-theme="dark"] body::after` đổi sang `logo-dark.png` (chữ màu SÁNG) đúng theme, cùng
+pattern các biến theme khác trong file.
+
+**Bump SW cache v57→v58, deploy + verify sống trên link test ổn định.**
+
+**Còn lại cho Minh:** không có file SQL mới đợt này (cả 2 file cũ đã chạy xong). Mọi sửa đợt 12 là
+code (JS/CSS), tự lên theo deploy, không cần thao tác gì thêm ở Supabase.

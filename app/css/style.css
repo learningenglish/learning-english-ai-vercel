@@ -172,10 +172,16 @@ body::before {
    đợt 4/5 — "để khi chèn logo không bị ảnh hưởng" CHỈ có ý nghĩa nếu logo nằm trong nền chung).
    Dùng "::after" (không phải thêm 1 lớp nữa vào ::before ở trên) để paint ĐÈ LÊN gradient màu —
    2 pseudo-element CÙNG z-index:-1 trên "body" thì "::after" luôn vẽ SAU (trên) "::before" theo
-   đúng thứ tự DOM, không cần đổi z-index riêng. Chỉ dùng bản logo NỀN SÁNG (trong suốt thật —
-   bản "logo-dark.png" có nền đen ĐẶC bên trong file ảnh, không phải PNG trong suốt, dùng làm
-   watermark mờ sẽ hiện nguyên khối đen) cho CẢ 2 theme — màu logo (cam/tím/xanh) ở độ mờ thấp
-   vẫn đọc được ổn trên cả nền sáng lẫn tối, không cần bản riêng. */
+   đúng thứ tự DOM, không cần đổi z-index riêng.
+   SỬA 2026-08-10 (Đợt 12 — Minh: "Hình logo nền tối bị lỗi. Nếu chọn nền tối: dùng logo nền
+   tối") — đợt 7 kết luận SAI rằng "logo-dark.png" có nền đen ĐẶC trong file (không dùng được
+   làm watermark trong suốt), nên khoá CẢ 2 theme dùng chung "logo-light.png". Kiểm lại TRỰC
+   TIẾP byte alpha của file (giải mã PNG thật, không chỉ xem preview) — "logo-dark.png" THẬT RA
+   trong suốt đúng chuẩn (colorType=6/RGBA, nền alpha=0, chỉ chữ/hình có alpha gần 255) — kết
+   luận đợt 7 SAI. Logo sáng dùng chữ MÀU TỐI (đọc được trên nền sáng), logo tối dùng chữ MÀU
+   SÁNG (đọc được trên nền tối) — dùng CHUNG 1 bản cho cả 2 theme khiến chữ gần như vô hình trên
+   nền tối (chữ tối trên nền tối). Giờ đổi theo ĐÚNG theme qua rule `:root[data-theme="dark"]`
+   ngay dưới, cùng pattern các biến theme khác trong file này. */
 body::after {
   content: "";
   position: fixed;
@@ -191,6 +197,10 @@ body::after {
   background-size: min(72vw, 420px) auto;
   opacity: 0.45;
   pointer-events: none;
+}
+
+:root[data-theme="dark"] body::after {
+  background-image: url("../icons/logo-dark.png");
 }
 
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
