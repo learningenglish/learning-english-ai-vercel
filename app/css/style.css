@@ -154,6 +154,34 @@ body::before {
   background: linear-gradient(180deg, var(--purple-soft) 0%, var(--bg-fallback) 55%);
 }
 
+/* Logo watermark trên NỀN toàn app (2026-08-10, Đợt 7 — Minh: "chưa thấy logo trên nền, logo là
+   hiển thị trên nền, không phải chỉ hiển thị ở ngoài") — SỬA HIỂU LẦM đợt 6: logo trước đó CHỈ
+   chèn ở màn đăng nhập (login.js), ý Minh thật ra là logo phải làm watermark PHÍA SAU mọi nội
+   dung trên MỌI màn (đúng lý do đã thêm nền bán trong suốt cho .content-page/.vocab-item... ở
+   đợt 4/5 — "để khi chèn logo không bị ảnh hưởng" CHỈ có ý nghĩa nếu logo nằm trong nền chung).
+   Dùng "::after" (không phải thêm 1 lớp nữa vào ::before ở trên) để paint ĐÈ LÊN gradient màu —
+   2 pseudo-element CÙNG z-index:-1 trên "body" thì "::after" luôn vẽ SAU (trên) "::before" theo
+   đúng thứ tự DOM, không cần đổi z-index riêng. Chỉ dùng bản logo NỀN SÁNG (trong suốt thật —
+   bản "logo-dark.png" có nền đen ĐẶC bên trong file ảnh, không phải PNG trong suốt, dùng làm
+   watermark mờ sẽ hiện nguyên khối đen) cho CẢ 2 theme — màu logo (cam/tím/xanh) ở độ mờ thấp
+   vẫn đọc được ổn trên cả nền sáng lẫn tối, không cần bản riêng. */
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100lvh;
+  z-index: -1;
+  background-image: url("../icons/logo-light.png");
+  background-repeat: no-repeat;
+  background-position: center 38%;
+  background-size: min(72vw, 420px) auto;
+  opacity: 0.07;
+  pointer-events: none;
+}
+
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
    nên chỉ cần set "color" trên phần tử cha là icon đổi màu theo, không cần class riêng cho
    từng ngữ cảnh (nav active, badge, nút...). ===== */
