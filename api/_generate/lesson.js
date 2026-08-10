@@ -185,20 +185,49 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   "long" và "term", KHÔNG viết chung "long-term" thành 1 phần tử) — 2 phần tử đó vẫn có thể cùng
   nằm trong 1 nhóm (words: ["long", "term"]) nếu cùng 1 cụm ý nghĩa, chỉ cần đừng viết liền 1
   chuỗi có gạch nối.
-- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA (để người học bấm tra nghĩa) — TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu
-  thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như "Really?"), và KHÔNG gộp 2 mệnh đề độc lập
-  (nối bằng and/but/so/because...) vào chung 1 nhóm — mỗi mệnh đề tách riêng theo đúng các cụm
-  nhỏ hơn bên trong nó. Ngoài 2 điều cấm này, ĐỘ DÀI nhóm không quan trọng bằng việc GIỮ ĐÚNG
-  TỪNG TỪ — không cố ép cắt nhỏ thêm nếu dễ gây sai sót khi chép lại từ.
-- Nhận diện cụm theo các nhóm quen thuộc sau (không cần nhớ hết, chỉ tham khảo để chọn nhãn
-  "type" phù hợp — sai nhãn KHÔNG bị lỗi, chỉ sót/thừa từ mới bị lỗi): cụm cố định giao tiếp
-  (good morning, thank you, of course); cụm động từ (has eaten, is working, can swim, must have
-  forgotten, want to go, enjoy reading); phrasal verb (give up, look after); cụm giới từ (in the
-  room, in charge of, depend on); cụm danh từ (a big house, the tall young man); cụm phân từ/
-  nguyên mẫu (walking along the street, to study English); collocation (make a decision, a lot
-  of); thành ngữ (chỉ cấp cao); cụm so sánh/liên từ song song (as...as, not only...but also);
-  mệnh đề quan hệ/trạng ngữ (who lives here, because he was sick); cấu trúc there is/it takes;
-  cụm tính từ + giới từ cố định (afraid of, interested in); cụm chỉ số lượng (a few, plenty of).
+- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA NHỎ (để người học bấm tra ĐÚNG những từ liên quan trực tiếp tới
+  nhau — KHÔNG PHẢI cả câu, và cũng KHÔNG PHẢI cả 1 mệnh đề dài). GIỚI HẠN ĐỘ DÀI (2026-08-10,
+  Đợt 6 — Minh phản hồi thật qua tooltip: bấm 1 từ trong mệnh đề quan hệ 9 từ "who have been
+  through so much with their partners" ra nguyên cả 9 từ đó, đúng lỗi "cụm quá to" chứ không
+  phải lỗi hiển thị — sửa TẠI GỐC ở đây):
+  - Đa số nhóm nên DÀI 1-4 TỪ. Nhóm dài hơn (5-6 từ) CHỈ chấp nhận khi đó THẬT SỰ là 1 cụm cố
+    định/collocation/thành ngữ nguyên khối không thể tách nhỏ hơn mà vẫn giữ nghĩa (vd "as soon
+    as possible", "on behalf of the company").
+  - TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như
+    "Really?"), KHÔNG gộp 2 mệnh đề độc lập (nối bằng and/but/so/because...) vào chung 1 nhóm.
+  - QUAN TRỌNG THÊM (lỗi thật vừa xảy ra): KHÔNG được gộp NGUYÊN 1 MỆNH ĐỀ PHỤ DÀI (mệnh đề quan
+    hệ, mệnh đề trạng ngữ, mệnh đề danh từ...) thành 1 nhóm duy nhất nếu nó dài hơn ~4-5 từ — PHẢI
+    CHIA mệnh đề đó thành NHIỀU nhóm nhỏ hơn theo đúng cấu trúc bên trong nó, ví dụ mệnh đề quan
+    hệ "who have been through so much with their partners" (9 từ, SAI nếu gộp 1 nhóm) nên chia
+    thành các nhóm nhỏ như: "who have been" (đại từ quan hệ + cụm động từ, 1 nhóm) + "through so
+    much" (cụm giới từ/trạng từ, 1 nhóm) + "with their partners" (cụm giới từ, 1 nhóm) — mỗi nhóm
+    vẫn ĐỦ NGHĨA để tra riêng, không phải chờ đọc hết cả mệnh đề mới hiểu.
+- Nhận diện cụm theo các nhóm sau (tham khảo để chọn nhãn "type" phù hợp — sai nhãn KHÔNG bị lỗi,
+  chỉ sót/thừa từ hoặc GỘP QUÁ DÀI mới bị lỗi):
+  * Cụm động từ: cụm thì (has eaten, will be working), cụm dạng bị động (is built, was written),
+    modal (can swim, must have forgotten), verb + to-V (want to go), verb + V-ing (enjoy reading).
+  * Phrasal verb (give up, look after, carry on) — động từ + giới từ/trạng từ đi liền, tách khỏi
+    phần còn lại của câu.
+  * Prepositional verb (depend on, belong to, listen to) — động từ + giới từ CỐ ĐỊNH đi kèm.
+  * Cụm danh từ NGẮN (a big house, the tall young man) — nếu cụm danh từ có mệnh đề bổ nghĩa dài
+    theo sau (vd "the boy wearing glasses who lives next door"), CHỈ gộp phần danh từ + bổ nghĩa
+    NGẮN NGAY SÁT nó thành 1 nhóm, phần mệnh đề dài phía sau tách thành nhóm riêng theo đúng quy
+    tắc "chia mệnh đề dài" ở trên.
+  * Cụm tính từ/trạng từ (very happy, quite slowly), cụm giới từ (in the room, in front of).
+  * Cụm phân từ/nguyên mẫu/gerund NGẮN (walking along the street, to study English, reading
+    books) — áp dụng đúng giới hạn 1-4 từ như trên, KHÔNG kéo dài thêm phần bổ nghĩa phía sau.
+  * Cụm cố định giao tiếp/collocation (good morning, thank you, of course, make a decision, a
+    lot of); thành ngữ (chỉ cấp cao, break the ice); cụm so sánh/liên từ song song (as...as, not
+    only...but also); cấu trúc there is/it takes; cụm tính từ/danh từ + giới từ cố định (afraid
+    of, interested in, a piece of); cụm chỉ số lượng (a few, plenty of).
+  * Mệnh đề quan hệ/danh từ/trạng ngữ (who lives here, because he was sick): CHỈ giữ nguyên 1
+    nhóm khi mệnh đề đó NGẮN (≤4-5 từ) — mệnh đề dài hơn PHẢI chia nhỏ như hướng dẫn ở trên.
+  * Grammar Formula Chunks — cụm công thức ngữ pháp NÊN gộp riêng theo cấp độ (không tách rời
+    từng từ công thức): A1 (am/is/are, have/has, do/does + V, there is/are); A2 (be going to,
+    will, can, have to, would like, used to); B1 (have/has + V3, have/has been + V-ing, was/were
+    + V-ing, had + V3, be + V3 bị động); B2 (have been doing, should have done, các câu điều kiện
+    "if + ...", verb pattern "V + to V"/"V + V-ing"). Ví dụ: "have already done" là 1 nhóm 3 từ
+    (Cụm thì hoàn thành), KHÔNG tách "have" và "already done" thành nghĩa rời rạc không liên quan.
 - Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
   nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
 - Mỗi nhóm có cấu trúc:
@@ -338,6 +367,33 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là 
 QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý):
 - Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. Hệ thống sẽ TỰ ĐỘNG TỪ CHỐI và bắt sinh lại nếu lệch quá 25% — bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
 - LỖI THẬT HAY GẶP Ở HỘI THOẠI MỌI CẤP ĐỘ (không riêng A1/A2): quy tắc "lượt ngắn 1-4 từ xen giữa lượt dài" (QUY TẮC HỘI THOẠI TỰ NHIÊN) khiến độ dài trung bình MỖI LƯỢT THỰC TẾ thấp hơn nhiều so với cảm giác khi viết — đo được thật: hội thoại B1 yêu cầu 200 từ chỉ đạt ~110-140 từ (thiếu 30-45%) khi dừng theo cảm giác "đã đủ ý" thay vì đếm số lượt. Cách DUY NHẤT để đạt đủ length_words khi có nhiều lượt ngắn là TĂNG TỔNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — KHÔNG PHẢI viết từng lượt dài hơn trần cấp độ cho phép. User prompt đã tính SẴN số lượt/đoạn tối thiểu cần có (công thức đã cộng biên an toàn cho đúng thực tế lượt ngắn) — coi đó là SỐ CỨNG phải đạt hoặc vượt, không phải gợi ý tham khảo. Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó (chẻ tình huống thành nhiều bước nhỏ, xem ví dụ ở đầu prompt) — không lặp ý, không rề rà giả tạo.
+
+QUY TẮC VỀ CẤU TRÚC CÂU ĐÁNG CHÚ Ý (trường "grammar"/"sentence_patterns" — 2026-08-10, Đợt 6,
+dùng làm CATALOG THAM CHIẾU để chọn ĐÚNG cấu trúc phù hợp cấp độ, không phải danh sách CỐ ĐỊNH
+phải nhét đủ mọi mục — chỉ chọn những cấu trúc THẬT SỰ xuất hiện tự nhiên trong bài):
+- Mỗi cấp CEFR có 1 tập cấu trúc "công thức" (Grammar Formula Chunks) đặc trưng, KHÔNG học lẫn
+  cấp cao hơn khi viết bài cấp thấp:
+  * A1: am/is/are (hiện tại đơn của "be"), have/has (sở hữu), do/does + V (nghi vấn/phủ định
+    hiện tại đơn), động từ thường số ít/nhiều (work/works), am/is/are + V-ing (hiện tại tiếp
+    diễn), quá khứ đơn V-ed/bất quy tắc (went, saw), there is/there are.
+  * A2: am/is/are + going to + V (dự định), will + V (tương lai), can/can't + V, have to/has to
+    + V, would like + to V, used to + V.
+  * B1: have/has + V3 (hiện tại hoàn thành), have/has been + V-ing (hiện tại hoàn thành tiếp
+    diễn), was/were + V-ing (quá khứ tiếp diễn), had + V3 (quá khứ hoàn thành), be + V3 (bị
+    động), modal nâng cao (should/must/might + have + V3), mệnh đề quan hệ đơn giản (who/that),
+    mệnh đề vì/vì vậy/nếu (because/although/if).
+  * B2: have been + V-ing (hoàn thành tiếp diễn), should have done/could have gone (modal hoàn
+    thành), verb pattern (V + to V, V + V-ing, V + O + to V), câu điều kiện loại 0-3, cấu trúc so
+    sánh (comparative/superlative/as...as), there + be nâng cao (there seems to be), it + be (it
+    is important to...), participle/infinitive/gerund phrase, mệnh đề danh từ/mệnh đề quan hệ rút
+    gọn, collocation/fixed expression học thuật nhẹ.
+  * C1: đảo ngữ (inversion), câu chẻ (cleft sentence), danh động từ hoá (nominalisation), tỉnh
+    lược (ellipsis), thành ngữ, cấu trúc văn phong học thuật nâng cao.
+- "grammar": chọn 2-4 điểm ngữ pháp THẬT SỰ dùng trong bài, đúng cấp độ (nếu có "Điểm ngữ pháp
+  trọng tâm BẮT BUỘC" ở trên, mục đó LUÔN có mặt, xem quy tắc riêng).
+- "sentence_patterns": chọn 1-3 khuôn câu (ưu tiên các "công thức" tự nhiên đã liệt kê ở trên
+  theo đúng cấp độ bài) THẬT SỰ xuất hiện trong "content", trích ĐÚNG NGUYÊN VĂN câu ví dụ — đây
+  là nội dung hiển thị trực tiếp ở tab "Ngữ pháp" cho người học, không phải phần phân tích ẩn.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.

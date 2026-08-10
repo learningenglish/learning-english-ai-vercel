@@ -81,28 +81,40 @@ QUY TẮC VỀ LOẠI NỘI DUNG:
 - "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
 
 QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
-mọi content_type, 2026-07-30):
-- Với MỖI phần tử trong "content", chia TOÀN BỘ các từ trong "text" (bỏ qua dấu câu) thành các
-  nhóm LIÊN TIẾP, KHÔNG CHỒNG LẤN, KHÔNG SÓT TỪ NÀO — đây là mảng "phrase_groups" của phần tử đó.
-- Một nhóm là 1 CỤM Ý NGHĨA THẬT (không phải chia máy móc theo số từ cố định) — nhận diện theo
-  các loại sau, ưu tiên gộp khi khớp đúng cấu trúc:
-  * Cụm động từ (verb group): thì phức hợp ("has eaten", "is working", "will have finished"),
-    bị động ("was built", "has been repaired"), modal + động từ ("can swim", "must have
-    forgotten"), "to" + động từ nguyên mẫu, động từ + V-ing.
-  * Phrasal verb / động từ + giới từ cố định ("give up", "look after", "depend on").
-  * Cụm giới từ (prepositional phrase): giới từ + (mạo từ/sở hữu) + danh từ ("in the room", "at
-    six o'clock", "in charge of").
-  * Cụm danh từ (noun phrase): mạo từ/sở hữu + (tính từ) + danh từ ("a big house", "my old car").
-  * Danh từ riêng ghép nhiều từ ("New York City", "John Smith").
-  * Cụm cố định/collocation (fixed expression): cụm luôn đi cùng nhau như 1 khối ("by the way",
-    "of course", "a lot of", "thank you very much", "good morning").
-- Từ KHÔNG thuộc bất kỳ loại nào ở trên (chủ ngữ đơn, liên từ đứng riêng, tính từ đứng riêng...)
-  vẫn PHẢI có mặt trong "phrase_groups" — tự làm 1 nhóm riêng chỉ gồm chính nó, "type" là loại từ
-  đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/modal/
-  interjection/number).
+mọi content_type — ĐỒNG BỘ với hằng số PHRASE_GROUPS_RULES dùng chung trong `api/_generate/
+lesson.js`, cập nhật lần cuối 2026-08-10 Đợt 6):
+- ƯU TIÊN CAO NHẤT (hệ thống KIỂM TRA BẰNG CODE): ghép TOÀN BỘ "words" của MỌI nhóm theo đúng
+  thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" đó (chỉ khác dấu câu/khoảng trắng) — không
+  thiếu/thừa/đảo thứ tự/lặp từ ở 2 nhóm.
+- Từ có DẤU GẠCH NỐI (long-term, well-known): tách thành 2+ phần tử RIÊNG trong "words" (long,
+  term), có thể vẫn cùng 1 nhóm nếu cùng 1 cụm ý nghĩa.
+- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA NHỎ — GIỚI HẠN ĐỘ DÀI (2026-08-10, Đợt 6 — lỗi thật: bấm 1 từ
+  trong mệnh đề quan hệ 9 từ "who have been through so much with their partners" ra nguyên cả 9
+  từ, đúng lỗi "cụm quá to"):
+  * Đa số nhóm nên DÀI 1-4 TỪ. Dài hơn (5-6 từ) chỉ chấp nhận khi là 1 cụm cố định/collocation/
+    thành ngữ nguyên khối không tách nhỏ được mà vẫn giữ nghĩa (as soon as possible).
+  * TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu hoặc 2 mệnh đề độc lập (nối and/but/so/because) thành 1 nhóm.
+  * KHÔNG gộp nguyên 1 mệnh đề phụ DÀI (quan hệ/trạng ngữ/danh từ) thành 1 nhóm nếu dài hơn ~4-5
+    từ — chia nhỏ theo cấu trúc bên trong (vd "who have been" / "through so much" / "with their
+    partners" thay vì gộp cả 9 từ).
+- Nhận diện cụm theo các loại sau (tham khảo chọn "type", sai nhãn KHÔNG lỗi — chỉ sót/thừa từ
+  hoặc gộp quá dài mới lỗi): cụm động từ (thì phức hợp, bị động, modal, verb+to-V/V-ing);
+  phrasal verb (give up); prepositional verb (depend on); cụm danh từ NGẮN (a big house — nếu có
+  mệnh đề bổ nghĩa dài theo sau thì tách riêng); cụm tính từ/trạng từ/giới từ (very happy, in
+  front of); cụm phân từ/nguyên mẫu/gerund NGẮN; cụm cố định/collocation/thành ngữ; cụm so
+  sánh/liên từ song song; cấu trúc there is/it takes; cụm tính từ/danh từ + giới từ cố định
+  (afraid of, a piece of); cụm chỉ số lượng (a few); mệnh đề quan hệ/trạng ngữ NGẮN (≤4-5 từ,
+  dài hơn phải chia nhỏ); Grammar Formula Chunks theo cấp (A1: am/is/are, have/has, do/does+V,
+  there is/are; A2: be going to, will, can, have to, would like, used to; B1: have/has+V3,
+  have/has been+V-ing, was/were+V-ing, had+V3, be+V3 bị động; B2: have been doing, should have
+  done, điều kiện, verb pattern).
+- Từ KHÔNG thuộc loại nào ở trên vẫn PHẢI có mặt — tự làm 1 nhóm riêng gồm chính nó, "type" là
+  loại từ đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/article/auxiliary/
+  modal/interjection/number).
 - Mỗi nhóm có cấu trúc:
   {
-    "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
+    "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ, MỖI phần tử ĐÚNG 1 TỪ ĐƠN
+      (KHÔNG được nhét nhiều từ cách nhau bởi khoảng trắng vào 1 chuỗi — lỗi thật đã gặp),
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
     "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
     "type": "loại cụm/loại từ, theo danh sách ở trên",
@@ -111,9 +123,7 @@ mọi content_type, 2026-07-30):
 - BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
   "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
   "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
-  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. Với bài cấp A1/A2/B1, nếu kiểm tra này THẤT
-  BẠI, hệ thống sẽ bắt sinh lại toàn bộ bài (dùng đúng cơ chế thử lại đã có) trước khi lưu —
-  không được để sót từ nào ở 3 cấp độ này.
+  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau.
 
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
@@ -162,6 +172,16 @@ Mentor AI (next_slot, không hỏi người dùng chọn độ dài) luôn dùng
   hành vi A1 đáng kể). B1 "Vừa" (180-230, giữa 205) khớp gần đúng target 200 cũ đã kiểm chứng
   nhiều lần — không đổi hành vi B1 hiện có. B2/C1 THỰC SỰ tăng mạnh so với mặc định 200 cũ, xem
   ghi chú kết quả test thật ở `project_next_slot_skin_wiring` trong memory khi kiểm lại.
+
+QUY TẮC VỀ CẤU TRÚC CÂU ĐÁNG CHÚ Ý (trường "grammar"/"sentence_patterns" — 2026-08-10, Đợt 6,
+catalog THAM CHIẾU theo cấp CEFR, không phải danh sách cố định phải nhét đủ): A1 (am/is/are,
+have/has, do/does+V, V-ing hiện tại tiếp diễn, quá khứ đơn, there is/are); A2 (be going to, will,
+can, have to, would like, used to); B1 (have/has+V3, have/has been+V-ing, was/were+V-ing,
+had+V3, bị động, modal+have+V3, mệnh đề quan hệ/vì/nếu đơn giản); B2 (have been doing, modal
+hoàn thành, verb pattern, điều kiện 0-3, so sánh, there+be/it+be nâng cao, participle/infinitive/
+gerund phrase); C1 (đảo ngữ, cleft sentence, nominalisation, ellipsis, thành ngữ). "grammar":
+2-4 điểm THẬT dùng trong bài đúng cấp. "sentence_patterns": 1-3 khuôn câu THẬT xuất hiện trong
+"content", trích nguyên văn — nội dung hiển thị trực tiếp ở tab Ngữ pháp.
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.

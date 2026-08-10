@@ -3,11 +3,21 @@ import { signInWithPassword, startOAuthLogin } from "../authApi.js";
 import { setSession } from "../session.js";
 import { navigate } from "../router.js";
 
+// Logo (2026-08-10, Đợt 6 mục 12 đợt 4) — 2 bản sáng/tối (app/icons/logo-light.png,
+// logo-dark.png), chọn theo "data-theme" đã resolve sẵn trên <html> lúc app khởi động (xem
+// theme.js::applyTheme() — luôn là "light"/"dark" cụ thể, không còn "system" ở bước này).
+// URL TUYỆT ĐỐI theo document.baseURI (giống background.js::absIconUrl()) — tránh đúng lỗi
+// đường dẫn tương đối đã gặp trước đây (cục bộ vs Vercel deploy ở thư mục con khác nhau).
+function logoUrl() {
+  const isDark = document.documentElement.dataset.theme === "dark";
+  return new URL(`icons/${isDark ? "logo-dark.png" : "logo-light.png"}`, document.baseURI).href;
+}
+
 export function renderLogin(mount) {
   mount.innerHTML = `
     <div class="screen screen-center">
       <div class="card login-card">
-        <h1 class="app-title">Learning English AI</h1>
+        <img class="app-logo" src="${logoUrl()}" alt="Mosaic" />
         <p class="app-subtitle muted">Đăng nhập để bắt đầu học</p>
         <form id="login-form" novalidate>
           <label class="field">
