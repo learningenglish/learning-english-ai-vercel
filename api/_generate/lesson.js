@@ -185,23 +185,23 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   "long" và "term", KHÔNG viết chung "long-term" thành 1 phần tử) — 2 phần tử đó vẫn có thể cùng
   nằm trong 1 nhóm (words: ["long", "term"]) nếu cùng 1 cụm ý nghĩa, chỉ cần đừng viết liền 1
   chuỗi có gạch nối.
-- Mỗi nhóm là 1 ĐƠN VỊ Ý NGHĨA NHỎ (để người học bấm tra ĐÚNG những từ liên quan trực tiếp tới
-  nhau — KHÔNG PHẢI cả câu, và cũng KHÔNG PHẢI cả 1 mệnh đề dài). GIỚI HẠN ĐỘ DÀI (2026-08-10,
-  Đợt 6 — Minh phản hồi thật qua tooltip: bấm 1 từ trong mệnh đề quan hệ 9 từ "who have been
-  through so much with their partners" ra nguyên cả 9 từ đó, đúng lỗi "cụm quá to" chứ không
-  phải lỗi hiển thị — sửa TẠI GỐC ở đây):
-  - Đa số nhóm nên DÀI 1-4 TỪ. Nhóm dài hơn (5-6 từ) CHỈ chấp nhận khi đó THẬT SỰ là 1 cụm cố
-    định/collocation/thành ngữ nguyên khối không thể tách nhỏ hơn mà vẫn giữ nghĩa (vd "as soon
-    as possible", "on behalf of the company").
+- GIỚI HẠN ĐỘ DÀI — QUY TẮC CỨNG, ÁP DỤNG NGHIÊM NGẶT NHƯ QUY TẮC "1 TỪ = 1 PHẦN TỬ" Ở TRÊN (kiểm
+  chứng thật 2026-08-10: bản nháp quy tắc mềm trước đó KHÔNG đủ mạnh — model VẪN gộp mệnh đề quan
+  hệ 9-11 từ thành 1 nhóm dù đã có hướng dẫn "nên chia nhỏ". Từ giờ đây LÀ GIỚI HẠN CỨNG, không
+  phải gợi ý):
+  * MỌI nhóm KHÔNG ĐƯỢC VƯỢT QUÁ 5 TỪ. Đây là trần cứng, áp dụng cho MỌI loại cụm kể cả mệnh đề
+    quan hệ/trạng ngữ/danh từ — KHÔNG có ngoại lệ "cụm cố định dài hơn 5 từ" như bản nháp trước.
+  * Câu/mệnh đề dài hơn 5 từ BẮT BUỘC phải chia thành NHIỀU nhóm liên tiếp, mỗi nhóm ≤5 từ — coi
+    đây là "cắt khúc" 1 mệnh đề dài thành các khúc nhỏ liền nhau, KHÔNG phải chọn ra 1 khúc rồi bỏ
+    qua phần còn lại (mọi từ vẫn phải có mặt ở 1 nhóm nào đó, xem quy tắc phủ đủ 100% ở trên).
+  ❌ SAI (đúng lỗi thật vừa xảy ra, 11 từ gộp 1 nhóm):
+  {"words": ["who","has","worked","at","this","company","since","she","graduated","from","college"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại công ty này kể từ khi cô tốt nghiệp đại học"}
+  ✅ ĐÚNG (cắt thành 3 nhóm liên tiếp, mỗi nhóm ≤5 từ, vẫn phủ đủ 11 từ, mỗi nhóm tự đủ nghĩa để tra riêng):
+  {"words": ["who","has","worked","at","this"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại đây"}
+  {"words": ["company","since","she","graduated"], "type": "Cụm giới từ", "meaning": "công ty này kể từ khi cô tốt nghiệp"}
+  {"words": ["from","college"], "type": "Cụm giới từ", "meaning": "từ đại học"}
   - TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như
     "Really?"), KHÔNG gộp 2 mệnh đề độc lập (nối bằng and/but/so/because...) vào chung 1 nhóm.
-  - QUAN TRỌNG THÊM (lỗi thật vừa xảy ra): KHÔNG được gộp NGUYÊN 1 MỆNH ĐỀ PHỤ DÀI (mệnh đề quan
-    hệ, mệnh đề trạng ngữ, mệnh đề danh từ...) thành 1 nhóm duy nhất nếu nó dài hơn ~4-5 từ — PHẢI
-    CHIA mệnh đề đó thành NHIỀU nhóm nhỏ hơn theo đúng cấu trúc bên trong nó, ví dụ mệnh đề quan
-    hệ "who have been through so much with their partners" (9 từ, SAI nếu gộp 1 nhóm) nên chia
-    thành các nhóm nhỏ như: "who have been" (đại từ quan hệ + cụm động từ, 1 nhóm) + "through so
-    much" (cụm giới từ/trạng từ, 1 nhóm) + "with their partners" (cụm giới từ, 1 nhóm) — mỗi nhóm
-    vẫn ĐỦ NGHĨA để tra riêng, không phải chờ đọc hết cả mệnh đề mới hiểu.
 - Nhận diện cụm theo các nhóm sau (tham khảo để chọn nhãn "type" phù hợp — sai nhãn KHÔNG bị lỗi,
   chỉ sót/thừa từ hoặc GỘP QUÁ DÀI mới bị lỗi):
   * Cụm động từ: cụm thì (has eaten, will be working), cụm dạng bị động (is built, was written),
