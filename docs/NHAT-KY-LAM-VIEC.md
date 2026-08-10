@@ -1116,4 +1116,40 @@ sống: đo `.lesson-cover` trái=0/phải=375=đúng bề rộng màn hình, bo
 **Đã sửa (mục 5):** icon tab Ngữ pháp đổi từ "hash" (#) sang "graduation-cap" (mũ tốt nghiệp,
 hợp ngữ nghĩa hơn).
 
-**Còn lại cho Minh:** mục 12 (logo) vẫn chờ file như đợt 4.
+## 2026-08-10 (đợt 6) — Logo thật + rút lại hướng sửa sai của đợt 5 + lưới an toàn 2 lớp cho cụm quá dài
+
+Minh gửi đường dẫn logo thật (`D:\Download\photos\logo\`, 2 bản sáng/tối) + 2 file tham khảo
+("Cụm cho tooltip.txt", "cấu trúc câu.txt") làm rõ: mục 1 đợt 5 tôi đã HIỂU SAI Ý — tooltip cần
+hiện CỤM (nhiều từ liên quan), không phải 1 từ trơ trọi (như đợt 5 vừa đổi) và cũng không phải cả
+mệnh đề dài (lỗi gốc thật sự).
+
+**Đã sửa:**
+- Logo: copy `LOGO MOSAIC.png`/`LOGO MOSAIC TỐI.png` vào `app/icons/logo-light.png`/
+  `logo-dark.png`, chèn vào `login.js` thay chữ "Learning English AI" thuần — chọn bản theo
+  `data-theme` đã resolve trên `<html>`. File gốc khá nặng (559KB/1.3MB, không có công cụ nén ảnh
+  trong sandbox) — hiển thị vẫn đúng (giới hạn `max-width:220px` qua CSS) nhưng tải hơi nặng, có
+  thể nén thêm sau nếu cần.
+- **Rút lại đổi hướng đợt 5 (mục 1 cũ):** trả `phraseGroupToEntry()`/`spansFromPhraseGroups()` về
+  kiến trúc GỘP CẢ NHÓM thành 1 vùng bấm (không còn tách từng từ), tooltip lại hiện cả cụm + nghĩa
+  cả cụm + breakdown từng từ bên dưới — ĐÚNG như "Cụm cho tooltip.txt" mô tả.
+- **Viết lại `PHRASE_GROUPS_RULES` với trần cứng 5 từ/nhóm** (dùng taxonomy 24 loại + phân tầng
+  CEFR từ file tham khảo) — **kiểm chứng THẬT bằng cách sinh bài mới với ĐÚNG câu Minh từng chụp
+  ảnh: lượt sinh ĐẦU TIÊN sau khi sửa prompt VẪN cho ra nhóm 10-11 từ** (model không tuân thủ dù
+  đã có trần cứng + ví dụ SAI/ĐÚNG rõ ràng) — xác nhận đúng bản chất "soft validator" đã biết:
+  prompt tuning KHÔNG đảm bảo 100%.
+- **Lưới an toàn phía CLIENT (đảm bảo tuyệt đối, không phụ thuộc model):** `spansFromPhraseGroups()`
+  và `contentChunkLinesHtml()` giờ tự cắt bất kỳ nhóm nào vượt quá 5 từ thành nhiều "cửa sổ" con
+  liên tiếp ≤5 từ, ghép nghĩa tạm từ `word_meanings` của từng cửa sổ — đảm bảo người dùng KHÔNG
+  BAO GIỜ thấy tooltip/dòng tách câu hiện nguyên cả mệnh đề dài, BẤT KỂ model có tuân thủ prompt
+  hay không. Verify sống: sinh lại đúng câu đã fail (nhóm 10-11 từ) — bấm bất kỳ từ nào trong đó,
+  tooltip/tách câu đều hiện tối đa 5 từ, không còn ca nào vượt trần.
+- Thêm catalog "Grammar Formula Chunks" theo cấp CEFR (A1-C1, từ "cấu trúc câu.txt") vào
+  `GENERATE_LESSON_SYSTEM_PROMPT`, tham chiếu cho `grammar`/`sentence_patterns` (tab Ngữ pháp).
+
+**Đánh đổi đã biết:** nghĩa tái tạo cho các "cửa sổ" cắt tự động (khi model không tuân thủ) chỉ là
+GHÉP nghĩa từng từ lại, không phải nghĩa được AI viết riêng cho đúng cụm nhỏ đó — có thể hơi cứng/
+lặp từ (vd "ai đã đã qua rất" — lặp "đã") nhưng vẫn NGẮN GỌN VÀ ĐÚNG PHẠM VI hơn hẳn hiện nguyên cả
+mệnh đề, chấp nhận được cho trường hợp fallback hiếm gặp này.
+
+**Còn lại cho Minh:** không có việc bắt buộc — mọi thứ đã deploy + verify. Nếu muốn ảnh logo nhẹ
+hơn, cần Minh tự nén trước khi gửi lại (sandbox không có công cụ nén ảnh).
