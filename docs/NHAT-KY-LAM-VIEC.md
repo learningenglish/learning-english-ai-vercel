@@ -1153,3 +1153,56 @@ mệnh đề, chấp nhận được cho trường hợp fallback hiếm gặp n
 
 **Còn lại cho Minh:** không có việc bắt buộc — mọi thứ đã deploy + verify. Nếu muốn ảnh logo nhẹ
 hơn, cần Minh tự nén trước khi gửi lại (sandbox không có công cụ nén ảnh).
+
+## 2026-08-10 (đợt 7) — Logo lên NỀN toàn app (sửa hiểu lầm đợt 6), khôi phục icon Luyện viết, sinh 5 bài mẫu test chất lượng
+
+Minh chỉ ra qua ảnh chụp Home/Luyện viết: logo đợt 6 CHỈ nằm ở màn đăng nhập, trong khi ý định
+thật (đã có từ đợt 4/5 khi yêu cầu "card ngăn cách với nền để khi chèn logo không bị ảnh hưởng")
+là logo phải làm WATERMARK trên NỀN CHUNG toàn app — mọi màn hình, không riêng đăng nhập.
+
+**Đã sửa:**
+- Thêm `body::after` (cùng cơ chế `body::before` đang vẽ gradient màu nền) hiện logo mờ
+  (opacity 0.07) căn giữa phía trên màn hình, ĐÈ LÊN gradient nhưng NẰM DƯỚI mọi nội dung thật
+  (cả 2 đều z-index:-1, thứ tự DOM quyết định `::after` vẽ trên `::before`). Chỉ dùng bản
+  `logo-light.png` (nền trong suốt thật) cho CẢ 2 theme — bản `logo-dark.png` có nền ĐEN ĐẶC
+  trong chính file ảnh (không phải watermark trong suốt), dùng sẽ hiện nguyên khối đen, không
+  phù hợp làm lớp phủ mờ.
+- Khôi phục icon 14 thể loại trong danh sách Luyện viết (đợt 4 từng bỏ theo yêu cầu khác, giờ
+  Minh đổi ý) + thêm tiêu đề "Chọn thể loại luyện viết" phía trên danh sách (trước đó không có
+  tiêu đề nào).
+
+**Sinh 5 bài mẫu Kế toán (A1-C1) để Minh duyệt chất lượng — 4/5 THÀNH CÔNG:**
+- A1 "Tại văn phòng kế toán" (hội thoại, id `2e13b3a9-f5e9-436c-b9b4-f443e0e13686`)
+- A2 "Hiểu rõ các khái niệm cơ bản về kế toán" (bài đọc, id `c0412863-a3f8-4029-b726-9dd5b20d8555`)
+- B1 "Thảo luận về ngân sách" (hội thoại, id `05b451c5-dcc5-44f3-8679-b7c5e18f5b8a`)
+- B2 "Hiểu về Báo cáo Tài chính" (bài đọc, id `38b80c24-57c0-46bf-b294-1bc8618de9ba`)
+- **C1 THẤT BẠI cả 5 lượt thử (2 lượt đầu + 3 lượt retry model mạnh)** — khớp đúng vấn đề ĐÃ
+  BIẾT/đã ghi sổ từ trước (comment sẵn trong `generate_lesson()`: "B2/C1 GẦN NHƯ LUÔN THẤT BẠI...
+  trần 60s Vercel không đủ cho 1 lượt retry trọn vẹn thứ 2") — KHÔNG phải lỗi mới do các sửa đổi
+  hôm nay gây ra, chưa điều tra sâu thêm (ngoài phạm vi yêu cầu "sinh mẫu để duyệt" — cần 1 phiên
+  riêng nếu Minh muốn ưu tiên sửa).
+
+**Phát hiện qua đọc dữ liệu thật (không đoán) — 3 vấn đề chất lượng đáng chú ý, CHƯA sửa, báo
+Minh trước khi quyết định hướng tiếp:**
+1. **A1: `grammar` rỗng hoàn toàn** (mảng `[]`) — dù `GENERATE_LESSON_SYSTEM_PROMPT` đã yêu cầu
+   2-4 điểm ngữ pháp. `word_meanings` của MỌI `phrase_groups` cũng rỗng (`{}`) — tooltip vẫn hoạt
+   động (hiện nghĩa cả cụm) nhưng thiếu breakdown từng từ.
+2. **A2/B1: `phrase_groups` chỉ phủ MỘT PHẦN mỗi câu** — vd câu A2 "Accounting is the process of
+   recording financial transactions." (9 từ) chỉ có 1 nhóm phủ 5 từ đầu, 4 từ cuối ("recording
+   financial transactions") KHÔNG có nhóm nào — những từ đó sẽ KHÔNG tra được nghĩa qua tooltip
+   (rơi về khớp "vocabulary" cũ, chỉ bắt được từ có trong danh sách Từ vựng). Lặp lại ở hầu hết
+   câu trong cả 2 bài này.
+3. **B2: `phrase_groups` THIẾU HẲN** ở mọi phần tử `content` — không phải phủ thiếu, mà HOÀN TOÀN
+   KHÔNG CÓ trường này. Bài B2 sẽ tra từ hoàn toàn qua "vocabulary" cũ (chỉ ~15 từ được liệt kê
+   sẵn), phần còn lại của đoạn văn không bấm tra được.
+
+Đây là các vấn đề CHẤT LƯỢNG SINH BÀI (thuộc kiến trúc "hướng dẫn mềm, không validator cứng" đã
+chốt từ trước), KHÁC với lỗi "cụm quá to" đã sửa ở đợt 6 — đợt 6 chỉ đảm bảo nhóm KHÔNG QUÁ DÀI,
+chưa đảm bảo nhóm PHỦ ĐỦ. Cần Minh xem qua 4 bài mẫu trên (đọc trực tiếp trong app, chú ý thử tra
+nhiều từ khác nhau trong 1 câu dài) rồi quyết định có cần siết thêm prompt hay chấp nhận hiện
+trạng — không tự ý sửa thêm khi chưa có chỉ đạo, đúng quy ước "thay đổi nội dung prompt cần bàn
+trước".
+
+**Còn lại cho Minh:** đọc 4 bài mẫu (A1/A2/B1/B2) trong app thật, phản hồi về (a) chất lượng nội
+dung/độ tự nhiên, (b) có cần ưu tiên sửa vấn đề "phrase_groups phủ thiếu" ở trên không, (c) có
+muốn dành 1 phiên riêng điều tra C1 hay tạm gác lại.
