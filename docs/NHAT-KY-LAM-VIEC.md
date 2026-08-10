@@ -1413,3 +1413,50 @@ pattern các biến theme khác trong file.
 
 **Còn lại cho Minh:** không có file SQL mới đợt này (cả 2 file cũ đã chạy xong). Mọi sửa đợt 12 là
 code (JS/CSS), tự lên theo deploy, không cần thao tác gì thêm ở Supabase.
+
+## 2026-08-10 (đợt 13) — 8 mục, có kế hoạch duyệt trước khi code
+
+Minh xác nhận đã chạy cả 2 file SQL đợt 9+11, gửi tiếp 8 phản hồi, yêu cầu RÕ đưa giải pháp
+thống nhất TRƯỚC khi code. Đã dùng plan mode: 2 Explore agent khảo sát (tiêu đề Home, màn Phân
+tích/audio/tách câu) + tự giải mã byte PNG 2 logo + tự đọc code (không đoán) cho 8 mục, viết
+plan đầy đủ nguyên nhân+giải pháp, Minh duyệt rồi mới code.
+
+1. **2 logo sáng/tối kích cỡ không đều:** đo trực tiếp — 2 canvas ảnh gốc tỉ lệ khác nhau (sáng
+   1254×1254 vuông, tối 1536×1024 khổ ngang), nội dung logo chiếm % khác nhau mỗi canvas. Sửa
+   bằng CSS (không đụng file ảnh): `background-size` riêng cho bản tối = bản sáng ×1.248 rộng /
+   ×0.973 cao (tính từ đúng % nội dung đo được), để nội dung logo ra cùng cỡ ở cả 2 theme.
+2. **Chữ "A" đầu tiêu đề Home không khớp "Ads":** không phải lỗi padding container — do tiêu đề
+   có icon (Ads) lệch phải ~26px (22px icon + 4px gap) so với tiêu đề không icon (Home). Thêm
+   `padding-left:26px` cho `.home-track-title`.
+3. **Breakdown leftover chỉ liệt kê từ thô, không "=" không nghĩa:** đổi lưới đỡ đợt 12 — leftover
+   giờ gộp 1 dòng DUY NHẤT trỏ về bản dịch CẢ CÂU đã có sẵn (`... = (xem nghĩa nguyên câu ở
+   trên)`) thay vì tự tra riêng từng từ có thể sai/thiếu.
+4. **Tooltip sai thứ tự (đang: cấp độ bài/cụm/nghĩa cụm/từng từ — cần: cấp độ từ/từ/nghĩa/cụm/
+   nghĩa cụm):** đổi kiến trúc span — mỗi CỤM trước đây là 1 span DUY NHẤT (bấm đâu cũng ra cùng
+   kết quả cả cụm), giờ mỗi TỪ là 1 span riêng bấm độc lập, entry chính là CỦA TỪ ĐÓ (nghĩa riêng
+   từ `word_meanings`), cụm chứa nó (nếu có) là field phụ hiện SAU. Đổi
+   `spansFromPhraseGroups()`/`wordEntryFromPhraseGroup()` (thế `phraseGroupToEntry()` cũ)/
+   `renderTooltipContent()`. Tự viết test logic độc lập (3 case: cụm ngắn, cụm dài cần cắt cửa sổ
+   5 từ, từ đơn khớp vocabulary) xác nhận đúng trước khi deploy.
+5. **Audio trả phí chỉ 1 tài khoản dùng được:** xác nhận đúng bug đã tự phát hiện từ đợt 11 —
+   `api/_generate/audio.js` (`generate_lesson_full_audio`) lọc cứng `user_id=eq.` ở cả SELECT+
+   PATCH, sót từ trước khi bài dùng chung (migration 038). Bỏ lọc, thêm kiểm ownership riêng cho
+   `source='user_text'` (Phân tích cá nhân vẫn riêng tư).
+6. **Audio free (Web Speech) ở Phân tích nhảy cóc:** Phân tích dùng CHUNG audio bar mọi màn khác
+   (không phải bug CSS riêng) nhưng LUÔN rơi về Web Speech (không đủ điều kiện audio trả phí) —
+   Web Speech chỉ cập nhật vị trí ở lúc HẾT CÂU (`onend`), đứng yên suốt câu dài rồi nhảy 1 lần.
+   Thêm `utteranceStartedAt` (set ở `onstart`) + nội suy số từ đã đọc theo thời gian thực trong
+   `wordsElapsed()` (`app/js/tts.js`) — thanh tiến trình chạy mượt xuyên câu dài.
+7. **Phân tích không nhận diện dấu ngoặc kép khi tách câu:** repro thật xác nhận — regex tách câu
+   yêu cầu dấu chấm/hỏi/! phải theo NGAY SAU bởi khoảng trắng; ngoặc kép đóng nằm giữa làm
+   `.match()` bỏ mất NGUYÊN CẢ CÂU (không phải lỗi nhỏ). Không tìm thấy "bộ code v6" nào trong
+   lịch sử git repo này. Thêm lớp ký tự ngoặc đóng tuỳ chọn (thẳng + kiểu in) sau `[.!?]+` trong
+   cả `splitIntoSentences()`/`splitTranslationSentences()` — tự kiểm bằng đúng 2 câu lỗi Minh gửi.
+8. **Hiển thị không đồng bộ giữa tổ hợp toggle:** đợt 11 tính `forceOriginal` (gộp lại 1 đoạn) chỉ
+   2/3 toggle (thiếu `showChunks`) — bật riêng "Tách câu" vẫn bị coi "tắt hết" nên GỘP LẠI, ngược
+   tên icon. Sửa tính đủ cả 3: `!showOriginal && !showTranslation && !showChunks`.
+
+**Bump SW cache v58→v59, deploy + verify sống từng mục trên link test ổn định.**
+
+**Còn lại cho Minh:** không có file SQL nào đợt này — toàn bộ 8 mục là code (JS/CSS), tự lên
+qua deploy.

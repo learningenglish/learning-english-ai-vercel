@@ -196,6 +196,11 @@ export function createPlayer({ onStateChange } = {}) {
   // (giống hệt triết lý speakOnce() cũ), dùng chung sẽ làm currentTime/itemIndex của playlist
   // chính bị xáo trộn theo lượt nghe lẻ này.
   let segmentPreviewEl = null;
+  // Mốc thời gian THẬT bắt đầu utterance Web Speech hiện tại (2026-08-10, Đợt 13 mục 6 — Minh:
+  // "audio free ở Phân tích nhảy cóc") — set ở utter.onstart trong speakWithWebSpeech(), dùng để
+  // NỘI SUY tiến trình trong lúc 1 utterance dài đang đọc (xem wordsElapsed() bên dưới). null =
+  // không đang đọc bằng Web Speech (tạm dừng/dùng audio thật/chưa bắt đầu).
+  let utteranceStartedAt = null;
 
   function stopSegmentPreview() {
     if (!segmentPreviewEl) return;
@@ -220,6 +225,8 @@ export function createPlayer({ onStateChange } = {}) {
   }
 
   function speakWithWebSpeech(item) {
+    utteranceStartedAt = null; // reset ngay — chỉ set lại đúng lúc "onstart" utterance MỚI này
+    // thật sự bắt đầu đọc (có độ trễ nhỏ so với lúc gọi speak(), set sớm hơn sẽ lệch).
     const words = (item.text || "").split(/\s+/).filter(Boolean);
     const fromWords = words.slice(state.wordOffset).join(" ");
     if (!fromWords.trim()) {
@@ -232,10 +239,15 @@ export function createPlayer({ onStateChange } = {}) {
     utter.volume = state.volume;
     const voice = pickVoice(item.genderHint);
     if (voice) utter.voice = voice;
+    utter.onstart = () => {
+      utteranceStartedAt = Date.now();
+    };
     utter.onend = () => {
+      utteranceStartedAt = null;
       if (state.playing) goToItem(state.itemIndex + 1, 0);
     };
     utter.onerror = () => {
+      utteranceStartedAt = null;
       state.playing = false;
       notify();
     };
@@ -253,10 +265,25 @@ export function createPlayer({ onStateChange } = {}) {
   }
 
   // Số từ đã "đọc qua" tính từ đầu playlist tới đúng vị trí hiện tại (itemIndex + wordOffset).
+  // NỘI SUY thêm phần đang đọc TRONG câu hiện tại (2026-08-10, Đợt 13 mục 6 — Minh: "audio free ở
+  // Phân tích nhảy cóc") — Web Speech CHỈ cập nhật wordOffset ở "onend" (hết CẢ CÂU), không có gì
+  // cập nhật GIỮA lúc 1 câu dài đang đọc, khiến giá trị này (và thanh tiến trình đọc từ nó qua
+  // getProgress()) đứng yên suốt câu rồi nhảy 1 lần khi qua câu kế. Chỉ áp dụng khi ĐANG phát
+  // bằng Web Speech thật (không phải audio file — "!fullAudioEl", không phải lúc tạm dừng —
+  // "state.playing", và utterance hiện tại đã thật sự bắt đầu — "utteranceStartedAt" set ở
+  // "onstart" trong speakWithWebSpeech()) — ước lượng số từ đã qua theo thời gian thực trôi qua ×
+  // tốc độ đọc, chặn trần ở số từ thật của câu đó.
   function wordsElapsed() {
     let sum = 0;
     for (let i = 0; i < state.itemIndex; i++) sum += wordCount(state.items[i]?.text);
-    return sum + Math.min(state.wordOffset, wordCount(state.items[state.itemIndex]?.text));
+    const currentItemWords = wordCount(state.items[state.itemIndex]?.text);
+    let offset = Math.min(state.wordOffset, currentItemWords);
+    if (state.playing && !fullAudioEl && utteranceStartedAt) {
+      const elapsedSecondsInUtterance = (Date.now() - utteranceStartedAt) / 1000;
+      const interpolatedWords = elapsedSecondsInUtterance * state.rate * WORDS_PER_SECOND_AT_RATE_1;
+      offset = Math.min(currentItemWords, offset + interpolatedWords);
+    }
+    return sum + offset;
   }
 
   // Có mốc giây THẬT cho MỌI câu trong "items" hiện tại không — đúng độ dài, không rơi vào bài

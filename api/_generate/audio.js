@@ -151,8 +151,15 @@ export async function generate_lesson_full_audio(data, ctx) {
   const lessonId = data.lesson_id;
   if (!lessonId) return { error: "Thiếu 'lesson_id'.", status: 400 };
 
+  // BUG THẬT (2026-08-10, Đợt 13 mục 5 — Minh: "chỉ 1 tài khoản dùng được audio trả phí, tài
+  // khoản khác tự rơi về giọng máy") — lượt SELECT này trước đây lọc CỨNG
+  // "user_id=eq.${ctx.studentId}", sót lại từ TRƯỚC khi bài "ai_generated" dùng chung mọi tài
+  // khoản (migration 038, đợt 9). Dùng SERVICE ROLE KEY (không qua RLS) nên bỏ lọc user_id ở
+  // TẦNG CODE là đủ — không cần đụng migration nào thêm. Bỏ lọc ở đây, thêm "user_id" vào select
+  // để tự kiểm quyền riêng cho "user_text" ngay dưới (Phân tích cá nhân VẪN riêng tư, không dùng
+  // chung như "ai_generated").
   const selectRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}&select=content,industry,source,audio_full_url,audio_segment_times`,
+    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=user_id,content,industry,source,audio_full_url,audio_segment_times`,
     { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
   );
   if (!selectRes.ok) {
@@ -162,6 +169,13 @@ export async function generate_lesson_full_audio(data, ctx) {
   const rows = await selectRes.json();
   const lesson = rows?.[0];
   if (!lesson) return { error: "Không tìm thấy bài học.", status: 404 };
+
+  // "user_text" (Phân tích văn bản cá nhân) VẪN riêng tư — chỉ chủ bài mới sinh/nghe audio trả
+  // phí cho bài đó, đúng chính sách đã áp dụng cho việc ĐỌC bài ở migration 038. "ai_generated"
+  // (bộ giáo trình dùng chung) thì KHÔNG kiểm ownership nữa, xem ngay dưới.
+  if (lesson.source === "user_text" && lesson.user_id !== ctx.studentId) {
+    return { error: "Không tìm thấy bài học.", status: 404 };
+  }
 
   // Đúng phạm vi đã chốt: CHỈ bài "ai_generated" (Thư viện AI) VÀ CÓ lĩnh vực — bài Tin
   // tức/Phân tích văn bản/Giao tiếp tổng quát (industry rỗng) trả "eligible:false", client tự
@@ -230,19 +244,19 @@ export async function generate_lesson_full_audio(data, ctx) {
   const url = await uploadAudio(`${lessonId}/full.wav`, combined, "audio/wav");
   if (!url) return { error: "Không lưu được audio.", status: 502 };
 
-  const patchRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&user_id=eq.${encodeURIComponent(ctx.studentId)}`,
-    {
-      method: "PATCH",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({ audio_full_url: url, audio_segment_times: segmentTimes }),
-    }
-  );
+  // Bỏ lọc "user_id" (cùng lý do ở lượt SELECT phía trên) — tới được đây nghĩa là "lesson.source"
+  // đã chắc chắn là "ai_generated" (nhánh "user_text" đã return sớm ở trên), nên lưu URL audio
+  // dùng chung cho MỌI tài khoản là đúng ý — không cần đúng tài khoản đã tạo bài mới lưu được.
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ audio_full_url: url, audio_segment_times: segmentTimes }),
+  });
   if (!patchRes.ok) {
     // Lỗi lưu KHÔNG nên chặn lượt phát lần này — audio đã upload xong, trả URL luôn dùng được,
     // chỉ là lần SAU sẽ phải sinh lại (mất phần "tốn 1 lần" nhưng không hỏng trải nghiệm hiện tại).

@@ -199,8 +199,17 @@ body::after {
   pointer-events: none;
 }
 
+/* "logo-dark.png" (1536×1024, khổ ngang) và "logo-light.png" (1254×1254, vuông) là 2 CANVAS
+   khác tỉ lệ nhau (Minh: "lỗi của tôi là up lên 2 tấm hình tỷ lệ khác nhau") — "background-size"
+   set theo CANVAS, không theo nội dung logo thật bên trong, nên 2 canvas khác tỉ lệ khiến logo
+   tối hiện nhỏ/dẹt hơn logo sáng ở cùng 1 giá trị. Đo trực tiếp bounding-box thật (giải mã PNG,
+   không chỉ nhìn preview): nội dung logo chiếm 94.2%/95.5% (rộng/cao) canvas ở bản sáng, chỉ
+   75.5%/98.2% ở bản tối — hệ số hiệu chỉnh riêng cho bản tối = (0.942/0.755)≈1.248 chiều rộng,
+   (0.955/0.982)≈0.973 chiều cao, để NỘI DUNG logo (không phải canvas) ra cùng kích thước ở cả 2
+   theme. */
 :root[data-theme="dark"] body::after {
   background-image: url("../icons/logo-dark.png");
+  background-size: calc(min(72vw, 420px) * 1.248) calc(min(72vw, 420px) * 0.973);
 }
 
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
@@ -2040,6 +2049,20 @@ textarea:focus {
   font-weight: 600;
 }
 
+/* Dòng "cụm" PHỤ (2026-08-10, Đợt 13 mục 4) — hiện khi từ vừa bấm thuộc 1 cụm nhiều từ, đứng
+   SAU khối nghĩa của chính từ đó (đúng thứ tự Minh yêu cầu: từ+nghĩa từ trước, cụm+nghĩa cụm
+   sau) — cùng cỡ chữ/màu với .word-popover-breakdown cho đồng bộ hình thức. */
+.word-popover-phrase-context {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.word-popover-phrase-context b {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .vocab-list,
 .grammar-list,
 .exercises-list {
@@ -3081,6 +3104,12 @@ textarea:focus {
    tự dời xuống theo, không cần chỉnh riêng. */
 .home-track-title {
   margin: 6px 0 0;
+  /* Mọi tiêu đề dùng appHeaderHtml() (Ads/Setting/...) có icon 22px + gap 4px ĐỨNG TRƯỚC chữ,
+     nên chữ đầu tiêu đề đó nằm lệch phải ~26px so với mép .screen. Tiêu đề Home không có icon
+     (đổi text theo Chuyên ngành, không hợp gắn icon cố định) nên chữ nằm sát mép — 2026-08-10,
+     Minh: "chữ A đầu không khớp với chữ A của Ads". Bù đúng 26px để mọi tiêu đề trong app cùng 1
+     điểm bắt đầu chữ, không thêm icon giả. */
+  padding-left: 26px;
 }
 
 .home-settings-btn {
