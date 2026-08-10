@@ -1268,3 +1268,32 @@ tài khoản" (giai đoạn test, phân gói tài khoản để sau) + logo cầ
 để bộ giáo trình thật sự dùng chung (code đã sẵn sàng, chỉ chờ migration chạy) — sau khi chạy,
 đăng nhập tài khoản thật sẽ thấy đúng 4 bài mẫu đợt 7 (và mọi bài AI sinh khác) mà không cần đăng
 nhập tài khoản test nữa.
+
+## 2026-08-10 (đợt 10) — Xoá bài cũ, sinh 2 bài mẫu #1a2/#1b1, logo đậm hơn nữa (45%)
+
+**1) Xoá bài cũ + sinh 2 bài mẫu mới có chú thích:** Minh yêu cầu xoá hết bài cũ, sinh 1 bài A2 +
+1 bài B1 (Kế toán) có chú thích "#1a2"/"#1b1" để dễ nhận biết là bài test mới. Đã sinh 2 bài (qua
+tài khoản test, cùng cơ chế đợt 7):
+- A2 đọc "Daily Accounting Tasks" — id `0461c884-a8df-44b4-b585-779d4c458674`
+- B1 hội thoại "Daily Accounting Work" — id `91cd53f8-cef3-4a46-9c74-b38da70f468a`
+
+Viết sẵn `supabase/one-off_reset_lessons_and_tag_new_samples_2026-08-10.sql`: xoá TOÀN BỘ bài
+trong bảng `lessons` NGOẠI TRỪ 2 id trên (an toàn dù chạy sớm/muộn), rồi gắn tiền tố "#1a2 "/
+"#1b1 " vào đầu `title`+`title_vi` của đúng 2 bài đó. Client không có quyền UPDATE cột `title`
+(chỉ `is_favorite`, xem 019_lessons.sql) và không xoá được bài của tài khoản khác qua RLS — đúng
+quy trình đã thống nhất, **Minh tự paste file SQL này vào Supabase SQL Editor**. Có thể paste
+CÙNG LÚC với `038_lessons_shared_curriculum.sql` (đợt 9, vẫn CHƯA chạy) — không phụ thuộc thứ tự
+giữa 2 file.
+
+**2) Logo đậm hơn nữa:** Minh phản hồi 45% (patch trung tính đợt 9) vẫn còn mờ, cần trong khoảng
+30-50%. Đã nâng `body::after { opacity }` 0.3 → 0.45.
+
+**Bump SW cache v55→v56, deploy + verify.**
+
+**Còn lại cho Minh — 2 file SQL đang chờ (chưa cái nào chạy):**
+1. `supabase/038_lessons_shared_curriculum.sql` (đợt 9) — mở bộ giáo trình dùng chung.
+2. `supabase/one-off_reset_lessons_and_tag_new_samples_2026-08-10.sql` (đợt 10) — xoá bài cũ, giữ
+   đúng 2 bài #1a2/#1b1.
+
+Paste cả 2 vào Supabase SQL Editor rồi mới đăng nhập tài khoản thật kiểm tra — nếu chỉ chạy #2 mà
+chưa chạy #1, RLS còn cũ nên vẫn KHÔNG thấy 2 bài mẫu (vẫn thuộc tài khoản test).

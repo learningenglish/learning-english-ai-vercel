@@ -189,7 +189,7 @@ body::after {
   background-repeat: no-repeat;
   background-position: center 38%;
   background-size: min(72vw, 420px) auto;
-  opacity: 0.3;
+  opacity: 0.45;
   pointer-events: none;
 }
 
