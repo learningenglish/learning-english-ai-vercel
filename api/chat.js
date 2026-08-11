@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups } from "./_generate/lesson.js";
+import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks } from "./_generate/lesson.js";
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
@@ -1278,6 +1278,9 @@ const ACTIONS = {
   // chưa có dữ liệu -> phân tích LẠI CẢ BÀI 1 lượt duy nhất, lưu lại — 0 lượt AI cho mọi lượt
   // bấm SAU, xem chi tiết tại định nghĩa hàm trong lesson.js.
   analyze_lesson_phrase_groups,
+  // "Vá" reading_chunks (Đợt 14) — field RIÊNG cho "Tách câu", cùng kiến trúc "vá 1 lần"
+  // như phrase_groups ở trên, xem READING_CHUNKS_RULES trong lesson.js.
+  analyze_lesson_reading_chunks,
   // Giám khảo chất lượng bài học (2026-08-07, thay validator kỹ thuật cứng đã gỡ khỏi
   // lesson.js) — hiện dùng cho lô mẫu hiệu chỉnh (Việc 3), xem lessonJudge.js +
   // lesson-judge-criteria.md. CHƯA được generate_lesson/mentor_next_lesson tự gọi.

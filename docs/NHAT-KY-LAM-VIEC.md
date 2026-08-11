@@ -1460,3 +1460,68 @@ plan đầy đủ nguyên nhân+giải pháp, Minh duyệt rồi mới code.
 
 **Còn lại cho Minh:** không có file SQL nào đợt này — toàn bộ 8 mục là code (JS/CSS), tự lên
 qua deploy.
+
+## 2026-08-10 (đợt 14) — Dừng vá lỗi: tách hẳn "Tách câu" khỏi tooltip, đo lại logo, audio 1 giọng tạm
+
+Minh phản hồi RẤT RÕ sau đợt 13: không chấp nhận cách "vá chỗ này lộ chỗ kia" nữa, đặc biệt với
+"Tách câu" (Minh gọi "phần tinh hoa của app"). Gửi kèm 3 file tham khảo: `learning_english_v11_v6.html`
+(1 bản tool cũ, khá hoàn chỉnh), "Cụm cho tooltip.txt", "cấu trúc câu.txt" — yêu cầu đọc kỹ trước
+khi tiếp tục, đối chiếu để loại bỏ lỗi do chắp vá.
+
+**Đã đọc kỹ file v6 (3942 dòng) trước khi code lại** — phát hiện quan trọng, điều chỉnh hướng làm:
+- **v6 KHÔNG có "từ điển" tĩnh nào** (biến `B12_COMMON` khai báo `{}` nhưng KHÔNG BAO GIỜ được
+  gán giá trị ở đâu trong toàn file — 1 nhánh dự phòng chết, chưa từng hoạt động). "Từ điển" Minh
+  nói tới thực ra là 2 cấu trúc AI-sinh: `words` (dict CHO TOOLTIP, key là từ/cụm ngắn tự nhiên,
+  bắt buộc `token_meanings` phủ ĐỦ 100% mọi từ bên trong — ĐÂY chính là điểm code hiện tại đang
+  THIẾU, xem sửa bên dưới) và `chunks` (mảng RIÊNG cho "tách câu", 2-8/10 từ theo đúng ranh giới
+  ngữ pháp thật, KHÔNG giới hạn 5 từ, có `meaning` sạch riêng cho từng khối).
+- **Tooltip và "tách câu" trong v6 là 2 HỆ THỐNG HOÀN TOÀN TÁCH BIỆT** — hàm dựng span bấm được
+  (`findInfo()`) CHỈ đọc `data.words`, KHÔNG BAO GIỜ đọc `data.chunks`. Xác nhận đúng ý Minh: "cụm
+  tách câu không liên quan gì tới tooltip" — code hiện tại (đợt 12-13) SAI ở việc dùng CHUNG
+  `phrase_groups` cho cả 2 mục đích, buộc phải vá/cắt/ghép liên tục ở tầng client.
+- `findInfo()` của v6 có chuỗi fallback RẤT DÀY (khớp thẳng, khớp qua `token_meanings` của 1 cụm
+  khác, khớp tiền tố/hậu tố, khớp lemma, bóc hậu tố `-ed/-ing/-s/-ies/-er/-ly/-ness/-ment` rồi thử
+  lại, khớp theo ranh giới từ trong cụm nhiều từ) — mục tiêu: KHÔNG BAO GIỜ để 1 từ "trắng tay",
+  luôn cố tìm ra 1 kết quả hợp lý nhất trước khi chịu thua.
+
+**Đã sửa theo đúng phát hiện trên:**
+1. **Thêm field RIÊNG `reading_chunks`** trong mỗi phần tử "content" — AI sinh CÙNG LÚC tạo bài
+   (không tốn thêm lượt gọi), theo `READING_CHUNKS_RULES` mới (`api/_generate/lesson.js`): chia
+   theo cấu trúc ngữ pháp thật (không giới hạn 5 từ, dùng catalog Grammar Formula Chunks đã có),
+   BẮT BUỘC phủ đủ 100% + `meaning` tiếng Việt SẠCH riêng từng khối — kiểm tra bằng code
+   (`itemReadingChunksCoverageOk`), giống hệt cơ chế đã có cho `phrase_groups`.
+2. **Action vá riêng `analyze_lesson_reading_chunks`** (bài cũ chưa có field này) — CÙNG kiến
+   trúc "vá 1 lần lúc mở bài" đã có cho `phrase_groups` (không phải pattern mới). Nhân đây SỬA
+   LUÔN 1 bug cùng loại đã fix ở `audio.js` đợt 13 nhưng CHƯA fix ở đây: cả `analyze_lesson_
+   phrase_groups` VÀ action mới đều từng lọc cứng `user_id=eq.` — bài `ai_generated` dùng chung
+   (migration 038) mà tài khoản khác mở cần vá sẽ luôn "không tìm thấy". Tách hàm `loadLessonForPatch()`
+   dùng chung, chỉ ép chủ sở hữu khi `source==='user_text'`.
+3. **`app/js/views/lesson.js`:** "Tách câu" (UI) đổi hẳn sang đọc `reading_chunks` (bucket theo
+   câu bằng `bucketReadingChunksBySentence()`, tương tự cách bucket `phrase_groups` đã có) — XOÁ
+   HẲN `contentChunkLinesHtml()` cũ (toàn bộ logic windowing MAX_CHUNK_WORDS + leftover-join đã
+   vá ở đợt 12-13, KHÔNG CÒN CẦN vì dữ liệu mới đã sạch/đủ sẵn), thay bằng
+   `readingChunksLinesHtml()` chỉ có 4 dòng (đọc thẳng, không suy đoán gì).
+4. **`PHRASE_GROUPS_RULES` (tooltip):** đổi "`word_meanings` CHỈ có khi nhóm >1 từ" (tuỳ chọn)
+   thành BẮT BUỘC phủ ĐỦ 100% mọi từ trong nhóm — đúng phát hiện gốc: từ KHÔNG có trong
+   `word_meanings` chính là nguyên nhân THẬT của "but we have một số loại" (Anh lẫn Việt) ở đợt
+   trước, vì UI phải tự vá bằng cách ghép từ tiếng Anh gốc.
+
+**Mục 1 (logo) — đo lại đúng phương pháp Minh yêu cầu:** đợt 13 tôi tính scale từ % bounding-box
+thô — SAI phương pháp. Lần này quét pixel THẬT tìm 3 điểm mốc màu (đỉnh tam giác xanh/tím/cam) ở
+cả 2 ảnh, tính scale X/Y bằng bình phương tối thiểu qua cả 3 điểm — kết quả scaleX=1.0329,
+scaleY=1.1610 (quy đổi CSS: ×1.265 rộng/×0.948 cao, thay số ×1.248/×0.973 sai ở đợt 13). Phát
+hiện: 3 cặp điểm cho 3 tỉ lệ khoảng cách khác nhau (2 file gốc không tỉ lệ đều tuyệt đối) — sai số
+còn lại sau least-squares ≤0.5%. **Minh đã đồng ý mức sai số này** (lỗi do chính 2 file ảnh, không
+phải cách đo).
+
+**Mục 3 (audio nhảy cóc) — biện pháp TẠM theo đúng yêu cầu Minh:** Minh xác nhận trước đây audio
+free KHÔNG bị nhảy cóc, và đề xuất "tạm dùng 1 giọng" nếu ghép 2 giọng không giải quyết dứt điểm.
+Đã bỏ hẳn cơ chế chia 2 giọng cho bài đọc dài (`computeGenderHints` trong `tts.js`) — LUÔN 1 giọng
+duy nhất cho bài đọc (không speaker) bất kể dài/ngắn, loại trừ khả năng ĐỔI GIỌNG giữa bài là 1
+phần nguyên nhân giật. **CHƯA xác nhận dứt điểm** — đây là biện pháp tạm Minh đã chấp nhận, cần
+quay lại nếu vẫn còn nhảy cóc dù chỉ 1 giọng (đợt nâng cấp sau).
+
+**Bump SW cache v59→v60, deploy + verify sống.**
+
+**Còn lại cho Minh:** không có file SQL mới. Sinh 1 bài mẫu mới để xác nhận `reading_chunks`
+hoạt động đúng (nghĩa tiếng Việt sạch, không lẫn tiếng Anh) trước khi báo kết quả.

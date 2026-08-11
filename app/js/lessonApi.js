@@ -53,6 +53,13 @@ export async function analyzeLessonPhraseGroups(lessonId, isNews) {
   return callAndParse("analyze_lesson_phrase_groups", { lesson_id: lessonId, is_news: !!isNews });
 }
 
+// "Vá" reading_chunks cho bài CŨ (2026-08-10, Đợt 14) — field RIÊNG cho "Tách câu", cùng kiến
+// trúc "vá 1 lần" như analyzeLessonPhraseGroups() ở trên, xem READING_CHUNKS_RULES trong
+// api/_generate/lesson.js.
+export async function analyzeLessonReadingChunks(lessonId, isNews) {
+  return callAndParse("analyze_lesson_reading_chunks", { lesson_id: lessonId, is_news: !!isNews });
+}
+
 // Âm thanh chất lượng cao trả phí — chỉ trả "eligible:true" cho bài đọc/hội thoại CÓ lĩnh vực
 // trong Thư viện AI (xem api/_generate/audio.js), các bài khác trả eligible:false để caller tự
 // rơi về Web Speech miễn phí, KHÔNG coi đây là lỗi cần hiện thông báo.

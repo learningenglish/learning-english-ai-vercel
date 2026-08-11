@@ -236,7 +236,12 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
     "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
     "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
-    "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — CHỈ có khi nhóm >1 từ
+    "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ
+      trong "words" của nhóm khi nhóm có >1 từ (KHÔNG được thiếu bất kỳ từ nào — 2026-08-10, Đợt
+      14: đây LÀ NGUYÊN NHÂN THẬT của lỗi hiển thị lộn xộn tiếng Anh lẫn tiếng Việt trong tooltip —
+      từ nào KHÔNG có trong "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế,
+      trộn 2 ngôn ngữ nếu ghép nhiều nguồn. Từ giờ ĐÂY LÀ YÊU CẦU CỨNG, không phải tuỳ chọn: dù
+      nhóm 2 từ hay 5 từ, "word_meanings" phải có ĐỦ chính xác từng đó khoá, không thiếu 1 từ nào)
   }
 - LỖI THẬT HAY GẶP (2026-08-09, xác nhận qua dữ liệu thật — hệ thống dùng "words" để tô sáng
   TỪNG TỪ bấm được trong câu, 1 phần tử mảng KHÔNG được chứa nhiều hơn 1 từ): mỗi phần tử trong
@@ -252,6 +257,42 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. NẾU KIỂM TRA NÀY THẤT BẠI, hệ thống sẽ bắt
   làm lại (sinh lại toàn bộ bài, hoặc với "vá" bài cũ — thử lại đúng lượt gọi đó) — không được
   để sót từ nào, ở BẤT KỲ cấp độ nào.`;
+
+// 2026-08-10, Đợt 14 — Minh: "phần tách câu là phần tinh hoa của app... cụm của tách câu có thể
+// là cụm dài, không liên quan gì tới tooltip". TRƯỚC ĐÂY "Tách câu" (UI) tự suy ra từ chính
+// "phrase_groups" ở trên — nhưng phrase_groups bị ép trần CỨNG ≤5 từ/nhóm (ĐÚNG cho mục đích tra
+// từ khi bấm, SAI mục đích cho hiểu cấu trúc câu khi đọc) — ép dùng chung 1 nguồn buộc client
+// phải cắt/ghép/vá liên tục (đã làm ở đợt 12-13), có lúc ghép lộn tiếng Anh chưa dịch vào nghĩa
+// (bug thật: "but we have một số loại" — từ không có trong "word_meanings" bị giữ nguyên tiếng
+// Anh rồi nối chung 1 chuỗi). Tách hẳn thành field RIÊNG, generate cùng lúc CHUNG 1 lượt AI (không
+// tốn thêm lượt gọi), do AI dịch SẠCH từng khối — client CHỈ ĐỌC, không tự ghép/suy đoán gì nữa.
+const READING_CHUNKS_RULES = `QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU (trường "reading_chunks" trong MỖI phần tử "content" — RIÊNG BIỆT
+HOÀN TOÀN với "phrase_groups" ở trên, KHÔNG dùng chung mục đích: "phrase_groups" phục vụ TRA TỪ
+khi bấm (cần cụm NGẮN ≤5 từ để bấm trúng đúng từ), "reading_chunks" phục vụ HIỂU CẤU TRÚC CÂU khi
+đọc (cần chia theo Ý/CẤU TRÚC NGỮ PHÁP THẬT của câu, có thể DÀI HƠN 5 từ nếu đó là 1 khối ý nghĩa
+hoàn chỉnh — ví dụ 1 mệnh đề quan hệ 8-9 từ giữ nguyên làm 1 khối, KHÔNG bị cắt vụn như
+phrase_groups, để người học thấy đúng cấu trúc câu thật):
+- Dùng chính catalog "Grammar Formula Chunks" + các loại mệnh đề/cụm đã liệt kê ở "QUY TẮC VỀ GOM
+  CỤM TỪ" phía trên để NHẬN DIỆN cấu trúc thật của câu này (chủ ngữ, cụm động từ chính, mệnh đề
+  phụ, cụm giới từ, mệnh đề quan hệ, mệnh đề trạng ngữ...) rồi chia câu theo ĐÚNG các khối cấu
+  trúc đó — KHÔNG áp trần 5 từ như "phrase_groups", mỗi khối là 1 ĐƠN VỊ Ý/CẤU TRÚC hoàn chỉnh,
+  không phải cắt cơ học theo số từ.
+- Số khối/câu tuỳ độ dài và độ phức tạp: câu ngắn 1-4 từ có thể chỉ 1 khối DUY NHẤT (cả câu), câu
+  dài/phức tạp thường 2-5 khối theo đúng ranh giới cấu trúc ngữ pháp thật — KHÔNG chia đều theo số
+  từ, chia theo Ý.
+- BẮT BUỘC PHỦ ĐỦ 100% (hệ thống TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN
+  BỘ "text" của MỌI khối theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" phần tử đó
+  (chỉ khác dấu câu/khoảng trắng) — không thiếu, không thừa, không đảo thứ tự — CÙNG mức độ SỐNG
+  CÒN như quy tắc phủ đủ của "phrase_groups" ở trên.
+- "meaning" của MỖI khối PHẢI là bản dịch tiếng Việt TỰ NHIÊN, SẠCH của ĐÚNG khối đó — TUYỆT ĐỐI
+  KHÔNG để lẫn bất kỳ từ tiếng Anh nào chưa dịch trong "meaning" (đây chính là lỗi thật đã xảy ra
+  khi client tự ghép nghĩa từ dữ liệu thiếu ở kiến trúc CŨ — giờ AI viết THẲNG nghĩa sạch cho từng
+  khối ngay lúc sinh, client không còn tự ghép/suy đoán gì nữa).
+- Mỗi khối có cấu trúc:
+  {
+    "text": "ĐÚNG NGUYÊN VĂN đoạn text của khối này, đúng thứ tự xuất hiện trong câu",
+    "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH, của ĐÚNG khối này (không lẫn tiếng Anh)"
+  }`;
 
 const GENERATE_LESSON_SYSTEM_PROMPT = `Bạn là chuyên gia soạn giáo trình tiếng Anh cho người Việt, bám sát khung CEFR.
 
@@ -356,6 +397,8 @@ nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lư�
 
 ${PHRASE_GROUPS_RULES}
 
+${READING_CHUNKS_RULES}
+
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
@@ -422,7 +465,13 @@ SCHEMA JSON:
           "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
           "level": "cấp độ CEFR riêng của cụm/từ này",
           "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
-          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - CHỈ có khi nhóm >1 từ"}
+          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"}
+        }
+      ],
+      "reading_chunks": [
+        {
+          "text": "ĐÚNG NGUYÊN VĂN đoạn text của khối này, xem QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU",
+          "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH của ĐÚNG khối này"
         }
       ]
     }
@@ -714,6 +763,8 @@ BUỘC và là CĂN CỨ DUY NHẤT cho toàn bộ phần còn lại của bài,
 
 ${PHRASE_GROUPS_RULES}
 
+${READING_CHUNKS_RULES}
+
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo schema dưới đây.
 - Không lời chào, không giải thích ngoài JSON, không bọc trong dấu \`\`\`.
@@ -737,7 +788,13 @@ SCHEMA JSON:
           "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
           "level": "cấp độ CEFR riêng của cụm/từ này",
           "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
-          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - CHỈ có khi nhóm >1 từ"}
+          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"}
+        }
+      ],
+      "reading_chunks": [
+        {
+          "text": "ĐÚNG NGUYÊN VĂN đoạn text của khối này, xem QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU",
+          "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH của ĐÚNG khối này"
         }
       ]
     }
@@ -863,6 +920,25 @@ function itemPhraseCoverageOk(item) {
   }
   return true;
 }
+
+// ====== "reading_chunks" phủ từ trong câu (2026-08-10, Đợt 14 — field RIÊNG cho "Tách câu",
+// TÁCH KHỎI "phrase_groups", xem READING_CHUNKS_RULES) — CÙNG NGUYÊN LÝ itemPhraseCoverageOk()
+// ở trên (ghép "text" của mọi khối, so khớp TUẦN TỰ với từ thật trong câu), chỉ khác là so khớp
+// theo TEXT của từng khối (tokenize lại) thay vì mảng "words" có sẵn, vì "reading_chunks" không
+// bị ép tách rời từng từ như "phrase_groups" (1 khối = 1 đoạn text nguyên, có thể nhiều từ).
+function itemReadingChunksCoverageOk(item) {
+  const realWords = sentenceWordTokens(item?.text);
+  if (!realWords.length) return true;
+  const chunks = Array.isArray(item?.reading_chunks) ? item.reading_chunks : [];
+  if (!chunks.length) return false;
+  const chunkWords = chunks.flatMap((c) => sentenceWordTokens(c?.text));
+  if (chunkWords.length !== realWords.length) return false;
+  for (let i = 0; i < realWords.length; i++) {
+    if (chunkWords[i] !== realWords[i]) return false;
+  }
+  return true;
+}
+
 // dùng bởi analyze_lesson_phrase_groups() ("vá 1 lần") — KHÔNG còn dùng để chặn generate_lesson,
 // xem ghi chú "GỠ BỎ VALIDATOR KỸ THUẬT CỨNG" ở validateLessonShape() ngay bên dưới.
 function validatePhraseCoverage(parsed) {
@@ -1266,25 +1342,35 @@ async function analyzePhraseGroupsInChunks(toAnalyze) {
 
 // "is_news": true -> "news_lessons" (public, KHÔNG kiểm ownership — cùng mô hình quyền
 // add_news_vocab_word() trong vocab.js, ai đã đăng nhập cũng vá được vì dữ liệu dùng chung).
-// false -> "lessons" cá nhân, PHẢI đúng chủ sở hữu (lọc "user_id=eq.ctx.studentId" ngay trong
-// query, khớp 0 hàng thì coi như không tìm thấy, không rò rỉ bài người khác).
+// false -> "lessons": SỬA 2026-08-10 (Đợt 14 — cùng bug đã sửa ở api/_generate/audio.js đợt 13)
+// — TRƯỚC ĐÂY luôn lọc "user_id=eq.ctx.studentId" ngay trong query SELECT/PATCH, sót lại từ
+// TRƯỚC migration 038 (bài "ai_generated" dùng chung mọi tài khoản) — tài khoản KHÔNG phải chủ
+// bài mở 1 bài chung cần vá sẽ luôn nhận "không tìm thấy". Đọc "source"+"user_id" TRƯỚC, chỉ ép
+// đúng chủ sở hữu khi "source==='user_text'" (Phân tích cá nhân, vẫn riêng tư) — "ai_generated"
+// (dùng chung) thì bất kỳ tài khoản đã đăng nhập đều vá được, đúng chính sách migration 038.
+async function loadLessonForPatch(lessonId, isNews, studentId) {
+  const table = isNews ? "news_lessons" : "lessons";
+  const selectRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(lessonId)}&select=content,source,user_id`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+  );
+  if (!selectRes.ok) return { ok: false, status: 502, error: "Không đọc được bài học." };
+  const rows = await selectRes.json();
+  const row = rows?.[0];
+  if (!row || !Array.isArray(row.content)) return { ok: false, status: 404, error: "Không tìm thấy bài học." };
+  if (!isNews && row.source === "user_text" && row.user_id !== studentId) {
+    return { ok: false, status: 404, error: "Không tìm thấy bài học." };
+  }
+  return { ok: true, table, content: row.content };
+}
+
 export async function analyze_lesson_phrase_groups(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
 
-  const table = data.is_news ? "news_lessons" : "lessons";
-  const ownerFilter = data.is_news ? "" : `&user_id=eq.${encodeURIComponent(ctx.studentId)}`;
-  const selectRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}${ownerFilter}&select=content`,
-    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
-  );
-  if (!selectRes.ok) {
-    console.error("analyze_lesson_phrase_groups select error:", selectRes.status, await selectRes.text());
-    return { error: "Không đọc được bài học.", status: 502 };
-  }
-  const rows = await selectRes.json();
-  const content = rows?.[0]?.content;
-  if (!Array.isArray(content)) return { error: "Không tìm thấy bài học.", status: 404 };
+  const loaded = await loadLessonForPatch(data.lesson_id, data.is_news, ctx.studentId);
+  if (!loaded.ok) return { error: loaded.error, status: loaded.status };
+  const { table, content } = loaded;
 
   // CHỈ gửi AI các câu/đoạn CHƯA đủ dữ liệu — item nào đã đạt coverage (vd bài B2/C1 sinh giai
   // đoạn trước khi ép 100% may mắn đã đủ, hoặc 1 lượt vá TRƯỚC ĐÓ đã xử lý xong) thì GIỮ NGUYÊN,
@@ -1306,7 +1392,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
     content[origIdx] = { ...content[origIdx], phrase_groups: match.phrase_groups };
   });
 
-  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}${ownerFilter}`, {
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
     method: "PATCH",
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -1318,6 +1404,105 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   });
   if (!patchRes.ok) {
     console.error("analyze_lesson_phrase_groups patch error:", patchRes.status, await patchRes.text());
+    return { error: "Phân tích xong nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
+  }
+
+  return { content: JSON.stringify({ content }) };
+}
+
+// ====== "Vá" reading_chunks cho bài CŨ (2026-08-10, Đợt 14) — CÙNG KIẾN TRÚC "vá 1 lần" đã có
+// cho phrase_groups ở trên (loadLessonForPatch dùng chung), field/prompt riêng.
+const READING_CHUNKS_ANALYZE_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích cấu trúc câu tiếng Anh cho người học Việt Nam.
+
+${READING_CHUNKS_RULES}
+
+NHIỆM VỤ: Với DANH SÁCH câu/đoạn tiếng Anh ĐỘC LẬP được đánh số dưới đây (KHÔNG phải 1 bài liền
+mạch — CHỈ tách khối theo quy tắc trên, TUYỆT ĐỐI KHÔNG viết lại/sửa/rút gọn nội dung câu), trả về
+"reading_chunks" cho ĐÚNG MỖI câu.
+
+QUY TẮC ĐẦU RA:
+- Trả về DUY NHẤT 1 JSON hợp lệ, không chữ nào khác, không bọc \`\`\`.
+- Schema: {"items": [{"index": <số thứ tự câu, ĐÚNG như đề bài>, "reading_chunks": [...]}]} — PHẢI
+  có ĐỦ VÀ ĐÚNG SỐ LƯỢNG câu đã cho, đúng thứ tự "index".`;
+
+function buildReadingChunksUserPrompt(items) {
+  return items.map((it, i) => `[${i}] "${it.text}"`).join("\n");
+}
+
+async function callAnalyzeReadingChunks(items, tier) {
+  const r = await generateStructuredJSON({
+    tier: tier || "default",
+    maxTokens: 6000,
+    temperature: 0.3,
+    messages: [
+      { role: "system", content: READING_CHUNKS_ANALYZE_SYSTEM_PROMPT },
+      { role: "user", content: buildReadingChunksUserPrompt(items) },
+    ],
+  });
+  if (!r.ok) return { ok: false, reason: "call_or_parse_failed" };
+  const resultItems = Array.isArray(r.data?.items) ? r.data.items : null;
+  if (!resultItems || resultItems.length !== items.length) return { ok: false, reason: "item_count_mismatch" };
+  for (let i = 0; i < items.length; i++) {
+    const match = resultItems.find((x) => x.index === i) || resultItems[i];
+    if (!itemReadingChunksCoverageOk({ text: items[i].text, reading_chunks: match?.reading_chunks })) {
+      return { ok: false, reason: "reading_chunks_incomplete", itemIndex: i };
+    }
+  }
+  return { ok: true, items: resultItems };
+}
+
+// Gửi TỪNG CÂU MỘT + tự thử lại tối đa 3 lần (lượt cuối leo thang model mạnh) — ĐÚNG PATTERN
+// analyzePhraseGroupsInChunks() ở trên, xem ghi chú đầy đủ tại đó.
+async function analyzeReadingChunksInChunks(toAnalyze) {
+  const allItems = [];
+  for (let i = 0; i < toAnalyze.length; i++) {
+    const chunk = [toAnalyze[i]];
+    let result = await callAnalyzeReadingChunks(chunk);
+    if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
+    if (!result.ok) result = await callAnalyzeReadingChunks(chunk, "strong");
+    if (!result.ok) return { ok: false, reason: result.reason };
+    allItems.push(...result.items);
+  }
+  return { ok: true, items: allItems };
+}
+
+export async function analyze_lesson_reading_chunks(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
+
+  const loaded = await loadLessonForPatch(data.lesson_id, data.is_news, ctx.studentId);
+  if (!loaded.ok) return { error: loaded.error, status: loaded.status };
+  const { table, content } = loaded;
+
+  const missingIdx = content.map((it, i) => (itemReadingChunksCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
+  if (!missingIdx.length) {
+    return { content: JSON.stringify({ content }) };
+  }
+  const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
+
+  const result = await analyzeReadingChunksInChunks(toAnalyze);
+  if (!result.ok) {
+    console.error("[analyze_lesson_reading_chunks] thất bại:", result.reason);
+    return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
+  }
+
+  missingIdx.forEach((origIdx, i) => {
+    const match = result.items.find((x) => x.index === i) || result.items[i];
+    content[origIdx] = { ...content[origIdx], reading_chunks: match.reading_chunks };
+  });
+
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ content }),
+  });
+  if (!patchRes.ok) {
+    console.error("analyze_lesson_reading_chunks patch error:", patchRes.status, await patchRes.text());
     return { error: "Phân tích xong nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
   }
 

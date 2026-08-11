@@ -63,10 +63,6 @@ function guessGenderFromName(name) {
   return null;
 }
 
-// Bài đọc dài coi là "quá dài" từ ngưỡng này (số đoạn/"content" items) — dưới ngưỡng dùng 1
-// giọng SUỐT bài, từ ngưỡng này trở lên chia ĐÚNG 2 nửa (không alternate từng đoạn).
-const READING_LONG_PARAGRAPH_THRESHOLD = 6;
-
 // Tính giọng cho MỖI đoạn/lượt thoại 1 LẦN khi mở bài (ổn định suốt phiên xem, dùng CHUNG cho
 // cả Web Speech miễn phí lẫn audio trả phí — xem pickOpenAIVoice() phía backend):
 // - Hội thoại: ƯU TIÊN "characters" (2026-08-08 — AI tự khai báo giới tính từng nhân vật lúc
@@ -77,21 +73,21 @@ const READING_LONG_PARAGRAPH_THRESHOLD = 6;
 // - Không khớp "characters": đoán theo tên nhân vật; cùng 1 người nói luôn cùng 1 giọng suốt
 //   bài. Tên không đoán được (vai trò chung chung, tên lạ) -> gán theo giới đang ÍT DÙNG HƠN để
 //   cân bằng.
-// - Bài đọc (không có speaker) — SỬA 2026-07-29 (Minh: "quá nhiều giọng trong 1 bài đọc là
-//   không ổn, tối đa 2 giọng nếu bài đọc quá dài"): bản CŨ alternate giọng MỖI ĐOẠN, một bài
-//   đọc nhiều đoạn nghe như đổi giọng liên tục dù về mặt kỹ thuật vẫn chỉ 2 giá trị nam/nữ —
-//   giờ 1 giọng DUY NHẤT suốt bài nếu ngắn (≤ READING_LONG_PARAGRAPH_THRESHOLD đoạn), dài hơn
-//   thì chia ĐÚNG 2 nửa (nửa đầu 1 giọng, nửa sau giọng còn lại) — KHÔNG còn đổi qua đổi lại.
+// - Bài đọc (không có speaker) — SỬA 2026-08-10 (Đợt 14, Minh: "audio free trước đây không bị
+//   nhảy cóc... tạm chấp nhận dùng 1 giọng cho các bài đọc" — biện pháp TẠM trong lúc chưa định
+//   vị được đúng nguyên nhân "nhảy cóc" thật, xem ghi chú getProgress()/wordsElapsed() ở trên):
+//   BỎ HẲN việc chia 2 giọng cho bài đọc dài (READING_LONG_PARAGRAPH_THRESHOLD cũ) — LUÔN 1
+//   giọng DUY NHẤT suốt bài đọc bất kể dài/ngắn, loại trừ khả năng chính việc ĐỔI GIỌNG giữa bài
+//   (huỷ+dựng lại speechSynthesis) là một phần nguyên nhân giật/nhảy. Đây là biện pháp TẠM theo
+//   đúng yêu cầu Minh, CẦN quay lại giải quyết dứt điểm ở đợt nâng cấp sau nếu vẫn còn "nhảy cóc"
+//   dù chỉ 1 giọng (nghĩa là nguyên nhân KHÔNG phải do đổi giọng).
 export function computeGenderHints(content, characters) {
   const items = content || [];
   const hasSpeakers = items.some((item) => item?.speaker);
 
   if (!hasSpeakers) {
-    const firstHalfGender = Math.random() < 0.5 ? "male" : "female";
-    if (items.length <= READING_LONG_PARAGRAPH_THRESHOLD) return items.map(() => firstHalfGender);
-    const secondHalfGender = firstHalfGender === "male" ? "female" : "male";
-    const half = Math.ceil(items.length / 2);
-    return items.map((_, i) => (i < half ? firstHalfGender : secondHalfGender));
+    const singleGender = Math.random() < 0.5 ? "male" : "female";
+    return items.map(() => singleGender);
   }
 
   const declaredGenderMap = new Map();
