@@ -34,8 +34,11 @@ export function renderProfile(mount) {
           <span class="icon-text">${icon("languages", { size: 18 })} Ngôn ngữ</span>
           <span class="muted">Tiếng Việt</span>
         </div>
+        <!-- 2026-08-11 (Minh): đổi nhãn "Đổi chuyên ngành" -> "Thêm chuyên ngành (Nâng cấp gói)"
+             — ĐÚNG bản đã đổi ở createLesson.js (nút "#change-goal-btn"), lỡ sót hàng NÀY (menu
+             Cài đặt) khi sửa đợt trước — cùng ý nghĩa: đây là lối vào để THÊM 1 chuyên ngành. -->
         <div class="settings-row settings-row-clickable" id="change-industry-row">
-          <span class="icon-text">${icon("briefcase", { size: 18 })} Đổi chuyên ngành</span>
+          <span class="icon-text">${icon("briefcase", { size: 18 })} Thêm chuyên ngành (Nâng cấp gói)</span>
           ${icon("chevron-right", { size: 18 })}
         </div>
         <!-- "Tài khoản"/"Thông tin ứng dụng" (2026-08-05, sửa lỗi tràn khung — Minh: "chữ bị tràn

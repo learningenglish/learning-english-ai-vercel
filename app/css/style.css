@@ -3647,6 +3647,17 @@ textarea:focus {
   color: var(--text);
 }
 
+/* 2026-08-11 (Minh: "Thêm chuyên ngành (Nâng cấp gói)" dài hơn hẳn "Đổi chuyên ngành" cũ) — phòng
+   đúng lỗi "chữ bị tràn khung" đã từng gặp ở hàng Tài khoản/Thông tin ứng dụng (xem ghi chú tại
+   #account-row) — ".icon-text" mặc định "inline-flex" không co/không xuống dòng, trên màn hẹp có
+   thể đẩy icon ">" ra ngoài khung. Cho phần chữ được CO/XUỐNG DÒNG, chỉ riêng hàng này (nhãn dài
+   hơn các hàng khác), không đụng ".icon-text" dùng chung toàn app. */
+#change-industry-row .icon-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
 /* Theme (Color Palette) — Setting. */
 .palette-picker {
   display: grid;
