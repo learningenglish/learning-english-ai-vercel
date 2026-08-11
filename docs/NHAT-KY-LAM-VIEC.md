@@ -1485,17 +1485,29 @@ khi tiếp tục, đối chiếu để loại bỏ lỗi do chắp vá.
   luôn cố tìm ra 1 kết quả hợp lý nhất trước khi chịu thua.
 
 **Đã sửa theo đúng phát hiện trên:**
-1. **Thêm field RIÊNG `reading_chunks`** trong mỗi phần tử "content" — AI sinh CÙNG LÚC tạo bài
-   (không tốn thêm lượt gọi), theo `READING_CHUNKS_RULES` mới (`api/_generate/lesson.js`): chia
-   theo cấu trúc ngữ pháp thật (không giới hạn 5 từ, dùng catalog Grammar Formula Chunks đã có),
-   BẮT BUỘC phủ đủ 100% + `meaning` tiếng Việt SẠCH riêng từng khối — kiểm tra bằng code
-   (`itemReadingChunksCoverageOk`), giống hệt cơ chế đã có cho `phrase_groups`.
-2. **Action vá riêng `analyze_lesson_reading_chunks`** (bài cũ chưa có field này) — CÙNG kiến
-   trúc "vá 1 lần lúc mở bài" đã có cho `phrase_groups` (không phải pattern mới). Nhân đây SỬA
-   LUÔN 1 bug cùng loại đã fix ở `audio.js` đợt 13 nhưng CHƯA fix ở đây: cả `analyze_lesson_
-   phrase_groups` VÀ action mới đều từng lọc cứng `user_id=eq.` — bài `ai_generated` dùng chung
-   (migration 038) mà tài khoản khác mở cần vá sẽ luôn "không tìm thấy". Tách hàm `loadLessonForPatch()`
-   dùng chung, chỉ ép chủ sở hữu khi `source==='user_text'`.
+1. **Thêm field RIÊNG `reading_chunks`** trong mỗi phần tử "content", theo `READING_CHUNKS_RULES`
+   mới (`api/_generate/lesson.js`): chia theo cấu trúc ngữ pháp thật (không giới hạn 5 từ, dùng
+   catalog Grammar Formula Chunks đã có), BẮT BUỘC phủ đủ 100% + `meaning` tiếng Việt SẠCH riêng
+   từng khối — kiểm tra bằng code (`itemReadingChunksCoverageOk`), giống hệt cơ chế đã có cho
+   `phrase_groups`.
+   **Cập nhật quan trọng (cùng ngày, sau khi test thật):** dự định ban đầu là nhồi
+   `READING_CHUNKS_RULES` vào NGAY 2 prompt sinh bài chính (`GENERATE_LESSON_SYSTEM_PROMPT`/
+   `ANALYZE_TEXT_SYSTEM_PROMPT`) để sinh cùng lúc, không tốn thêm lượt gọi — nhưng test thật 3 lần
+   liên tiếp (mô tả định tính → thêm ví dụ ❌/✅ → công thức số học `ceil(số từ/6)` + tự kiểm lại)
+   ĐỀU THẤT BẠI: model luôn trả về NGUYÊN CÂU làm 1 khối, bất kể câu dài bao nhiêu — vì 2 prompt
+   đó đã quá nhiều yêu cầu đồng thời (độ dài/ngữ pháp/từ vựng/hội thoại tự nhiên/phrase_groups...)
+   nên quy tắc chia khối mới bị bỏ qua. Test lại ĐÚNG bộ quy tắc đó khi dùng RIÊNG cho 1 prompt
+   DUY NHẤT (patch action ở mục 2 dưới, không cạnh tranh yêu cầu khác) — TUÂN THỦ ĐÚNG ngay lần
+   đầu. Quyết định cuối: BỎ HẲN `READING_CHUNKS_RULES` khỏi 2 prompt sinh bài chính — MỌI bài (mới
+   lẫn cũ) đều lấy `reading_chunks` qua ĐÚNG 1 con đường DUY NHẤT là lượt vá ở mục 2, tự chạy ngay
+   lần đầu mở bài. Đổi lại: bài mới tốn thêm ĐÚNG 1 lượt gọi AI (ẩn, chạy lúc mở bài lần đầu, không
+   cần người dùng chờ thấy) — đánh đổi chấp nhận được để tránh 2 nguồn dữ liệu khác chất lượng.
+2. **Action vá riêng `analyze_lesson_reading_chunks`** (dùng cho MỌI bài — cả mới lẫn cũ, xem cập
+   nhật ở mục 1) — CÙNG kiến trúc "vá 1 lần lúc mở bài" đã có cho `phrase_groups` (không phải
+   pattern mới). Nhân đây SỬA LUÔN 1 bug cùng loại đã fix ở `audio.js` đợt 13 nhưng CHƯA fix ở
+   đây: cả `analyze_lesson_phrase_groups` VÀ action mới đều từng lọc cứng `user_id=eq.` — bài
+   `ai_generated` dùng chung (migration 038) mà tài khoản khác mở cần vá sẽ luôn "không tìm thấy".
+   Tách hàm `loadLessonForPatch()` dùng chung, chỉ ép chủ sở hữu khi `source==='user_text'`.
 3. **`app/js/views/lesson.js`:** "Tách câu" (UI) đổi hẳn sang đọc `reading_chunks` (bucket theo
    câu bằng `bucketReadingChunksBySentence()`, tương tự cách bucket `phrase_groups` đã có) — XOÁ
    HẲN `contentChunkLinesHtml()` cũ (toàn bộ logic windowing MAX_CHUNK_WORDS + leftover-join đã
@@ -1521,7 +1533,19 @@ duy nhất cho bài đọc (không speaker) bất kể dài/ngắn, loại trừ
 phần nguyên nhân giật. **CHƯA xác nhận dứt điểm** — đây là biện pháp tạm Minh đã chấp nhận, cần
 quay lại nếu vẫn còn nhảy cóc dù chỉ 1 giọng (đợt nâng cấp sau).
 
-**Bump SW cache v59→v60, deploy + verify sống.**
+**Bump SW cache v59→v60→v61 (đợt sửa prompt reading_chunks ở trên đụng `app/js/views/lesson.js`),
+deploy + verify sống.**
 
-**Còn lại cho Minh:** không có file SQL mới. Sinh 1 bài mẫu mới để xác nhận `reading_chunks`
-hoạt động đúng (nghĩa tiếng Việt sạch, không lẫn tiếng Anh) trước khi báo kết quả.
+**Verify sống sau deploy (bài mới, lesson id `3a5a27c8-...`, B1/Kế toán, 6 câu):**
+- Sinh bài mới qua `generate_lesson` → xác nhận KHÔNG có `reading_chunks` inline (đúng thiết kế
+  mới, field này giờ CHỈ tạo qua lượt vá riêng).
+- Gọi `analyze_lesson_reading_chunks` ngay sau đó → MỌI câu >6 từ đều được chia đúng 2-3 khối
+  theo ranh giới ngữ pháp thật (ví dụ câu 13 từ "Financial statements are important documents
+  that provide information about a company's financial performance." chia đúng 2 khối theo mệnh
+  đề, KHÔNG còn giữ nguyên cả câu làm 1 khối như 3 lần test thất bại trước đó), nghĩa tiếng Việt
+  từng khối sạch, không lẫn tiếng Anh, coverage 100% (đúng thứ tự, đủ từ) trên cả 6/6 câu.
+- Gọi lại `analyze_lesson_phrase_groups` trên CÙNG bài, kiểm mọi `phrase_groups` >1 từ → 100%
+  `word_meanings` phủ đủ mọi từ (0 thiếu trên 19/19 nhóm nhiều từ) — xác nhận fix mục 4 (bắt buộc
+  phủ đủ) hoạt động đúng trên dữ liệu thật, không còn lỗi ghép "but we have một số loại".
+
+**Còn lại cho Minh:** không có file SQL mới.
