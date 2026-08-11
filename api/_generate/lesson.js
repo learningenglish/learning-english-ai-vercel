@@ -171,9 +171,25 @@ function orNone(v) {
 // CẢ 2 nơi: (1) sinh bài mới (generate_lesson/analyze_user_text, như trước), (2) "vá" phrase_
 // groups cho bài CŨ chưa có (analyzeLessonPhraseGroups() bên dưới) — đảm bảo 2 nơi KHÔNG BAO GIỜ
 // lệch luật nhau (sửa 1 chỗ, cả 2 tự cập nhật).
+// 2026-08-11, Minh: "phrase_groups_rules phục vụ tooltip hay tách câu hay lọc cấu trúc câu?" — TRẢ
+// LỜI: CHỈ phục vụ TOOLTIP (tra từ khi bấm). "reading_chunks" (tách câu) và "grammar"/
+// "sentence_patterns" (phần ngữ pháp, dùng catalog Grammar Formula Chunks RIÊNG ở
+// "QUY TẮC VỀ CẤU TRÚC CÂU ĐÁNG CHÚ Ý" phía trên) là 2 field/2 mục đích KHÁC, không dùng chung dữ
+// liệu với phrase_groups. Bản trước có nhét thêm 1 bullet "Grammar Formula Chunks" vào chính
+// PHRASE_GROUPS_RULES — SAI phạm vi (đó là việc của phần ngữ pháp), đã bỏ khỏi đây.
+//
+// 2026-08-11, Minh: "tại sao thêm 'Cụm danh từ' vào phrase_groups_rules mà không dùng file cụm gốc?
+// Nếu còn lỗi ở cụm khác, lại tiếp tục thêm vào phrase_groups_rules?" — ĐÚNG, bản trước chỉ là
+// diễn giải/rút gọn lại 24 loại cụm theo trí nhớ (không phải nguyên văn), rồi khi phát hiện lỗi ở
+// đúng 1 loại (Cụm danh từ bị gắn nhãn sai cho câu có động từ chia) thì VÁ THÊM 1 đoạn riêng cho
+// loại đó — đúng kiểu "chắp vá" Minh đã nhiều lần yêu cầu dừng. Viết lại ĐẦY ĐỦ NGUYÊN VẸN 24 loại
+// đúng theo file gốc Minh gửi (mục I-XXIV) làm NGUỒN DUY NHẤT, KHÔNG diễn giải lại — và thêm 1
+// NGUYÊN TẮC CHUNG (áp dụng đồng thời cho MỌI loại, không phải patch riêng từng loại) để tự phòng
+// đúng LỚP lỗi đó (gắn nhãn 1 loại "không chứa động từ chia" cho cụm CÓ chứa động từ chia) xảy ra
+// ở BẤT KỲ loại nào trong 24 loại, không chỉ riêng "Cụm danh từ".
 const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
-mọi content_type, 2026-08-08 — viết lại theo đúng phân loại "cụm" chuẩn dùng để dạy đọc-hiểu
-theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
+mọi content_type) — CHỈ phục vụ TRA TỪ khi người học BẤM vào 1 từ/cụm (tooltip), KHÔNG liên quan
+"reading_chunks" (tách câu) hay "grammar"/"sentence_patterns" (phần ngữ pháp — dùng catalog RIÊNG):
 - ƯU TIÊN CAO NHẤT (hệ thống KIỂM TRA BẰNG CODE, không tốn thêm lượt AI): với MỖI phần tử, ghép
   TOÀN BỘ "words" của MỌI nhóm theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" đó
   (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo thứ tự, không lặp từ
@@ -185,16 +201,13 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   "long" và "term", KHÔNG viết chung "long-term" thành 1 phần tử) — 2 phần tử đó vẫn có thể cùng
   nằm trong 1 nhóm (words: ["long", "term"]) nếu cùng 1 cụm ý nghĩa, chỉ cần đừng viết liền 1
   chuỗi có gạch nối.
-- GIỚI HẠN ĐỘ DÀI — QUY TẮC CỨNG, ÁP DỤNG NGHIÊM NGẶT NHƯ QUY TẮC "1 TỪ = 1 PHẦN TỬ" Ở TRÊN (kiểm
-  chứng thật 2026-08-10: bản nháp quy tắc mềm trước đó KHÔNG đủ mạnh — model VẪN gộp mệnh đề quan
-  hệ 9-11 từ thành 1 nhóm dù đã có hướng dẫn "nên chia nhỏ". Từ giờ đây LÀ GIỚI HẠN CỨNG, không
-  phải gợi ý):
+- GIỚI HẠN ĐỘ DÀI — QUY TẮC CỨNG:
   * MỌI nhóm KHÔNG ĐƯỢC VƯỢT QUÁ 5 TỪ. Đây là trần cứng, áp dụng cho MỌI loại cụm kể cả mệnh đề
-    quan hệ/trạng ngữ/danh từ — KHÔNG có ngoại lệ "cụm cố định dài hơn 5 từ" như bản nháp trước.
+    quan hệ/trạng ngữ/danh từ — KHÔNG có ngoại lệ "cụm cố định dài hơn 5 từ".
   * Câu/mệnh đề dài hơn 5 từ BẮT BUỘC phải chia thành NHIỀU nhóm liên tiếp, mỗi nhóm ≤5 từ — coi
     đây là "cắt khúc" 1 mệnh đề dài thành các khúc nhỏ liền nhau, KHÔNG phải chọn ra 1 khúc rồi bỏ
     qua phần còn lại (mọi từ vẫn phải có mặt ở 1 nhóm nào đó, xem quy tắc phủ đủ 100% ở trên).
-  ❌ SAI (đúng lỗi thật vừa xảy ra, 11 từ gộp 1 nhóm):
+  ❌ SAI (11 từ gộp 1 nhóm):
   {"words": ["who","has","worked","at","this","company","since","she","graduated","from","college"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại công ty này kể từ khi cô tốt nghiệp đại học"}
   ✅ ĐÚNG (cắt thành 3 nhóm liên tiếp, mỗi nhóm ≤5 từ, vẫn phủ đủ 11 từ, mỗi nhóm tự đủ nghĩa để tra riêng):
   {"words": ["who","has","worked","at","this"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại đây"}
@@ -202,61 +215,137 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   {"words": ["from","college"], "type": "Cụm giới từ", "meaning": "từ đại học"}
   - TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như
     "Really?"), KHÔNG gộp 2 mệnh đề độc lập (nối bằng and/but/so/because...) vào chung 1 nhóm.
-- Nhận diện cụm theo các nhóm sau (tham khảo để chọn nhãn "type" phù hợp — nhầm lẫn nhỏ giữa các
-  loại KHÔNG bị lỗi, chỉ sót/thừa từ, GỘP QUÁ DÀI, hoặc gắn "Cụm danh từ" cho 1 cụm có động từ chia
-  — xem lỗi thật ngay dưới — mới bị lỗi):
-  * Cụm động từ: cụm thì (has eaten, will be working), cụm dạng bị động (is built, was written),
-    modal (can swim, must have forgotten), verb + to-V (want to go), verb + V-ing (enjoy reading).
-  * Phrasal verb (give up, look after, carry on) — động từ + giới từ/trạng từ đi liền, tách khỏi
-    phần còn lại của câu.
-  * Prepositional verb (depend on, belong to, listen to) — động từ + giới từ CỐ ĐỊNH đi kèm.
-  * Cụm danh từ NGẮN — CHỈ được gắn nhãn "Cụm danh từ" khi cụm khớp ĐÚNG 1 trong các công thức sau
-    (không có động từ chia/finite verb bên trong): mạo từ + danh từ (a book), đại từ sở hữu + danh
-    từ (his job), mạo từ/đại từ sở hữu + tính từ + danh từ (a big house, her new job), tính từ +
-    danh từ (financial records), giới từ + cụm danh từ (in the room — nhãn "Cụm giới từ", không
-    phải "Cụm danh từ"), danh từ + of + danh từ (a cup of tea). Nếu cụm danh từ có mệnh đề bổ nghĩa
-    dài theo sau (vd "the boy wearing glasses who lives next door"), CHỈ gộp phần danh từ + bổ
-    nghĩa NGẮN NGAY SÁT nó thành 1 nhóm, phần mệnh đề dài phía sau tách thành nhóm riêng theo đúng
-    quy tắc "chia mệnh đề dài" ở trên.
-    🔴 LỖI THẬT ĐÃ XẢY RA, TUYỆT ĐỐI KHÔNG LẶP LẠI: 1 cụm có ĐỦ chủ ngữ + động từ CHIA (finite verb)
-    — tức là 1 CÂU/MỆNH ĐỀ HOÀN CHỈNH (S+V hoặc S+V+O), KHÔNG BAO GIỜ được gắn nhãn "Cụm danh từ"
-    dù tổng độ dài ≤5 từ. Phải tách RIÊNG phần chủ ngữ (Cụm danh từ, chỉ chứa mạo từ/tính từ/danh
-    từ) khỏi phần động từ (Cụm động từ, chứa chính động từ chia + tân ngữ nếu có).
-    ❌ SAI (đúng lỗi thật đã xảy ra — "an accountant checks financial records" có động từ chia
-    "checks", KHÔNG PHẢI cụm danh từ, dù chỉ 5 từ):
-    {"words":["an","accountant","checks","financial","records"], "type":"Cụm danh từ", "meaning":"một kế toán kiểm tra các hồ sơ tài chính"}
-    ✅ ĐÚNG (tách chủ ngữ khỏi động từ + tân ngữ, mỗi phần đúng nhãn của nó):
-    {"words":["an","accountant"], "type":"Cụm danh từ", "meaning":"một kế toán"}
-    {"words":["checks","financial","records"], "type":"Cụm động từ", "meaning":"kiểm tra các hồ sơ tài chính"}
-  * Cụm tính từ/trạng từ (very happy, quite slowly), cụm giới từ (in the room, in front of).
-  * Cụm phân từ/nguyên mẫu/gerund NGẮN (walking along the street, to study English, reading
-    books) — áp dụng đúng giới hạn 1-4 từ như trên, KHÔNG kéo dài thêm phần bổ nghĩa phía sau.
-  * Cụm cố định giao tiếp/collocation (good morning, thank you, of course, make a decision, a
-    lot of); thành ngữ (chỉ cấp cao, break the ice); cụm so sánh/liên từ song song (as...as, not
-    only...but also); cấu trúc there is/it takes; cụm tính từ/danh từ + giới từ cố định (afraid
-    of, interested in, a piece of); cụm chỉ số lượng (a few, plenty of).
-  * Mệnh đề quan hệ/danh từ/trạng ngữ (who lives here, because he was sick): CHỈ giữ nguyên 1
-    nhóm khi mệnh đề đó NGẮN (≤4-5 từ) — mệnh đề dài hơn PHẢI chia nhỏ như hướng dẫn ở trên.
-  * Grammar Formula Chunks — cụm công thức ngữ pháp NÊN gộp riêng theo cấp độ (không tách rời
-    từng từ công thức): A1 (am/is/are, have/has, do/does + V, there is/are); A2 (be going to,
-    will, can, have to, would like, used to); B1 (have/has + V3, have/has been + V-ing, was/were
-    + V-ing, had + V3, be + V3 bị động); B2 (have been doing, should have done, các câu điều kiện
-    "if + ...", verb pattern "V + to V"/"V + V-ing"). Ví dụ: "have already done" là 1 nhóm 3 từ
-    (Cụm thì hoàn thành), KHÔNG tách "have" và "already done" thành nghĩa rời rạc không liên quan.
-- Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
-  nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
-- Mỗi nhóm có cấu trúc:
+
+NGUYÊN TẮC CHUNG VỀ ĐỘNG TỪ CHIA (áp dụng cho MỌI loại cụm ở 24 mục dưới, không phải riêng loại
+nào — tự kiểm TRƯỚC KHI gắn nhãn, không đợi phát hiện lỗi ở từng loại mới vá thêm):
+- Các loại BẢN CHẤT KHÔNG chứa động từ chia (finite verb — động từ có chủ ngữ, chia theo thời/thể;
+  KHÁC dạng V-ing/to-V/V3 làm bổ nghĩa không chủ ngữ riêng): mục V (Cụm danh từ), VI (Cụm tính từ),
+  VII (Cụm trạng từ), VIII (Cụm giới từ), IX (Cụm phân từ), X (Cụm nguyên mẫu), XI (Gerund), XII
+  (Cụm so sánh), XIII (Cụm liên từ), XIV (Cấu trúc song song), XV (Cụm cố định), XVI (Thành ngữ),
+  XVII (Collocation), XXI-XXIV (các cụm giới từ/tính từ/danh từ cố định + cụm chỉ số lượng).
+- Các loại BẢN CHẤT CÓ chứa động từ chia (đúng cấu trúc, KHÔNG phải lỗi): mục I (Cụm động từ), II
+  (Phrasal verb), III (Prepositional verb), IV (Verb pattern), XVIII (Mệnh đề — quan hệ/danh
+  từ/trạng ngữ, luôn có 1 động từ chia riêng bên trong), XIX (Cấu trúc đặc biệt — There is/It is...
+  đều có "is/are/takes" là động từ chia của CHÍNH cấu trúc đó, không tính là lỗi), XX (Mẫu ngữ
+  pháp cố định — nhiều mẫu như "be going to"/"had better" chứa động từ chia).
+- TRƯỚC KHI gắn 1 nhãn thuộc nhóm "KHÔNG chứa động từ chia" ở trên, tự hỏi: cụm này có từ nào là
+  ĐỘNG TỪ CHIA theo đúng chủ ngữ đứng trước nó không (is/are/was/were/has/have/checks/helps/
+  tracks/lists/represents/shows/indicates... — BẤT KỲ động từ nào chia theo ngôi/thời, KỂ CẢ các
+  dạng của "be")? Nếu CÓ, đây thực chất là 1 phần của MỆNH ĐỀ hay CỤM ĐỘNG TỪ (mục I/XVIII), KHÔNG
+  phải loại đang định gắn — phải tách riêng phần chủ ngữ (đúng mục V-XI tuỳ cấu trúc) khỏi phần
+  động từ chia + phần theo sau (mục I, "Cụm động từ").
+  ❌ SAI (2 lỗi thật đã xảy ra — cả 2 đều CÓ động từ chia "be"/động từ thường nhưng bị gắn nhãn
+  thuộc nhóm "không chứa động từ chia"):
+  {"words":["an","accountant","checks","financial","records"], "type":"Cụm danh từ", "meaning":"một kế toán kiểm tra các hồ sơ tài chính"}
+  {"words":["Financial","statements","are","important","documents"], "type":"Cụm danh từ", "meaning":"báo cáo tài chính là những tài liệu quan trọng"}
+  ✅ ĐÚNG (tách chủ ngữ khỏi phần động từ chia + phần theo sau, mỗi phần đúng nhãn của nó):
+  {"words":["an","accountant"], "type":"Cụm danh từ", "meaning":"một kế toán"}
+  {"words":["checks","financial","records"], "type":"Cụm động từ", "meaning":"kiểm tra các hồ sơ tài chính"}
+  {"words":["Financial","statements"], "type":"Cụm danh từ", "meaning":"báo cáo tài chính"}
+  {"words":["are","important","documents"], "type":"Cụm động từ", "meaning":"là những tài liệu quan trọng"}
+
+24 LOẠI CỤM (nguyên văn theo file "Cụm cho tooltip.txt" Minh cung cấp — dùng ĐÚNG danh sách này để
+chọn "type", không diễn giải lại):
+
+I. Cụm động từ (Verb Phrase) — nhãn "type": "Cụm động từ":
+  1. Cụm thì: has eaten, had finished, will be working, has been waiting, will have been studying.
+  2. Cụm dạng bị động (Voice): is built, was written, has been repaired, will be invited.
+  3. Modal Verb: can swim, must leave, should study, might come, would have gone.
+  4. Modal + Perfect: must have forgotten, should have called, may have left, could have done.
+  5. Verb + to infinitive: want to go, decide to stay, hope to see, refuse to help.
+  6. Verb + V-ing: enjoy reading, avoid eating, keep talking, finish writing.
+  7. Verb + Object + to V: ask him to come, tell me to wait, force them to leave.
+  8. Verb + Object + Bare infinitive: let him go, make me laugh, have someone clean.
+  9. Verb + Object + V-ing: catch him cheating, keep me waiting, leave the water running.
+  10. Verb + Object + Past Participle: get it repaired, have my hair cut, leave the door locked.
+
+II. Phrasal Verbs — nhãn "Phrasal verb": look after, look up, give up, carry on, put off, turn
+  down (động từ + giới từ/trạng từ đi liền, tách khỏi phần còn lại của câu).
+
+III. Prepositional Verbs — nhãn "Prepositional verb": depend on, belong to, listen to, insist on,
+  apologize for (động từ + giới từ CỐ ĐỊNH đi kèm).
+
+IV. Verb Pattern — nhãn "Verb pattern": prevent somebody from doing, accuse somebody of doing,
+  remind somebody to do, remind somebody of something, persuade somebody to do.
+
+V. Cụm danh từ (Noun Phrase) — nhãn "Cụm danh từ": the tall young man, a cup of coffee, an
+  interesting book, the boy wearing glasses. Bao gồm: article, adjective, noun, modifier,
+  determiner — KHÔNG BAO GIỜ chứa động từ chia (xem NGUYÊN TẮC CHUNG ở trên).
+
+VI. Cụm tính từ (Adjective Phrase) — nhãn "Cụm tính từ": very happy, full of water, interested in
+  music, difficult to understand.
+
+VII. Cụm trạng từ (Adverb Phrase) — nhãn "Cụm trạng từ": quite slowly, very carefully, much more
+  quickly.
+
+VIII. Giới từ + Cụm danh từ (Prepositional Phrase) — nhãn "Cụm giới từ": in the room, at school,
+  on the table, during the meeting.
+
+IX. Cụm phân từ (Participle Phrase) — nhãn "Cụm phân từ": walking along the street, sitting by
+  the window (present participle); built in 1990, damaged by fire (past participle).
+
+X. Cụm nguyên mẫu (Infinitive Phrase) — nhãn "Cụm nguyên mẫu": to study English, to solve the
+  problem, to become a doctor.
+
+XI. Gerund Phrase — nhãn "Gerund phrase": studying English, swimming every morning, reading
+  books.
+
+XII. Cụm so sánh — nhãn "Cụm so sánh": as...as, more...than, less...than, the most..., the
+  least...
+
+XIII. Cụm liên từ (Conjunction Structures) — nhãn "Cụm liên từ": not only...but also...,
+  either...or..., neither...nor..., both...and..., whether...or...
+
+XIV. Cấu trúc song song (Parallel Structure) — nhãn "Cấu trúc song song": singing, dancing, and
+  reading; to eat, to drink, and to sleep.
+
+XV. Cụm cố định (Fixed Expressions) — nhãn "Cụm cố định": by the way, in fact, of course, at
+  least, as soon as possible.
+
+XVI. Thành ngữ (Idioms) — nhãn "Thành ngữ" (chỉ cấp cao): once in a blue moon, break the ice, hit
+  the sack, cost an arm and a leg.
+
+XVII. Collocations — nhãn "Collocation": make a decision, take a break, heavy rain, strong
+  coffee, pay attention (các từ thường đi cùng nhau).
+
+XVIII. Cụm mệnh đề (Clause) — nhãn "Mệnh đề quan hệ" (who lives here, which I bought yesterday),
+  "Mệnh đề danh từ" (what he said, whether she will come), hoặc "Mệnh đề trạng ngữ" (because he
+  was sick, although it rained, if you study hard) — CHỈ giữ nguyên 1 nhóm khi mệnh đề đó NGẮN
+  (≤4-5 từ), mệnh đề dài hơn PHẢI chia nhỏ theo quy tắc "GIỚI HẠN ĐỘ DÀI" ở trên.
+
+XIX. Cấu trúc đặc biệt — nhãn "Cấu trúc đặc biệt": There is..., There are..., It is...that...,
+  It takes..., It seems..., It appears...
+
+XX. Các mẫu ngữ pháp cố định (Grammar Patterns) — nhãn "Mẫu ngữ pháp cố định": too...to...,
+  enough to..., so...that..., such...that..., the more..., the more..., had better, would
+  rather, be supposed to, be likely to, be about to, be used to, get used to, used to, be able
+  to, be going to.
+
+XXI. Cụm giới từ cố định — nhãn "Cụm giới từ cố định": in charge of, in front of, because of, due
+  to, according to, instead of, in spite of, on behalf of.
+
+XXII. Cụm tính từ cố định — nhãn "Cụm tính từ cố định": afraid of, interested in, proud of,
+  responsible for, good at, familiar with, similar to.
+
+XXIII. Cụm danh từ cố định — nhãn "Cụm danh từ cố định": a piece of advice, a bit of, a lot of,
+  plenty of, a number of, the majority of.
+
+XXIV. Cụm chỉ số lượng (Quantifier Phrases) — nhãn "Cụm chỉ số lượng": a few, a little, a great
+  deal of, plenty of, a large number of, lots of.
+
+Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
+nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
+Mỗi nhóm có cấu trúc:
   {
     "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
     "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
-    "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
+    "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại ở trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ
-      trong "words" của nhóm khi nhóm có >1 từ (KHÔNG được thiếu bất kỳ từ nào — 2026-08-10, Đợt
-      14: đây LÀ NGUYÊN NHÂN THẬT của lỗi hiển thị lộn xộn tiếng Anh lẫn tiếng Việt trong tooltip —
-      từ nào KHÔNG có trong "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế,
-      trộn 2 ngôn ngữ nếu ghép nhiều nguồn. Từ giờ ĐÂY LÀ YÊU CẦU CỨNG, không phải tuỳ chọn: dù
-      nhóm 2 từ hay 5 từ, "word_meanings" phải có ĐỦ chính xác từng đó khoá, không thiếu 1 từ nào)
+      trong "words" của nhóm khi nhóm có >1 từ (KHÔNG được thiếu bất kỳ từ nào — từ nào KHÔNG có
+      trong "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế, trộn 2 ngôn ngữ nếu
+      ghép nhiều nguồn — ĐÂY LÀ YÊU CẦU CỨNG, không phải tuỳ chọn: dù nhóm 2 từ hay 5 từ,
+      "word_meanings" phải có ĐỦ chính xác từng đó khoá, không thiếu 1 từ nào)
   }
 - LỖI THẬT HAY GẶP (2026-08-09, xác nhận qua dữ liệu thật — hệ thống dùng "words" để tô sáng
   TỪNG TỪ bấm được trong câu, 1 phần tử mảng KHÔNG được chứa nhiều hơn 1 từ): mỗi phần tử trong
