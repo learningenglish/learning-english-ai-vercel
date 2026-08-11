@@ -229,15 +229,19 @@ nào — tự kiểm TRƯỚC KHI gắn nhãn, không đợi phát hiện lỗi 
   đều có "is/are/takes" là động từ chia của CHÍNH cấu trúc đó, không tính là lỗi), XX (Mẫu ngữ
   pháp cố định — nhiều mẫu như "be going to"/"had better" chứa động từ chia).
 - TRƯỚC KHI gắn 1 nhãn thuộc nhóm "KHÔNG chứa động từ chia" ở trên, tự hỏi: cụm này có từ nào là
-  ĐỘNG TỪ CHIA theo đúng chủ ngữ đứng trước nó không (is/are/was/were/has/have/checks/helps/
-  tracks/lists/represents/shows/indicates... — BẤT KỲ động từ nào chia theo ngôi/thời, KỂ CẢ các
-  dạng của "be")? Nếu CÓ, đây thực chất là 1 phần của MỆNH ĐỀ hay CỤM ĐỘNG TỪ (mục I/XVIII), KHÔNG
-  phải loại đang định gắn — phải tách riêng phần chủ ngữ (đúng mục V-XI tuỳ cấu trúc) khỏi phần
-  động từ chia + phần theo sau (mục I, "Cụm động từ").
-  ❌ SAI (2 lỗi thật đã xảy ra — cả 2 đều CÓ động từ chia "be"/động từ thường nhưng bị gắn nhãn
-  thuộc nhóm "không chứa động từ chia"):
+  ĐỘNG TỪ CHIA theo đúng chủ ngữ đứng trước nó không — BAO GỒM CẢ 3 DẠNG: (a) động từ thường chia
+  theo ngôi/thời (checks/helps/tracks/lists/represents/shows/indicates...), (b) MỌI dạng của "be"
+  (is/are/was/were), (c) ĐỘNG TỪ KHUYẾT THIẾU/MODAL đứng SAU chủ ngữ (can/could/will/would/
+  should/must/may/might + V — "can track", "should prioritize", "will help" ĐỀU LÀ động từ chia
+  của mệnh đề đó, dù modal không đổi dạng theo ngôi). Nếu CÓ BẤT KỲ dạng nào trong 3 dạng trên, đây
+  thực chất là 1 phần của MỆNH ĐỀ hay CỤM ĐỘNG TỪ (mục I/XVIII), KHÔNG phải loại đang định gắn —
+  phải tách riêng phần chủ ngữ (đúng mục V-XI tuỳ cấu trúc) khỏi phần động từ chia + phần theo sau
+  (mục I, "Cụm động từ").
+  ❌ SAI (3 lỗi thật đã xảy ra — động từ thường/"be"/modal+verb đều bị gắn nhãn thuộc nhóm "không
+  chứa động từ chia"):
   {"words":["an","accountant","checks","financial","records"], "type":"Cụm danh từ", "meaning":"một kế toán kiểm tra các hồ sơ tài chính"}
   {"words":["Financial","statements","are","important","documents"], "type":"Cụm danh từ", "meaning":"báo cáo tài chính là những tài liệu quan trọng"}
+  {"words":["companies","can","track","their","expenses"], "type":"Cụm danh từ", "meaning":"các công ty có thể theo dõi chi phí của họ"}
   ✅ ĐÚNG (tách chủ ngữ khỏi phần động từ chia + phần theo sau, mỗi phần đúng nhãn của nó):
   {"words":["an","accountant"], "type":"Cụm danh từ", "meaning":"một kế toán"}
   {"words":["checks","financial","records"], "type":"Cụm động từ", "meaning":"kiểm tra các hồ sơ tài chính"}
