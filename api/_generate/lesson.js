@@ -277,17 +277,21 @@ phrase_groups, để người học thấy đúng cấu trúc câu thật):
   phụ, cụm giới từ, mệnh đề quan hệ, mệnh đề trạng ngữ...) rồi chia câu theo ĐÚNG các khối cấu
   trúc đó — KHÔNG áp trần 5 từ như "phrase_groups", mỗi khối là 1 ĐƠN VỊ Ý/CẤU TRÚC hoàn chỉnh,
   không phải cắt cơ học theo số từ.
-- QUY TẮC CỨNG VỀ SỐ KHỐI (kiểm chứng thật 2026-08-10: bản nháp đầu tiên của quy tắc này KHÔNG đủ
-  mạnh — model trả về NGUYÊN CẢ CÂU dài 10-14 từ làm 1 KHỐI DUY NHẤT cho HẦU HẾT câu, kể cả câu rõ
-  ràng có nhiều mệnh đề/cụm — biến "Tách câu" thành vô nghĩa, y hệt không tách gì cả):
-  * CHỈ được giữ nguyên CẢ CÂU làm 1 khối DUY NHẤT khi câu đó THẬT SỰ ngắn (≤6 từ) HOẶC chỉ có
-    ĐÚNG 1 mệnh đề/cụm ý duy nhất không thể chia nhỏ hơn được nữa.
-  * Câu DÀI HƠN 6 từ mà có TỪ 2 mệnh đề/cụm ý rõ rệt trở lên (chủ ngữ+động từ chính là 1 khối,
-    cụm giới từ/mệnh đề phụ/trạng ngữ đi kèm là khối khác...) BẮT BUỘC phải chia thành ÍT NHẤT 2
-    khối — giữ nguyên cả câu trong trường hợp này LÀ LỖI.
-  ❌ SAI (đúng lỗi thật vừa xảy ra — câu 13 từ, rõ 3 mệnh đề/cụm ý, vẫn giữ 1 khối):
+- CÔNG THỨC CỨNG BẮT BUỘC VỀ SỐ KHỐI TỐI THIỂU (kiểm chứng thật 2026-08-10, ĐÃ THỬ 2 LẦN quy tắc
+  mô tả bằng lời "chia theo mệnh đề" KHÔNG đủ mạnh — model VẪN trả về NGUYÊN CẢ CÂU dài 10-15 từ
+  làm 1 KHỐI DUY NHẤT cho HẦU HẾT câu dù rõ ràng có nhiều mệnh đề, biến "Tách câu" vô nghĩa y hệt
+  không tách gì cả — ĐỔI SANG CÔNG THỨC SỐ HỌC, dễ tự kiểm tra hơn mô tả định tính):
+  * Đếm số từ thật trong câu (không tính dấu câu) = N.
+  * Nếu N ≤ 6: được phép 1 khối duy nhất (cả câu).
+  * Nếu N > 6: SỐ KHỐI TỐI THIỂU = ROUND UP(N ÷ 6) — ví dụ câu 13 từ PHẢI có ÍT NHẤT 3 khối
+    (13÷6 làm tròn lên = 3), câu 20 từ PHẢI có ÍT NHẤT 4 khối. Đây là SỐ SÀN, được phép nhiều khối
+    hơn nếu cấu trúc câu rõ ràng có nhiều mệnh đề hơn, nhưng KHÔNG ĐƯỢC ÍT HƠN số này.
+  * TRƯỚC KHI trả JSON: với MỖI câu, tự đếm N rồi tự đếm số khối bạn vừa tạo cho câu đó — nếu số
+    khối ÍT HƠN ROUND UP(N÷6), bạn CHƯA XONG, phải quay lại chia nhỏ thêm cho đúng câu đó trước
+    khi trả kết quả (đúng cách tự kiểm đã áp dụng cho yêu cầu ĐỘ DÀI bài ở trên).
+  ❌ SAI (đúng lỗi thật vừa xảy ra — câu 13 từ, cần tối thiểu 3 khối, vẫn giữ 1 khối):
   {"reading_chunks": [{"text":"At the end of each month, accountants need to review the books carefully.","meaning":"Vào cuối mỗi tháng, các kế toán viên cần kiểm tra sổ sách một cách cẩn thận."}]}
-  ✅ ĐÚNG (chia theo đúng 3 khối ý: cụm giới từ chỉ thời gian — chủ ngữ+động từ chính — trạng từ bổ nghĩa):
+  ✅ ĐÚNG (13 từ, chia đủ 3 khối theo đúng công thức, mỗi khối vẫn đúng 1 đơn vị ý):
   {"reading_chunks": [
     {"text":"At the end of each month,","meaning":"Vào cuối mỗi tháng,"},
     {"text":"accountants need to review the books","meaning":"các kế toán viên cần kiểm tra sổ sách"},
