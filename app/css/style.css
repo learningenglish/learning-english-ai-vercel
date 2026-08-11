@@ -220,10 +220,12 @@ body::after {
    theo đúng tỉ lệ (giữ NGUYÊN tỉ lệ khung ảnh gốc 1536:1024=1.5 giữa 2 số — bắt buộc để không tái
    méo hình như lỗi vừa sửa) — ×1.361/×0.907 -> ×1.23/×0.82 (giảm ~10%).
    SỬA TIẾP LẦN 2 (cùng ngày, Minh: "tăng tỷ lệ logo nền tối lên 3% là ok") — ×1.23/×0.82 -> nhân
-   thêm 1.03 cho CẢ 2 số (vẫn giữ đúng tỉ lệ 1.5, không méo hình) -> ×1.2669/×0.8446. */
+   thêm 1.03 cho CẢ 2 số (vẫn giữ đúng tỉ lệ 1.5, không méo hình) -> ×1.2669/×0.8446.
+   SỬA TIẾP LẦN 3 (cùng ngày, Minh: "tăng tỷ lệ logo nền tối thêm 2%. Đã gần khớp") — nhân thêm
+   1.02 cho CẢ 2 số -> ×1.2922/×0.8615. */
 :root[data-theme="dark"] body::after {
   background-image: url("../icons/logo-dark.png");
-  background-size: calc(min(72vw, 420px) * 1.2669) calc(min(72vw, 420px) * 0.8446);
+  background-size: calc(min(72vw, 420px) * 1.2922) calc(min(72vw, 420px) * 0.8615);
 }
 
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
@@ -2032,6 +2034,15 @@ textarea:focus {
   border: none;
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+/* Loại từ (noun/verb/adjective/Cụm động từ...) — 2026-08-11, Minh: "tooltip thiếu chức năng từ".
+   Đứng NGAY dưới hàng cấp độ+từ, TRƯỚC nghĩa — chữ nhỏ, màu mờ, không cạnh tranh với nghĩa từ. */
+.word-popover-type {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-bottom: 2px;
 }
 
 .vocab-list,

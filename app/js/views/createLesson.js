@@ -182,16 +182,16 @@ export function renderCreateLesson(mount) {
     return state.goalLoaded && !!state.activeGoal && !state.changingGoal;
   }
 
-  // 2026-08-11 (Minh): đổi tên "Đổi" -> "Thêm chuyên ngành" — hành vi bấm KHÔNG đổi (vẫn chỉ mở
-  // form đầy đủ để chọn/tạo chuyên ngành khác, xem #change-goal-btn bên dưới) — chỉ đổi nhãn cho
-  // đúng ý nghĩa thật: đây là lối vào để THÊM 1 chuyên ngành khác, không phải "đổi" đơn thuần.
-  // Bỏ "(Nâng cấp gói)" (đã thêm lúc đầu, cùng ngày) — Minh sau đó yêu cầu loại bỏ hẳn khái niệm
-  // "gói" khỏi app lúc này ("không còn ý nghĩa ở app này... tôi sẽ trao đổi về gói tài khoản sau").
+  // 2026-08-11 (Minh): đổi tên "Đổi" -> "Thêm chuyên ngành (Nâng cấp gói)" — hành vi bấm KHÔNG đổi
+  // (vẫn chỉ mở form đầy đủ để chọn/tạo chuyên ngành khác, xem #change-goal-btn bên dưới). LỊCH
+  // SỬ nhãn này ĐỔI 2 LẦN trong cùng ngày: (1) thêm "(Nâng cấp gói)" lúc đầu, (2) bỏ theo yêu cầu
+  // "loại bỏ hết gói sinh bài", (3) Minh yêu cầu lại ĐÚNG bản có "(Nâng cấp gói)" — giữ bản (3),
+  // bản MỚI NHẤT, không tự ý bỏ lại lần nữa.
   function compactGoalHtml() {
     return `
       <div class="current-goal-row">
         <span>Bạn đang ở lĩnh vực <strong>${escapeHtml(state.activeGoal.title)}</strong></span>
-        <button type="button" class="link-btn" id="change-goal-btn">Thêm chuyên ngành</button>
+        <button type="button" class="link-btn" id="change-goal-btn">Thêm chuyên ngành (Nâng cấp gói)</button>
       </div>
     `;
   }

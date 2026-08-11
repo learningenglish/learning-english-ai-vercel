@@ -339,6 +339,31 @@ XXIV. Cụm chỉ số lượng (Quantifier Phrases) — nhãn "Cụm chỉ số
 
 Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
 nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
+
+QUY TẮC XÁC ĐỊNH "level" (2026-08-11, Minh xác nhận: dùng AI nhận dạng cấp độ — không dùng từ điển
+tĩnh, vì từ điển KHÔNG phủ được từ chuyên ngành, vốn là phần lớn nội dung app này — nhưng phản hồi
+thật là cấp độ đang gán SAI khá nhiều) — tự hỏi theo ĐÚNG 1 câu hỏi duy nhất: "1 người học ĐÃ ĐẠT
+ĐÚNG cấp độ này (không hơn) có khả năng cao đã BIẾT/GẶP từ hoặc cụm này trong giao tiếp thông
+thường KHÔNG (không tính riêng ngành)?" — không phải "từ này CÓ THỂ xuất hiện ở cấp độ nào" (câu
+hỏi sai, gần như từ nào cũng "có thể" xuất hiện ở mọi cấp nếu hỏi kiểu đó). Mốc neo cụ thể (dùng để
+tự so sánh, không phải danh sách đầy đủ):
+- A1: từ chức năng cơ bản (a/an/the/is/are/have/this/that), từ vựng sinh hoạt hàng ngày cực phổ
+  biến (name/time/day/work/like/want/good/big).
+- A2: từ vựng thông dụng nhưng ít lõi hơn A1 (decide/prepare/example/perhaps/several/although).
+- B1: từ trừu tượng/học thuật nhẹ bắt đầu xuất hiện (analyze/consider/tendency/significant).
+- B2: từ trừu tượng/học thuật rõ, ít dùng trong giao tiếp đời thường (implement/comprehensive/
+  facilitate/subsequently).
+- C1: từ trang trọng/học thuật cao, hiếm trong giao tiếp thường ngày (nonetheless/notwithstanding/
+  ambiguous/discrepancy).
+- THUẬT NGỮ CHUYÊN NGÀNH (vd "balance sheet", "cash flow", "audit trail"): xếp cấp độ theo ĐỘ KHÓ
+  NGÔN NGỮ của chính cụm từ đó (cấu trúc câu/từ vựng nó dùng), KHÔNG xếp theo độ khó KHÁI NIỆM
+  chuyên môn — 1 thuật ngữ ghép từ toàn từ A1-A2 quen thuộc (vd "cash flow" = "tiền" + "chảy") vẫn
+  có thể xếp A2-B1 dù khái niệm kế toán phía sau nó phức tạp, KHÔNG tự động đẩy lên B2/C1 chỉ vì
+  "nghe có vẻ chuyên ngành".
+- TỰ KIỂM sau khi gán: nếu 1 bài A1/A2 có QUÁ NHIỀU cụm bị gán B1 trở lên (hơn 1-2 cụm/câu ngắn),
+  dừng lại xét lại — cấp độ CHUNG của bài (A1/A2) phải là cấp độ CỦA PHẦN LỚN từ vựng thật dùng
+  trong bài đó, không thể vừa tự nhận "bài A1" vừa gán "level" cao cho gần hết từ trong bài.
+
 Mỗi nhóm có cấu trúc:
   {
     "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",

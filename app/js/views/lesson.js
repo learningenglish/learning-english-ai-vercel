@@ -194,10 +194,17 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // đoạn dài không hề cuộn, vì "s.itemIndex" không đổi. Giờ tính ĐÚNG CÂU đang đọc (không chỉ
   // đoạn) bằng "wordOffset" (kể cả giá trị NỘI SUY giữa chừng, xem getCurrentPosition() trong
   // tts.js) so với độ dài từng câu trong "item.text" — cuộn tới đúng khối
-  // ".content-text[data-sentence-idx]" của câu đó (bài đọc, luôn tách câu — xem
-  // readingChunkedItemHtml()), hoặc cả khối đoạn nếu là hội thoại (không tách câu). "sentenceKey"
-  // (chuỗi "itemIndex:sentenceIdx") thay cho "lastAutoScrolledItemIdx" cũ để không cuộn lặp lại
-  // mỗi tick 500ms khi vẫn đang ở CÙNG 1 câu.
+  // ".content-sentence-block[data-sentence-idx]" của câu đó (bài đọc, luôn tách câu — xem
+  // readingChunkedItemHtml()), hoặc cả khối đoạn nếu là hội thoại (không tách câu).
+  // SỬA 2026-08-11 lần 2 (Minh: "bật toggle thì auto-scroll không khớp câu, tắt hết mới đúng") —
+  // TRƯỚC ĐÂY nhắm ".content-text[data-sentence-idx]", nhưng khối đó CHỈ render khi
+  // "state.showOriginal" đang BẬT (xem readingChunkedItemHtml()) — tắt "đoạn gốc" (dù còn bật
+  // dịch/tách câu) làm khối đó KHÔNG TỒN TẠI trong DOM, auto-scroll rơi về lưới đỡ (cả đoạn) một
+  // cách âm thầm. Đổi sang nhắm ".content-sentence-block" — 1 wrapper BAO NGOÀI cả header + text +
+  // dịch + breakdown của MỖI câu, LUÔN tồn tại bất kể tổ hợp 3 toggle nào (chỉ mất khi cả 3 toggle
+  // đều tắt — forceOriginal, lúc đó không tách câu ở DOM nữa, đúng hành vi rơi về khối cả đoạn).
+  // "sentenceKey" (chuỗi "itemIndex:sentenceIdx") thay cho "lastAutoScrolledItemIdx" cũ để không
+  // cuộn lặp lại mỗi tick 500ms khi vẫn đang ở CÙNG 1 câu.
   let lastAutoScrolledSentenceKey = null;
   function currentSentenceIdxForItem(itemIdx, wordOffset) {
     const item = lesson.content?.[itemIdx];
@@ -221,7 +228,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     if (key === lastAutoScrolledSentenceKey) return;
     lastAutoScrolledSentenceKey = key;
     const el =
-      (sentenceIdx !== null && mount.querySelector(`.content-text[data-item-idx="${pos.itemIndex}"][data-sentence-idx="${sentenceIdx}"]`)) ||
+      (sentenceIdx !== null && mount.querySelector(`.content-sentence-block[data-item-idx="${pos.itemIndex}"][data-sentence-idx="${sentenceIdx}"]`)) ||
       mount.querySelector(`.content-item-block[data-content-item-idx="${pos.itemIndex}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -525,6 +532,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         .map(
           (sentence, sIdx) => `
         ${sIdx > 0 ? '<div class="content-divider"></div>' : ""}
+        <div class="content-sentence-block" data-item-idx="${itemIdx}" data-sentence-idx="${sIdx}">
         <div class="content-item-header">
           <span class="sentence-number">Câu ${startSentenceNo + sIdx}</span>
           ${ttsSupported ? `<button type="button" class="sentence-icon-btn" data-sentence-idx="${itemIdx}:${sIdx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>` : ""}
@@ -542,6 +550,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         }
         ${state.showTranslation && viMatch ? `<div class="content-translation">${escapeHtml(viSentences[sIdx])}</div>` : ""}
         ${state.showChunks ? readingChunksLinesHtml(readingChunkBuckets[sIdx] || []) : ""}
+        </div>
       `
         )
         .join("");
@@ -830,12 +839,16 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     });
   }
 
-  // Tooltip TỐI GIẢN — chỉ cấp độ + từ + nghĩa CỦA TỪ, không giải thích, không ví dụ, không lưu ý.
+  // Tooltip TỐI GIẢN — cấp độ + từ + loại từ + nghĩa CỦA TỪ, không giải thích, không ví dụ.
   // SỬA 2026-08-11 (Minh: "Loại bỏ nhận dạng cụm ra khỏi tooltip... Không hiển thị cụm trong
   // tooltip nữa") — bỏ hẳn khối "phrase"/cụm phụ (data.phrase, data.is_multiword/word_meanings)
   // từng hiện bên dưới nghĩa từ. KHÔNG xoá việc AI sinh/lưu "phrase_groups" ở backend (Minh: "đưa
   // vào lưu trữ ngoài app, sau này nâng cấp sẽ bàn") — chỉ bỏ HIỂN THỊ ở tooltip, dữ liệu vẫn được
   // phân tích/lưu như cũ để dùng lại khi cần trong tương lai.
+  // SỬA TIẾP (Minh: "tooltip thiếu chức năng từ (noun, verb,...)") — lúc bỏ khối "cụm" ở trên đã
+  // lỡ bỏ luôn "type" (loại từ) — thêm lại làm badge nhỏ cạnh cấp độ, KHÁC bản trước (badge đó là
+  // loại CỤM, đứng riêng 1 dòng dưới nghĩa) — giờ "type" là loại CỦA TỪ, đứng ngay đầu, cùng hàng
+  // cấp độ + từ.
   function renderTooltipContent(anchorEl, word, genderHint, data) {
     showPopoverHtml(
       anchorEl,
@@ -845,6 +858,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         <span class="word-popover-word">${escapeHtml(word)}</span>
         ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="Đọc từ này">${icon("volume", { size: 14 })}</button>` : ""}
       </div>
+      ${data.type ? `<div class="word-popover-type">${escapeHtml(data.type)}</div>` : ""}
       <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
     `
     );
@@ -865,13 +879,16 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
       return;
     }
-    // 2026-07-30 ("gom cụm từ khi sinh bài") — "vocabEntry" mang theo ĐỦ level/meaning riêng của
-    // chính TỪ này (không còn hardcode lesson.level như trước — 1 câu B1 vẫn có thể chứa 1 từ A1
-    // quen thuộc, cấp độ RIÊNG mới đúng). "type"/"phrase"/"word_meanings" (dữ liệu cụm) KHÔNG còn
+    // 2026-07-30 ("gom cụm từ khi sinh bài") — "vocabEntry" mang theo ĐỦ level/meaning/type riêng
+    // của chính TỪ này (không còn hardcode lesson.level như trước — 1 câu B1 vẫn có thể chứa 1
+    // từ A1 quen thuộc, cấp độ RIÊNG mới đúng). "phrase"/"word_meanings" (dữ liệu CỤM) KHÔNG còn
     // truyền vào renderTooltipContent nữa (2026-08-11, bỏ hiển thị cụm ở tooltip) — vẫn còn trong
-    // vocabEntry/phrase_groups lưu ở DB, chỉ không đọc tới ở đây.
+    // vocabEntry/phrase_groups lưu ở DB, chỉ không đọc tới ở đây. "type" (loại từ) VẪN truyền —
+    // đó là dữ liệu CỦA TỪ (hay mượn tạm của cả cụm nếu từ nằm trong cụm, xem
+    // wordEntryFromPhraseGroup()), không phải dữ liệu hiển thị CỤM đã bỏ.
     renderTooltipContent(anchorEl, word, genderHint, {
       level: vocabEntry.level || lesson.level,
+      type: vocabEntry.type,
       meaning: vocabEntry.meaning,
     });
   }
@@ -1180,6 +1197,12 @@ function tokenizeWords(text) {
 // "phrase_groups" vẫn được AI phân tích/lưu ở DB như cũ, chỉ không đọc "windowing" này ở đây nữa
 // vì không còn nơi nào hiển thị nó). Cấp độ mượn của CẢ NHÓM (data hiện không có cấp độ riêng
 // từng từ) — xem việc 4 (đợt rà soát 2026-08-11) đang chờ Minh chọn hướng cải thiện độ chính xác.
+// "type" (2026-08-11, Minh: "tooltip thiếu chức năng từ (noun, verb,...)") — với từ ĐƠN (không
+// thuộc cụm nào), "group.type"/"vocabMatch.type" ĐÃ đúng loại từ đơn thật (xem quy tắc "Từ không
+// thuộc cụm nào... type ghi loại từ đơn" trong PHRASE_GROUPS_RULES). Với từ NẰM TRONG 1 cụm nhiều
+// từ, dữ liệu hiện KHÔNG có loại từ RIÊNG của từng từ bên trong cụm (chỉ có loại của CẢ CỤM,
+// vd "Cụm động từ") — mượn TẠM loại của cả cụm (đúng hơn hẳn placeholder "Từ" chung trước đây,
+// dù chưa phải loại từ CHÍNH XÁC của riêng từ đó).
 function wordEntryFromPhraseGroup(group, word, vocabMap) {
   const allWords = Array.isArray(group?.words) ? group.words : [];
   const isMultiWord = allWords.length > 1;
@@ -1190,7 +1213,7 @@ function wordEntryFromPhraseGroup(group, word, vocabMap) {
     word,
     meaning: ownMeaning || group.meaning || vocabMatch?.meaning || "",
     level: group.level || vocabMatch?.level || "",
-    type: !isMultiWord ? group.type || vocabMatch?.type || "" : "Từ",
+    type: group.type || vocabMatch?.type || "",
     is_specialized: !!vocabMatch?.is_specialized,
     highlight: isMultiWord || !!vocabMatch,
     fromPhraseGroups: true, // dữ liệu này đã NẰM SẴN vĩnh viễn trong content của bài (phân tích
