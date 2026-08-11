@@ -264,8 +264,17 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
 // từ khi bấm, SAI mục đích cho hiểu cấu trúc câu khi đọc) — ép dùng chung 1 nguồn buộc client
 // phải cắt/ghép/vá liên tục (đã làm ở đợt 12-13), có lúc ghép lộn tiếng Anh chưa dịch vào nghĩa
 // (bug thật: "but we have một số loại" — từ không có trong "word_meanings" bị giữ nguyên tiếng
-// Anh rồi nối chung 1 chuỗi). Tách hẳn thành field RIÊNG, generate cùng lúc CHUNG 1 lượt AI (không
-// tốn thêm lượt gọi), do AI dịch SẠCH từng khối — client CHỈ ĐỌC, không tự ghép/suy đoán gì nữa.
+// Anh rồi nối chung 1 chuỗi). Tách hẳn thành field RIÊNG.
+// KHÔNG interpolate vào GENERATE_LESSON_SYSTEM_PROMPT/ANALYZE_TEXT_SYSTEM_PROMPT (đã thử, xem
+// lịch sử test thật 2026-08-10: nhồi thêm 1 yêu cầu nữa vào prompt sinh CẢ BÀI — vốn đã quá nhiều
+// yêu cầu đồng thời (độ dài/ngữ pháp/từ vựng/hội thoại tự nhiên/phrase_groups...) — khiến model
+// LIÊN TỤC bỏ qua đúng quy tắc chia khối này dù đã viết ví dụ ❌/✅ + công thức số học rõ ràng,
+// luôn trả về NGUYÊN CÂU làm 1 khối. Test lại CHÍNH prompt này khi dùng RIÊNG cho 1 việc DUY NHẤT
+// (READING_CHUNKS_ANALYZE_SYSTEM_PROMPT bên dưới, không cạnh tranh với yêu cầu khác) — TUÂN THỦ
+// ĐÚNG ngay. Kết luận: MỌI bài (mới lẫn cũ) đều lấy "reading_chunks" qua ĐÚNG 1 con đường DUY
+// NHẤT — lượt "vá" (analyze_lesson_reading_chunks) tự chạy ngay lúc mở bài lần đầu (client kiểm
+// coverage rồi tự gọi, xem ensureReadingChunksPatched() trong views/lesson.js) — không có
+// nhánh nào khác tạo ra field này, tránh 2 nguồn dữ liệu KHÁC CHẤT LƯỢNG cho cùng 1 field.
 const READING_CHUNKS_RULES = `QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU (trường "reading_chunks" trong MỖI phần tử "content" — RIÊNG BIỆT
 HOÀN TOÀN với "phrase_groups" ở trên, KHÔNG dùng chung mục đích: "phrase_groups" phục vụ TRA TỪ
 khi bấm (cần cụm NGẮN ≤5 từ để bấm trúng đúng từ), "reading_chunks" phục vụ HIỂU CẤU TRÚC CÂU khi
@@ -417,8 +426,6 @@ nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lư�
 
 ${PHRASE_GROUPS_RULES}
 
-${READING_CHUNKS_RULES}
-
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
@@ -486,12 +493,6 @@ SCHEMA JSON:
           "level": "cấp độ CEFR riêng của cụm/từ này",
           "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
           "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"}
-        }
-      ],
-      "reading_chunks": [
-        {
-          "text": "ĐÚNG NGUYÊN VĂN đoạn text của khối này, xem QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU",
-          "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH của ĐÚNG khối này"
         }
       ]
     }
@@ -783,8 +784,6 @@ BUỘC và là CĂN CỨ DUY NHẤT cho toàn bộ phần còn lại của bài,
 
 ${PHRASE_GROUPS_RULES}
 
-${READING_CHUNKS_RULES}
-
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo schema dưới đây.
 - Không lời chào, không giải thích ngoài JSON, không bọc trong dấu \`\`\`.
@@ -809,12 +808,6 @@ SCHEMA JSON:
           "level": "cấp độ CEFR riêng của cụm/từ này",
           "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
           "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"}
-        }
-      ],
-      "reading_chunks": [
-        {
-          "text": "ĐÚNG NGUYÊN VĂN đoạn text của khối này, xem QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU",
-          "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH của ĐÚNG khối này"
         }
       ]
     }
