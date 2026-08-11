@@ -196,9 +196,25 @@ export async function search_lesson_cover_image(data, ctx) {
   const cached = await getCoverFromCache(key);
   if (cached) return { content: JSON.stringify({ image: { url: cached.url, source: cached.source } }) };
 
-  const image = (await fetchFromUnsplash(query)) || (await fetchFromPexels(query)) || (await fetchFromWikimedia(query));
+  let image = (await fetchFromUnsplash(query)) || (await fetchFromPexels(query)) || (await fetchFromWikimedia(query));
+  // 2026-08-11 (Minh: "hình ảnh là 1 phần không thể thiếu của bài học, phải đảm bảo có hình ảnh
+  // mới up lên") — TRƯỚC ĐÂY nếu 3 nguồn đều không ra ảnh cho ĐÚNG query theo tiêu đề (hiếm,
+  // nhưng CÓ THẬT — tiêu đề quá hẹp/lạ), hàm trả "image: null" luôn, bài học lên app KHÔNG có ảnh
+  // bìa, không ai biết để xử lý tiếp (client coi đây là thành công, chỉ là "không tìm được ảnh").
+  // Thêm 1 lượt thử LẠI bằng query TRUNG TÍNH theo content_type (NEUTRAL_QUERY_BY_CONTENT_TYPE —
+  // "person reading a book at a desk"/"two people having a friendly conversation", chắc chắn có
+  // rất nhiều ảnh trên Unsplash) làm lưới đỡ cuối — đảm bảo GẦN NHƯ LUÔN có ảnh, chỉ còn "null"
+  // trong ca cực hiếm (mất mạng hoàn toàn/thiếu cả 2 API key ẢNH lẫn Wikimedia lỗi).
+  let usedQuery = query;
+  if (!image) {
+    const neutralQuery = NEUTRAL_QUERY_BY_CONTENT_TYPE[contentType] || NEUTRAL_QUERY_BY_CONTENT_TYPE.reading;
+    if (neutralQuery !== query) {
+      image = (await fetchFromUnsplash(neutralQuery)) || (await fetchFromPexels(neutralQuery)) || (await fetchFromWikimedia(neutralQuery));
+      usedQuery = neutralQuery;
+    }
+  }
   if (!image) return { content: JSON.stringify({ image: null }) };
-  saveCoverToCache(key, query, image);
+  saveCoverToCache(coverCacheKey(usedQuery), usedQuery, image);
   return { content: JSON.stringify({ image: { url: image.url, source: image.source } }) };
 }
 

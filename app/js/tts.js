@@ -643,6 +643,15 @@ export function createPlayer({ onStateChange } = {}) {
     getState() {
       return { ...state };
     },
+    // 2026-08-11 (Minh: "audio đọc câu mới nhưng câu đó không hiển thị ngay giữa màn hình") — lộ
+    // vị trí THẬT đang đọc (không phải chỉ "wordOffset" đã commit lúc đổi item, mà có nội suy
+    // trong lúc utterance đang phát, xem currentItemWordOffset() ở trên) để views/lesson.js tự
+    // tính ĐÚNG CÂU nào trong đoạn đang được đọc, không chỉ đoạn/lượt thoại nào (mỗi item audio
+    // có thể chứa NHIỀU câu — trước đây lesson.js chỉ cuộn khi đổi hẳn item, không cuộn khi audio
+    // chuyển sang câu kế TRONG CÙNG 1 đoạn).
+    getCurrentPosition() {
+      return { itemIndex: state.itemIndex, wordOffset: currentItemWordOffset() };
+    },
     // Thanh thời gian (2026-07-29, thay 3 nút Về đoạn trước/Lùi 10s/Tiến 10s). ĐANG phát audio
     // thật (fullAudioEl sống, đã biết duration thật) -> đọc THẲNG currentTime/duration thật của
     // <audio> (2026-07-30, mục 3 — chính xác tuyệt đối, không phụ thuộc tốc độ nói trung bình).

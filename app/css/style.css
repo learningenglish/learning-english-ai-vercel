@@ -218,11 +218,12 @@ body::after {
    logo nền sáng") — hệ số s≈0.900 tính ra ở trên cho VỊ TRÍ 3 điểm mốc khớp tốt nhất, nhưng quy
    đổi CSS (1.361/0.907) làm chữ hiện RA LỚN HƠN bản nền sáng theo mắt thường. Giảm NHẸ cả 2 hệ số
    theo đúng tỉ lệ (giữ NGUYÊN tỉ lệ khung ảnh gốc 1536:1024=1.5 giữa 2 số — bắt buộc để không tái
-   méo hình như lỗi vừa sửa) — ×1.361/×0.907 -> ×1.23/×0.82 (giảm ~10%), cho chữ "Mosaic" 2 theme
-   gần bằng nhau hơn. */
+   méo hình như lỗi vừa sửa) — ×1.361/×0.907 -> ×1.23/×0.82 (giảm ~10%).
+   SỬA TIẾP LẦN 2 (cùng ngày, Minh: "tăng tỷ lệ logo nền tối lên 3% là ok") — ×1.23/×0.82 -> nhân
+   thêm 1.03 cho CẢ 2 số (vẫn giữ đúng tỉ lệ 1.5, không méo hình) -> ×1.2669/×0.8446. */
 :root[data-theme="dark"] body::after {
   background-image: url("../icons/logo-dark.png");
-  background-size: calc(min(72vw, 420px) * 1.23) calc(min(72vw, 420px) * 0.82);
+  background-size: calc(min(72vw, 420px) * 1.2669) calc(min(72vw, 420px) * 0.8446);
 }
 
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
@@ -2031,49 +2032,6 @@ textarea:focus {
   border: none;
   font-size: 0.8rem;
   cursor: pointer;
-}
-
-/* Dòng cụm (2026-07-30, "gom cụm từ khi sinh bài", RÚT LẠI đợt 5 → khôi phục ở Đợt 6 — xem ghi
-   chú tại phraseGroupToEntry() trong views/lesson.js) — hiện khi từ vừa bấm là 1 CỤM nhiều từ đã
-   được AI gắn nhãn sẵn lúc sinh bài. Nhãn loại cụm nhỏ (phrasal verb/cụm giới từ...) + bảng
-   nghĩa riêng từng từ bên trong cụm. */
-.word-popover-phrase-tag {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--purple);
-  background: var(--purple-soft);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.word-popover-breakdown {
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-}
-
-.word-popover-breakdown-item b {
-  color: var(--text);
-  font-weight: 600;
-}
-
-/* Dòng "cụm" PHỤ (2026-08-10, Đợt 13 mục 4) — hiện khi từ vừa bấm thuộc 1 cụm nhiều từ, đứng
-   SAU khối nghĩa của chính từ đó (đúng thứ tự Minh yêu cầu: từ+nghĩa từ trước, cụm+nghĩa cụm
-   sau) — cùng cỡ chữ/màu với .word-popover-breakdown cho đồng bộ hình thức. */
-.word-popover-phrase-context {
-  margin-top: 6px;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-}
-
-.word-popover-phrase-context b {
-  color: var(--text);
-  font-weight: 600;
 }
 
 .vocab-list,

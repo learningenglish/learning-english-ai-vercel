@@ -295,9 +295,12 @@ export async function upsertLessonProgress(lessonId, patch) {
 // bug. "streak" tính giống hệt getStreakDays() cũ (suy ra từ last_opened_at, KHÔNG có cột riêng
 // lưu streak).
 export async function getStreakAndStats() {
-  const rows = await restFetch("lesson_progress?select=xp_earned,completed_at,last_opened_at");
+  const rows = await restFetch("lesson_progress?select=xp_earned,completed_at,fully_listened_at,last_opened_at");
   const totalXp = (rows || []).reduce((s, r) => s + (r.xp_earned || 0), 0);
-  const completedCount = (rows || []).filter((r) => r.completed_at).length;
+  // Cùng fix "Bài đã học do App xác nhận" như getProgressOverview() ở trên (2026-08-11) — đếm cả
+  // "fully_listened_at" (nghe hết audio), không chỉ "completed_at" (hết bài tập), để badge ở
+  // header khớp đúng số với thẻ "Bài đã học" trong Tiến trình, không lệch số giữa 2 nơi.
+  const completedCount = (rows || []).filter((r) => r.completed_at || r.fully_listened_at).length;
   const streak = computeStreakFromDates(rows || []);
   return { totalXp, completedCount, streak };
 }
@@ -386,7 +389,16 @@ export async function getProgressOverview() {
   ]);
 
   const totalXp = (progressRows || []).reduce((s, r) => s + (r.xp_earned || 0), 0);
-  const completedCount = (progressRows || []).filter((r) => r.completed_at).length;
+  // SỬA 2026-08-11 (Minh: "Bài đã học do App xác nhận, bộ đếm của Tiến trình phải tính vào bảng
+  // Bài đã học") — TRƯỚC ĐÂY chỉ tính "completed_at" (yêu cầu làm HẾT mọi bài tập của bài đó,
+  // bài không có bài tập thì KHÔNG BAO GIỜ đạt được dù đã đọc/nghe xong toàn bộ) — lệch với chính
+  // "fully_listened_at" (nghe HẾT audio thật, tín hiệu "App xác nhận" ĐÃ dùng cho badge "Đã học"
+  // ở lịch sử ngay dưới cùng màn Tiến trình, xem computeLearnStatus()/renderHistory trong
+  // progress.js) — 1 bài user đã nghe xong (hiện "Đã học" ở lịch sử) vẫn có thể KHÔNG được tính
+  // vào "Bài đã học"/thanh % kỹ năng phía trên, gây cảm giác "chưa tính gì" dù đã dùng thật. Đếm
+  // "đã học" khi ĐẠT ÍT NHẤT 1 trong 2 tín hiệu (làm hết bài tập HOẶC nghe hết audio).
+  const isLearned = (r) => !!(r.completed_at || r.fully_listened_at);
+  const completedCount = (progressRows || []).filter(isLearned).length;
   const streak = computeStreakFromDates(progressRows || []);
   const longestStreak = computeLongestStreakFromDates(progressRows || []);
 
@@ -398,7 +410,7 @@ export async function getProgressOverview() {
     bucket[l.level].total += 1;
   }
   for (const r of progressRows || []) {
-    if (!r.completed_at || !r.lessons) continue;
+    if (!isLearned(r) || !r.lessons) continue;
     const bucket = bySkill[r.lessons.content_type];
     if (!bucket?.[r.lessons.level]) continue;
     bucket[r.lessons.level].done += 1;
