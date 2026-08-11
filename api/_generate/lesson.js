@@ -277,9 +277,25 @@ phrase_groups, để người học thấy đúng cấu trúc câu thật):
   phụ, cụm giới từ, mệnh đề quan hệ, mệnh đề trạng ngữ...) rồi chia câu theo ĐÚNG các khối cấu
   trúc đó — KHÔNG áp trần 5 từ như "phrase_groups", mỗi khối là 1 ĐƠN VỊ Ý/CẤU TRÚC hoàn chỉnh,
   không phải cắt cơ học theo số từ.
-- Số khối/câu tuỳ độ dài và độ phức tạp: câu ngắn 1-4 từ có thể chỉ 1 khối DUY NHẤT (cả câu), câu
-  dài/phức tạp thường 2-5 khối theo đúng ranh giới cấu trúc ngữ pháp thật — KHÔNG chia đều theo số
-  từ, chia theo Ý.
+- QUY TẮC CỨNG VỀ SỐ KHỐI (kiểm chứng thật 2026-08-10: bản nháp đầu tiên của quy tắc này KHÔNG đủ
+  mạnh — model trả về NGUYÊN CẢ CÂU dài 10-14 từ làm 1 KHỐI DUY NHẤT cho HẦU HẾT câu, kể cả câu rõ
+  ràng có nhiều mệnh đề/cụm — biến "Tách câu" thành vô nghĩa, y hệt không tách gì cả):
+  * CHỈ được giữ nguyên CẢ CÂU làm 1 khối DUY NHẤT khi câu đó THẬT SỰ ngắn (≤6 từ) HOẶC chỉ có
+    ĐÚNG 1 mệnh đề/cụm ý duy nhất không thể chia nhỏ hơn được nữa.
+  * Câu DÀI HƠN 6 từ mà có TỪ 2 mệnh đề/cụm ý rõ rệt trở lên (chủ ngữ+động từ chính là 1 khối,
+    cụm giới từ/mệnh đề phụ/trạng ngữ đi kèm là khối khác...) BẮT BUỘC phải chia thành ÍT NHẤT 2
+    khối — giữ nguyên cả câu trong trường hợp này LÀ LỖI.
+  ❌ SAI (đúng lỗi thật vừa xảy ra — câu 13 từ, rõ 3 mệnh đề/cụm ý, vẫn giữ 1 khối):
+  {"reading_chunks": [{"text":"At the end of each month, accountants need to review the books carefully.","meaning":"Vào cuối mỗi tháng, các kế toán viên cần kiểm tra sổ sách một cách cẩn thận."}]}
+  ✅ ĐÚNG (chia theo đúng 3 khối ý: cụm giới từ chỉ thời gian — chủ ngữ+động từ chính — trạng từ bổ nghĩa):
+  {"reading_chunks": [
+    {"text":"At the end of each month,","meaning":"Vào cuối mỗi tháng,"},
+    {"text":"accountants need to review the books","meaning":"các kế toán viên cần kiểm tra sổ sách"},
+    {"text":"carefully.","meaning":"một cách cẩn thận."}
+  ]}
+- Số khối/câu tuỳ độ dài và độ phức tạp: câu ngắn ≤6 từ CHỈ 1 mệnh đề có thể là 1 khối DUY NHẤT,
+  câu dài/phức tạp THƯỜNG 2-5 khối theo đúng ranh giới cấu trúc ngữ pháp thật (xem quy tắc cứng
+  ngay trên) — KHÔNG chia đều theo số từ, chia theo Ý.
 - BẮT BUỘC PHỦ ĐỦ 100% (hệ thống TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN
   BỘ "text" của MỌI khối theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" phần tử đó
   (chỉ khác dấu câu/khoảng trắng) — không thiếu, không thừa, không đảo thứ tự — CÙNG mức độ SỐNG
