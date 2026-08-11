@@ -197,6 +197,18 @@ export function createPlayer({ onStateChange } = {}) {
   // NỘI SUY tiến trình trong lúc 1 utterance dài đang đọc (xem wordsElapsed() bên dưới). null =
   // không đang đọc bằng Web Speech (tạm dừng/dùng audio thật/chưa bắt đầu).
   let utteranceStartedAt = null;
+  // 2026-08-11 (đợt rà soát trước khi sinh giáo trình — Minh: "đảm bảo audio không còn bị lỗi") —
+  // 2 lỗi gốc xác nhận qua đọc code: (a) "onboundary" của Web Speech API cho vị trí THẬT giữa
+  // chừng utterance (không phải chỉ đoán theo thời gian × tốc độ cố định) — trình duyệt hỗ trợ
+  // (Chrome/Edge desktop, thường bắn theo TỪNG TỪ) sẽ tự sửa sai số tích luỹ liên tục thay vì chỉ
+  // sửa 1 lần lúc "onend"; trình duyệt KHÔNG hỗ trợ (một số bản mobile) vẫn rơi về đúng công thức
+  // nội suy cũ, không có gì đổi. (b) tạm dừng/đổi tốc độ/âm lượng giữa chừng PHẢI lưu lại đúng vị
+  // trí đang nội suy vào "state.wordOffset" TRƯỚC KHI huỷ+phát lại utterance — trước đây restart
+  // luôn đọc "state.wordOffset" CŨ (chỉ cập nhật lúc sang hẳn item khác), làm audio thật lùi về
+  // đầu câu trong khi thanh tiến trình vẫn đứng ở vị trí nội suy cũ — rõ nhất ở đoạn văn dài
+  // (Phân tích), gần như không nhận ra được ở lượt thoại ngắn.
+  let utteranceBoundaryWords = 0; // số từ đã qua TÍNH TỪ ĐẦU utterance hiện tại, theo "onboundary" thật.
+  let utteranceBoundaryAt = null; // mốc thời gian của lần "onboundary" gần nhất, để nội suy thêm khoảng NHỎ còn lại tới hiện tại.
 
   function stopSegmentPreview() {
     if (!segmentPreviewEl) return;
@@ -221,8 +233,14 @@ export function createPlayer({ onStateChange } = {}) {
   }
 
   function speakWithWebSpeech(item) {
+    // Huỷ hẳn utterance CŨ (nếu có) trước khi phát cái mới — tránh trình duyệt XẾP HÀNG utterance
+    // mới phía sau utterance đang đọc dở thay vì thay thế nó (setRate()/setVolume() gọi hàm này
+    // trong khi utterance TRƯỚC vẫn đang phát, xem 2 hàm đó bên dưới).
+    window.speechSynthesis.cancel();
     utteranceStartedAt = null; // reset ngay — chỉ set lại đúng lúc "onstart" utterance MỚI này
     // thật sự bắt đầu đọc (có độ trễ nhỏ so với lúc gọi speak(), set sớm hơn sẽ lệch).
+    utteranceBoundaryWords = 0;
+    utteranceBoundaryAt = null;
     const words = (item.text || "").split(/\s+/).filter(Boolean);
     const fromWords = words.slice(state.wordOffset).join(" ");
     if (!fromWords.trim()) {
@@ -238,12 +256,24 @@ export function createPlayer({ onStateChange } = {}) {
     utter.onstart = () => {
       utteranceStartedAt = Date.now();
     };
+    // "onboundary" — vị trí THẬT giữa chừng (không phải đoán theo thời gian), bắn mỗi khi trình
+    // duyệt bắt đầu đọc 1 từ/1 câu mới (tuỳ trình duyệt, KHÔNG đảm bảo mọi trình duyệt/giọng đều
+    // hỗ trợ đều đặn — coi đây là CẢI THIỆN thêm khi có, không phải điều kiện bắt buộc).
+    // "e.charIndex" tính theo "fromWords" (chuỗi truyền vào utterance này) — đếm số từ ĐỨNG TRƯỚC
+    // vị trí đó ra đúng số từ đã đọc qua kể từ ĐẦU utterance hiện tại.
+    utter.onboundary = (e) => {
+      if (typeof e.charIndex !== "number") return;
+      utteranceBoundaryWords = fromWords.slice(0, e.charIndex).split(/\s+/).filter(Boolean).length;
+      utteranceBoundaryAt = Date.now();
+    };
     utter.onend = () => {
       utteranceStartedAt = null;
+      utteranceBoundaryAt = null;
       if (state.playing) goToItem(state.itemIndex + 1, 0);
     };
     utter.onerror = () => {
       utteranceStartedAt = null;
+      utteranceBoundaryAt = null;
       state.playing = false;
       notify();
     };
@@ -269,17 +299,45 @@ export function createPlayer({ onStateChange } = {}) {
   // "state.playing", và utterance hiện tại đã thật sự bắt đầu — "utteranceStartedAt" set ở
   // "onstart" trong speakWithWebSpeech()) — ước lượng số từ đã qua theo thời gian thực trôi qua ×
   // tốc độ đọc, chặn trần ở số từ thật của câu đó.
-  function wordsElapsed() {
-    let sum = 0;
-    for (let i = 0; i < state.itemIndex; i++) sum += wordCount(state.items[i]?.text);
+  // Offset (số từ đã đọc qua) TRONG ĐÚNG item đang phát — tách riêng khỏi wordsElapsed() (cộng
+  // dồn CẢ playlist) để dùng lại được ở chỗ cần lưu lại vị trí THẬT trước khi huỷ+phát lại
+  // utterance (xem syncWordOffsetToNow() ngay dưới).
+  function currentItemWordOffset() {
     const currentItemWords = wordCount(state.items[state.itemIndex]?.text);
     let offset = Math.min(state.wordOffset, currentItemWords);
     if (state.playing && !fullAudioEl && utteranceStartedAt) {
-      const elapsedSecondsInUtterance = (Date.now() - utteranceStartedAt) / 1000;
-      const interpolatedWords = elapsedSecondsInUtterance * state.rate * WORDS_PER_SECOND_AT_RATE_1;
-      offset = Math.min(currentItemWords, offset + interpolatedWords);
+      if (utteranceBoundaryAt) {
+        // Có mốc THẬT từ "onboundary" — dùng làm gốc, chỉ nội suy thêm khoảng NHỎ từ mốc đó tới
+        // hiện tại (không phải nội suy suốt cả utterance từ lúc "onstart" như trước), nên sai số
+        // tích luỹ tối đa đúng bằng khoảng cách giữa 2 lần "onboundary" liên tiếp, không phải cả
+        // câu/cả đoạn.
+        const elapsedSinceBoundary = (Date.now() - utteranceBoundaryAt) / 1000;
+        const extra = elapsedSinceBoundary * state.rate * WORDS_PER_SECOND_AT_RATE_1;
+        offset = Math.min(currentItemWords, offset + utteranceBoundaryWords + extra);
+      } else {
+        // Chưa có "onboundary" nào (trình duyệt không hỗ trợ, hoặc utterance vừa mới bắt đầu) —
+        // rơi về nội suy thuần theo thời gian × tốc độ như trước.
+        const elapsedSecondsInUtterance = (Date.now() - utteranceStartedAt) / 1000;
+        const interpolatedWords = elapsedSecondsInUtterance * state.rate * WORDS_PER_SECOND_AT_RATE_1;
+        offset = Math.min(currentItemWords, offset + interpolatedWords);
+      }
     }
-    return sum + offset;
+    return offset;
+  }
+
+  function wordsElapsed() {
+    let sum = 0;
+    for (let i = 0; i < state.itemIndex; i++) sum += wordCount(state.items[i]?.text);
+    return sum + currentItemWordOffset();
+  }
+
+  // Lưu lại vị trí THẬT (đang nội suy/đọc dở) vào "state.wordOffset" TRƯỚC KHI tạm dừng hoặc
+  // huỷ+phát lại utterance (đổi tốc độ/âm lượng) — xem ghi chú (b) ở khai báo "utteranceBoundaryAt"
+  // phía trên. KHÔNG áp dụng khi đang phát audio thật (fullAudioEl) — audio thật tự có currentTime
+  // thật, không cần "đóng băng" vị trí kiểu này.
+  function syncWordOffsetToNow() {
+    if (fullAudioEl) return;
+    state.wordOffset = Math.round(currentItemWordOffset());
   }
 
   // Có mốc giây THẬT cho MỌI câu trong "items" hiện tại không — đúng độ dài, không rơi vào bài
@@ -473,6 +531,7 @@ export function createPlayer({ onStateChange } = {}) {
     },
     playPause() {
       if (state.playing) {
+        syncWordOffsetToNow();
         state.playing = false;
         window.speechSynthesis.cancel();
         if (fullAudioEl) fullAudioEl.pause();
@@ -514,15 +573,20 @@ export function createPlayer({ onStateChange } = {}) {
       else goToItem(state.itemIndex, newOffset);
     },
     setRate(rate) {
+      // Lưu lại vị trí THẬT trước khi đổi "state.rate" (2026-08-11 — syncWordOffsetToNow() đọc
+      // "state.rate" CŨ để nội suy đúng quãng đã qua, phải gọi TRƯỚC khi gán rate mới).
+      if (!fullAudioEl && state.playing) syncWordOffsetToNow();
       state.rate = rate;
       notify();
       // "fullAudioEl" đang chạy -> chỉnh trực tiếp (audio thật đổi tốc độ MƯỢT, không cần phát
       // lại từ đầu) — chỉ Web Speech (utterance đã bắt đầu KHÔNG đổi tốc độ giữa chừng được)
-      // mới cần huỷ+phát lại qua speakCurrent().
+      // mới cần huỷ+phát lại qua speakCurrent(), giờ tiếp tục ĐÚNG chỗ đang đọc dở (wordOffset
+      // vừa lưu ở trên) thay vì lùi về đầu câu.
       if (fullAudioEl) fullAudioEl.playbackRate = rate;
       else if (state.playing) speakCurrent();
     },
     setVolume(volume) {
+      if (!fullAudioEl && state.playing) syncWordOffsetToNow();
       state.volume = volume;
       notify();
       if (fullAudioEl) fullAudioEl.volume = volume;

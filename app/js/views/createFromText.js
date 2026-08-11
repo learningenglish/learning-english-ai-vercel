@@ -10,7 +10,7 @@
 // tích xong, hiện RÕ badge cấp độ đã xác định NGAY tại đây (không đợi sang màn Bài học chi tiết
 // — màn đó thuộc Phase B-H đang khoá, không đụng) trước khi cho vào xem bài.
 import { navigate } from "../router.js";
-import { createLessonFromText, fetchAndSaveLessonCover } from "../lessonApi.js";
+import { createLessonFromText, fetchAndSaveLessonCover, analyzeLessonPhraseGroups, analyzeLessonReadingChunks } from "../lessonApi.js";
 import { getActiveLearningGoal } from "../db.js";
 import { escapeHtml, countWords } from "../utils.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
@@ -76,6 +76,14 @@ export function renderCreateFromText(mount) {
       return;
     }
     const lesson = res.data.lesson;
+    // Phân tích cụm từ + tách câu PHẢI XONG TRƯỚC khi hiện bài (2026-08-11, cùng lý do ở
+    // createLesson.js — Minh: "AI làm trước hoàn chỉnh... không còn phù hợp việc click vào mới
+    // tra từ"). Best-effort: lỗi tạm thời không chặn hẳn việc xem bài, chỉ log lại.
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang phân tích cụm từ...</div>`;
+    const phraseRes = await analyzeLessonPhraseGroups(lesson.id, false);
+    if (!phraseRes.ok) console.warn("analyzeLessonPhraseGroups lỗi lúc tạo bài:", phraseRes.error);
+    const chunksRes = await analyzeLessonReadingChunks(lesson.id, false);
+    if (!chunksRes.ok) console.warn("analyzeLessonReadingChunks lỗi lúc tạo bài:", chunksRes.error);
     // Chờ ảnh bìa sinh XONG trước khi hiện kết quả (2026-08-10, cùng lý do ở createLesson.js —
     // Minh: "Hình bài học phải được sinh trọn vẹn trước khi up lên").
     resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang tải ảnh bìa...</div>`;

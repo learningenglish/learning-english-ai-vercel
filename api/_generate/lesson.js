@@ -202,17 +202,32 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
   {"words": ["from","college"], "type": "Cụm giới từ", "meaning": "từ đại học"}
   - TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như
     "Really?"), KHÔNG gộp 2 mệnh đề độc lập (nối bằng and/but/so/because...) vào chung 1 nhóm.
-- Nhận diện cụm theo các nhóm sau (tham khảo để chọn nhãn "type" phù hợp — sai nhãn KHÔNG bị lỗi,
-  chỉ sót/thừa từ hoặc GỘP QUÁ DÀI mới bị lỗi):
+- Nhận diện cụm theo các nhóm sau (tham khảo để chọn nhãn "type" phù hợp — nhầm lẫn nhỏ giữa các
+  loại KHÔNG bị lỗi, chỉ sót/thừa từ, GỘP QUÁ DÀI, hoặc gắn "Cụm danh từ" cho 1 cụm có động từ chia
+  — xem lỗi thật ngay dưới — mới bị lỗi):
   * Cụm động từ: cụm thì (has eaten, will be working), cụm dạng bị động (is built, was written),
     modal (can swim, must have forgotten), verb + to-V (want to go), verb + V-ing (enjoy reading).
   * Phrasal verb (give up, look after, carry on) — động từ + giới từ/trạng từ đi liền, tách khỏi
     phần còn lại của câu.
   * Prepositional verb (depend on, belong to, listen to) — động từ + giới từ CỐ ĐỊNH đi kèm.
-  * Cụm danh từ NGẮN (a big house, the tall young man) — nếu cụm danh từ có mệnh đề bổ nghĩa dài
-    theo sau (vd "the boy wearing glasses who lives next door"), CHỈ gộp phần danh từ + bổ nghĩa
-    NGẮN NGAY SÁT nó thành 1 nhóm, phần mệnh đề dài phía sau tách thành nhóm riêng theo đúng quy
-    tắc "chia mệnh đề dài" ở trên.
+  * Cụm danh từ NGẮN — CHỈ được gắn nhãn "Cụm danh từ" khi cụm khớp ĐÚNG 1 trong các công thức sau
+    (không có động từ chia/finite verb bên trong): mạo từ + danh từ (a book), đại từ sở hữu + danh
+    từ (his job), mạo từ/đại từ sở hữu + tính từ + danh từ (a big house, her new job), tính từ +
+    danh từ (financial records), giới từ + cụm danh từ (in the room — nhãn "Cụm giới từ", không
+    phải "Cụm danh từ"), danh từ + of + danh từ (a cup of tea). Nếu cụm danh từ có mệnh đề bổ nghĩa
+    dài theo sau (vd "the boy wearing glasses who lives next door"), CHỈ gộp phần danh từ + bổ
+    nghĩa NGẮN NGAY SÁT nó thành 1 nhóm, phần mệnh đề dài phía sau tách thành nhóm riêng theo đúng
+    quy tắc "chia mệnh đề dài" ở trên.
+    🔴 LỖI THẬT ĐÃ XẢY RA, TUYỆT ĐỐI KHÔNG LẶP LẠI: 1 cụm có ĐỦ chủ ngữ + động từ CHIA (finite verb)
+    — tức là 1 CÂU/MỆNH ĐỀ HOÀN CHỈNH (S+V hoặc S+V+O), KHÔNG BAO GIỜ được gắn nhãn "Cụm danh từ"
+    dù tổng độ dài ≤5 từ. Phải tách RIÊNG phần chủ ngữ (Cụm danh từ, chỉ chứa mạo từ/tính từ/danh
+    từ) khỏi phần động từ (Cụm động từ, chứa chính động từ chia + tân ngữ nếu có).
+    ❌ SAI (đúng lỗi thật đã xảy ra — "an accountant checks financial records" có động từ chia
+    "checks", KHÔNG PHẢI cụm danh từ, dù chỉ 5 từ):
+    {"words":["an","accountant","checks","financial","records"], "type":"Cụm danh từ", "meaning":"một kế toán kiểm tra các hồ sơ tài chính"}
+    ✅ ĐÚNG (tách chủ ngữ khỏi động từ + tân ngữ, mỗi phần đúng nhãn của nó):
+    {"words":["an","accountant"], "type":"Cụm danh từ", "meaning":"một kế toán"}
+    {"words":["checks","financial","records"], "type":"Cụm động từ", "meaning":"kiểm tra các hồ sơ tài chính"}
   * Cụm tính từ/trạng từ (very happy, quite slowly), cụm giới từ (in the room, in front of).
   * Cụm phân từ/nguyên mẫu/gerund NGẮN (walking along the street, to study English, reading
     books) — áp dụng đúng giới hạn 1-4 từ như trên, KHÔNG kéo dài thêm phần bổ nghĩa phía sau.
@@ -276,48 +291,87 @@ theo khối ý nhỏ, KHÔNG phải chia theo công thức thì/ngữ pháp):
 // coverage rồi tự gọi, xem ensureReadingChunksPatched() trong views/lesson.js) — không có
 // nhánh nào khác tạo ra field này, tránh 2 nguồn dữ liệu KHÁC CHẤT LƯỢNG cho cùng 1 field.
 const READING_CHUNKS_RULES = `QUY TẮC VỀ TÁCH CÂU ĐỌC-HIỂU (trường "reading_chunks" trong MỖI phần tử "content" — RIÊNG BIỆT
-HOÀN TOÀN với "phrase_groups" ở trên, KHÔNG dùng chung mục đích: "phrase_groups" phục vụ TRA TỪ
-khi bấm (cần cụm NGẮN ≤5 từ để bấm trúng đúng từ), "reading_chunks" phục vụ HIỂU CẤU TRÚC CÂU khi
-đọc (cần chia theo Ý/CẤU TRÚC NGỮ PHÁP THẬT của câu, có thể DÀI HƠN 5 từ nếu đó là 1 khối ý nghĩa
-hoàn chỉnh — ví dụ 1 mệnh đề quan hệ 8-9 từ giữ nguyên làm 1 khối, KHÔNG bị cắt vụn như
-phrase_groups, để người học thấy đúng cấu trúc câu thật):
-- Dùng chính catalog "Grammar Formula Chunks" + các loại mệnh đề/cụm đã liệt kê ở "QUY TẮC VỀ GOM
-  CỤM TỪ" phía trên để NHẬN DIỆN cấu trúc thật của câu này (chủ ngữ, cụm động từ chính, mệnh đề
-  phụ, cụm giới từ, mệnh đề quan hệ, mệnh đề trạng ngữ...) rồi chia câu theo ĐÚNG các khối cấu
-  trúc đó — KHÔNG áp trần 5 từ như "phrase_groups", mỗi khối là 1 ĐƠN VỊ Ý/CẤU TRÚC hoàn chỉnh,
-  không phải cắt cơ học theo số từ.
-- CÔNG THỨC CỨNG BẮT BUỘC VỀ SỐ KHỐI TỐI THIỂU (kiểm chứng thật 2026-08-10, ĐÃ THỬ 2 LẦN quy tắc
-  mô tả bằng lời "chia theo mệnh đề" KHÔNG đủ mạnh — model VẪN trả về NGUYÊN CẢ CÂU dài 10-15 từ
-  làm 1 KHỐI DUY NHẤT cho HẦU HẾT câu dù rõ ràng có nhiều mệnh đề, biến "Tách câu" vô nghĩa y hệt
-  không tách gì cả — ĐỔI SANG CÔNG THỨC SỐ HỌC, dễ tự kiểm tra hơn mô tả định tính):
-  * Đếm số từ thật trong câu (không tính dấu câu) = N.
-  * Nếu N ≤ 6: được phép 1 khối duy nhất (cả câu).
-  * Nếu N > 6: SỐ KHỐI TỐI THIỂU = ROUND UP(N ÷ 6) — ví dụ câu 13 từ PHẢI có ÍT NHẤT 3 khối
-    (13÷6 làm tròn lên = 3), câu 20 từ PHẢI có ÍT NHẤT 4 khối. Đây là SỐ SÀN, được phép nhiều khối
-    hơn nếu cấu trúc câu rõ ràng có nhiều mệnh đề hơn, nhưng KHÔNG ĐƯỢC ÍT HƠN số này.
-  * TRƯỚC KHI trả JSON: với MỖI câu, tự đếm N rồi tự đếm số khối bạn vừa tạo cho câu đó — nếu số
-    khối ÍT HƠN ROUND UP(N÷6), bạn CHƯA XONG, phải quay lại chia nhỏ thêm cho đúng câu đó trước
-    khi trả kết quả (đúng cách tự kiểm đã áp dụng cho yêu cầu ĐỘ DÀI bài ở trên).
-  ❌ SAI (đúng lỗi thật vừa xảy ra — câu 13 từ, cần tối thiểu 3 khối, vẫn giữ 1 khối):
-  {"reading_chunks": [{"text":"At the end of each month, accountants need to review the books carefully.","meaning":"Vào cuối mỗi tháng, các kế toán viên cần kiểm tra sổ sách một cách cẩn thận."}]}
-  ✅ ĐÚNG (13 từ, chia đủ 3 khối theo đúng công thức, mỗi khối vẫn đúng 1 đơn vị ý):
-  {"reading_chunks": [
-    {"text":"At the end of each month,","meaning":"Vào cuối mỗi tháng,"},
-    {"text":"accountants need to review the books","meaning":"các kế toán viên cần kiểm tra sổ sách"},
-    {"text":"carefully.","meaning":"một cách cẩn thận."}
-  ]}
-- Số khối/câu tuỳ độ dài và độ phức tạp: câu ngắn ≤6 từ CHỈ 1 mệnh đề có thể là 1 khối DUY NHẤT,
-  câu dài/phức tạp THƯỜNG 2-5 khối theo đúng ranh giới cấu trúc ngữ pháp thật (xem quy tắc cứng
-  ngay trên) — KHÔNG chia đều theo số từ, chia theo Ý.
-- BẮT BUỘC PHỦ ĐỦ 100% (hệ thống TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN
-  BỘ "text" của MỌI khối theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" phần tử đó
-  (chỉ khác dấu câu/khoảng trắng) — không thiếu, không thừa, không đảo thứ tự — CÙNG mức độ SỐNG
-  CÒN như quy tắc phủ đủ của "phrase_groups" ở trên.
-- "meaning" của MỖI khối PHẢI là bản dịch tiếng Việt TỰ NHIÊN, SẠCH của ĐÚNG khối đó — TUYỆT ĐỐI
-  KHÔNG để lẫn bất kỳ từ tiếng Anh nào chưa dịch trong "meaning" (đây chính là lỗi thật đã xảy ra
-  khi client tự ghép nghĩa từ dữ liệu thiếu ở kiến trúc CŨ — giờ AI viết THẲNG nghĩa sạch cho từng
-  khối ngay lúc sinh, client không còn tự ghép/suy đoán gì nữa).
-- Mỗi khối có cấu trúc:
+HOÀN TOÀN với "phrase_groups" ở trên, KHÔNG dùng chung mục đích: "phrase_groups" phục vụ TRA TỪ khi
+bấm (cần cụm NGẮN ≤5 từ để bấm trúng đúng từ), "reading_chunks" phục vụ HIỂU CẤU TRÚC CÂU khi đọc.
+
+2026-08-11 (SỬA LẠI SAU KHI TEST THẬT): bản trước cho phép "1 mệnh đề quan hệ/phụ dài 8-9 từ giữ
+nguyên làm 1 khối" — SAI, đã bị bắt lỗi qua ảnh thật (khối bị giữ "dài như 1 mệnh đề" thay vì chia
+theo cụm). Quy tắc ĐÚNG (theo đúng bộ prompt gốc Minh cung cấp): chia theo ĐÚNG CỤM NGỮ PHÁP TỰ
+NHIÊN — cụm ở đây LUÔN NGẮN HƠN 1 MỆNH ĐỀ, không phải giữ nguyên cả mệnh đề. KHÔNG dùng công thức
+đếm từ (đã thử, không phải vấn đề số từ mà là vấn đề ĐƠN VỊ chia sai).
+
+I. NGUYÊN TẮC TUYỆT ĐỐI:
+- Giữ NGUYÊN 100% câu gốc trong "text" ghép lại (không lược, không thêm, không đổi từ).
+- KHÔNG được gộp 2 mệnh đề độc lập (nối bằng and/but/or/so/because) vào chung 1 khối.
+- KHÔNG được giữ nguyên cả 1 mệnh đề phụ/quan hệ dài làm 1 khối — mệnh đề đó PHẢI được chia tiếp
+  thành các cụm nhỏ hơn bên trong nó (cụm giới từ, cụm danh từ, cụm động từ...), CHIA TẠI ĐÚNG
+  RANH GIỚI cụm — ví dụ mệnh đề quan hệ "in which people are paid for their recyclable waste"
+  KHÔNG giữ nguyên 1 khối, mà chia thành "in which" / "people are paid" / "for their recyclable
+  waste" (xem ví dụ đầy đủ ở mục III).
+
+II. CÁC ĐƠN VỊ PHẢI GIỮ NGUYÊN LÀM 1 KHỐI (không tách rời bên trong):
+- Phrasal verb (verb + particle): PHẢI viết "verb...particle (nguyên mẫu)" — ví dụ "gave up (give
+  up)", "carried out (carry out)", "turned...off (turn off)" — KHÔNG tách "gave" và "up" thành 2
+  nghĩa rời rạc ("đã đưa" + "lên").
+- Bị động (be + V3): "was carried out (carry out)" = đã được thực hiện, "is considered" = được
+  xem là — giữ nguyên cụm động từ bị động, không tách "was"/"carried"/"out" riêng.
+- Modal + verb: "could have been" = lẽ ra có thể đã, "should wait" = nên chờ — giữ nguyên cụm.
+- Phản thân/tự tác động (verb + himself/herself/themselves, express oneself): PHẢI viết
+  "verb...reflexive (verb oneself)" — ví dụ "blamed...himself (blame oneself)" = tự trách mình,
+  "prepared...herself (prepare oneself)" = tự chuẩn bị. KHÔNG tách "himself" thành 1 khối riêng
+  ("himself" = bản thân) và KHÔNG viết "blamed himself" = tự trách (thiếu dạng nguyên mẫu).
+- Cụm giới từ (giới từ + cụm danh từ): "in a new scheme", "for their recyclable waste", "at the
+  accident site" — giữ nguyên cả cụm, không tách giới từ khỏi phần danh từ theo sau.
+- Cụm danh từ (mạo từ/đại từ sở hữu + [tính từ] + danh từ, hoặc danh từ + of...): "a cargo vessel",
+  "the children's parents", "5 pence per item" — giữ nguyên cả cụm.
+
+III. VÍ DỤ CHUẨN (nguyên văn từ bộ prompt gốc, dùng để hiệu chỉnh đúng ĐỘ NGẮN của khối):
+Câu: "Recycling is being encouraged in a new scheme in which people are paid for their recyclable waste."
+✅ ĐÚNG (5 khối, mệnh đề quan hệ "in which..." bị chia tiếp thành 3 khối con, KHÔNG giữ nguyên):
+{"reading_chunks": [
+  {"text":"Recycling is being encouraged","meaning":"việc tái chế đang được khuyến khích"},
+  {"text":"in a new scheme","meaning":"trong một chương trình mới"},
+  {"text":"in which","meaning":"trong đó"},
+  {"text":"people are paid","meaning":"người dân được trả tiền"},
+  {"text":"for their recyclable waste.","meaning":"cho rác có thể tái chế của họ."}
+]}
+❌ SAI (giữ nguyên cả mệnh đề quan hệ dài làm 1 khối — ĐÚNG LỖI ĐÃ XẢY RA, không được lặp lại):
+{"reading_chunks": [
+  {"text":"Recycling is being encouraged","meaning":"việc tái chế đang được khuyến khích"},
+  {"text":"in a new scheme in which people are paid for their recyclable waste.","meaning":"trong một chương trình mới, theo đó người dân được trả tiền cho rác có thể tái chế của mình."}
+]}
+
+Câu: "Any witnesses are being urged to contact police."
+✅ ĐÚNG (3 khối, mỗi khối 1 cụm ngắn — bị động "are being urged" giữ nguyên, to-V giữ nguyên):
+{"reading_chunks": [
+  {"text":"Any witnesses","meaning":"mọi nhân chứng"},
+  {"text":"are being urged","meaning":"đang được kêu gọi"},
+  {"text":"to contact police.","meaning":"liên hệ với cảnh sát."}
+]}
+
+Câu: "Stock markets have gone up with the 100 index hitting an all time high."
+✅ ĐÚNG (phrasal verb "have gone up (go up)" giữ nguyên 1 khối, các cụm còn lại tách riêng):
+{"reading_chunks": [
+  {"text":"Stock markets have gone up (go up)","meaning":"thị trường chứng khoán đã tăng"},
+  {"text":"with the 100 index","meaning":"với chỉ số 100"},
+  {"text":"hitting an all time high.","meaning":"đạt mức cao nhất mọi thời đại."}
+]}
+
+IV. KHÔNG ĐƯỢC LÀM:
+- Không giữ nguyên cả mệnh đề quan hệ/phụ dài làm 1 khối.
+- Không gộp 2 mệnh đề độc lập.
+- Không tách rời phrasal verb, bị động, modal+verb, hoặc cấu trúc phản thân thành 2 khối.
+- Không tách đại từ/liên từ đơn lẻ ra khỏi cụm nó thuộc về nếu việc đó làm mất nghĩa cụm.
+- Không thêm/bớt/đổi từ so với câu gốc, không tóm tắt.
+
+V. BẮT BUỘC PHỦ ĐỦ 100% (hệ thống TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN
+BỘ "text" của MỌI khối theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" phần tử đó
+(chỉ khác dấu câu/khoảng trắng) — không thiếu, không thừa, không đảo thứ tự.
+
+VI. "meaning" của MỖI khối PHẢI là bản dịch tiếng Việt TỰ NHIÊN, SẠCH của ĐÚNG khối đó — TUYỆT ĐỐI
+KHÔNG để lẫn bất kỳ từ tiếng Anh nào chưa dịch trong "meaning".
+
+Mỗi khối có cấu trúc:
   {
     "text": "ĐÚNG NGUYÊN VĂN đoạn text của khối này, đúng thứ tự xuất hiện trong câu",
     "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH, của ĐÚNG khối này (không lẫn tiếng Anh)"

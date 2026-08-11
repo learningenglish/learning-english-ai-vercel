@@ -51,7 +51,7 @@
 // không còn cách nào khác để đổi trình độ khi đang bám 1 lộ trình — kể cả Giao tiếp tổng quát.
 // Action backend mentor_set_goal_level (mentor.js/chat.js/mentorApi.js) đã gỡ theo.
 import { navigate } from "../router.js";
-import { fetchAndSaveLessonCover, prefetchLessonAudio } from "../lessonApi.js";
+import { fetchAndSaveLessonCover, prefetchLessonAudio, analyzeLessonPhraseGroups, analyzeLessonReadingChunks } from "../lessonApi.js";
 import { inferGoalProfile, createGoal, generateNextLessonForGoal, autoCreateGoal, getGoalUsage, listGoals, selectGoal } from "../mentorApi.js";
 // getActiveLearningGoal() dùng ở CẢ 2 chỗ: tải sẵn lúc mount (quyết định hiện dòng gọn hay form
 // đầy đủ, xem isCompact()) VÀ đọc lại TRỰC TIẾP trong resolveGoalId() lúc submit (không dùng
@@ -501,11 +501,25 @@ export function renderCreateLesson(mount) {
         field: state.field || "",
         industry: state.industry || "",
       });
+      // Phân tích cụm từ (tra-từ) + tách câu PHẢI XONG TRƯỚC khi đưa bài lên app (2026-08-11,
+      // Minh: "Tất cả đều là AI làm trước hoàn chỉnh... click vào mới tra từ không còn phù hợp
+      // với luồng làm việc của app") — TRƯỚC ĐÂY 2 việc này chỉ được "vá" lười lúc người xem ĐẦU
+      // TIÊN mở bài (ensurePhraseGroupsPatched()/ensureReadingChunksPatched() trong lesson.js),
+      // khiến người đó phải chờ khi bấm từ. Gọi TUẦN TỰ ở đây (không gộp vào generate_lesson
+      // trong 1 request để không vượt trần 60-120s của Vercel — đã có tiền lệ đúng với ảnh bìa
+      // ngay dưới) — từ giờ bài chỉ được coi là "xong" sau khi cả 2 bước này hoàn tất.
+      resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang phân tích bài học...</div>`;
+      // Best-effort: KHÔNG chặn hẳn việc xem bài nếu 1 trong 2 lượt phân tích lỗi (mạng/AI tạm
+      // thời) — bài vẫn đọc được (rơi về nhánh dự phòng cũ trong lesson.js), chỉ log lại để biết.
+      const phraseRes = await analyzeLessonPhraseGroups(res.data.lesson.id, false);
+      if (!phraseRes.ok) console.warn("analyzeLessonPhraseGroups lỗi lúc tạo bài:", phraseRes.error);
+      const chunksRes = await analyzeLessonReadingChunks(res.data.lesson.id, false);
+      if (!chunksRes.ok) console.warn("analyzeLessonReadingChunks lỗi lúc tạo bài:", chunksRes.error);
       // Chờ ảnh bìa sinh XONG trước khi điều hướng (2026-08-10, Minh: "Hình bài học phải được
       // sinh trọn vẹn trước khi up lên") — TRƯỚC ĐÂY fire-and-forget (không chặn điều hướng),
       // đổi thành await để người dùng không thấy bài học "trống ảnh bìa" rồi ảnh mới hiện ra
       // sau. Audio (prefetchLessonAudio) vẫn giữ fire-and-forget như cũ — không thuộc phạm vi
-      // yêu cầu này, lesson.js đã tự có lưới đỡ gọi lại lúc mở bài nếu chưa xong.
+      // yêu cầu này, phát trước khi audio xong vẫn ổn (không ảnh hưởng tra từ/tách câu).
       resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang tải ảnh bìa...</div>`;
       await fetchAndSaveLessonCover(res.data.lesson);
       prefetchLessonAudio(res.data.lesson);
