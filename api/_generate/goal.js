@@ -1,13 +1,19 @@
-// api/_generate/mentor.js — RÚT GỌN 2026-08-11 (Minh: "luồng của app này vốn dĩ đã không còn
-// sinh bài... rà soát lại toàn bộ app, những phần không còn liên quan tới luồng truy cập hiện
-// tại hãy báo cáo để loại ra") — bản gốc (Mentor AI Đợt 3: mục tiêu theo goal_id, next_slot tự
-// sinh bài theo tiến độ cá nhân, hàng đợi ôn tập ngữ pháp, nghi thức xưng hô...) đã lưu NGUYÊN
-// VẸN tại _archive/mentor-ai-personal-flow/mentor.js — xác nhận qua rà soát toàn app: KHÔNG còn
-// icon/link nào dẫn tới luồng đó (route "/create" đã archive cùng đợt). File này giờ CHỈ còn
-// đúng 1 action còn sống: "mentor_create_goal" — dùng bởi views/industrySelect.js (màn "Chọn
-// chuyên ngành", danh mục CỐ ĐỊNH các vị trí, không phải luồng tự sinh bài cá nhân đã bỏ) để lưu
-// lại 1 "learning_goals" — bản ghi hồ sơ/nhãn hiển thị chuyên ngành đang chọn của user (Home hiện
-// "Anh văn chuyên ngành Kế toán" từ đây), KHÔNG tự sinh bài nào cả.
+// api/_generate/goal.js — ĐỔI TÊN 2026-08-12 (từ "mentor.js", rà soát đặt tên toàn app, Minh: "app
+// hiện tại không có liên quan đến Mentor... dò lại từng luồng, đổi tên lại cho phù hợp") — RÚT
+// GỌN 2026-08-11 (Minh: "luồng của app này vốn dĩ đã không còn sinh bài... rà soát lại toàn bộ
+// app, những phần không còn liên quan tới luồng truy cập hiện tại hãy báo cáo để loại ra") — bản
+// gốc (Mentor AI Đợt 3: mục tiêu theo goal_id, next_slot tự sinh bài theo tiến độ cá nhân, hàng
+// đợi ôn tập ngữ pháp, nghi thức xưng hô...) đã lưu NGUYÊN VẸN tại
+// _archive/mentor-ai-personal-flow/mentor.js — xác nhận qua rà soát toàn app: KHÔNG còn icon/link
+// nào dẫn tới luồng đó (route "/create" đã archive cùng đợt). File này giờ CHỈ còn đúng 1 action
+// còn sống: "create_goal" — dùng bởi views/industrySelect.js (màn "Chọn chuyên ngành", danh mục
+// CỐ ĐỊNH các vị trí, không phải luồng tự sinh bài cá nhân đã bỏ) để lưu lại 1 "learning_goals" —
+// bản ghi hồ sơ/nhãn hiển thị chuyên ngành đang chọn của user (Home hiện "Anh văn chuyên ngành Kế
+// toán" từ đây), KHÔNG tự sinh bài nào cả.
+//
+// GHI CHÚ ĐỔI TÊN: bảng Supabase "mentor_events" (ghi log goal_created/goal_archived) VẪN giữ tên
+// cũ — đổi tên cột/bảng DB cần 1 migration SQL riêng (Minh tự chạy trong Supabase SQL Editor theo
+// quy ước), CHƯA làm ở đợt này vì bảng chỉ ghi log nội bộ, không lộ ra UI/API nào — ưu tiên thấp.
 import { SUPABASE_URL } from "./_shared.js";
 import { buildConfirmationDisplay } from "./curriculum/skin.js";
 
@@ -18,21 +24,21 @@ const VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 async function restGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: SERVICE_HEADERS });
   if (!r.ok) {
-    console.error("mentor.js restGet error:", path, r.status, await r.text().catch(() => ""));
+    console.error("goal.js restGet error:", path, r.status, await r.text().catch(() => ""));
     return null;
   }
   return r.json();
 }
 
 // Nhật ký sự kiện (mục 3.4 điểm 4 Đợt 3, GIỮ LẠI — bảng "mentor_events" vẫn ghi nhận đúng 2 sự
-// kiện "goal_created"/"goal_archived" cho luồng chọn chuyên ngành còn sống) — fire-and-forget:
-// lỗi ghi log không được làm hỏng luồng chính.
-function logMentorEvent(studentId, eventType, context) {
+// kiện "goal_created"/"goal_archived" cho luồng chọn chuyên ngành còn sống, xem ghi chú đổi tên
+// đầu file) — fire-and-forget: lỗi ghi log không được làm hỏng luồng chính.
+function logGoalEvent(studentId, eventType, context) {
   fetch(`${SUPABASE_URL}/rest/v1/mentor_events`, {
     method: "POST",
     headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify({ user_id: studentId, event_type: eventType, context: context || {} }),
-  }).catch((e) => console.error("mentor.js logMentorEvent error:", e));
+  }).catch((e) => console.error("goal.js logGoalEvent error:", e));
 }
 
 // occupation_profile "chung" (không có merged_occupation cho buildConfirmationDisplay của
@@ -71,10 +77,10 @@ async function archiveOtherActiveGoals(studentId, exceptGoalId) {
     body: JSON.stringify({ status: "archived" }),
   });
   if (!archiveRes.ok) {
-    console.error("mentor.js archiveOtherActiveGoals error:", archiveRes.status, await archiveRes.text().catch(() => ""));
+    console.error("goal.js archiveOtherActiveGoals error:", archiveRes.status, await archiveRes.text().catch(() => ""));
     return null;
   }
-  for (const goalId of goalIds) logMentorEvent(studentId, "goal_archived", { goal_id: goalId });
+  for (const goalId of goalIds) logGoalEvent(studentId, "goal_archived", { goal_id: goalId });
   return goalIds;
 }
 
@@ -109,18 +115,18 @@ async function insertLearningGoal(studentId, profile, rawKeywords, level) {
     }),
   });
   if (!r.ok) {
-    console.error("mentor.js insertLearningGoal error:", r.status, await r.text().catch(() => ""));
+    console.error("goal.js insertLearningGoal error:", r.status, await r.text().catch(() => ""));
     return null;
   }
   const rows = await r.json();
   const goal = rows?.[0] || null;
-  if (goal) logMentorEvent(studentId, "goal_created", { goal_id: goal.id, is_general: !!profile?.is_general });
+  if (goal) logGoalEvent(studentId, "goal_created", { goal_id: goal.id, is_general: !!profile?.is_general });
   return { goal, confirmation: display };
 }
 
 // Không gọi AI — chỉ lưu kết quả đã được người dùng xác nhận (chọn 1 vị trí trong danh mục cố
 // định, views/industrySelect.js).
-export async function mentor_create_goal(data, ctx) {
+export async function create_goal(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const profile = data.occupation_profile;
   if (!profile?.merged_occupation && !profile?.is_general) return { error: "Thiếu chân dung nghề.", status: 400 };

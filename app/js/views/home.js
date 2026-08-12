@@ -3,7 +3,7 @@
 // tái dùng .card/.stat-card cũ, xem block CSS riêng "Home mới" trong style.css. 4 card ĐÚNG THỨ
 // TỰ Bài đọc/Hội thoại/Phân tích/Luyện Viết (chốt lại theo đúng văn bản gốc, ưu tiên hơn vị trí
 // trong ảnh mẫu — Minh xác nhận 2026-08-04), mỗi card chỉ ĐIỀU HƯỚNG tới đúng màn đã có sẵn
-// (KHÔNG viết lại nội dung màn nào). views/mentor.js (hub Mentor AI cũ) GIỮ NGUYÊN không đụng.
+// (KHÔNG viết lại nội dung màn nào).
 import { navigate } from "../router.js";
 import { getActiveLearningGoal, getStreakAndStats } from "../db.js";
 import { getSession } from "../session.js";
@@ -107,7 +107,7 @@ export function renderHome(mount) {
   // gì để hiện, đưa thẳng vào màn chọn chuyên ngành thay vì hiện Home rỗng. CÓ mục tiêu -> hiện
   // chip "đang học lộ trình nào" ở đầu màn (2026-08-04, Minh: "chọn lĩnh vực nào sẽ xuất hiện
   // luồng Home có dòng [tên lộ trình] đó") — "goal.title" đã là câu hoàn chỉnh dựng sẵn ở server
-  // (buildConfirmationDisplay()/buildGoalConfirmationDisplay() trong skin.js/mentor.js, xem
+  // (buildConfirmationDisplay()/buildGoalConfirmationDisplay() trong skin.js/goal.js, xem
   // views/industrySelect.js), KHÔNG tự ghép chữ gì thêm ở đây.
   getActiveLearningGoal()
     .then((goal) => {

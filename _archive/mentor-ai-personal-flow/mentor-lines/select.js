@@ -1,3 +1,10 @@
+// ============================================================================
+// ĐÃ LƯU TRỮ (archive) 2026-08-12 (rà soát đặt tên toàn app, xem mentor.js CÙNG thư mục) — kho lời
+// thoại này CHỈ được đọc bởi luồng "Mentor AI cá nhân hoá" đã archive cùng đợt trước
+// (2026-08-11) — 0 import sống nào còn lại trong app. Đường dẫn tương đối (fs.readFileSync các
+// file JSON cạnh file này) sẽ SAI nếu khôi phục file này mà không đặt lại đúng vị trí cũ
+// (api/_generate/mentor-lines/).
+// ============================================================================
 // api/_generate/mentor-lines/select.js — bộ chọn ngẫu nhiên có chống lặp cho kho lời thoại
 // Mentor AI (1213 dòng ĐÃ ĐÓNG BĂNG trong 10 file JSON cạnh file này). KHÔNG gọi AI — chỉ đọc
 // JSON + ghép placeholder bằng CODE, đúng luật LỚP LỜI THOẠI (xem mentor.js đầu file).

@@ -148,31 +148,6 @@ export async function listTextAnalyzedLessons({ filter = "all", goalId = null } 
   return restFetch(`lessons?${q}`);
 }
 
-// Nhãn "Đã dừng" cho nhóm lĩnh vực trong Thư mục AI (2026-07-28, "giới hạn 5 lĩnh vực + Thư mục
-// AI") — đọc status của TOÀN BỘ learning_goals của user (active lẫn archived), views/lessons.js
-// tự đối chiếu qua lessons.goal_id để biết 1 nhóm lĩnh vực có đang "đã dừng" hay không. Chỉ
-// id+status (đủ dùng, không cần thêm field), số dòng nhỏ (giới hạn 5 lĩnh vực trọn đời + vài
-// dòng "Giao tiếp tổng quát").
-// MỒ CÔI (2026-08-06, tái cấu trúc theo cây mới) — chỉ dùng cho carousel "Lĩnh vực" của
-// views/lessons.js BẢN CŨ (đã lưu ở _archive/old-nav/lessons.js) để gắn nhãn "Đã dừng", nhánh đó
-// không còn thuộc cây cấu trúc mới (giờ CHỈ 1 Chuyên ngành active tại 1 thời điểm, không cần so
-// sánh nhiều lĩnh vực cùng lúc nữa). Giữ nguyên hàm, hiện KHÔNG còn nơi nào gọi tới.
-export async function listGoalStatuses() {
-  return restFetch("learning_goals?select=id,status&order=created_at.desc");
-}
-
-// Lưới thư viện Mentor AI (Đợt 3 mục 6.1) — CHỈ bài có goal_id (sinh từ luồng Mentor), khác
-// listLessons() ở trên vốn trả TOÀN BỘ bài của user bất kể nguồn nào (tab "Bài học" cũ vẫn
-// giữ nguyên hành vi, không lọc theo goal_id).
-export async function listMentorLibraryLessons({ filter = "all" } = {}) {
-  let q =
-    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id" +
-    "&goal_id=not.is.null&order=created_at.desc";
-  if (filter === "favorite") q += "&is_favorite=eq.true";
-  if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
-  return restFetch(`lessons?${q}`);
-}
-
 // Màn "Bài học" mới — mục "BÀI ĐANG ĐỌC" (carousel lướt ngang): bài có tiến độ (đã mở, có
 // last_opened_at) nhưng CHƯA hoàn thành (completed_at rỗng), mới mở gần nhất trước. Trả kèm
 // completed_paragraphs/completed_exercises để tính % tiến độ ở lessonCard.js, không cần gọi

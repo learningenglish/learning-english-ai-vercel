@@ -58,9 +58,10 @@ export function loadSkinGeneral() {
 }
 
 // Danh sách slot đã đóng băng theo thứ tự (level -> mảng slot, mỗi slot có situation_frame_key/
-// content_type/function_name_vi...) — mentor.js dùng để xác định "slot kế tiếp" khi nối
-// next_slot vào da lĩnh vực (2026-07-22), KHÔNG tự đọc file JSON riêng để tránh 2 nơi cùng biết
-// đường dẫn file.
+// content_type/function_name_vi...) — luồng "next_slot" (mentor_next_lesson trong mentor.js,
+// ĐÃ ARCHIVE 2026-08-11, xem _archive/mentor-ai-personal-flow/) dùng để xác định "slot kế tiếp"
+// khi nối vào da lĩnh vực (2026-07-22), KHÔNG tự đọc file JSON riêng để tránh 2 nơi cùng biết
+// đường dẫn file. Hàm này vẫn giữ (dùng cho batch sinh giáo trình chung tương lai).
 export function loadCurriculumSpine() {
   return loadJSON("curriculum_spine.json").levels;
 }
@@ -424,7 +425,8 @@ function requiredCountsForSlots(slots) {
 // đủ nhanh, TỔNG thời gian nhiều lượt cộng dồn vẫn vượt hẳn trần 60s của Vercel — đo được thật
 // FUNCTION_INVOCATION_TIMEOUT, A1/A2/B1/B2 đều ~80-89 slot nên không phải ca hiếm). Sửa đúng gốc
 // bằng cách áp dụng NGUYÊN TẮC LƯỜI đã dùng cho cấp LEVEL (industry_skins chỉ sinh level nào
-// ĐANG CẦN, xem ensureSkinChunk trong mentor.js) xuống thêm 1 tầng: CHỈ sinh CHUNK (~20 vị trí
+// ĐANG CẦN, xem ensureSkinChunk — ĐÃ ARCHIVE cùng mentor.js 2026-08-11, xem
+// _archive/mentor-ai-personal-flow/) xuống thêm 1 tầng: CHỈ sinh CHUNK (~20 vị trí
 // liên tiếp) chứa đúng slot đang cần cho bài SẮP TẠO, không sinh trước cả level. Slot ở chunk
 // khác tự sinh chunk của NÓ khi tới lượt (next_lesson gọi kế tiếp) — vẫn CHỈ 1 lượt gọi AI/chunk
 // suốt đời (dùng chung theo ngành, cache vĩnh viễn), không sinh lại khi đã có.

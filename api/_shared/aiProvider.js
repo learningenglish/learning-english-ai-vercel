@@ -1,5 +1,5 @@
 // api/_shared/aiProvider.js — lớp trừu tượng nhà cung cấp AI DUY NHẤT cho toàn bộ code
-// nghiệp vụ (lesson.js, skin.js, mentor.js, wordLookup.js, TTS tương lai). KHÔNG module nào
+// nghiệp vụ (lesson.js, skin.js, wordLookup.js, TTS tương lai). KHÔNG module nào
 // khác được gọi thẳng SDK/REST của OpenAI hay Gemini — mọi lượt gọi AI phải đi qua 3 hàm
 // export dưới đây. Rẽ nhánh provider theo 1 biến env DUY NHẤT: AI_PROVIDER=openai|gemini
 // (mặc định openai). Đổi provider = đổi env, không sửa code gọi.

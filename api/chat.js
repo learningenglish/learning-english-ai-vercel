@@ -6,9 +6,10 @@ import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/c
 import { generate_lesson_full_audio } from "./_generate/audio.js";
 import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
 // 2026-08-11 (rà soát toàn app, xem _archive/mentor-ai-personal-flow/) — 14 action Mentor AI cá
-// nhân hoá đã archive cùng mentor.js/createLesson.js, chỉ "mentor_create_goal" còn sống (dùng
-// bởi views/industrySelect.js — chọn 1 vị trí trong danh mục cố định, không sinh bài).
-import { mentor_create_goal } from "./_generate/mentor.js";
+// nhân hoá đã archive cùng mentor.js/createLesson.js, chỉ "create_goal" còn sống (dùng bởi
+// views/industrySelect.js — chọn 1 vị trí trong danh mục cố định, không sinh bài). ĐỔI TÊN
+// 2026-08-12 (mentor.js -> goal.js, mentor_create_goal -> create_goal, rà soát đặt tên toàn app).
+import { create_goal } from "./_generate/goal.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1301,9 +1302,10 @@ const ACTIONS = {
   generate_lesson_full_audio,
 
   // "Chọn chuyên ngành" (views/industrySelect.js, danh mục cố định) — lưu lại 1 học_goals làm
-  // hồ sơ/nhãn hiển thị chuyên ngành đang chọn, KHÔNG sinh bài (xem api/_generate/mentor.js —
-  // đã rút gọn 2026-08-11, 14 action Mentor AI cá nhân hoá khác archive cùng đợt).
-  mentor_create_goal,
+  // hồ sơ/nhãn hiển thị chuyên ngành đang chọn, KHÔNG sinh bài (xem api/_generate/goal.js — đổi
+  // tên từ mentor.js 2026-08-12, rút gọn 2026-08-11, 14 action Mentor AI cá nhân hoá khác archive
+  // cùng đợt).
+  create_goal,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

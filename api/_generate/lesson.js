@@ -213,8 +213,37 @@ mọi content_type) — CHỈ phục vụ TRA TỪ khi người học BẤM vào
   {"words": ["who","has","worked","at","this"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại đây"}
   {"words": ["company","since","she","graduated"], "type": "Cụm giới từ", "meaning": "công ty này kể từ khi cô tốt nghiệp"}
   {"words": ["from","college"], "type": "Cụm giới từ", "meaning": "từ đại học"}
+  - Quy tắc này áp dụng ĐỦ cho MỌI loại mệnh đề, không chỉ mệnh đề quan hệ — mệnh đề trạng ngữ/danh
+    từ bắt đầu bằng if/whether/because/although... dài hơn 5 từ cũng PHẢI chia tiếp giống hệt vậy
+    (lỗi thật đã xảy ra 2026-08-12: model chỉ nhớ áp dụng cho mệnh đề quan hệ, quên áp dụng cho
+    mệnh đề if/whether):
+  ❌ SAI (9 từ gộp 1 nhóm "Mệnh đề" dù đã có ví dụ mệnh đề quan hệ ở trên):
+  {"words": ["if","they","are","making","a","profit","or","a","loss"], "type": "Mệnh đề danh từ", "meaning": "liệu họ đang có lợi nhuận hay lỗ"}
+  ✅ ĐÚNG (chia tiếp theo đúng ranh giới cụm bên trong mệnh đề, mỗi nhóm ≤5 từ):
+  {"words": ["if","they","are","making"], "type": "Mệnh đề danh từ", "meaning": "liệu họ đang kiếm được"}
+  {"words": ["a","profit","or","a","loss"], "type": "Cụm danh từ", "meaning": "lợi nhuận hay lỗ"}
   - TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như
     "Really?"), KHÔNG gộp 2 mệnh đề độc lập (nối bằng and/but/so/because...) vào chung 1 nhóm.
+
+QUY TẮC RIÊNG VỀ CHỦ NGỮ (2026-08-12, xác nhận qua test thật — lỗi KHÁC lỗi ở mục "NGUYÊN TẮC
+CHUNG VỀ ĐỘNG TỪ CHIA" ngay dưới đây: lỗi đó là gắn NHÃN SAI (gọi "Cụm danh từ" khi có động từ
+chia); lỗi NÀY là gắn ĐÚNG NHÃN "Cụm động từ" nhưng vẫn nhét LUÔN chủ ngữ vào chung nhóm — 2 lỗi
+độc lập, sửa 1 không tự sửa được lỗi kia):
+- Chủ ngữ (danh từ/đại từ đứng NGAY TRƯỚC 1 động từ chia) KHÔNG BAO GIỜ nằm chung 1 nhóm với
+  "Cụm động từ" theo sau nó — kể cả khi tổng số từ (chủ ngữ + động từ chia + phần theo sau) vẫn
+  ≤5 từ. Đối chiếu lại 10 mẫu ở mục I ngay dưới: KHÔNG mẫu nào bắt đầu bằng 1 danh từ/đại từ chủ
+  ngữ, tất cả đều bắt đầu NGAY từ động từ/trợ động từ/modal.
+  ❌ SAI (chủ ngữ bị nhét chung với cụm động từ, đúng nguyên văn output thật 2026-08-12):
+  {"words":["Accounting","is","often","described","as"], "type":"Cụm động từ", "meaning":"thường được mô tả là"}
+  {"words":["Maria","takes","notes"], "type":"Cụm động từ", "meaning":"ghi chú"}
+  {"words":["They","find","mistakes"], "type":"Cụm động từ", "meaning":"tìm ra lỗi"}
+  ✅ ĐÚNG (tách chủ ngữ ra làm 1 nhóm riêng TRƯỚC, phần còn lại mới mang nhãn "Cụm động từ"):
+  {"words":["Accounting"], "type":"Cụm danh từ", "meaning":"kế toán"}
+  {"words":["is","often","described","as"], "type":"Cụm động từ", "meaning":"thường được mô tả là"}
+  {"words":["Maria"], "type":"Cụm danh từ", "meaning":"Maria (tên riêng)"}
+  {"words":["takes","notes"], "type":"Cụm động từ", "meaning":"ghi chú"}
+  {"words":["They"], "type":"Cụm danh từ", "meaning":"họ"}
+  {"words":["find","mistakes"], "type":"Cụm động từ", "meaning":"tìm ra lỗi"}
 
 NGUYÊN TẮC CHUNG VỀ ĐỘNG TỪ CHIA (áp dụng cho MỌI loại cụm ở 24 mục dưới, không phải riêng loại
 nào — tự kiểm TRƯỚC KHI gắn nhãn, không đợi phát hiện lỗi ở từng loại mới vá thêm):
@@ -251,7 +280,9 @@ nào — tự kiểm TRƯỚC KHI gắn nhãn, không đợi phát hiện lỗi 
 24 LOẠI CỤM (nguyên văn theo file "Cụm cho tooltip.txt" Minh cung cấp — dùng ĐÚNG danh sách này để
 chọn "type", không diễn giải lại):
 
-I. Cụm động từ (Verb Phrase) — nhãn "type": "Cụm động từ":
+I. Cụm động từ (Verb Phrase) — nhãn "type": "Cụm động từ". LƯU Ý: KHÔNG mẫu nào dưới đây bắt đầu
+  bằng chủ ngữ, tất cả bắt đầu ngay từ động từ/trợ động từ/modal — xem "QUY TẮC RIÊNG VỀ CHỦ NGỮ"
+  ở trên trước khi gắn nhãn này:
   1. Cụm thì: has eaten, had finished, will be working, has been waiting, will have been studying.
   2. Cụm dạng bị động (Voice): is built, was written, has been repaired, will be invited.
   3. Modal Verb: can swim, must leave, should study, might come, would have gone.
@@ -374,7 +405,13 @@ Mỗi nhóm có cấu trúc:
       trong "words" của nhóm khi nhóm có >1 từ (KHÔNG được thiếu bất kỳ từ nào — từ nào KHÔNG có
       trong "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế, trộn 2 ngôn ngữ nếu
       ghép nhiều nguồn — ĐÂY LÀ YÊU CẦU CỨNG, không phải tuỳ chọn: dù nhóm 2 từ hay 5 từ,
-      "word_meanings" phải có ĐỦ chính xác từng đó khoá, không thiếu 1 từ nào)
+      "word_meanings" phải có ĐỦ chính xác từng đó khoá, không thiếu 1 từ nào),
+    "word_types": {"từ": "chức năng NGỮ PHÁP RIÊNG của chính từ đó (noun/verb/adjective/adverb/
+      pronoun/preposition/conjunction/determiner/auxiliary/particle/interjection...) — KHÁC "type"
+      của CẢ NHÓM (vd "Cụm động từ"): đây là loại từ của TỪNG TỪ, dùng để hiện trong tooltip khi
+      người học bấm đúng từ đó (2026-08-12, Minh: tooltip chỉ hiện "noun/verb/adj/..." của từ được
+      bấm, KHÔNG hiện tên loại cụm). BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ trong "words", kể cả nhóm chỉ 1 từ
+      (khi đó "word_types" chỉ có đúng 1 khoá, trùng giá trị với "type" của nhóm).
   }
 - LỖI THẬT HAY GẶP (2026-08-09, xác nhận qua dữ liệu thật — hệ thống dùng "words" để tô sáng
   TỪNG TỪ bấm được trong câu, 1 phần tử mảng KHÔNG được chứa nhiều hơn 1 từ): mỗi phần tử trong
@@ -664,7 +701,8 @@ SCHEMA JSON:
           "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
           "level": "cấp độ CEFR riêng của cụm/từ này",
           "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
-          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"}
+          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"},
+          "word_types": {"tu": "loại từ NGỮ PHÁP riêng của từng từ (noun/verb/adjective/...) - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\", xem QUY TẮC VỀ GOM CỤM TỪ"}
         }
       ]
     }
@@ -981,7 +1019,8 @@ SCHEMA JSON:
           "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
           "level": "cấp độ CEFR riêng của cụm/từ này",
           "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
-          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"}
+          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"},
+          "word_types": {"tu": "loại từ NGỮ PHÁP riêng của từng từ (noun/verb/adjective/...) - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\", xem QUY TẮC VỀ GOM CỤM TỪ"}
         }
       ]
     }
@@ -1224,9 +1263,11 @@ function buildLessonInsertRow(parsed, { userId, source, goalId, skinId, spineSlo
   };
 }
 
-// Mentor AI (Đợt 3): generate_lesson nhận thêm data.goal_id TÙY CHỌN để gắn bài mới vào
-// đúng mục tiêu (learning_goals) khi được gọi TỪ api/_generate/mentor.js. generate_lesson
-// vẫn là action CÔNG KHAI (client gọi trực tiếp qua /api/chat), nên PHẢI xác nhận goal_id
+// Mentor AI (Đợt 3, luồng gọi generate_lesson với goal_id đã archive 2026-08-11 cùng mentor.js —
+// xem _archive/mentor-ai-personal-flow/): generate_lesson nhận thêm data.goal_id TÙY CHỌN để gắn
+// bài mới vào đúng mục tiêu (learning_goals) — vẫn giữ field này cho batch sinh giáo trình chung
+// sau này. generate_lesson vẫn là action CÔNG KHAI (client gọi trực tiếp qua /api/chat), nên PHẢI
+// xác nhận goal_id
 // đó thật sự thuộc về CHÍNH ctx.studentId trước khi gắn — nếu không, âm thầm bỏ qua (coi
 // như không có goal_id) thay vì lỗi cả lượt tạo bài, tránh 1 client cố tình gắn bài vào
 // goal_id của người khác (learning_goals.id không có gì ràng buộc theo user ở tầng FK).

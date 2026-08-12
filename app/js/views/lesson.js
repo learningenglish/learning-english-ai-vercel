@@ -860,6 +860,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       </div>
       ${data.type ? `<div class="word-popover-type">${escapeHtml(data.type)}</div>` : ""}
       <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
+      ${data.phraseText ? `<div class="word-popover-phrase-context">${escapeHtml(data.phraseText)}</div>` : ""}
     `
     );
     document.getElementById("word-popover-speak")?.addEventListener("click", (e) => {
@@ -881,15 +882,15 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     }
     // 2026-07-30 ("gom cụm từ khi sinh bài") — "vocabEntry" mang theo ĐỦ level/meaning/type riêng
     // của chính TỪ này (không còn hardcode lesson.level như trước — 1 câu B1 vẫn có thể chứa 1
-    // từ A1 quen thuộc, cấp độ RIÊNG mới đúng). "phrase"/"word_meanings" (dữ liệu CỤM) KHÔNG còn
-    // truyền vào renderTooltipContent nữa (2026-08-11, bỏ hiển thị cụm ở tooltip) — vẫn còn trong
-    // vocabEntry/phrase_groups lưu ở DB, chỉ không đọc tới ở đây. "type" (loại từ) VẪN truyền —
-    // đó là dữ liệu CỦA TỪ (hay mượn tạm của cả cụm nếu từ nằm trong cụm, xem
-    // wordEntryFromPhraseGroup()), không phải dữ liệu hiển thị CỤM đã bỏ.
+    // từ A1 quen thuộc, cấp độ RIÊNG mới đúng). "type" giờ LUÔN là loại NGỮ PHÁP của từ (noun/
+    // verb/...), không phải tên loại cụm (xem wordEntryFromPhraseGroup()). "phraseText" (2026-08-
+    // 12, Minh: "hiển thị cụm nhưng không hiển thị nghĩa của cụm") — cụm chứa từ này, hiện làm
+    // dòng ngữ cảnh, KHÔNG kèm nghĩa/bản dịch riêng của cụm.
     renderTooltipContent(anchorEl, word, genderHint, {
       level: vocabEntry.level || lesson.level,
       type: vocabEntry.type,
       meaning: vocabEntry.meaning,
+      phraseText: vocabEntry.phraseText,
     });
   }
 
@@ -1056,8 +1057,9 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     }
   }
 
-  // exerciseResults: nguồn dữ liệu DUY NHẤT cho Review Queue của Mentor AI (api/_generate/
-  // mentor.js computeReviewQueue) — khác completedExercises (Set chỉ số, chỉ biết "đã làm hay
+  // exerciseResults: nguồn dữ liệu DUY NHẤT cho Review Queue của Mentor AI cá nhân hoá cũ
+  // (computeReviewQueue, ĐÃ ARCHIVE 2026-08-11 cùng mentor.js — xem
+  // _archive/mentor-ai-personal-flow/) — khác completedExercises (Set chỉ số, chỉ biết "đã làm hay
   // chưa"), mảng này lưu ĐÚNG/SAI + grammar_tag từng câu, mới phân biệt được "hay sai điểm
   // ngữ pháp nào" để Mentor gợi ý ôn tập đúng chỗ.
   function markExerciseDone(i, correct, grammarTag) {
@@ -1196,24 +1198,29 @@ function tokenizeWords(text) {
 // hiển thị cụm trong tooltip nữa" — bỏ hẳn phần cụm+nghĩa cụm phụ từng hiện dưới nghĩa từ chính;
 // "phrase_groups" vẫn được AI phân tích/lưu ở DB như cũ, chỉ không đọc "windowing" này ở đây nữa
 // vì không còn nơi nào hiển thị nó). Cấp độ mượn của CẢ NHÓM (data hiện không có cấp độ riêng
-// từng từ) — xem việc 4 (đợt rà soát 2026-08-11) đang chờ Minh chọn hướng cải thiện độ chính xác.
-// "type" (2026-08-11, Minh: "tooltip thiếu chức năng từ (noun, verb,...)") — với từ ĐƠN (không
-// thuộc cụm nào), "group.type"/"vocabMatch.type" ĐÃ đúng loại từ đơn thật (xem quy tắc "Từ không
-// thuộc cụm nào... type ghi loại từ đơn" trong PHRASE_GROUPS_RULES). Với từ NẰM TRONG 1 cụm nhiều
-// từ, dữ liệu hiện KHÔNG có loại từ RIÊNG của từng từ bên trong cụm (chỉ có loại của CẢ CỤM,
-// vd "Cụm động từ") — mượn TẠM loại của cả cụm (đúng hơn hẳn placeholder "Từ" chung trước đây,
-// dù chưa phải loại từ CHÍNH XÁC của riêng từ đó).
+// từng từ).
+// "type" (2026-08-12, Minh: "tooltip: bỏ 'cụm động từ, cụm danh từ', chỉ hiện chức năng từ đó:
+// noun, verb, adj, adv") — TRƯỚC ĐÂY ưu tiên "group.type" (tên loại CỤM, vd "Cụm động từ") rồi
+// mới tới loại từ thật — SAI Ý, giờ đảo lại: ưu tiên "group.word_types[word]" (loại NGỮ PHÁP
+// RIÊNG của chính từ này, field mới thêm 2026-08-12 trong PHRASE_GROUPS_RULES) hoặc
+// "vocabMatch.type" (từ đơn khớp lesson.vocabulary) — CHỈ rơi về "group.type" (tên loại cụm) khi
+// bài CŨ chưa có "word_types" (trước ngày thêm field này), coi là lưới đỡ tạm cho dữ liệu cũ.
+// "phraseText" (mới, 2026-08-12, Minh: "hiển thị cụm nhưng không hiển thị nghĩa của cụm" — ví dụ
+// "A2 morning / noun / buổi sáng / in the morning") — cụm chứa từ này, hiện làm dòng NGỮ CẢNH
+// dưới nghĩa từ, KHÔNG kèm bản dịch/nghĩa cụm riêng.
 function wordEntryFromPhraseGroup(group, word, vocabMap) {
   const allWords = Array.isArray(group?.words) ? group.words : [];
   const isMultiWord = allWords.length > 1;
   const vocabMatch = !isMultiWord ? findVocabEntry(word, vocabMap) : null;
   const ownMeaning = isMultiWord && group.word_meanings ? group.word_meanings[word] : null;
+  const ownType = group.word_types ? group.word_types[word] : null;
 
   return {
     word,
     meaning: ownMeaning || group.meaning || vocabMatch?.meaning || "",
     level: group.level || vocabMatch?.level || "",
-    type: group.type || vocabMatch?.type || "",
+    type: ownType || vocabMatch?.type || group.type || "",
+    phraseText: isMultiWord ? allWords.join(" ") : "",
     is_specialized: !!vocabMatch?.is_specialized,
     highlight: isMultiWord || !!vocabMatch,
     fromPhraseGroups: true, // dữ liệu này đã NẰM SẴN vĩnh viễn trong content của bài (phân tích

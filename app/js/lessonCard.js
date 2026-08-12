@@ -1,6 +1,7 @@
 // app/js/lessonCard.js — thẻ danh sách bài học DÙNG CHUNG cho tab "Bài học" (views/lessons.js)
-// và lưới thư viện Mentor AI (views/mentor.js) — Đợt 3 mục 6.1 yêu cầu lưới Thư Viện AI
-// "giao diện giống hệt tab Phổ biến", nên tách hàm ra đây thay vì viết lại lần 2.
+// và lưới thư viện Mentor AI cá nhân hoá cũ (ĐÃ ARCHIVE 2026-08-11, xem
+// _archive/mentor-ai-personal-flow/) — Đợt 3 mục 6.1 yêu cầu lưới Thư Viện AI "giao diện giống
+// hệt tab Phổ biến", nên tách hàm ra đây thay vì viết lại lần 2.
 import { escapeHtml, formatDate } from "./utils.js";
 import { icon } from "./icons.js";
 import { computeLearnStatus } from "./db.js";

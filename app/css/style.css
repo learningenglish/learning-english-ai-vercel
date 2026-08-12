@@ -2045,6 +2045,15 @@ textarea:focus {
   margin-bottom: 2px;
 }
 
+/* Cụm chứa từ đang tra (2026-08-12, Minh: "hiển thị cụm nhưng không hiển thị nghĩa của cụm") —
+   đứng SAU nghĩa từ, chữ nhỏ/mờ, KHÔNG có bản dịch đi kèm — chỉ là ngữ cảnh, không phải mục tra
+   riêng thứ 2. */
+.word-popover-phrase-context {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
 .vocab-list,
 .grammar-list,
 .exercises-list {
@@ -2504,7 +2513,9 @@ textarea:focus {
   }
 }
 
-/* ===== Mentor AI (Đợt 3) — thẻ đạo diễn, lưới Thư Viện AI, luồng tạo mục tiêu ===== */
+/* ===== .director-card-actions dùng bởi views/writingPractice.js. .goal-chip-row/.fab-inscreen
+   không còn nơi nào gọi tới (luồng Mentor AI cá nhân hoá dùng chúng đã archive 2026-08-11, xem
+   _archive/mentor-ai-personal-flow/) — giữ tạm, chưa dọn (ngoài phạm vi đổi tên đợt 2026-08-12). */
 .director-card {
   margin-bottom: 20px;
 }
@@ -2533,19 +2544,6 @@ textarea:focus {
   gap: 10px;
 }
 
-.mentor-goal-group {
-  margin-bottom: 8px;
-}
-
-.mentor-goal-group-title {
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  color: var(--purple);
-  margin: 18px 0 4px;
-}
-
 .goal-chip-row {
   flex-wrap: wrap;
   margin-bottom: 14px;
@@ -2572,36 +2570,6 @@ textarea:focus {
   z-index: 10;
 }
 
-.mentor-result-card {
-  text-align: center;
-}
-
-.mentor-result-line-1 {
-  font-weight: 800;
-  font-size: 1.1rem;
-  margin-bottom: 8px;
-}
-
-.mentor-result-line-2 {
-  color: var(--text-dim);
-  margin-bottom: 18px;
-}
-
-.mentor-result-line-3 {
-  color: var(--purple);
-  font-weight: 600;
-  margin-bottom: 18px;
-}
-
-/* ===== Màn nghi thức xưng hô (app/js/views/mentorOnboarding.js) ===== */
-.mentor-onboarding-card p {
-  margin: 0 0 12px;
-}
-
-.mentor-onboarding-greeting {
-  font-weight: 800;
-  font-size: 1.15rem;
-}
 
 .mentor-onboarding-card .filter-row {
   margin-bottom: 12px;

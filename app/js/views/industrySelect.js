@@ -1,7 +1,7 @@
 // app/js/views/industrySelect.js — màn "Chọn chuyên ngành" MỚI (2026-08-04, làm mới khung điều
 // hướng, Phần A2/B). THAY HẲN màn ô-gõ-tự-do+6-chip cũ (views/mentorGoal.js, hiện KHÔNG có route
 // nào trỏ tới, mồ côi từ lúc tắt UI Mentor AI 2026-07-23). mentorGoal.js GIỮ NGUYÊN, không đụng,
-// không import lẫn nhau — file này độc lập, chỉ gọi lại đúng backend đã có (mentorApi.js). KHÔNG
+// không import lẫn nhau — file này độc lập, chỉ gọi lại đúng backend đã có (goalApi.js). KHÔNG
 // còn gọi checkGoalGate() nữa (bỏ 2026-08-04) — "1 goal active" vẫn giữ ĐÚNG cấu trúc cũ, chỉ
 // không hiện màn "gate" cảnh báo trước khi vào đây nữa.
 //
@@ -12,12 +12,13 @@
 // chung phạm vi nghiệp vụ của cả 8 vị trí cũ (soạn tay, KHÔNG gọi AI để suy luận) — chọn xong gọi
 // THẲNG createGoal(profile, ...), giống hệt cơ chế "Giao tiếp" (xem GENERAL_PROFILE bên dưới,
 // SỬA 2026-08-07 sau khi phát hiện bug thật dùng nhầm autoCreateGoal()). Tầng 2 (400 chủ đề) vẫn
-// sinh LƯỜI theo chunk khi có người thật bấm học (ensureSkinChunk có sẵn trong mentor.js).
+// sinh LƯỜI theo chunk khi có người thật bấm học (ensureSkinChunk — ĐÃ ARCHIVE cùng mentor.js
+// 2026-08-11, xem _archive/mentor-ai-personal-flow/).
 //
 // Các chuyên ngành KHÁC (Minh: "ghi ra và cho toggle... để sắp ra mắt") — CHỈ để tham khảo/đúng
 // khung ảnh mẫu, KHÔNG chọn được, bấm vào báo "Sắp ra mắt" vĩnh viễn.
 import { navigate } from "../router.js";
-import { createGoal } from "../mentorApi.js";
+import { createGoal } from "../goalApi.js";
 import { escapeHtml } from "../utils.js";
 import { icon } from "../icons.js";
 import { showToast } from "../toast.js";
@@ -26,7 +27,7 @@ function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms) {
   return {
     is_general: false,
     // "is_fixed_catalog" (2026-08-04) — khớp đúng cờ mới thêm ở insertLearningGoal() trong
-    // api/_generate/mentor.js: miễn giới hạn "5 lĩnh vực trọn đời" (giới hạn đó sinh ra để chặn
+    // api/_generate/goal.js: miễn giới hạn "5 lĩnh vực trọn đời" (giới hạn đó sinh ra để chặn
     // đường TỰ DO gõ chữ, không áp dụng cho danh mục CỐ ĐỊNH ở đây).
     is_fixed_catalog: true,
     merged_occupation: mergedOccupation,
@@ -82,12 +83,14 @@ const OTHER_INDUSTRIES = [
 
 // "GENERAL_PROFILE" (2026-08-07, sửa BUG THẬT — Minh: "Tôi chọn chuyên ngành Tiếng Anh Giao
 // Tiếp: nhưng hiển thị luồng Anh văn chuyên ngành Kế toán") — selectGeneral() TRƯỚC ĐÂY gọi
-// autoCreateGoal() (action mentor_auto_goal), nhưng hàm đó KHÔNG hề tạo goal "Giao tiếp" — nó
+// autoCreateGoal() (action mentor_auto_goal, ĐÃ ARCHIVE 2026-08-11 cùng mentor.js — xem
+// _archive/mentor-ai-personal-flow/), nhưng hàm đó KHÔNG hề tạo goal "Giao tiếp" — nó
 // LẤY LẠI occupation_profile của learning_goals GẦN NHẤT (bất kể active hay archived) làm mẫu,
 // đúng ý nghĩa gốc "Bạn cứ để tôi tự chọn giúp" của luồng nhập tự do CŨ (mentorGoal.js, đã
 // archive) khi người dùng bỏ trống ô nhập — nếu lần gần nhất là "Kế toán", bấm "Giao Tiếp" ở
 // MÀN NÀY sẽ vô tình TẠO LẠI ĐÚNG GOAL KẾ TOÁN, không phải Giao Tiếp. Sửa: dựng thẳng profile
-// "chung" tại đây (khớp GENERAL_OCCUPATION_PROFILE trong api/_generate/mentor.js) rồi gọi
+// "chung" tại đây (GENERAL_PROFILE ngay dưới — độc lập, KHÔNG còn phụ thuộc hằng số nào ở
+// api/_generate/goal.js) rồi gọi
 // createGoal() y hệt selectPosition() bên dưới — ĐÚNG yêu cầu "mỗi chuyên ngành là 1 luồng độc
 // lập, tạo mới luồng cho mỗi chuyên ngành", không tái sử dụng/suy luận từ goal cũ nào cả.
 const GENERAL_PROFILE = {
@@ -113,9 +116,10 @@ export function renderIndustrySelect(mount) {
 
   render();
 
-  // "gate" (mentor_check_goal_gate) BỎ HẲN khỏi màn này (2026-08-04, Minh: "đây là thiết kế
-  // luồng app MỚI") — "1 goal active" VẪN được giữ đúng cấu trúc — insertLearningGoal()
-  // (mentor.js) LUÔN tự archive goal active cũ trước khi tạo/chọn goal mới, KHÔNG phụ thuộc màn
+  // "gate" (mentor_check_goal_gate, ĐÃ ARCHIVE 2026-08-11 cùng mentor.js) BỎ HẲN khỏi màn này
+  // (2026-08-04, Minh: "đây là thiết kế luồng app MỚI") — "1 goal active" VẪN được giữ đúng cấu
+  // trúc — insertLearningGoal() (goal.js) LUÔN tự archive goal active cũ trước khi tạo/chọn goal
+  // mới, KHÔNG phụ thuộc màn
   // hình này có hỏi lại hay không — tự bấm vào 1 chuyên ngành ở đây đã LÀ hành động xác nhận rõ
   // ràng rồi, không cần thêm 1 lớp xác nhận phụ nữa.
   function render() {
@@ -173,7 +177,7 @@ export function renderIndustrySelect(mount) {
 
   // Chuyên ngành Kế toán (profile soạn sẵn, KHÔNG gọi AI) — cùng cơ chế khoá "1 goal active" như
   // selectGeneral(), chỉ khác nguồn occupation_profile (createGoal() vốn đã nhận thẳng profile
-  // làm tham số, không tự suy luận gì — xem mentor_create_goal trong api/_generate/mentor.js).
+  // làm tham số, không tự suy luận gì — xem create_goal trong api/_generate/goal.js).
   async function selectPosition(profile, rawKeywords) {
     if (state.submitting) return;
     state.submitting = true;
