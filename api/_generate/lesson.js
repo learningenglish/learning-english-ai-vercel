@@ -873,9 +873,11 @@ function buildGenerateLessonUserPrompt(data) {
     const avgWordsPerUnit = Math.round(lengthWords / minUnits);
     lengthInstruction = `- Độ dài: hướng tới khoảng ${lengthWords} từ tiếng Anh cho cả bài — con số này đổi MỖI BÀI trong khung ${lengthWordsMin}-${lengthWordsMax} từ của cấp ${data.level} (không cần khớp CHÍNH XÁC 1 con số, dao động nhẹ quanh mức nhắm là bình thường). NHƯNG khung ${lengthWordsMin}-${lengthWordsMax} từ là RANH GIỚI CỨNG của cấp độ này — hệ thống TỰ ĐỘNG TỪ CHỐI nếu tổng số từ thực tế nằm ngoài khung, nên TUYỆT ĐỐI KHÔNG được viết ngắn hơn ${lengthWordsMin} từ. CÁCH ĐẾM: cộng TOÀN BỘ số từ trong "text" của MỌI phần tử trong "content" — đếm TỪNG TỪ TIẾNG ANH thật sự, KHÔNG PHẢI đếm số ${unitLabel}/số phần tử. KHÔNG tính từ trong vocabulary/grammar/sentence_patterns/exercises/translation/explanation (những phần đó KHÔNG được rút ngắn để né việc viết đủ content). Số liệu thật đo được LUÔN LÀ VIẾT THIẾU (chưa từng gặp viết thừa), nên khi phân vân hãy nhắm cao hơn một chút chứ đừng viết sát đáy khung ${lengthWordsMin} từ. CẦN khoảng ${minUnits} ${unitLabel} ở cấp ${data.level} để đạt đủ (đã tính kèm biên an toàn) — ví dụ cách tính: ${minUnits} ${unitLabel}, trung bình mỗi ${unitLabel} khoảng ${avgWordsPerUnit} từ, cộng lại ≈ ${lengthWords} từ. Đừng dừng sớm hơn ${minUnits} ${unitLabel} nếu tổng từ trong "content" đo được chưa tới ${lengthWordsMin}.`;
   }
-  // grammar_focus: CHỈ có khi bài đi theo lộ trình spine (mentor.js::mentor_next_lesson truyền
-  // vào, xem ghi chú "QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC" ở system prompt) — form tự
-  // do (views/createLesson.js gọi trực tiếp KHÔNG qua next_slot) không có trường này.
+  // grammar_focus: TÙY CHỌN, chỉ có khi caller tự truyền theo đúng 1 vị trí spine (xem ghi chú
+  // "QUY TẮC VỀ ĐIỂM NGỮ PHÁP TRỌNG TÂM BẮT BUỘC" ở system prompt) — cơ chế cũ mentor_next_lesson
+  // truyền vào đã archive (2026-08-11, xem _archive/mentor-ai-personal-flow/), nhưng field này
+  // vẫn GIỮ LẠI ở generate_lesson vì cần cho việc sinh trước giáo trình theo đúng spine slot sau
+  // này (batch script tự truyền grammar_focus tương ứng, không qua mentor.js nữa).
   const grammarFocusInstruction =
     Array.isArray(data.grammar_focus) && data.grammar_focus.length
       ? `\nĐiểm ngữ pháp trọng tâm BẮT BUỘC (đã khoá theo lộ trình, xem quy tắc riêng ở trên): ${data.grammar_focus

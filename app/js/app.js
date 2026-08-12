@@ -3,10 +3,15 @@
 // LÀM MỚI KHUNG ĐIỀU HƯỚNG (2026-08-04) — bottom nav đổi lại ĐÚNG 4 icon theo mockup mới: Home/
 // Tiến trình/Admin/Setting (thay bộ 5 tab Phổ biến/Yêu thích/Thư viện AI/Lịch sử/Tiến trình +
 // nút nổi "Tạo bài học" trước đây). "/lessons" (Bài đọc/Hội thoại), "/favorites" (Yêu thích),
-// "/ai-library" (Thư viện AI), "/create" (Tạo bài học) VẪN LÀ ROUTE THẬT, chỉ không còn là icon
-// riêng ở bottom nav — vào từ Home (4 card) hoặc 2 tab phụ ngay trong màn "/lessons" (xem
-// views/lessons.js). "/history"+"/stats" gộp thành "/progress" (views/progress.js) — 2 file cũ
-// (history.js/stats.js) GIỮ NGUYÊN, không xoá, chỉ không còn route/nav nào trỏ tới nữa.
+// "/ai-library" (Thư viện AI) VẪN LÀ ROUTE THẬT, chỉ không còn là icon riêng ở bottom nav — vào
+// từ Home (4 card) hoặc 2 tab phụ ngay trong màn "/lessons" (xem views/lessons.js).
+//
+// RÀ SOÁT TOÀN APP 2026-08-11 (Minh: "luồng của app này vốn dĩ đã không còn sinh bài. Tạo bài
+// học không còn tồn tại trong app này... rà soát lại toàn bộ app") — "/create" (Tạo bài học,
+// luồng Mentor AI cá nhân hoá theo goal_id/next_slot) xác nhận KHÔNG còn icon/link nào trong app
+// dẫn tới (đã rút khỏi Home từ đợt 08-06/08-07) — ARCHIVE vào _archive/mentor-ai-personal-flow/,
+// gỡ hẳn route + import. "/history"/"/stats" (route thừa, không ai navigate tới, chỉ trỏ lại
+// đúng renderProgress đã có ở "/progress") — gỡ luôn, KHÔNG đụng views/progress.js (đang sống).
 import { getSession, setSession } from "./session.js";
 import { completeOAuthSession } from "./authApi.js";
 import { registerRoute, startRouter, navigate } from "./router.js";
@@ -18,7 +23,6 @@ import { renderLogin } from "./views/login.js";
 import { renderHome } from "./views/home.js";
 import { renderIndustrySelect } from "./views/industrySelect.js";
 import { renderLessons } from "./views/lessons.js";
-import { renderCreateLesson } from "./views/createLesson.js";
 import { renderCreateFromText } from "./views/createFromText.js";
 import { renderWritingPractice } from "./views/writingPractice.js";
 import { renderWritingFavoriteDetail } from "./views/writingFavoriteDetail.js";
@@ -34,11 +38,6 @@ watchSystemTheme();
 applyPalette();
 applyFontSize();
 
-// Mentor AI (Đợt 3) đã TẮT UI 2026-07-23 (chất lượng thật không đạt, "như spam" — quyết định
-// của Minh) — form "Tạo bài học" tự nhập (views/createLesson.js) vẫn dùng được, vào qua card
-// "Bài đọc"/"Hội thoại" -> quick action "AI" (xem views/lessons.js::QUICK_ACTIONS), không còn
-// nút nổi riêng ở bottom nav nữa (đã đổi hẳn bố cục 4 icon, xem ghi chú đầu file). Backend
-// mentor.js/mentor-lines/industry_skins/learning_goals VẪN giữ nguyên (không xoá).
 const NAV_TABS = [
   { path: "/home", label: "Home", icon: "home" },
   { path: "/progress", label: "Tiến trình", icon: "bar-chart" },
@@ -53,7 +52,6 @@ registerRoute("/lessons", renderLessons);
 // "/favorites" + "/ai-library" (2026-08-04, Minh: "Yêu thích và Thư viện AI không dùng") — GỠ
 // route, KHÔNG xoá renderLessons() mode "favorite"/"library" (giữ nguyên, chỉ không còn ai gọi
 // tới). Lưu bài giờ đi qua icon Lưu trữ CỤC BỘ trong từng tính năng (Phân tích/Luyện viết).
-registerRoute("/create", renderCreateLesson);
 registerRoute("/create-text", renderCreateFromText);
 registerRoute("/analysis-archive", renderAnalysisArchive);
 registerRoute("/writing", renderWritingPractice);
@@ -65,11 +63,7 @@ registerRoute("/lesson", renderLessonDetail);
 // views/lesson.js VẪN CÒN (không xoá, mồ côi) — không còn route nào gọi tới nữa. Xem
 // _archive/news-feature/ cho cron + logic sinh tin đã lưu trữ, docs/NHAT-KY-LAM-VIEC.md mục
 // 2026-08-06 cho lý do đầy đủ. Dữ liệu news_lessons trong DB KHÔNG bị xoá.
-// "/history"+"/stats" gộp vào "/progress" (2026-08-04) — GIỮ 2 route cũ, trỏ tới cùng màn mới,
-// để link/bookmark cũ (nếu có) không vỡ, thay vì xoá hẳn.
 registerRoute("/progress", renderProgress);
-registerRoute("/history", renderProgress);
-registerRoute("/stats", renderProgress);
 registerRoute("/admin", renderAdmin);
 registerRoute("/profile", renderProfile);
 
@@ -113,9 +107,6 @@ function renderBottomNav(activePath) {
     return;
   }
   nav.hidden = false;
-  // "/history"/"/stats" (route cũ, giữ lại để không vỡ link/bookmark — xem registerRoute ở
-  // trên) hiện cùng nội dung "/progress" nhưng KHÔNG tô sáng tab nào (không phải đường vào
-  // chính thức nữa) — chấp nhận được, chỉ là lưới đỡ, không phải luồng thật người dùng đi qua.
   nav.innerHTML = NAV_TABS.map((tab) => {
     const isActive = activePath === tab.path;
     return `

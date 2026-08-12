@@ -5,23 +5,10 @@ import { generate_writing_task, grade_writing, save_writing_favorite, list_writi
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { generate_lesson_full_audio } from "./_generate/audio.js";
 import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
-import {
-  mentor_get_action,
-  mentor_check_industry_skin_status,
-  mentor_check_goal_gate,
-  mentor_infer_goal,
-  mentor_create_goal,
-  mentor_auto_goal,
-  mentor_next_lesson,
-  mentor_switch_goal,
-  mentor_get_goal_usage,
-  mentor_list_goals,
-  mentor_select_goal,
-  mentor_get_pronoun_state,
-  mentor_mark_pronoun_asked,
-  mentor_set_pronoun_style,
-  mentor_get_transient_line,
-} from "./_generate/mentor.js";
+// 2026-08-11 (rà soát toàn app, xem _archive/mentor-ai-personal-flow/) — 14 action Mentor AI cá
+// nhân hoá đã archive cùng mentor.js/createLesson.js, chỉ "mentor_create_goal" còn sống (dùng
+// bởi views/industrySelect.js — chọn 1 vị trí trong danh mục cố định, không sinh bài).
+import { mentor_create_goal } from "./_generate/mentor.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1283,7 +1270,7 @@ const ACTIONS = {
   analyze_lesson_reading_chunks,
   // Giám khảo chất lượng bài học (2026-08-07, thay validator kỹ thuật cứng đã gỡ khỏi
   // lesson.js) — hiện dùng cho lô mẫu hiệu chỉnh (Việc 3), xem lessonJudge.js +
-  // lesson-judge-criteria.md. CHƯA được generate_lesson/mentor_next_lesson tự gọi.
+  // lesson-judge-criteria.md. CHƯA được generate_lesson tự gọi.
   judge_lesson_quality,
   // Đặt goal_id=NULL cho vài bài mẫu đã ĐẠT giám khảo, để chúng hiện trong app bất kể goal nào
   // đang active — chỉ dùng để đưa mẫu lên app cho Minh xem trực tiếp (Việc 3), xem lessonJudge.js.
@@ -1313,26 +1300,10 @@ const ACTIONS = {
   // api/_generate/audio.js).
   generate_lesson_full_audio,
 
-  // Mentor AI (Đợt 3) — thay luồng "Tạo nội dung" cũ, xem api/_generate/mentor.js. Tách lớp
-  // Quyết định/Lời thoại NGAY TRONG module đó — 5 action dưới đây chỉ là điểm vào, không tự
-  // thêm logic nào ở đây (đúng luật "chat.js đóng băng", chỉ thêm import + entry).
-  mentor_get_action,
-  // Đọc thuần industry_skins (2026-08-04, màn "Chọn chuyên ngành" mới) — KHÔNG gọi AI, xem
-  // chú thích đầy đủ tại định nghĩa hàm trong mentor.js.
-  mentor_check_industry_skin_status,
-  mentor_check_goal_gate,
-  mentor_infer_goal,
+  // "Chọn chuyên ngành" (views/industrySelect.js, danh mục cố định) — lưu lại 1 học_goals làm
+  // hồ sơ/nhãn hiển thị chuyên ngành đang chọn, KHÔNG sinh bài (xem api/_generate/mentor.js —
+  // đã rút gọn 2026-08-11, 14 action Mentor AI cá nhân hoá khác archive cùng đợt).
   mentor_create_goal,
-  mentor_auto_goal,
-  mentor_next_lesson,
-  mentor_switch_goal,
-  mentor_get_goal_usage,
-  mentor_list_goals,
-  mentor_select_goal,
-  mentor_get_pronoun_state,
-  mentor_mark_pronoun_asked,
-  mentor_set_pronoun_style,
-  mentor_get_transient_line,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

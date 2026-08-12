@@ -1,15 +1,16 @@
 // app/js/lessonApi.js — ĐIỂM PLUG PLAN B.
 //
-// Toàn bộ hiểu biết "phân tích văn bản dán sẵn / tự tạo bài = gọi action nào, hình dạng
-// payload/response ra sao" nằm DUY NHẤT ở file này. Các view chỉ gọi createLessonFromText()/
-// createLessonFromAI() và nhận về đúng 1 Promise<{ ok, data: {lesson, meta} } | { ok: false,
-// error, status }> — không biết và không cần biết bên trong là 1 hay nhiều lần gọi mạng.
+// Toàn bộ hiểu biết "phân tích văn bản dán sẵn = gọi action nào, hình dạng payload/response ra
+// sao" nằm DUY NHẤT ở file này. views/createFromText.js chỉ gọi createLessonFromText() và nhận
+// về đúng 1 Promise<{ ok, data: {lesson, meta} } | { ok: false, error, status }> — không biết và
+// không cần biết bên trong là 1 hay nhiều lần gọi mạng.
 //
-// createLessonFromAI() KHÔI PHỤC lại 2026-07-23 (đã bị rút khỏi file này ở Đợt 3 khi Mentor AI
-// thay hẳn form tự nhập cũ) — Mentor AI bị TẮT UI (chất lượng thật không đạt, "như spam"),
-// backend mentor.js/mentor-lines/industry_skins/learning_goals VẪN giữ nguyên (không xoá,
-// không đụng), chỉ không còn điểm vào nào trên UI gọi tới. views/createLesson.js gọi thẳng
-// generate_lesson qua đây, KHÔNG qua goal_id/mentor_next_lesson nữa.
+// RÀ SOÁT 2026-08-11 — bỏ "createLessonFromAI()" (gọi thẳng "generate_lesson", KHÔI PHỤC
+// 2026-07-23 nhưng thực tế đã hết caller từ lâu — views/createLesson.js dùng
+// mentor_next_lesson/generateNextLessonForGoal(), KHÔNG dùng hàm này; giờ createLesson.js cũng
+// đã archive, xem _archive/mentor-ai-personal-flow/). Action "generate_lesson" ở backend VẪN
+// GIỮ (không xoá) — cần cho việc sinh trước giáo trình dùng chung sau này, gọi trực tiếp qua
+// script/batch, không qua wrapper JS này.
 //
 // Lý do tồn tại: nếu đo thời gian thật cho thấy analyze_user_text sát hoặc vượt trần
 // maxDuration=60s của Vercel, backend sẽ tách thành 2 action nối tiếp (vd sinh content+
@@ -28,10 +29,6 @@ import { computeGenderHints } from "./tts.js";
 // thầm lưu goal_id=null, không lỗi cả lượt phân tích.
 export async function createLessonFromText(userText, goalId) {
   return callAndParse("analyze_user_text", { user_text: userText, goal_id: goalId || null });
-}
-
-export async function createLessonFromAI(payload) {
-  return callAndParse("generate_lesson", payload);
 }
 
 async function callAndParse(action, payload) {

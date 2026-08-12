@@ -1,3 +1,11 @@
+// ============================================================================
+// ĐÃ LƯU TRỮ (archive) 2026-08-11 — Minh: "luồng của app này vốn dĩ đã không còn sinh bài. Tạo
+// bài học không còn tồn tại trong app này" — xác nhận qua rà soát: route "/create" KHÔNG còn
+// icon/link nào ở app dẫn tới (đã rút khỏi Home từ đợt tái cấu trúc 08-06/08-07), chỉ còn sót
+// đăng ký route. Xem _archive/mentor-ai-personal-flow/mentor.js (cùng đợt archive) cho backend.
+// File CHUYỂN RA KHỎI app/js/views/ — import relative bên dưới đang trỏ theo vị trí CŨ, SẼ VỠ
+// nếu chạy nguyên trạng từ đây; cần sửa lại đường dẫn nếu sau này khôi phục.
+// ============================================================================
 // app/js/views/createLesson.js — form tự nhập "Tạo bài học" / "AI tạo nội dung", KHÔI PHỤC
 // 2026-07-23 sau khi tắt UI Mentor AI (chất lượng thật không đạt, "như spam" — quyết định của
 // Minh, backend mentor.js/mentor-lines/industry_skins/learning_goals VẪN giữ nguyên, không xoá).
