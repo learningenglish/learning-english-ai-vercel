@@ -4,7 +4,8 @@
 // đơn giản như autoScroll.js/fontSize.js/theme.js. Đây là tuỳ chọn CHUNG cho mọi bài (không phải
 // riêng từng bài) — đúng ý "tránh trở về mặc định", không cần lưu riêng theo từng lessonId.
 const PREF_KEY = "lea_lesson_display_prefs";
-const DEFAULTS = { showOriginal: true, showTranslation: true, showChunks: false };
+// Mặc định MỞ HẾT 3 toggle (2026-08-12, Minh) — trước đó "Tách câu" mặc định tắt.
+const DEFAULTS = { showOriginal: true, showTranslation: true, showChunks: true };
 
 export function getLessonDisplayPrefs() {
   try {
