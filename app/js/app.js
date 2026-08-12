@@ -18,6 +18,13 @@ import { registerRoute, startRouter, navigate } from "./router.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
 import { applyPalette } from "./palette.js";
 import { applyFontSize } from "./fontSize.js";
+import { t, registerTranslations } from "./i18n.js";
+
+registerTranslations({
+  "Trang chủ": "Home",
+  "Tiến trình": "Progress",
+  "Quản trị": "Admin",
+});
 import { icon } from "./icons.js";
 // Import theo ĐÚNG cây thư mục sắp theo luồng (2026-08-12, rà soát tổ chức file/thư mục —
 // views/ giờ nhóm theo nhánh luồng thật: auth/goal/home/lessons/analysis/writing/progress/
@@ -41,11 +48,14 @@ watchSystemTheme();
 applyPalette();
 applyFontSize();
 
+// Nhãn tab (2026-08-12, Minh: "đồng bộ tiếng Việt là không có từ tiếng Anh, trừ khi quá thông
+// dụng") — 3/4 nhãn trước đây để nguyên tiếng Anh (Home/Ads/Setting), không phải từ vay mượn
+// thông dụng — đổi hẳn sang tiếng Việt, bản tiếng Anh giờ qua t() khi chọn English.
 const NAV_TABS = [
-  { path: "/home", label: "Home", icon: "home" },
+  { path: "/home", label: "Trang chủ", icon: "home" },
   { path: "/progress", label: "Tiến trình", icon: "bar-chart" },
-  { path: "/admin", label: "Ads", icon: "shield" },
-  { path: "/profile", label: "Setting", icon: "settings" },
+  { path: "/admin", label: "Quản trị", icon: "shield" },
+  { path: "/profile", label: "Cài đặt", icon: "settings" },
 ];
 
 registerRoute("/login", renderLogin);
@@ -115,7 +125,7 @@ function renderBottomNav(activePath) {
     return `
       <button type="button" class="nav-tab ${isActive ? "active" : ""}" data-path="${tab.path}">
         <span class="nav-icon">${icon(tab.icon, { size: 22 })}</span>
-        <span class="nav-label">${tab.label}</span>
+        <span class="nav-label">${t(tab.label)}</span>
       </button>
     `;
   }).join("");

@@ -10,6 +10,22 @@ import { getSession } from "../../session.js";
 import { icon } from "../../icons.js";
 import { escapeHtml } from "../../utils.js";
 import { primeSharedStats } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Xin chào": "Hello",
+  "Hôm nay bạn muốn học gì?": "What do you want to learn today?",
+  "Chuỗi ngày học": "Learning streak",
+  "Bài đọc": "Reading",
+  "Rèn luyện kỹ năng đọc hiểu": "Build your reading skills",
+  "Hội thoại": "Dialogue",
+  "Thực hành giao tiếp thực tế": "Practice real conversations",
+  "Phân tích": "Analysis",
+  "AI phân tích và đánh giá": "AI analysis and feedback",
+  "Luyện viết": "Writing practice",
+  "Luyện viết theo chủ đề": "Practice writing by topic",
+  "ngày": "days",
+});
 
 // "chip" = màu icon vuông bo góc riêng cho từng card, KHÔNG đổi theo Theme Color Palette (màu
 // nhận diện thể loại, cố định) — khác hẳn --purple (accent chọn được) dùng cho nút/tab active.
@@ -57,11 +73,11 @@ export function renderHome(mount) {
            đúng chỗ trong layout ngay từ lúc vẽ trang đầu tiên) + text rỗng "&nbsp;" giữ chiều
            cao dòng, JS chỉ đổi text + visibility, không còn phát sinh dịch chuyển bố cục. -->
       <h1 class="screen-title app-header-title home-track-title" id="home-track-title" style="visibility:hidden">&nbsp;</h1>
-      <h1 class="home-greeting">Xin chào${name ? " " + escapeHtml(name) : ""} 👋</h1>
-      <p class="home-subgreeting">Hôm nay bạn muốn học gì?</p>
+      <h1 class="home-greeting">${t("Xin chào")}${name ? " " + escapeHtml(name) : ""} 👋</h1>
+      <p class="home-subgreeting">${t("Hôm nay bạn muốn học gì?")}</p>
 
       <div class="streak-card">
-        <div class="streak-card-label">Chuỗi ngày học</div>
+        <div class="streak-card-label">${t("Chuỗi ngày học")}</div>
         <div class="streak-card-row">
           <span class="streak-card-value" id="streak-value">--</span>
           <div class="streak-card-bar"><div class="streak-card-bar-fill" id="streak-bar-fill" style="width:0%"></div></div>
@@ -74,8 +90,8 @@ export function renderHome(mount) {
           (c) => `
           <button type="button" class="feature-card" data-path="${c.path}">
             <span class="feature-card-icon chip-${c.chip}">${icon(c.icon, { size: 22 })}</span>
-            <span class="feature-card-label">${escapeHtml(c.label)}</span>
-            <span class="feature-card-sub">${escapeHtml(c.sub)}</span>
+            <span class="feature-card-label">${escapeHtml(t(c.label))}</span>
+            <span class="feature-card-sub">${escapeHtml(t(c.sub))}</span>
           </button>
         `
         ).join("")}
@@ -89,7 +105,7 @@ export function renderHome(mount) {
 
   getStreakAndStats()
     .then(({ streak: days, totalXp }) => {
-      mount.querySelector("#streak-value").textContent = `${days} ngày`;
+      mount.querySelector("#streak-value").textContent = `${days} ${t("ngày")}`;
       const pct = Math.min(100, Math.round((days / STREAK_WEEKLY_GOAL) * 100));
       mount.querySelector("#streak-bar-fill").style.width = `${pct}%`;
       // 2026-08-07 (Minh bắt bug thật: "Chuỗi ngày học ở ngoài là 0, nhưng vào trong là --") —
@@ -100,7 +116,7 @@ export function renderHome(mount) {
       primeSharedStats(days, totalXp);
     })
     .catch(() => {
-      mount.querySelector("#streak-value").textContent = "0 ngày";
+      mount.querySelector("#streak-value").textContent = `0 ${t("ngày")}`;
     });
 
   // Chưa có mục tiêu đang hoạt động (lần đầu, hoặc vừa "Đổi vị trí" ở Setting) -> Home không có

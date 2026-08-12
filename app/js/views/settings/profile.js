@@ -7,6 +7,39 @@ import { getThemePreference, setThemePreference } from "../../theme.js";
 import { getPalettePreference, setPalettePreference, PALETTES } from "../../palette.js";
 import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../../fontSize.js";
 import { getAutoScrollPreference, setAutoScrollPreference } from "../../autoScroll.js";
+import { t, getUiLang, setUiLang, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Cài đặt": "Settings",
+  "Ngôn ngữ": "Language",
+  "Tiếng Việt": "Vietnamese",
+  "Thêm chuyên ngành (Nâng cấp gói)": "Add industry (Upgrade plan)",
+  "Tài khoản": "Account",
+  "Thông tin ứng dụng": "App info",
+  "Giao diện": "Appearance",
+  "Sáng": "Light",
+  "Tối": "Dark",
+  "Hệ thống": "System",
+  "Kích thước chữ": "Font size",
+  "Tự cuộn theo audio": "Auto-scroll with audio",
+  "Tắt": "Off",
+  "Bật": "On",
+  "Theme (Color Palette)": "Theme (Color palette)",
+  "Đăng xuất": "Log out",
+  "Chưa đăng nhập": "Not logged in",
+  // fontSize.js labels
+  "Nhỏ": "Small",
+  "Trung bình": "Medium",
+  "Lớn": "Large",
+  "Lớn nhất": "Largest",
+  // palette.js labels
+  "Tím": "Purple",
+  "Cam ấm": "Warm orange",
+  "Xanh dương": "Blue",
+  "Xanh lá": "Green",
+  "Đỏ ruby đậm": "Deep ruby",
+  "Xanh rêu đậm": "Deep teal",
+});
 
 const APP_NAME = "Learning English AI";
 const APP_VERSION = "1.0.0";
@@ -17,51 +50,67 @@ const THEME_OPTIONS = [
   { value: "system", label: "Hệ thống", icon: "monitor" },
 ];
 
+const LANG_OPTIONS = [
+  { value: "vi", label: "Tiếng Việt" },
+  { value: "en", label: "English" },
+];
+
 export function renderProfile(mount) {
   const session = getSession();
   const currentTheme = getThemePreference();
   const currentPalette = getPalettePreference();
   const currentFontSize = getFontSizePreference();
   const currentAutoScroll = getAutoScrollPreference();
+  const currentLang = getUiLang();
   mount.innerHTML = `
     <div class="screen">
-      <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} Cài đặt</h1>
+      <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} ${t("Cài đặt")}</h1>
 
       <div class="card profile-card">
-        <!-- "Ngôn ngữ" (2026-08-04) — hàng TĨNH, app hiện chỉ có tiếng Việt (không có hệ thống
-             i18n thật) nên KHÔNG xây control chọn ngôn ngữ chức năng, chỉ hiện đúng mockup. -->
-        <div class="settings-row">
-          <span class="icon-text">${icon("languages", { size: 18 })} Ngôn ngữ</span>
-          <span class="muted">Tiếng Việt</span>
+        <!-- "Ngôn ngữ" (2026-08-12, Minh: "thêm ngôn ngữ giao diện: tiếng Anh") — chuyển từ hàng
+             TĨNH (mockup) sang picker thật, cùng cơ chế theme/font-size ngay dưới đây. Đổi ngôn
+             ngữ tải lại trang (xem setUiLang() trong i18n.js). -->
+        <div class="profile-section-title">${t("Ngôn ngữ")}</div>
+        <div class="theme-picker" id="lang-picker">
+          ${LANG_OPTIONS.map(
+            (l) => `
+            <button type="button" class="theme-option ${currentLang === l.value ? "active" : ""}" data-lang="${l.value}">
+              <span>${l.label}</span>
+            </button>
+          `
+          ).join("")}
         </div>
+      </div>
+
+      <div class="card profile-card">
         <!-- 2026-08-11 (Minh): đổi nhãn "Đổi chuyên ngành" -> "Thêm chuyên ngành (Nâng cấp gói)"
              — ĐÚNG bản đã đổi ở createLesson.js (nút "#change-goal-btn"), lỡ sót hàng NÀY (menu
              Cài đặt) khi sửa đợt trước — cùng ý nghĩa: đây là lối vào để THÊM 1 chuyên ngành. -->
         <div class="settings-row settings-row-clickable" id="change-industry-row">
-          <span class="icon-text">${icon("briefcase", { size: 18 })} Thêm chuyên ngành (Nâng cấp gói)</span>
+          <span class="icon-text">${icon("briefcase", { size: 18 })} ${t("Thêm chuyên ngành (Nâng cấp gói)")}</span>
           ${icon("chevron-right", { size: 18 })}
         </div>
         <!-- "Tài khoản"/"Thông tin ứng dụng" (2026-08-05, sửa lỗi tràn khung — Minh: "chữ bị tràn
              khung, dùng > như Đổi chuyên ngành, cần xem mới click") — KHÔNG hiện email/version
              dài ngay trên hàng nữa (email dài vỡ layout), bấm vào mới hiện qua toast. -->
         <div class="settings-row settings-row-clickable" id="account-row">
-          <span class="icon-text">${icon("user", { size: 18 })} Tài khoản</span>
+          <span class="icon-text">${icon("user", { size: 18 })} ${t("Tài khoản")}</span>
           ${icon("chevron-right", { size: 18 })}
         </div>
         <div class="settings-row settings-row-clickable" id="app-info-row">
-          <span class="icon-text">${icon("info", { size: 18 })} Thông tin ứng dụng</span>
+          <span class="icon-text">${icon("info", { size: 18 })} ${t("Thông tin ứng dụng")}</span>
           ${icon("chevron-right", { size: 18 })}
         </div>
       </div>
 
       <div class="card profile-card">
-        <div class="profile-section-title">Giao diện</div>
+        <div class="profile-section-title">${t("Giao diện")}</div>
         <div class="theme-picker" id="theme-picker">
           ${THEME_OPTIONS.map(
             (o) => `
             <button type="button" class="theme-option ${currentTheme === o.value ? "active" : ""}" data-theme="${o.value}">
               ${icon(o.icon, { size: 20 })}
-              <span>${o.label}</span>
+              <span>${t(o.label)}</span>
             </button>
           `
           ).join("")}
@@ -71,12 +120,12 @@ export function renderProfile(mount) {
       <!-- "Kích thước chữ" (2026-08-05, mới) — cùng cơ chế theme/palette (app/js/fontSize.js),
            co giãn TOÀN app vì mọi cỡ chữ đều dùng đơn vị rem. -->
       <div class="card profile-card">
-        <div class="profile-section-title">Kích thước chữ</div>
+        <div class="profile-section-title">${t("Kích thước chữ")}</div>
         <div class="theme-picker" id="font-size-picker">
           ${FONT_SIZES.map(
             (f) => `
             <button type="button" class="theme-option ${currentFontSize === f.value ? "active" : ""}" data-font-size="${f.value}">
-              <span>${f.label}</span>
+              <span>${t(f.label)}</span>
             </button>
           `
           ).join("")}
@@ -88,13 +137,13 @@ export function renderProfile(mount) {
            toggle ở đó đã đủ 3 icon) vì đây là tuỳ chọn hành vi lâu dài, cùng nhóm với Kích thước
            chữ/Theme hơn là toggle theo-từng-bài. -->
       <div class="card profile-card">
-        <div class="profile-section-title">Tự cuộn theo audio</div>
+        <div class="profile-section-title">${t("Tự cuộn theo audio")}</div>
         <div class="theme-picker" id="auto-scroll-picker">
           <button type="button" class="theme-option ${!currentAutoScroll ? "active" : ""}" data-auto-scroll="0">
-            <span>Tắt</span>
+            <span>${t("Tắt")}</span>
           </button>
           <button type="button" class="theme-option ${currentAutoScroll ? "active" : ""}" data-auto-scroll="1">
-            <span>Bật</span>
+            <span>${t("Bật")}</span>
           </button>
         </div>
       </div>
@@ -105,20 +154,20 @@ export function renderProfile(mount) {
            body::before trong style.css, đọc lại var(--purple-soft) do palette.js set), không
            còn mục "Ảnh nền" riêng nữa. -->
       <div class="card profile-card">
-        <div class="profile-section-title">Theme (Color Palette)</div>
+        <div class="profile-section-title">${t("Theme (Color Palette)")}</div>
         <div class="palette-picker" id="palette-picker">
           ${PALETTES.map(
             (p) => `
             <button type="button" class="palette-option ${currentPalette === p.value ? "active" : ""}" data-palette="${p.value}">
               <span class="palette-option-swatch" style="background:${p.swatch}"></span>
-              <span>${p.label}</span>
+              <span>${t(p.label)}</span>
             </button>
           `
           ).join("")}
         </div>
       </div>
 
-      <button type="button" class="btn btn-danger btn-block" id="logout-btn">${icon("logout", { size: 18 })} Đăng xuất</button>
+      <button type="button" class="btn btn-danger btn-block" id="logout-btn">${icon("logout", { size: 18 })} ${t("Đăng xuất")}</button>
     </div>
   `;
 
@@ -137,10 +186,17 @@ export function renderProfile(mount) {
   mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select/change"));
 
   mount.querySelector("#account-row").addEventListener("click", () => {
-    showToast(session?.user?.email || "Chưa đăng nhập");
+    showToast(session?.user?.email || t("Chưa đăng nhập"));
   });
   mount.querySelector("#app-info-row").addEventListener("click", () => {
     showToast(`${APP_NAME} · v${APP_VERSION}`);
+  });
+
+  mount.querySelectorAll(".theme-option[data-lang]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.lang === currentLang) return;
+      setUiLang(btn.dataset.lang);
+    });
   });
 
   mount.querySelectorAll(".theme-option[data-theme]").forEach((btn) => {

@@ -10,16 +10,31 @@
 import { navigate } from "./router.js";
 import { icon } from "./icons.js";
 import { getStreakAndStats } from "./db.js";
+import { t, registerTranslations } from "./i18n.js";
 
+registerTranslations({
+  "Người mới": "Beginner",
+  "Người khám phá": "Explorer",
+  "Nhà thám hiểm": "Adventurer",
+  "Cao thủ": "Master",
+  "Lưu trữ": "Archive",
+  "Hồ sơ & cài đặt": "Profile & settings",
+  "Quay lại": "Back",
+});
+
+// Tên cấp XP (2026-08-12, Minh: "đồng bộ tiếng Việt là không có từ tiếng Anh, trừ khi quá
+// thông dụng") — 3/4 tên cấp trước đây để nguyên tiếng Anh (Explorer/Adventurer/Master), không
+// phải từ vay mượn thông dụng trong tiếng Việt đời thường (khác "email"/"wifi") — đổi hẳn sang
+// tiếng Việt, bản tiếng Anh giờ chỉ còn qua t() khi chọn English.
 const XP_TIERS = [
   { min: 0, label: "Người mới" },
-  { min: 50, label: "Explorer" },
-  { min: 200, label: "Adventurer" },
-  { min: 500, label: "Master" },
+  { min: 50, label: "Người khám phá" },
+  { min: 200, label: "Nhà thám hiểm" },
+  { min: 500, label: "Cao thủ" },
 ];
 
 function tierLabel(xp) {
-  return XP_TIERS.reduce((label, t) => (xp >= t.min ? t.label : label), XP_TIERS[0].label);
+  return t(XP_TIERS.reduce((label, tier) => (xp >= tier.min ? tier.label : label), XP_TIERS[0].label));
 }
 
 // Cache CẤP MODULE (2026-07-29, Minh: "chuyển qua mục khác, số chuỗi ngày học bị -- rồi mới
@@ -65,7 +80,7 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
       </div>
     `;
   const archiveBtn = opts.archivePath
-    ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="Lưu trữ">${icon("bookmark", { size: 20 })}</button>`
+    ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="${t("Lưu trữ")}">${icon("bookmark", { size: 20 })}</button>`
     : "";
   // "archiveBtn" ĐỨNG TRƯỚC streak-badge (2026-08-04, Minh: "icon lưu trữ nằm bên trái icon
   // chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — streak-badge giờ LUÔN kề
@@ -78,7 +93,7 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
       <div class="header-right">
         ${archiveBtn}
         <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>
-        <button type="button" class="settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
+        <button type="button" class="settings-btn" id="settings-btn" aria-label="${t("Hồ sơ & cài đặt").replace(/&/g, "&amp;")}">${icon("settings", { size: 20 })}</button>
       </div>
     </div>
   `;
@@ -96,7 +111,7 @@ export function wireAppHeader(mount) {
 // "onBack" do MÀN GỌI tự quyết định (có màn history.back(), có màn navigate("/lessons") cố
 // định) — hàm này chỉ lo phần NHÌN, không áp đặt đích đến.
 export function backChevronHtml() {
-  return `<button type="button" class="back-chevron" id="back-link-btn" aria-label="Quay lại">${icon("chevron-left", { size: 22 })}</button>`;
+  return `<button type="button" class="back-chevron" id="back-link-btn" aria-label="${t("Quay lại")}">${icon("chevron-left", { size: 22 })}</button>`;
 }
 
 export function wireBackLink(mount, onBack) {

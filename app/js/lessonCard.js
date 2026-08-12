@@ -5,6 +5,13 @@
 import { escapeHtml, formatDate } from "./utils.js";
 import { icon } from "./icons.js";
 import { computeLearnStatus } from "./db.js";
+import { t, registerTranslations } from "./i18n.js";
+
+registerTranslations({
+  "Chưa học": "Not learned",
+  "Đã học": "Learned",
+  "Đã dừng": "Stopped",
+});
 
 // "Đã học/Chưa học" (2026-08-04, Phần A4 — RÚT GỌN 2026-08-04 lần 2, Minh: "chỉ để Đã học
 // (nghe hết audio tổng) và Chưa học") — bỏ hẳn nhãn "Đang học" riêng (gộp chung vào "Chưa học"
@@ -14,8 +21,8 @@ import { computeLearnStatus } from "./db.js";
 function learnStatusBadgeHtml(l) {
   if (!("lesson_progress" in l)) return "";
   const done = computeLearnStatus(l) === "done";
-  if (!done) return `<span class="learn-status-badge learn-status-not-started">Chưa học</span>`;
-  return `<span class="learn-status-badge learn-status-done">${icon("check-circle", { size: 12 })} Đã học</span>`;
+  if (!done) return `<span class="learn-status-badge learn-status-not-started">${t("Chưa học")}</span>`;
+  return `<span class="learn-status-badge learn-status-done">${icon("check-circle", { size: 12 })} ${t("Đã học")}</span>`;
 }
 
 // Trích đoạn hiện ở thẻ: ưu tiên NỘI DUNG THẬT (câu/đoạn đầu bài) — "situation" chỉ dùng khi
@@ -95,7 +102,7 @@ export function industryCardHtml(name, count, active, archived, coverImageUrl) {
   }>
       ${!coverImageUrl ? '<div class="industry-card-fallback-bg"></div>' : ""}
       <div class="industry-card-overlay"></div>
-      ${archived ? `<span class="industry-card-archived-badge">Đã dừng</span>` : ""}
+      ${archived ? `<span class="industry-card-archived-badge">${t("Đã dừng")}</span>` : ""}
       <div class="industry-card-body">
         <div class="industry-card-count">${count}</div>
         <div class="industry-card-name">${escapeHtml(name)}</div>
