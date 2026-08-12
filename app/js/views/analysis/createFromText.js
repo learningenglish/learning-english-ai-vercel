@@ -9,11 +9,11 @@
 // còn "cấp độ người học khai báo" để so sánh, nên bỏ luôn cơ chế level_warning cũ. Sau khi phân
 // tích xong, hiện RÕ badge cấp độ đã xác định NGAY tại đây (không đợi sang màn Bài học chi tiết
 // — màn đó thuộc Phase B-H đang khoá, không đụng) trước khi cho vào xem bài.
-import { navigate } from "../router.js";
-import { createLessonFromText, fetchAndSaveLessonCover, analyzeLessonPhraseGroups, analyzeLessonReadingChunks } from "../lessonApi.js";
-import { getActiveLearningGoal } from "../db.js";
-import { escapeHtml, countWords } from "../utils.js";
-import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
+import { navigate } from "../../router.js";
+import { createLessonFromText, fetchAndSaveLessonCover, analyzeLessonPhraseGroups, analyzeLessonReadingChunks } from "../../lessonApi.js";
+import { getActiveLearningGoal } from "../../db.js";
+import { escapeHtml, countWords } from "../../utils.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
 
 export function renderCreateFromText(mount) {
   mount.innerHTML = `

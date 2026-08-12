@@ -1,7 +1,7 @@
 // app/js/views/login.js
-import { signInWithPassword, startOAuthLogin } from "../authApi.js";
-import { setSession } from "../session.js";
-import { navigate } from "../router.js";
+import { signInWithPassword, startOAuthLogin } from "../../authApi.js";
+import { setSession } from "../../session.js";
+import { navigate } from "../../router.js";
 
 // Logo (2026-08-10, Đợt 6 mục 12 đợt 4) — 2 bản sáng/tối (app/icons/logo-light.png,
 // logo-dark.png), chọn theo "data-theme" đã resolve sẵn trên <html> lúc app khởi động (xem

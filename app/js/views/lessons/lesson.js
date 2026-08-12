@@ -7,15 +7,15 @@
 // ensurePhraseGroupsPatched()/ensureReadingChunksPatched() — hạ tầng backend vẫn còn, chỉ không
 // còn ai gọi từ client). "sentence_tip" vẫn là action lẻ, realtime, không lưu. Đọc-to dùng
 // app/js/tts.js (Web Speech API, không gọi AI, không tốn credit).
-import { getLessonWithProgress, upsertLessonProgress, getNewsLessonById } from "../db.js";
-import { getLessonFullAudioUrl, fetchAndSaveLessonCover } from "../lessonApi.js";
-import { escapeHtml } from "../utils.js";
-import { createPlayer, isTTSSupported, computeGenderHints } from "../tts.js";
-import { icon } from "../icons.js";
-import { showToast } from "../toast.js";
-import { backChevronHtml, wireBackLink } from "../header.js";
-import { getAutoScrollPreference } from "../autoScroll.js";
-import { getLessonDisplayPrefs, setLessonDisplayPref } from "../lessonDisplayPrefs.js";
+import { getLessonWithProgress, upsertLessonProgress, getNewsLessonById } from "../../db.js";
+import { getLessonFullAudioUrl, fetchAndSaveLessonCover } from "../../lessonApi.js";
+import { escapeHtml } from "../../utils.js";
+import { createPlayer, isTTSSupported, computeGenderHints } from "../../tts.js";
+import { icon } from "../../icons.js";
+import { showToast } from "../../toast.js";
+import { backChevronHtml, wireBackLink } from "../../header.js";
+import { getAutoScrollPreference } from "../../autoScroll.js";
+import { getLessonDisplayPrefs, setLessonDisplayPref } from "../../lessonDisplayPrefs.js";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];

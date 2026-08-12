@@ -11,10 +11,10 @@
 // đầu (vào từ icon Lưu trữ trong views/writingPractice.js, opts.archivePath). CHỈ giữ lại phần
 // lọc theo goal_id đang active (yêu cầu gốc "Luyện viết -> danh sách của đúng Chuyên ngành" vẫn
 // còn hiệu lực — CẦN migration 034_writing_favorites_goal_id.sql đã chạy).
-import { navigate } from "../router.js";
-import { listWritingFavorites, getActiveLearningGoal } from "../db.js";
-import { escapeHtml, formatDate } from "../utils.js";
-import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
+import { navigate } from "../../router.js";
+import { listWritingFavorites, getActiveLearningGoal } from "../../db.js";
+import { escapeHtml, formatDate } from "../../utils.js";
+import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
 
 const KIND_LABELS = {
   detailed: "Bài đã sửa",

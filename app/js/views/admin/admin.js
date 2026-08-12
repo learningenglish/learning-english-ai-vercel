@@ -1,7 +1,7 @@
 // app/js/views/admin.js — tab "Admin" (2026-08-04): CHỈ icon + màn tĩnh "Sắp ra mắt", KHÔNG có
 // logic quyền hạn/nội dung admin nào ở đợt này (đúng yêu cầu, xây phần này ở lệnh riêng sau).
-import { icon } from "../icons.js";
-import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../header.js";
+import { icon } from "../../icons.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../../header.js";
 
 export function renderAdmin(mount) {
   mount.innerHTML = `

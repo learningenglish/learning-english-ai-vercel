@@ -1,12 +1,12 @@
 // app/js/views/profile.js
-import { getSession, clearSession } from "../session.js";
-import { navigate } from "../router.js";
-import { icon } from "../icons.js";
-import { showToast } from "../toast.js";
-import { getThemePreference, setThemePreference } from "../theme.js";
-import { getPalettePreference, setPalettePreference, PALETTES } from "../palette.js";
-import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../fontSize.js";
-import { getAutoScrollPreference, setAutoScrollPreference } from "../autoScroll.js";
+import { getSession, clearSession } from "../../session.js";
+import { navigate } from "../../router.js";
+import { icon } from "../../icons.js";
+import { showToast } from "../../toast.js";
+import { getThemePreference, setThemePreference } from "../../theme.js";
+import { getPalettePreference, setPalettePreference, PALETTES } from "../../palette.js";
+import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../../fontSize.js";
+import { getAutoScrollPreference, setAutoScrollPreference } from "../../autoScroll.js";
 
 const APP_NAME = "Learning English AI";
 const APP_VERSION = "1.0.0";

@@ -14,11 +14,11 @@
 // — CHỈ 1 chế độ, luôn lọc theo goal_id của Chuyên ngành ĐANG ACTIVE (bài goal_id=null CŨ, sinh
 // trước khi có hệ thống Chuyên ngành, vẫn hiện — xem chính sách "goal_id khớp HOẶC null" trong
 // db.js::listAiGeneratedLessons()).
-import { navigate } from "../router.js";
-import { listAiGeneratedLessons, listInProgressLessons } from "../db.js";
-import { icon } from "../icons.js";
-import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../lessonCard.js";
-import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
+import { navigate } from "../../router.js";
+import { listAiGeneratedLessons, listInProgressLessons } from "../../db.js";
+import { icon } from "../../icons.js";
+import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../../lessonCard.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
 
 const LEVEL_CARDS = [
   { level: "A1", sub: "Begin.", chip: "blue" },

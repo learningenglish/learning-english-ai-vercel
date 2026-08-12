@@ -19,19 +19,22 @@ import { applyTheme, watchSystemTheme } from "./theme.js";
 import { applyPalette } from "./palette.js";
 import { applyFontSize } from "./fontSize.js";
 import { icon } from "./icons.js";
-import { renderLogin } from "./views/login.js";
-import { renderHome } from "./views/home.js";
-import { renderIndustrySelect } from "./views/industrySelect.js";
-import { renderLessons } from "./views/lessons.js";
-import { renderCreateFromText } from "./views/createFromText.js";
-import { renderWritingPractice } from "./views/writingPractice.js";
-import { renderWritingFavoriteDetail } from "./views/writingFavoriteDetail.js";
-import { renderWritingArchive } from "./views/writingArchive.js";
-import { renderAnalysisArchive } from "./views/analysisArchive.js";
-import { renderLessonDetail } from "./views/lesson.js";
-import { renderProgress } from "./views/progress.js";
-import { renderAdmin } from "./views/admin.js";
-import { renderProfile } from "./views/profile.js";
+// Import theo ĐÚNG cây thư mục sắp theo luồng (2026-08-12, rà soát tổ chức file/thư mục —
+// views/ giờ nhóm theo nhánh luồng thật: auth/goal/home/lessons/analysis/writing/progress/
+// settings/admin, thay bản phẳng 13 file trước đây).
+import { renderLogin } from "./views/auth/login.js";
+import { renderHome } from "./views/home/home.js";
+import { renderIndustrySelect } from "./views/goal/industrySelect.js";
+import { renderLessons } from "./views/lessons/lessons.js";
+import { renderCreateFromText } from "./views/analysis/createFromText.js";
+import { renderWritingPractice } from "./views/writing/writingPractice.js";
+import { renderWritingFavoriteDetail } from "./views/writing/writingFavoriteDetail.js";
+import { renderWritingArchive } from "./views/writing/writingArchive.js";
+import { renderAnalysisArchive } from "./views/analysis/analysisArchive.js";
+import { renderLessonDetail } from "./views/lessons/lesson.js";
+import { renderProgress } from "./views/progress/progress.js";
+import { renderAdmin } from "./views/admin/admin.js";
+import { renderProfile } from "./views/settings/profile.js";
 
 applyTheme();
 watchSystemTheme();

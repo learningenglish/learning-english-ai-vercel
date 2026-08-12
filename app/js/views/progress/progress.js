@@ -8,11 +8,11 @@
 // RIÊNG BIỆT cùng lúc qua 3 Promise.all khác nhau, đúng nguyên nhân khiến bug race-condition
 // refresh_token lộ ra rõ nhất ở đây, xem ghi chú ensureValidSession() trong db.js) — GỘP còn 1
 // lượt gọi DUY NHẤT (getProgressOverview(), tự gộp 3 lượt restFetch() bên trong nó) thay vì 5.
-import { navigate } from "../router.js";
-import { getProgressOverview } from "../db.js";
-import { escapeHtml } from "../utils.js";
-import { icon } from "../icons.js";
-import { wireAppHeader } from "../header.js";
+import { navigate } from "../../router.js";
+import { getProgressOverview } from "../../db.js";
+import { escapeHtml } from "../../utils.js";
+import { icon } from "../../icons.js";
+import { wireAppHeader } from "../../header.js";
 
 function summaryCardsHtml() {
   return `

@@ -18,14 +18,14 @@
 // - "Xem bài viết hoàn chỉnh" (Bước 5, 2 tab Nội dung/Từ vựng+Ngữ pháp) — ĐÃ LÀM 2026-07-27
 //   (Việc 2), gộp vào CÙNG 1 lượt gọi grade_writing (không tách action riêng), xem
 //   api/_generate/writing.js::GRADE_SYSTEM_PROMPT phần "clean_rewrite".
-import { navigate } from "../router.js";
-import { generateWritingTask, gradeWriting, saveWritingFavorite, listWritingGenres } from "../writingApi.js";
-import { getActiveLearningGoal } from "../db.js";
-import { escapeHtml, countWords } from "../utils.js";
-import { icon } from "../icons.js";
-import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../header.js";
-import { callChatAction } from "../chatApi.js";
-import { createPlayer, isTTSSupported } from "../tts.js";
+import { navigate } from "../../router.js";
+import { generateWritingTask, gradeWriting, saveWritingFavorite, listWritingGenres } from "../../writingApi.js";
+import { getActiveLearningGoal } from "../../db.js";
+import { escapeHtml, countWords } from "../../utils.js";
+import { icon } from "../../icons.js";
+import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
+import { callChatAction } from "../../chatApi.js";
+import { createPlayer, isTTSSupported } from "../../tts.js";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 

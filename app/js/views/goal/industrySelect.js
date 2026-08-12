@@ -17,11 +17,11 @@
 //
 // Các chuyên ngành KHÁC (Minh: "ghi ra và cho toggle... để sắp ra mắt") — CHỈ để tham khảo/đúng
 // khung ảnh mẫu, KHÔNG chọn được, bấm vào báo "Sắp ra mắt" vĩnh viễn.
-import { navigate } from "../router.js";
-import { createGoal } from "../goalApi.js";
-import { escapeHtml } from "../utils.js";
-import { icon } from "../icons.js";
-import { showToast } from "../toast.js";
+import { navigate } from "../../router.js";
+import { createGoal } from "../../goalApi.js";
+import { escapeHtml } from "../../utils.js";
+import { icon } from "../../icons.js";
+import { showToast } from "../../toast.js";
 
 function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms) {
   return {

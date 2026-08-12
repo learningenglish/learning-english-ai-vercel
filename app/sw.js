@@ -5,7 +5,7 @@
 // reload/đổi mới code, cho tới khi tên cache đổi (activate xoá cache cũ, xem bên dưới).
 // Bài học thực tế: đợt redesign icon SVG + theme này đổi hầu hết SHELL_FILES nhưng quên
 // tăng version -> preview cứ hiện lại emoji cũ dù code trên đĩa đã đổi hẳn.
-const CACHE_NAME = "lea-student-shell-v69";
+const CACHE_NAME = "lea-student-shell-v70";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -42,19 +42,19 @@ const SHELL_FILES = [
   "./js/fontSize.js",
   "./js/lessonDisplayPrefs.js",
   "./js/tts.js",
-  "./js/views/login.js",
-  "./js/views/home.js",
-  "./js/views/industrySelect.js",
-  "./js/views/lessons.js",
-  "./js/views/lesson.js",
-  "./js/views/createFromText.js",
-  "./js/views/writingPractice.js",
-  "./js/views/writingFavoriteDetail.js",
-  "./js/views/writingArchive.js",
-  "./js/views/analysisArchive.js",
-  "./js/views/progress.js",
-  "./js/views/admin.js",
-  "./js/views/profile.js",
+  "./js/views/auth/login.js",
+  "./js/views/home/home.js",
+  "./js/views/goal/industrySelect.js",
+  "./js/views/lessons/lessons.js",
+  "./js/views/lessons/lesson.js",
+  "./js/views/analysis/createFromText.js",
+  "./js/views/writing/writingPractice.js",
+  "./js/views/writing/writingFavoriteDetail.js",
+  "./js/views/writing/writingArchive.js",
+  "./js/views/analysis/analysisArchive.js",
+  "./js/views/progress/progress.js",
+  "./js/views/admin/admin.js",
+  "./js/views/settings/profile.js",
 ];
 
 self.addEventListener("install", (event) => {

@@ -10,10 +10,10 @@
 // CHÍNH của Home (thêm nút "+" dẫn qua create-text) — Minh xác nhận không cần, quay lại đúng vai
 // trò "Lưu trữ" phụ ban đầu. CHỈ giữ lại phần lọc theo goal_id đang active (v.v yêu cầu gốc "Phân
 // tích -> danh sách nội dung đã phân tích của đúng Chuyên ngành" vẫn còn hiệu lực).
-import { navigate } from "../router.js";
-import { listTextAnalyzedLessons, getActiveLearningGoal } from "../db.js";
-import { lessonCardHtml, wireLessonCards } from "../lessonCard.js";
-import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
+import { navigate } from "../../router.js";
+import { listTextAnalyzedLessons, getActiveLearningGoal } from "../../db.js";
+import { lessonCardHtml, wireLessonCards } from "../../lessonCard.js";
+import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
 
 export async function renderAnalysisArchive(mount) {
   mount.innerHTML = `

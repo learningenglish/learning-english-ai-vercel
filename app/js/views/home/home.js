@@ -4,12 +4,12 @@
 // TỰ Bài đọc/Hội thoại/Phân tích/Luyện Viết (chốt lại theo đúng văn bản gốc, ưu tiên hơn vị trí
 // trong ảnh mẫu — Minh xác nhận 2026-08-04), mỗi card chỉ ĐIỀU HƯỚNG tới đúng màn đã có sẵn
 // (KHÔNG viết lại nội dung màn nào).
-import { navigate } from "../router.js";
-import { getActiveLearningGoal, getStreakAndStats } from "../db.js";
-import { getSession } from "../session.js";
-import { icon } from "../icons.js";
-import { escapeHtml } from "../utils.js";
-import { primeSharedStats } from "../header.js";
+import { navigate } from "../../router.js";
+import { getActiveLearningGoal, getStreakAndStats } from "../../db.js";
+import { getSession } from "../../session.js";
+import { icon } from "../../icons.js";
+import { escapeHtml } from "../../utils.js";
+import { primeSharedStats } from "../../header.js";
 
 // "chip" = màu icon vuông bo góc riêng cho từng card, KHÔNG đổi theo Theme Color Palette (màu
 // nhận diện thể loại, cố định) — khác hẳn --purple (accent chọn được) dùng cho nút/tab active.

@@ -3,9 +3,9 @@
 // lưu sẵn, KHÔNG gọi AI/chấm lại (đúng yêu cầu gốc "mở lại xem ĐÚNG nội dung đã lưu tại thời
 // điểm lưu"). Độc lập với views/writingPractice.js (không import qua lại) — trùng lặp nhỏ ở
 // annotatedBlockHtml() chấp nhận được, giữ 2 view tách biệt đúng phong cách 1 file/view của dự án.
-import { getWritingFavoriteById } from "../db.js";
-import { escapeHtml, formatDate } from "../utils.js";
-import { appHeaderHtml, wireAppHeader, wireBackLink } from "../header.js";
+import { getWritingFavoriteById } from "../../db.js";
+import { escapeHtml, formatDate } from "../../utils.js";
+import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
 
 const KIND_TITLES = {
   detailed: "Bài đã sửa",
