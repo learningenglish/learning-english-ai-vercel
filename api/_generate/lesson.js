@@ -187,6 +187,21 @@ function orNone(v) {
 // NGUYÊN TẮC CHUNG (áp dụng đồng thời cho MỌI loại, không phải patch riêng từng loại) để tự phòng
 // đúng LỚP lỗi đó (gắn nhãn 1 loại "không chứa động từ chia" cho cụm CÓ chứa động từ chia) xảy ra
 // ở BẤT KỲ loại nào trong 24 loại, không chỉ riêng "Cụm danh từ".
+//
+// 2026-08-12 — BỎ HẲN interpolate PHRASE_GROUPS_RULES vào GENERATE_LESSON_SYSTEM_PROMPT/
+// ANALYZE_TEXT_SYSTEM_PROMPT (ĐÚNG lịch sử/lý do đã áp dụng cho READING_CHUNKS_RULES bên dưới —
+// xem comment ở đó): test thật A/B trực tiếp trên 6 câu giống nhau xác nhận bản NHÚNG VÀO 2
+// prompt sinh CẢ BÀI (đã quá nhiều yêu cầu đồng thời) cho kết quả XẤU HƠN RÕ RỆT (chủ ngữ bị nhét
+// chung "Cụm động từ" ở 5/6 câu, có câu phủ THIẾU quá nửa số từ) so với đúng CÙNG bộ rule khi chạy
+// RIÊNG qua action vá "analyze_lesson_phrase_groups" (callAnalyzePhraseGroups, gửi TỪNG CÂU 1,
+// không cạnh tranh yêu cầu khác — 4/6 câu ĐÚNG hoàn toàn, chỉ còn 1 câu phức khó). Quyết định:
+// "phrase_groups" giờ CHỈ có qua ĐÚNG 1 con đường DUY NHẤT — lượt vá tự chạy NGAY sau khi tạo bài
+// (views/createFromText.js đã gọi sẵn analyzeLessonPhraseGroups() không điều kiện, xem đầu file
+// đó) — bài mới KHÔNG còn field này lúc vừa sinh, coverage-check ở action vá sẽ thấy 0 nhóm và tự
+// gửi TOÀN BỘ câu qua lượt phân tích riêng. Batch sinh giáo trình chung sau này (gọi generate_lesson
+// trực tiếp qua script, không qua UI) PHẢI tự gọi thêm analyze_lesson_phrase_groups sau khi tạo,
+// giống các script test đã làm trong đợt này — KHÔNG còn có phrase_groups "miễn phí" kèm theo
+// generate_lesson nữa.
 const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
 mọi content_type) — CHỈ phục vụ TRA TỪ khi người học BẤM vào 1 từ/cụm (tooltip), KHÔNG liên quan
 "reading_chunks" (tách câu) hay "grammar"/"sentence_patterns" (phần ngữ pháp — dùng catalog RIÊNG):
@@ -633,8 +648,6 @@ từng giá trị "speaker" đã dùng, không đổi cách viết), kèm giới
 dựa vào cách bạn đã mô tả nhân vật đó trong bài, không được bỏ trống hay đoán ngẫu nhiên) — mỗi
 nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lượt trong bài.
 
-${PHRASE_GROUPS_RULES}
-
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
@@ -694,17 +707,7 @@ SCHEMA JSON:
       "speaker": "tên người nói (chỉ có khi là dialogue, bài đọc thì bỏ trường này)",
       "text": "câu/đoạn tiếng Anh",
       "translation": "bản dịch tiếng Việt của câu/đoạn này",
-      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong tình huống) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên — đổi từ ngữ nhưng vẫn mở đầu bằng cách gọi tên thì/cấu trúc trước tiên vẫn tính là vi phạm). Nêu VÌ SAO câu này dùng dạng đó trong tình huống này nếu có ích, nhưng KHÔNG phải câu mở đầu. Mỗi câu phải đọc như đang phân tích RIÊNG câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man.",
-      "phrase_groups": [
-        {
-          "words": ["mảng từ ĐÚNG NGUYÊN VĂN/ĐÚNG THỨ TỰ trong text, xem QUY TẮC VỀ GOM CỤM TỪ"],
-          "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
-          "level": "cấp độ CEFR riêng của cụm/từ này",
-          "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
-          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"},
-          "word_types": {"tu": "loại từ NGỮ PHÁP riêng của từng từ (noun/verb/adjective/...) - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\", xem QUY TẮC VỀ GOM CỤM TỪ"}
-        }
-      ]
+      "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt): MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này trong tình huống) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên — đổi từ ngữ nhưng vẫn mở đầu bằng cách gọi tên thì/cấu trúc trước tiên vẫn tính là vi phạm). Nêu VÌ SAO câu này dùng dạng đó trong tình huống này nếu có ích, nhưng KHÔNG phải câu mở đầu. Mỗi câu phải đọc như đang phân tích RIÊNG câu đó, không phải dán nhãn ngữ pháp hàng loạt. Ngắn gọn, đúng trọng tâm, không lan man."
     }
   ],
   "vocabulary": [
@@ -994,8 +997,6 @@ BUỘC và là CĂN CỨ DUY NHẤT cho toàn bộ phần còn lại của bài,
   cao (B2-C1): được phép giải thích sâu hơn, dùng thuật ngữ ngữ pháp chính xác hơn, ví dụ phức
   tạp hơn. KHÔNG dùng chung 1 độ sâu giải thích bất kể văn bản dễ hay khó.
 
-${PHRASE_GROUPS_RULES}
-
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo schema dưới đây.
 - Không lời chào, không giải thích ngoài JSON, không bọc trong dấu \`\`\`.
@@ -1013,16 +1014,6 @@ SCHEMA JSON:
       "text": "nguyên văn đoạn/lượt thoại từ văn bản gốc, không sửa",
       "translation": "bản dịch tiếng Việt",
       "explanation": "phân tích ĐÚNG câu/đoạn này (2-3 dòng, tiếng Việt), vừa sức cấp độ đã xác định ở 'level': MỞ ĐẦU NGAY bằng chính điểm đáng chú ý của CÂU NÀY (từ/cụm cụ thể, cách diễn đạt cụ thể, hoặc lý do dùng cách nói này) — CẤM mở đầu bằng cách gọi tên thì/cấu trúc chung chung trước, dưới BẤT KỲ cách diễn đạt nào của khuôn 'Câu này dùng/sử dụng thì...', 'Câu này ở thì...', 'Thì X trong câu này diễn tả...' (cấm cả khuôn mẫu, không chỉ đúng câu chữ nêu trên). Mỗi câu đọc như đang phân tích RIÊNG câu đó. Ngắn gọn, đúng trọng tâm.",
-      "phrase_groups": [
-        {
-          "words": ["mảng từ ĐÚNG NGUYÊN VĂN/ĐÚNG THỨ TỰ trong text, xem QUY TẮC VỀ GOM CỤM TỪ"],
-          "meaning": "nghĩa tiếng Việt của cả cụm (hoặc từ đơn)",
-          "level": "cấp độ CEFR riêng của cụm/từ này",
-          "type": "loại cụm hoặc loại từ đơn, xem QUY TẮC VỀ GOM CỤM TỪ",
-          "word_meanings": {"tu": "nghĩa riêng bên trong cụm - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\" khi nhóm >1 từ, xem QUY TẮC VỀ GOM CỤM TỪ"},
-          "word_types": {"tu": "loại từ NGỮ PHÁP riêng của từng từ (noun/verb/adjective/...) - BẮT BUỘC phủ ĐỦ 100% mọi từ trong \\"words\\", xem QUY TẮC VỀ GOM CỤM TỪ"}
-        }
-      ]
     }
   ],
   "vocabulary": [
