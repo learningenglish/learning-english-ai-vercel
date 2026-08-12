@@ -1549,3 +1549,95 @@ deploy + verify sống.**
   phủ đủ) hoạt động đúng trên dữ liệu thật, không còn lỗi ghép "but we have một số loại".
 
 **Còn lại cho Minh:** không có file SQL mới.
+
+## 2026-08-11/12 (đợt 15) — 16 phản hồi thật (2 đợt) + rà soát archive toàn app
+
+**Đợt 10 mục (logo/ảnh bìa/tooltip/cấp độ từ/ngữ pháp/auto-scroll/Bài đã học/lưu toggle/2 bài
+mẫu/gói sinh bài):**
+1. Logo nền tối +3% (tiếp tục chuỗi hiệu chỉnh đợt 14, vẫn giữ tỉ lệ 1536:1024 đẳng hướng).
+2. Ảnh bìa bắt buộc: `search_lesson_cover_image` thêm fallback dùng từ khoá TRUNG TÍNH theo
+   `content_type` khi truy vấn theo tiêu đề không ra ảnh ở cả 3 nguồn (Unsplash/Pexels/
+   Wikimedia) — trước đó "best effort" im lặng bỏ qua, giờ hiếm khi không có ảnh.
+3. Bỏ hẳn hiển thị "cụm" (phrase) trong tooltip — chỉ đổi UI (`renderTooltipContent()`/
+   `wordEntryFromPhraseGroup()`), KHÔNG đụng dữ liệu `phrase_groups` ở DB (lưu trữ, bàn nâng cấp
+   sau theo đúng yêu cầu Minh).
+4. Cấp độ từ trong tooltip: đề xuất AI (đồng thời lúc tìm nghĩa) thay vì tra từ điển rồi đối
+   chiếu — Minh xác nhận chọn AI. Thêm mục "QUY TẮC XÁC ĐỊNH level" vào `PHRASE_GROUPS_RULES`
+   (anchor question + ví dụ từ theo từng cấp + rule riêng cho thuật ngữ chuyên ngành: chấm theo
+   ĐỘ KHÓ NGÔN NGỮ của từ cấu thành, không theo độ phức tạp khái niệm).
+5. Grammar rỗng ở 1 số bài mẫu: xác nhận qua đọc `validateLessonShape()` — CHỦ Ý, không phải
+   lỗi (comment trong code ghi rõ sự cố thật trước đây: ép grammar không rỗng từng làm 502 sai
+   cho bài đơn giản hợp lệ). Báo lại Minh, không "sửa" gì.
+6. Auto-scroll không bắt đúng câu: root cause thật — trigger khoá theo `itemIndex` (1 đoạn/lượt
+   thoại), không đổi khi audio chuyển câu TRONG CÙNG đoạn nhiều câu. Bọc mỗi câu trong wrapper
+   `.content-sentence-block[data-item-idx][data-sentence-idx]` LUÔN hiện diện (khác `.content-
+   text` cũ chỉ hiện khi toggle "đoạn gốc" mở), thêm `currentSentenceIdxForItem()`/
+   `autoScrollToCurrentSentence()`, hook vào `onStateChange` + `progressTimer`.
+7. "Bài đã học" (Tiến trình) không khớp counter: `getProgressOverview()`/`getStreakAndStats()`
+   trước đó chỉ tính `completed_at`, bỏ sót bài NGHE XONG (`fully_listened_at`) — thêm điều kiện
+   `isLearned = completed_at || fully_listened_at` ở cả 2 hàm.
+8. Lưu trạng thái 3 toggle (đoạn gốc/dịch/tách câu) qua lần mở lại — file mới
+   `app/js/lessonDisplayPrefs.js` (localStorage `lea_lesson_display_prefs`), state khởi tạo từ
+   đây, mỗi lần bấm toggle ghi lại.
+9. Sinh 2 bài mẫu #4B2 (B2)/#4A2 (A2) — tạm tăng `DAILY_LESSON_LIMIT` 10→15 để không kẹt quota
+   giữa lúc test, xong revert lại 10 (đã verify sống bằng gọi 403-check trực tiếp).
+10. Bỏ hết "gói sinh bài" — soạn sẵn file SQL 1 lần
+    `supabase/one-off_reset_all_students_to_pro_2026-08-11.sql` (set toàn bộ `students.plan =
+    'pro'`) — **CHƯA CHẠY, Minh tự paste vào Supabase SQL Editor.** Giữ nguyên cột/cơ chế `plan`
+    (không xoá code) để bàn lại cấu trúc gói sau.
+
+**Đợt 6 mục tiếp theo (word-type/cấp độ AI/giám khảo/auto-scroll toggle/nút gói/logo):**
+1. Thêm lại hiển thị loại từ (noun/verb/...) trong tooltip — `.word-popover-type`, đọc
+   `group.type || vocabMatch?.type`.
+2. Xác nhận lại AI cho cấp độ từ (đã làm ở mục 4 trên).
+3. Trả lời câu hỏi "CEFR có đảm bảo chất lượng học thuật?" — **KHÔNG**, CEFR chỉ đảm bảo CẤU
+   TRÚC (độ dài/từ vựng/ngữ pháp cho phép), không đảm bảo nội dung không sáo rỗng/tình huống giả
+   — đúng lý do bộ 7 nguyên tắc giám khảo (`lesson-judge-criteria.md`) tồn tại riêng. Xác nhận bộ
+   giám khảo NÀY CHƯA được nối vào luồng sinh bài thật (chỉ có action `judge_lesson_quality` gọi
+   tay) — đề xuất Minh quyết định số lần thử lại + hành vi khi vẫn KHÔNG ĐẠT sau N lần, **CHƯA
+   CÓ QUYẾT ĐỊNH, việc này còn treo.**
+4. Auto-scroll chỉ chạy khi tắt hết toggle: root cause THỨ 2 — mục tiêu cuộn `.content-text`
+   trước đó chỉ tồn tại khi "đoạn gốc" mở, tắt toggle này thì wrapper không có, rơi về cuộn cả
+   đoạn. Sửa triệt để bằng wrapper luôn hiện diện (đã nêu ở mục 6 đợt 10 trên — làm 1 lần, đúng
+   cho MỌI tổ hợp toggle).
+5. Khôi phục lại "(Nâng Cấp Gói)" trong nhãn nút chuyên ngành (Minh đảo lại quyết định đợt
+   trước) — SÓT 1 chỗ: chỉ sửa đúng nút trong `createLesson.js` (khi đó vẫn còn sống), MISS hàng
+   "Đổi chuyên ngành" ở màn Cài đặt (`profile.js#change-industry-row`) — Minh phát hiện qua ảnh
+   chụp thật SAU KHI deploy + hard refresh vẫn thấy tên cũ, xác nhận đây là code CHƯA từng sửa
+   (không phải cache SW), sửa bổ sung + thêm CSS chống tràn chữ cho nhãn dài hơn.
+6. Logo nền tối +2% tiếp (đã gần khớp logo nền sáng theo Minh xác nhận).
+
+**Rà soát + archive toàn app (Minh: "Tạo bài học không còn tồn tại trong luồng thật, rà soát
+toàn app, phần nào chết đưa vào Lưu trữ"):** BFS từ 2 điểm vào thật (bottom nav + `navigate()`
+trong home.js) qua mọi `navigate()` xuất phát ở từng view, đối chiếu mọi `registerRoute()` trong
+`app.js` — xác nhận `/create` (`createLesson.js`) + `/history` + `/stats` KHÔNG còn route/link
+nào trỏ tới (mồ côi từ đợt tắt UI Mentor AI 2026-07-23, xem `[[project_mentor_ai_disabled_ui]]`).
+Archive (giữ nguyên nội dung, thêm banner, xem `_archive/mentor-ai-personal-flow/`):
+- `app/js/views/createLesson.js` (xoá khỏi vị trí sống).
+- `api/_generate/mentor.js`: dùng đúng phân tích phụ thuộc tay (994 dòng → chỉ giữ
+  `mentor_create_goal()` + đúng chain phụ thuộc của riêng nó ~130 dòng) — MỌI export khác
+  (`mentor_next_lesson`, `mentor_infer_goal`, hàng đợi ôn tập, nghi thức xưng hô...) chỉ có
+  caller DUY NHẤT là `createLesson.js` đã archive, nên archive theo.
+- `app/js/mentorApi.js`: chỉ giữ `createGoal()` (caller còn sống: `industrySelect.js`).
+- `api/chat.js`: import/ACTIONS chỉ còn `mentor_create_goal` (bỏ 13 action chết).
+- `app/js/lessonApi.js`: bỏ `createLessonFromAI()` (0 caller, xác nhận qua grep).
+- `app/js/app.js`: bỏ route `/create`/`/history`/`/stats` + import/comment liên quan.
+- **CHỦ Ý GIỮ LẠI** (không archive): action `generate_lesson`/`analyze_user_text` ở backend —
+  chưa có caller JS nào nhưng cần cho việc sinh trước giáo trình chung sau này qua script/batch
+  trực tiếp, không qua UI.
+
+**Verify sống sau deploy:** gọi trực tiếp `mentor_create_goal` qua tài khoản test (payload y hệt
+`industrySelect.js::selectPosition()` — profile "Kế toán" cố định) trên link preview ổn định →
+200, trả về đúng `goal`+`confirmation` object, xác nhận bản rút gọn 994→130 dòng của `mentor.js`
+vẫn chạy đúng toàn bộ chain (`archiveOtherActiveGoals`→`insertLearningGoal`→
+`buildGoalConfirmationDisplay`).
+
+**Bump SW cache v61→...→v67 (nhiều đợt nhỏ trong 2 ngày, mỗi lần đụng `app/js`/`app/css`).**
+
+**Còn lại cho Minh:**
+- Chạy `supabase/one-off_reset_all_students_to_pro_2026-08-11.sql` trong Supabase SQL Editor khi
+  nào rảnh (không khẩn, cơ chế cũ vẫn hoạt động bình thường tới lúc đó).
+- Quyết định số lần thử lại + fallback khi nối giám khảo (`judge_lesson_quality`) vào luồng sinh
+  bài thật — đang treo, xem mục 3 ở đợt 6-mục trên.
+- Yêu cầu mới "sắp xếp lại từng bước theo đúng luồng, chuẩn bị đóng băng mở rộng đa ngôn ngữ
+  (Đức/Trung)" — cần 1 buổi bàn riêng về phạm vi trước khi động tay, chưa bắt đầu.
