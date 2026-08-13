@@ -1535,10 +1535,17 @@ async function analyzePhraseGroupsInChunks(toAnalyze) {
     const combinedGroups = [];
     for (const sentence of sentences) {
       const chunk = [{ text: sentence }];
+      // 3 lượt (2026-08-13, Minh: "phải đảm bảo 100% từ click vào đều hiển thị tooltip đầy đủ") —
+      // TRƯỚC ĐÂY chỉ 2 lượt cùng tier "default" rồi bỏ qua hẳn -> "phrase_groups" rỗng cho câu đó
+      // -> spansFromPhraseGroups() (client) rơi thẳng về nhánh "vocabulary" cũ -> MỌI từ không có
+      // trong "vocabulary" hiện "Không tra được từ." (lỗi thật Minh gặp). Lượt 3 escalate "strong"
+      // làm LƯỚI CUỐI (rẻ vì hiếm khi cần tới, prompt/câu đều ngắn) — "model mạnh là lưới cuối" đã
+      // áp dụng ở generate_lesson, áp dụng lại đúng nguyên tắc đó ở đây.
       let result = await callAnalyzePhraseGroups(chunk);
       if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
+      if (!result.ok) result = await callAnalyzePhraseGroups(chunk, "strong");
       if (!result.ok) {
-        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
+        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 3 lượt:", result.reason, sentence.slice(0, 60));
         continue;
       }
       const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];

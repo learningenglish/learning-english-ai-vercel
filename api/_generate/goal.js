@@ -45,7 +45,7 @@ function logGoalEvent(studentId, eventType, context) {
 // skin.js đọc, hàm đó KHÔNG được sửa) — tự dựng hiển thị riêng.
 function buildGoalConfirmationDisplay(profile) {
   if (profile?.is_general) {
-    return { title_line: "Giao tiếp tổng quát", topic_line: `Chủ đề: ${profile.primary_communication_scope}`, invite_line: "Mời bạn học" };
+    return { title_line: "Giao Tiếp Tổng Quát", topic_line: `Chủ đề: ${profile.primary_communication_scope}`, invite_line: "Mời bạn học" };
   }
   return buildConfirmationDisplay(profile);
 }

@@ -58,7 +58,7 @@ export async function renderWritingArchive(mount) {
         return `
           <div class="history-item" data-id="${r.id}">
             <div>
-              <div class="history-title">${escapeHtml(label)}${r.task?.genre_vi ? ` — ${escapeHtml(r.task.genre_vi)}` : ""}</div>
+              <div class="history-title">${escapeHtml(label)}${r.task?.genre_vi ? ` — ${escapeHtml(t(r.task.genre_vi))}` : ""}</div>
               <div class="history-date muted">
                 <span class="badge">${escapeHtml(r.level)}</span>
                 ${formatDate(r.created_at)}${Number.isFinite(r.overall_score) ? ` · ${r.overall_score}/100` : ""}

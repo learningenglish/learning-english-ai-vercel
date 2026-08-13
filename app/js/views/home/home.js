@@ -27,6 +27,20 @@ registerTranslations({
   "ngày": "days",
 });
 
+// "goal.title" (2026-08-13, Minh: giao diện tiếng Anh vẫn hiện tên chuyên ngành tiếng Việt) là
+// câu TĨNH dựng sẵn ở server LÚC TẠO goal (buildGoalConfirmationDisplay()/buildConfirmationDisplay()
+// trong goal.js/skin.js) — không tự đổi theo ngôn ngữ giao diện hiện tại. Tự dựng lại câu hiển thị
+// ở ĐÂY từ "occupation_profile" (đã có sẵn trong response getActiveLearningGoal(), xem db.js) qua
+// ĐÚNG cùng bảng dịch industrySelect.js dùng (t()) — vừa ra tiếng Anh đúng khi đổi ngôn ngữ, vừa
+// ĐỒNG BỘ nhãn với màn "Chọn chuyên ngành" (trước đây lệch: màn chọn "Tiếng Anh Giao Tiếp" nhưng
+// Home lại "Giao tiếp tổng quát" — 2 chuỗi khác nhau cho cùng 1 lựa chọn).
+function goalDisplayTitle(goal) {
+  const profile = goal?.occupation_profile;
+  if (profile?.is_general) return t("Giao Tiếp Tổng Quát");
+  if (profile?.merged_occupation) return `${t("Anh văn chuyên ngành")} ${t(profile.merged_occupation)}`;
+  return goal.title; // lưới đỡ cho goal cũ (nếu có) thiếu occupation_profile
+}
+
 // "chip" = màu icon vuông bo góc riêng cho từng card, KHÔNG đổi theo Theme Color Palette (màu
 // nhận diện thể loại, cố định) — khác hẳn --purple (accent chọn được) dùng cho nút/tab active.
 // SỬA 2026-08-07 (Minh: "Tôi không hề yêu cầu tách thành luồng dấu + cho những cái không đúng
@@ -132,7 +146,7 @@ export function renderHome(mount) {
         return;
       }
       const titleEl = mount.querySelector("#home-track-title");
-      titleEl.textContent = goal.title;
+      titleEl.textContent = goalDisplayTitle(goal);
       titleEl.style.visibility = "visible";
     })
     .catch(() => {

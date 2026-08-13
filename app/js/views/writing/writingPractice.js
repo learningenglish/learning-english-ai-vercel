@@ -80,6 +80,23 @@ registerTranslations({
   "Bài viết quá ngắn (tối thiểu 10 từ).": "Your essay is too short (minimum 10 words).",
   "AI đang chấm bài viết...": "AI is grading your essay...",
   "Lưu thất bại, vui lòng thử lại.": "Save failed, please try again.",
+  // 14 thể loại luyện viết (2026-08-13, Minh: "card thể loại luyện viết vẫn còn tiếng Việt trong
+  // giao diện tiếng Anh") — khớp ĐÚNG nguyên văn khoá trong api/_generate/writingTopicPool.json
+  // (list_writing_genres trả về, xem GENRE_STYLES ngay dưới) — cũng dùng lại ở writingArchive.js
+  // (r.task.genre_vi) nên KHÔNG gộp vào registerTranslations riêng của file đó, để 1 nguồn DUY
+  // NHẤT tại đây (module này luôn được app.js import tĩnh từ đầu, xem i18n.js).
+  "Nghị luận": "Argumentative essay",
+  "Đánh giá": "Review",
+  "Kể chuyện": "Storytelling",
+  "Viết thư": "Letter writing",
+  "Báo cáo": "Report",
+  "Tin nhắn": "Message",
+  "Mô tả": "Description",
+  "Hướng dẫn": "Instructions",
+  "Bài đăng mạng xã hội": "Social media post",
+  "Thư ngỏ": "Open letter",
+  "Ghi chú": "Notes",
+  "Tường thuật sự việc": "Incident report",
 });
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
@@ -232,7 +249,7 @@ export function renderWritingPractice(mount) {
             return `
           <button type="button" class="genre-row ${state.genre === g ? "active" : ""}" data-genre="${escapeHtml(g)}">
             <span class="genre-row-icon chip-${style.chip}">${icon(style.icon, { size: 18 })}</span>
-            <span class="genre-row-label">${escapeHtml(g)}</span>
+            <span class="genre-row-label">${escapeHtml(t(g))}</span>
             ${state.genre === g ? icon("check-circle", { size: 20, filled: true }) : ""}
           </button>
         `;

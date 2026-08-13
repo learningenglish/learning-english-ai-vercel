@@ -26,11 +26,13 @@ import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
   "Chọn chuyên ngành<br />để bắt đầu": "Choose an industry<br />to get started",
+  "HỌC TIẾNG ANH CÙNG MOSAIC STUDY": "LEARN ENGLISH WITH MOSAIC STUDY",
   "Nội dung được thiết kế riêng<br />cho công việc của bạn": "Content designed specifically<br />for your job",
   "Sắp ra mắt": "Coming soon",
   "Chuyên ngành này sắp ra mắt, chưa có nội dung để học.": "This industry is coming soon, no content to learn yet.",
   "Không tạo được lộ trình, thử lại nhé.": "Couldn't create your learning path, please try again.",
-  "Tiếng Anh Giao Tiếp": "General English",
+  "Giao Tiếp Tổng Quát": "General English",
+  "Anh văn chuyên ngành": "English for",
   "Kế toán": "Accounting",
   // Nhãn OTHER_INDUSTRIES (2026-08-12, dịch từ tiếng Anh sang tiếng Việt tự nhiên — Minh: "giao
   // diện tiếng Việt không lẫn tiếng Anh trừ từ mượn thông dụng").
@@ -126,7 +128,7 @@ const GENERAL_PROFILE = {
 };
 
 const INDUSTRIES = [
-  { key: "general", label: "Tiếng Anh Giao Tiếp", icon: "message-circle", chip: "blue", real: true },
+  { key: "general", label: "Giao Tiếp Tổng Quát", icon: "message-circle", chip: "blue", real: true },
   { key: "accounting", label: "Kế toán", icon: "dollar-sign", chip: "orange", real: true, profile: ACCOUNTING_PROFILE },
   ...OTHER_INDUSTRIES.map((ind) => ({ ...ind, real: false })),
 ];
@@ -148,6 +150,7 @@ export function renderIndustrySelect(mount) {
     mount.innerHTML = `
       <div class="screen industry-select-screen">
         <h1 class="industry-select-title">${t("Chọn chuyên ngành<br />để bắt đầu")}</h1>
+        <p class="industry-select-tagline">${t("HỌC TIẾNG ANH CÙNG MOSAIC STUDY")}</p>
         <p class="industry-select-subtitle">${t("Nội dung được thiết kế riêng<br />cho công việc của bạn")}</p>
         <div class="industry-list">
           ${INDUSTRIES.map((ind) => industryRowHtml(ind)).join("")}
@@ -187,7 +190,7 @@ export function renderIndustrySelect(mount) {
     if (state.submitting) return;
     state.submitting = true;
     render();
-    const res = await createGoal(GENERAL_PROFILE, "Tiếng Anh Giao Tiếp", null);
+    const res = await createGoal(GENERAL_PROFILE, "Giao Tiếp Tổng Quát", null);
     if (!res.ok) {
       state.submitting = false;
       render();
