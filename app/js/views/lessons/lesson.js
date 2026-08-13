@@ -1235,7 +1235,11 @@ function findVocabEntry(matchedText, vocabMap) {
 // phần của từ liền sau — chỉ dấu nháy đứng GIỮA 2 ký tự chữ/số như "don't" mới được giữ).
 function tokenizeWords(text) {
   const tokens = [];
-  const re = /[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g;
+  // Nhận cả dấu nháy đơn CONG "’" (U+2019, "smart quote" — model hay tự sinh trong văn xuôi,
+  // vd "organization’s") — PHẢI khớp ĐÚNG sentenceWordTokens() phía server (api/_generate/
+  // lesson.js), 2 quy tắc tokenize khác nhau làm coverage-check thất bại dai dẳng (bug thật
+  // 2026-08-13, bài #1-B2).
+  const re = /[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g;
   let m;
   while ((m = re.exec(text || ""))) {
     tokens.push({ word: m[0], start: m.index, end: m.index + m[0].length });
@@ -1313,7 +1317,11 @@ function wordEntryFromPhraseGroup(group, word, vocabMap, specializedWordSet) {
 // CẢ 2 vế giống hệt cách chuẩn hoá coverage-check phía server (itemPhraseCoverageOk()) trước khi
 // so khớp.
 function normalizeMatchWord(w) {
-  return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
+  return (w || "")
+    .toString()
+    .toLowerCase()
+    .replace(/[’‘ʼ]/g, "'")
+    .replace(/[^a-z0-9']/g, "");
 }
 
 // SỬA 2026-08-10 (Đợt 13 mục 4) — mỗi TỪ giờ là 1 span RIÊNG (trước đây cả cụm là 1 span DUY

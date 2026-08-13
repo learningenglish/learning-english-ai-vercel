@@ -1057,8 +1057,18 @@ function endsOnDanglingQuestion(content) {
 // TOOLTIP, một tính năng độc lập với chất lượng nội dung bài học — bài phủ chưa đủ 100% lúc
 // sinh thì đơn giản là sẽ được "vá 1 lần" khi người dùng bấm vào từ đầu tiên còn thiếu, ĐÚNG
 // CƠ CHẾ đã xây cho bài CŨ, không có lý do gì bài MỚI phải bị chặn nghiêm khắc hơn bài cũ).
+// BUG THẬT (2026-08-13, bài #1-B2 — câu chứa "organization's"/"management's" bị AI SINH RA bằng
+// dấu nháy đơn CONG "’" (U+2019, "smart quote" — model hay tự đổi kiểu này trong văn xuôi) —
+// regex CŨ chỉ nhận dấu nháy THẲNG "'" (U+0027), nên "organization’s" bị tách thành 2 token
+// "organization"+"s" (dấu ’ bị coi là dấu câu, làm đứt từ) — coverage-check thất bại DAI DẲNG dù
+// "words" AI trả về đúng ranh giới thật, chỉ khác KIỂU dấu nháy. Nhận CẢ 2 kiểu dấu nháy
+// (thẳng/cong) là 1 phần hợp lệ của từ, chuẩn hoá về CÙNG 1 dạng trước khi so khớp.
 function normalizePhraseWord(w) {
-  return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
+  return (w || "")
+    .toString()
+    .toLowerCase()
+    .replace(/[’‘ʼ]/g, "'")
+    .replace(/[^a-z0-9']/g, "");
 }
 // BUG THẬT (2026-08-12, xác nhận qua dữ liệu sống — bài #5a2 A2 có câu chứa lời trích dẫn trong
 // dấu nháy đơn 'This is...' — coverage-check thất bại LIÊN TỤC dù thử lại 3 lần/9 lượt gọi AI):
@@ -1070,7 +1080,7 @@ function normalizePhraseWord(w) {
 // duy nhất dấu nháy xuất hiện trong từ tiếng Anh thật: "don't", "it's"), không phải ở đầu/cuối 1
 // khối ký tự liên tiếp.
 function sentenceWordTokens(text) {
-  return ((text || "").match(/[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
+  return ((text || "").match(/[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
 }
 // BUG THẬT (2026-08-13, Minh xem trực tiếp bài #7b2 câu 13 — tooltip "organizations" hiện level
 // "B2" đồng loạt cho MỌI từ trong câu, không phân biệt từng từ): hàm này TRƯỚC ĐÂY chỉ so khớp
