@@ -1817,3 +1817,63 @@ trước khi đầu tư thêm vào hướng này.
 - Quyết định đánh đổi chất lượng-vs-chi phí cho residual "Cụm động từ" đôi khi vẫn dài — có thể
   cần lưới đỡ bằng CODE (như đã làm cho chủ ngữ) nếu muốn dứt điểm mà không tốn thêm token, nhưng
   cần thời gian thiết kế kỹ hơn để không phá vỡ các mẫu 10-13 hợp lệ khác.
+
+## 2026-08-13 (đợt 19) — Thay hẳn PHRASE_GROUPS_RULES sang bộ 6 loại NP/VP/PP/AdjP/AdvP/WORD + 4 lưới đỡ code-level
+
+**Bối cảnh:** trong cùng ngày, Minh gửi liên tiếp nhiều phản hồi: (1) khung "S+V+O" tự soạn sáng
+nay vẫn còn lỗi (V dính O, trạng từ giữa câu biến mất); (2) file "quy tắc nhận dạng cụm.txt" —
+bộ quy tắc GỐC, chỉ 6 loại (NP/VP/PP/AdjP/AdvP/WORD), yêu cầu đối chiếu xem có thay được không;
+(3) 3 lỗi UI/i18n (tên chuyên ngành còn tiếng Việt khi UI tiếng Anh, lệch nhãn Home/industrySelect,
+thiếu tagline); (4) tooltip "Không tra được từ" xảy ra thật, yêu cầu đảm bảo 100%; (5) sinh #7a2/
+#7b1/#7b2 để duyệt.
+
+**1. PHRASE_GROUPS_RULES viết lại HOÀN TOÀN theo bộ 6 loại của Minh** (thay 24 loại + khung S-V-O
+tự soạn) — NP/VP/PP/AdjP/AdvP giữ nhãn tiếng Việt cũ (Cụm danh từ/Cụm động từ/Cụm giới từ/Cụm tính
+từ/Cụm trạng từ) để không đổi hiển thị tooltip, WORD dùng loại từ đơn (quy ước đã có). Prompt giảm
+từ ~12.8k → ~10.7k ký tự (~2.68k token, -46% so với bản gốc đầu ngày). Test thật phát hiện + sửa
+tiếp: model tự bịa type "to-infinitive" (đã chặn rõ trong prompt, còn tái phát hiếm — residual).
+
+**2. 3 lưới đỡ CODE-LEVEL mới** (cùng nguyên tắc `splitLeadingSubjectPronoun` cũ — AI không tuân
+thủ đều 100% dù prompt đã có ví dụ, sửa bằng code chắc hơn thêm chữ vào prompt):
+- `mergeFragmentedNounPhrases` — gộp lại determiner/adjective+noun bị chẻ thành nhiều nhóm 1-từ
+  (vd "an"+"accountant" → "an accountant").
+- `mergeStrandedPreposition` — gộp giới từ đứng lẻ (with/for/of/as...) với "Cụm danh từ" theo sau
+  thành 1 "Cụm giới từ" — lỗi RẤT phổ biến (8-10+ lần/bài), chỉ trừ ca giới từ đứng trước "Cụm động
+  từ" (an toàn, tránh gộp sai "to" nguyên mẫu bị word_types gắn nhầm "preposition").
+- Cả 2 áp dụng lại được cho bài ĐÃ có coverage (gọi action không `force` vẫn chạy code-only, không
+  tốn AI) — đã áp dụng ngay cho #7a2/#7b2 sau khi viết xong, xác nhận giảm lỗi giới từ đứng lẻ từ
+  8-10+ xuống 1-3/bài (còn lại đúng là ca "to+VP" cố tình bỏ qua, hoặc pronoun sở hữu hiếm gặp).
+
+**3. Sửa lỗi thật 504 FUNCTION_INVOCATION_TIMEOUT mất hết việc đã làm** — bài B1 #7b1 (19 lượt
+thoại) vượt trần thời gian 1 lượt gọi Vercel khi phân tích tuần tự; code CŨ chỉ PATCH 1 LẦN DUY
+NHẤT ở cuối nên timeout giữa chừng xoá sạch mọi tiến độ, gọi lại lặp lại đúng lỗi (xác nhận qua 2
+lần retry đều 504 y hệt). Sửa: PATCH ngay sau MỖI câu — retry tiếp theo tự tiếp tục đúng chỗ dang
+dở (coverage-check tự lọc câu còn thiếu). #7b1 sau đó cần 4 lượt gọi (9→16→18→19/19... còn 1 câu
+lỗi dai dẳng "You're welcome, Alice! I'm glad to help." — edge case contraction+tên riêng, chấp
+nhận residual). Áp dụng fix tương tự cho `analyze_lesson_reading_chunks`.
+
+**4. Tăng lượt thử phân tích 2→3** (lượt 3 leo thang model mạnh) cho cả phrase_groups/reading_
+chunks — lượt 2 bỏ qua từng khiến 1 câu có phrase_groups RỖNG, client (`spansFromPhraseGroups`)
+rơi thẳng về nhánh `vocabulary` cũ khi gặp mảng rỗng → mọi từ không nằm trong `vocabulary` hiện
+"Không tra được từ." — đây LÀ nguyên nhân thật Minh báo, không phải lỗi thuật toán khớp span.
+
+**5. i18n:** Home không dùng thẳng `goal.title` (câu tĩnh tiếng Việt dựng lúc tạo goal) nữa — tự
+dựng lại qua `t()` + `occupation_profile` (đã có sẵn trong `getActiveLearningGoal()`), dùng ĐÚNG
+bảng dịch `industrySelect.js` → vừa dịch đúng khi đổi ngôn ngữ, vừa đồng bộ nhãn "Giao Tiếp Tổng
+Quát" giữa 2 màn (trước lệch "Tiếng Anh Giao Tiếp" ở màn chọn vs "Giao tiếp tổng quát" ở Home).
+Đăng ký dịch 12 thể loại Luyện Viết còn thiếu, áp `t()` cho cả picker và lịch sử bài viết. Thêm
+tagline "HỌC TIẾNG ANH CÙNG MOSAIC STUDY" dưới tiêu đề màn chọn chuyên ngành.
+
+**6. Sinh + kiểm tra #7a2 (A2, đọc), #7b1 (B1, hội thoại), #7b2 (B2, đọc)** — cả 3 chuyên ngành Kế
+toán, qua đúng `generate_lesson` + `analyze_lesson_phrase_groups`/`analyze_lesson_reading_chunks`.
+Test account cạn quota 10/ngày giữa lúc test hôm nay — Minh đồng ý tăng tạm `DAILY_LESSON_LIMIT`
+10→30 để sinh mẫu, đã trả về 10 ngay sau khi xong (2 commit riêng).
+
+**Bump SW cache v75** (đụng `app/js/views/home/home.js`, `industrySelect.js`, `writingPractice.js`,
+`writingArchive.js`, `app/css/style.css`).
+
+**Residual còn lại (đã biết, chưa xử lý):** possessive NP phức tạp đôi khi vẫn chẻ ("An accounting
+clerk's" + "day" thay vì 1 nhóm); verb+V-ing/verb+object đôi khi vẫn tách quá mức ("enjoys"+"reading"
+thay vì 1 VP); type "to-infinitive" hiếm khi tái phát dù đã chặn rõ trong prompt; possessive pronoun
+(their/his/her) đôi khi bị gắn word_types "pronoun" thay vì "determiner" nên lọt khỏi lưới đỡ NP-
+merge. Tất cả đều KHÔNG làm mất dữ liệu/vỡ tooltip, chỉ chưa tối ưu 100% độ mượt của cụm.
