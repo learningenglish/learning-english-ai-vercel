@@ -1209,9 +1209,12 @@ function findVocabEntry(matchedText, vocabMap) {
 // tự) dùng để sinh "words" của phrase_groups — bất kỳ đoạn nào chứa số ("24 years old", giá
 // tiền, giờ...) làm lệch toàn bộ phép so khớp CẢ ĐOẠN đó, không riêng từ chứa số. Đổi khớp CHÍNH
 // XÁC quy tắc token hoá phía server.
+// SỬA 2026-08-12 — regex PHẢI khớp chính xác sentenceWordTokens() phía server (đã sửa cùng
+// ngày: dấu nháy đơn MỞ ĐẦU 1 từ, dùng để trích lời nói ('This is...'), không còn bị coi là 1
+// phần của từ liền sau — chỉ dấu nháy đứng GIỮA 2 ký tự chữ/số như "don't" mới được giữ).
 function tokenizeWords(text) {
   const tokens = [];
-  const re = /[A-Za-z0-9']+/g;
+  const re = /[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g;
   let m;
   while ((m = re.exec(text || ""))) {
     tokens.push({ word: m[0], start: m.index, end: m.index + m[0].length });

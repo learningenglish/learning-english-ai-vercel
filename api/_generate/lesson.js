@@ -1124,8 +1124,17 @@ function endsOnDanglingQuestion(content) {
 function normalizePhraseWord(w) {
   return (w || "").toString().toLowerCase().replace(/[^a-z0-9']/g, "");
 }
+// BUG THẬT (2026-08-12, xác nhận qua dữ liệu sống — bài #5a2 A2 có câu chứa lời trích dẫn trong
+// dấu nháy đơn 'This is...' — coverage-check thất bại LIÊN TỤC dù thử lại 3 lần/9 lượt gọi AI):
+// regex cũ /[A-Za-z0-9']+/g coi dấu nháy đơn MỞ ĐẦU (dùng để trích lời nói, KHÁC dấu nháy đơn bên
+// TRONG 1 từ như "don't") là 1 PHẦN của từ liền sau nó — token thật ra "'this" (còn dấu nháy),
+// nhưng AI hợp lý viết "words":["This",...] KHÔNG kèm dấu nháy (đúng cách hiểu tự nhiên: dấu nháy
+// trích dẫn là dấu câu, không phải 1 phần của từ) — 2 bên KHÔNG BAO GIỜ khớp được dù AI viết đúng.
+// SỬA: chỉ coi dấu nháy đơn là 1 phần của từ khi nó đứng NGAY GIỮA 2 ký tự chữ/số (đúng vị trí
+// duy nhất dấu nháy xuất hiện trong từ tiếng Anh thật: "don't", "it's"), không phải ở đầu/cuối 1
+// khối ký tự liên tiếp.
 function sentenceWordTokens(text) {
-  return ((text || "").match(/[A-Za-z0-9']+/g) || []).map(normalizePhraseWord);
+  return ((text || "").match(/[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
 }
 function itemPhraseCoverageOk(item) {
   const realWords = sentenceWordTokens(item?.text);
