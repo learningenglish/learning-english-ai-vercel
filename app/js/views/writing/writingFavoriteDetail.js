@@ -6,6 +6,20 @@
 import { getWritingFavoriteById } from "../../db.js";
 import { escapeHtml, formatDate } from "../../utils.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Bài đã sửa": "Corrected essay",
+  "Bài viết hoàn chỉnh": "Polished essay",
+  "Bài tham khảo": "Reference essay",
+  "Đã lưu": "Saved",
+  "Đang tải...": "Loading...",
+  "Thiếu id.": "Missing ID.",
+  "Không tìm thấy bài viết đã lưu.": "Saved writing not found.",
+  "Điểm mạnh": "Strengths",
+  "Từ vựng chuyên ngành": "Specialized vocabulary",
+  "Cấu trúc đáng chú ý": "Notable structures",
+});
 
 const KIND_TITLES = {
   detailed: "Bài đã sửa",
@@ -17,15 +31,15 @@ export async function renderWritingFavoriteDetail(mount, params) {
   const id = params?.[0];
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`Đã lưu`, undefined, { showBack: true })}
-      <p class="muted">Đang tải...</p>
+      ${appHeaderHtml(t("Đã lưu"), undefined, { showBack: true })}
+      <p class="muted">${t("Đang tải...")}</p>
     </div>
   `;
   wireBackLink(mount, () => history.back());
   wireAppHeader(mount);
 
   if (!id) {
-    mount.querySelector(".screen").innerHTML += `<p class="error-text">Thiếu id.</p>`;
+    mount.querySelector(".screen").innerHTML += `<p class="error-text">${t("Thiếu id.")}</p>`;
     return;
   }
 
@@ -37,14 +51,14 @@ export async function renderWritingFavoriteDetail(mount, params) {
   }
   if (!favorite) {
     mount.querySelector(".screen").innerHTML =
-      `${appHeaderHtml(`Đã lưu`, undefined, { showBack: true })}<p class="error-text">Không tìm thấy bài viết đã lưu.</p>`;
+      `${appHeaderHtml(t("Đã lưu"), undefined, { showBack: true })}<p class="error-text">${t("Không tìm thấy bài viết đã lưu.")}</p>`;
     wireBackLink(mount, () => history.back());
     wireAppHeader(mount);
     return;
   }
 
   const labelKey = favorite.kind === "detailed" ? "detailed" : favorite.variant;
-  const title = KIND_TITLES[labelKey] || "Đã lưu";
+  const title = t(KIND_TITLES[labelKey] || "Đã lưu");
   const task = favorite.task || {};
 
   mount.innerHTML = `
@@ -59,7 +73,7 @@ export async function renderWritingFavoriteDetail(mount, params) {
 
       ${renderContent(favorite)}
 
-      <p class="muted writing-favorite-date">Đã lưu ${formatDate(favorite.created_at)}</p>
+      <p class="muted writing-favorite-date">${t("Đã lưu")} ${formatDate(favorite.created_at)}</p>
     </div>
   `;
   wireBackLink(mount, () => history.back());
@@ -83,7 +97,7 @@ function renderContent(favorite) {
     return `
       ${Number.isFinite(favorite.overall_score) ? `<div class="card writing-score-card writing-card"><div class="writing-score-value">${favorite.overall_score}<span class="muted">/100</span></div></div>` : ""}
       <div class="writing-criteria-list">${criteriaHtml}</div>
-      ${c.strengths ? `<div class="result-panel result-success"><div class="result-title">Điểm mạnh</div><p>${escapeHtml(c.strengths)}</p></div>` : ""}
+      ${c.strengths ? `<div class="result-panel result-success"><div class="result-title">${t("Điểm mạnh")}</div><p>${escapeHtml(c.strengths)}</p></div>` : ""}
       <div class="card writing-card">
         <p class="writing-annotated-text">${annotatedBlockHtml(c.segments || [])}</p>
       </div>
@@ -95,10 +109,10 @@ function renderContent(favorite) {
   // 2 tab như lúc chấm mới (bookmark tĩnh, ưu tiên đơn giản khi xem lại).
   const c = favorite.content || {};
   const vocabHtml = c.vocab?.length
-    ? `<div class="writing-section-title writing-section-title-spaced">Từ vựng chuyên ngành</div><ul class="writing-suggestion-list">${c.vocab.map((v) => `<li><strong>${escapeHtml(v.word)}</strong>${v.meaning ? ` — ${escapeHtml(v.meaning)}` : ""}</li>`).join("")}</ul>`
+    ? `<div class="writing-section-title writing-section-title-spaced">${t("Từ vựng chuyên ngành")}</div><ul class="writing-suggestion-list">${c.vocab.map((v) => `<li><strong>${escapeHtml(v.word)}</strong>${v.meaning ? ` — ${escapeHtml(v.meaning)}` : ""}</li>`).join("")}</ul>`
     : "";
   const patternsHtml = c.patterns?.length
-    ? `<div class="writing-section-title writing-section-title-spaced">Cấu trúc đáng chú ý</div>${c.patterns
+    ? `<div class="writing-section-title writing-section-title-spaced">${t("Cấu trúc đáng chú ý")}</div>${c.patterns
         .map(
           (p) => `
       <div class="writing-pattern-row">

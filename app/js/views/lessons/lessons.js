@@ -19,13 +19,31 @@ import { listAiGeneratedLessons, listInProgressLessons } from "../../db.js";
 import { icon } from "../../icons.js";
 import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Hội thoại": "Dialogue",
+  "Bài đọc": "Reading",
+  "Bài học gần đây": "Recent lessons",
+  "Chưa có bài hội thoại nào": "No dialogue lessons yet",
+  "Chưa có bài đọc nào": "No reading lessons yet",
+  "ở cấp độ": "at level",
+  "Không tải được danh sách bài học.": "Couldn't load the lesson list.",
+  // Nhãn phụ LEVEL_CARDS (2026-08-12, dịch bỏ chữ tiếng Anh viết tắt trong khung tiếng Việt —
+  // Minh: "giao diện tiếng Việt không lẫn tiếng Anh trừ từ mượn thông dụng").
+  "Sơ cấp": "Begin.",
+  "Cơ bản": "Elem.",
+  "Trung cấp": "Inter.",
+  "Cao trung cấp": "Upper",
+  "Cao cấp": "Adv.",
+});
 
 const LEVEL_CARDS = [
-  { level: "A1", sub: "Begin.", chip: "blue" },
-  { level: "A2", sub: "Elem.", chip: "green" },
-  { level: "B1", sub: "Inter.", chip: "purple" },
-  { level: "B2", sub: "Upper", chip: "orange" },
-  { level: "C1", sub: "Adv.", chip: "blue" },
+  { level: "A1", sub: "Sơ cấp", chip: "blue" },
+  { level: "A2", sub: "Cơ bản", chip: "green" },
+  { level: "B1", sub: "Trung cấp", chip: "purple" },
+  { level: "B2", sub: "Cao trung cấp", chip: "orange" },
+  { level: "C1", sub: "Cao cấp", chip: "blue" },
 ];
 
 // Nhớ level đang lọc theo TỪNG loại nội dung (2026-08-09, Đợt 4 mục 11 — Minh: "lần đầu vào mặc
@@ -68,7 +86,7 @@ function skeletonListHtml(count = 3) {
 export function renderLessons(mount, params) {
   const contentType = params?.[0] === "dialogue" ? "dialogue" : "reading";
   const state = { level: getLevelPreference(contentType) };
-  const titleText = contentType === "dialogue" ? "Hội thoại" : "Bài đọc";
+  const titleText = t(contentType === "dialogue" ? "Hội thoại" : "Bài đọc");
 
   mount.innerHTML = `
     <div class="screen">
@@ -80,14 +98,14 @@ export function renderLessons(mount, params) {
           <button type="button" class="level-card chip-${l.chip} ${state.level === l.level ? "active" : ""}" data-level="${l.level}">
             <span class="level-card-icon">${icon("book-open", { size: 18 })}</span>
             <span class="level-card-name">${l.level}</span>
-            <span class="level-card-sub">${l.sub}</span>
+            <span class="level-card-sub">${t(l.sub)}</span>
           </button>
         `
         ).join("")}
       </div>
 
       <div id="continue-section" hidden>
-        <div class="section-label-row"><span class="section-label-tab">Bài học gần đây</span></div>
+        <div class="section-label-row"><span class="section-label-tab">${t("Bài học gần đây")}</span></div>
         <div id="continue-scroll" class="continue-scroll"></div>
       </div>
 
@@ -132,9 +150,9 @@ export function renderLessons(mount, params) {
     let lessons = allLessons;
     if (state.level !== "all") lessons = lessons.filter((l) => l.level === state.level);
     if (!lessons.length) {
-      listEl.innerHTML = `<p class="muted">Chưa có bài ${contentType === "dialogue" ? "hội thoại" : "đọc"} nào${
-        state.level !== "all" ? ` ở cấp độ ${state.level}` : ""
-      }.</p>`;
+      const base = t(contentType === "dialogue" ? "Chưa có bài hội thoại nào" : "Chưa có bài đọc nào");
+      const suffix = state.level !== "all" ? ` ${t("ở cấp độ")} ${state.level}` : "";
+      listEl.innerHTML = `<p class="muted">${base}${suffix}.</p>`;
       return;
     }
     listEl.innerHTML = lessons.map((l) => lessonCardHtml(l)).join("");
@@ -154,7 +172,7 @@ export function renderLessons(mount, params) {
       renderContinueSection(inProgress);
       renderList();
     } catch {
-      mount.querySelector("#lessons-list").innerHTML = `<p class="error-text">Không tải được danh sách bài học.</p>`;
+      mount.querySelector("#lessons-list").innerHTML = `<p class="error-text">${t("Không tải được danh sách bài học.")}</p>`;
     }
   }
 

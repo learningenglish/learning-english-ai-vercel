@@ -14,12 +14,20 @@ import { navigate } from "../../router.js";
 import { listTextAnalyzedLessons, getActiveLearningGoal } from "../../db.js";
 import { lessonCardHtml, wireLessonCards } from "../../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Lưu trữ": "Archive",
+  "Đang tải...": "Loading...",
+  "Chưa có bài phân tích nào được lưu.": "No saved analyses yet.",
+  "Không tải được danh sách đã lưu.": "Couldn't load the saved list.",
+});
 
 export async function renderAnalysisArchive(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`Lưu trữ`, undefined, { showBack: true })}
-      <div id="analysis-archive-list" class="lessons-list"><p class="muted">Đang tải...</p></div>
+      ${appHeaderHtml(t("Lưu trữ"), undefined, { showBack: true })}
+      <div id="analysis-archive-list" class="lessons-list"><p class="muted">${t("Đang tải...")}</p></div>
     </div>
   `;
   wireBackLink(mount, () => history.back());
@@ -30,12 +38,12 @@ export async function renderAnalysisArchive(mount) {
     const goal = await getActiveLearningGoal().catch(() => null);
     const rows = await listTextAnalyzedLessons({ goalId: goal?.id });
     if (!rows.length) {
-      listEl.innerHTML = `<p class="muted">Chưa có bài phân tích nào được lưu.</p>`;
+      listEl.innerHTML = `<p class="muted">${t("Chưa có bài phân tích nào được lưu.")}</p>`;
       return;
     }
     listEl.innerHTML = rows.map((l) => lessonCardHtml(l)).join("");
     wireLessonCards(listEl, { onOpen: (id) => navigate(`/lesson/${id}`) });
   } catch {
-    listEl.innerHTML = `<p class="error-text">Không tải được danh sách đã lưu.</p>`;
+    listEl.innerHTML = `<p class="error-text">${t("Không tải được danh sách đã lưu.")}</p>`;
   }
 }

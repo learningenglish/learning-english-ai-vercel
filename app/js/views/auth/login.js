@@ -2,6 +2,19 @@
 import { signInWithPassword, startOAuthLogin } from "../../authApi.js";
 import { setSession } from "../../session.js";
 import { navigate } from "../../router.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Đăng nhập để bắt đầu học": "Log in to start learning",
+  "Email": "Email",
+  "Mật khẩu": "Password",
+  "hoặc": "or",
+  "Đăng nhập với Google": "Log in with Google",
+  "Đăng nhập với Facebook": "Log in with Facebook",
+  "Đang đăng nhập...": "Logging in...",
+  "Đăng nhập": "Log in",
+  "Đăng nhập thất bại.": "Login failed.",
+});
 
 // Logo (2026-08-10, Đợt 6 mục 12 đợt 4) — 2 bản sáng/tối (app/icons/logo-light.png,
 // logo-dark.png), chọn theo "data-theme" đã resolve sẵn trên <html> lúc app khởi động (xem
@@ -18,25 +31,25 @@ export function renderLogin(mount) {
     <div class="screen screen-center">
       <div class="card login-card">
         <img class="app-logo" src="${logoUrl()}" alt="Mosaic" />
-        <p class="app-subtitle muted">Đăng nhập để bắt đầu học</p>
+        <p class="app-subtitle muted">${t("Đăng nhập để bắt đầu học")}</p>
         <form id="login-form" novalidate>
           <label class="field">
-            <span>Email</span>
+            <span>${t("Email")}</span>
             <input type="email" name="email" required autocomplete="username" />
           </label>
           <label class="field">
-            <span>Mật khẩu</span>
+            <span>${t("Mật khẩu")}</span>
             <input type="password" name="password" required autocomplete="current-password" />
           </label>
           <p id="login-error" class="error-text" hidden></p>
-          <button type="submit" class="btn btn-primary btn-block" id="login-submit">Đăng nhập</button>
+          <button type="submit" class="btn btn-primary btn-block" id="login-submit">${t("Đăng nhập")}</button>
         </form>
         <!-- OAuth (2026-08-04) — Supabase Auth Providers (Google/Facebook), CẠNH luồng email/
              password đã có, KHÔNG thay thế. Xem authApi.js::startOAuthLogin() cho chi tiết
              redirect_to/domain. -->
-        <div class="login-divider"><span>hoặc</span></div>
-        <button type="button" class="btn btn-block btn-oauth" id="oauth-google-btn">Đăng nhập với Google</button>
-        <button type="button" class="btn btn-block btn-oauth" id="oauth-facebook-btn">Đăng nhập với Facebook</button>
+        <div class="login-divider"><span>${t("hoặc")}</span></div>
+        <button type="button" class="btn btn-block btn-oauth" id="oauth-google-btn">${t("Đăng nhập với Google")}</button>
+        <button type="button" class="btn btn-block btn-oauth" id="oauth-facebook-btn">${t("Đăng nhập với Facebook")}</button>
       </div>
     </div>
   `;
@@ -49,17 +62,17 @@ export function renderLogin(mount) {
     e.preventDefault();
     errorEl.hidden = true;
     submitBtn.disabled = true;
-    submitBtn.textContent = "Đang đăng nhập...";
+    submitBtn.textContent = t("Đang đăng nhập...");
     try {
       const session = await signInWithPassword(form.email.value.trim(), form.password.value);
       setSession(session);
       navigate("/home");
     } catch (err) {
-      errorEl.textContent = err.message || "Đăng nhập thất bại.";
+      errorEl.textContent = err.message || t("Đăng nhập thất bại.");
       errorEl.hidden = false;
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Đăng nhập";
+      submitBtn.textContent = t("Đăng nhập");
     }
   });
 

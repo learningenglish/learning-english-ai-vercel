@@ -26,6 +26,61 @@ import { icon } from "../../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
 import { callChatAction } from "../../chatApi.js";
 import { createPlayer, isTTSSupported } from "../../tts.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Luyện viết": "Writing practice",
+  "Nhiệm vụ": "Task",
+  "Viết bài": "Write",
+  "Kết quả": "Result",
+  "Chi tiết bài viết": "Writing details",
+  "Bài viết hoàn chỉnh": "Polished essay",
+  "Bài tham khảo": "Reference essay",
+  "Đang tải...": "Loading...",
+  "Chọn thể loại luyện viết": "Choose a writing genre",
+  "Cấp độ luyện tập": "Practice level",
+  "AI Giao Nhiệm Vụ": "AI Assign Task",
+  "Mục tiêu bài viết": "Writing goals",
+  "Cấu trúc gợi ý": "Suggested structure",
+  "Đổi đề khác": "Try another topic",
+  "Bắt đầu viết": "Start writing",
+  "Bắt đầu viết bài của bạn...": "Start writing your essay...",
+  "từ": "words",
+  "Mục tiêu": "Target",
+  "Cấu trúc": "Structure",
+  "Từ vựng": "Vocabulary",
+  "Cụm từ": "Phrases",
+  "Gửi bài viết": "Submit essay",
+  "Không có gợi ý từ vựng riêng cho đề này.": "No specific vocabulary suggestions for this topic.",
+  "Không có gợi ý cụm từ riêng cho đề này.": "No specific phrase suggestions for this topic.",
+  "Điểm mạnh": "Strengths",
+  "Xem chi tiết bài viết": "View writing details",
+  "Hoàn tất": "Finish",
+  "Xem bài tham khảo": "View reference essay",
+  "Xem bài viết hoàn chỉnh": "View polished essay",
+  "Đã lưu bài đã sửa": "Corrected essay saved",
+  "Lưu bài đã sửa": "Save corrected essay",
+  "Quay lại kết quả": "Back to result",
+  "Đã lưu bài tham khảo": "Reference essay saved",
+  "Lưu bài tham khảo": "Save reference essay",
+  "Quay lại chi tiết": "Back to details",
+  "Nội dung": "Content",
+  "Từ vựng &amp; Ngữ pháp": "Vocabulary &amp; Grammar",
+  "Đã lưu bài hoàn chỉnh": "Polished essay saved",
+  "Lưu bài hoàn chỉnh": "Save polished essay",
+  "Bài mẫu không nổi bật từ chuyên ngành nào riêng.": "The sample doesn't highlight any field-specific vocabulary.",
+  "Không chọn lĩnh vực nên không có từ chuyên ngành để gợi ý.": "No industry selected, so there's no specialized vocabulary to suggest.",
+  "Bài mẫu không có cấu trúc nào nổi bật hơn hẳn cách viết gốc của bạn.": "The sample has no structure that stands out compared to your original writing.",
+  "Từ vựng chuyên ngành đã dùng": "Specialized vocabulary used",
+  "Cấu trúc đáng chú ý": "Notable structures",
+  "Tạm dừng": "Pause",
+  "Phát": "Play",
+  "AI đang chọn nhiệm vụ...": "AI is choosing a task...",
+  "Có lỗi xảy ra, vui lòng thử lại.": "Something went wrong, please try again.",
+  "Bài viết quá ngắn (tối thiểu 10 từ).": "Your essay is too short (minimum 10 words).",
+  "AI đang chấm bài viết...": "AI is grading your essay...",
+  "Lưu thất bại, vui lòng thử lại.": "Save failed, please try again.",
+});
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
@@ -57,13 +112,13 @@ const DEFAULT_GENRE_STYLE = { icon: "file-text", chip: "blue" };
 // bước cuối (Bài viết hoàn chỉnh/Bài tham khảo, dùng "sparkles" phân biệt rõ với các bước
 // trước, giữ nguyên như cũ).
 const STEP_TITLES = {
-  genre: `Luyện viết`,
-  task: `Nhiệm vụ`,
-  write: `Viết bài`,
-  result: `Kết quả`,
-  detail: `Chi tiết bài viết`,
-  clean: `${icon("sparkles", { size: 22 })} Bài viết hoàn chỉnh`,
-  reference: `${icon("sparkles", { size: 22 })} Bài tham khảo`,
+  genre: t("Luyện viết"),
+  task: t("Nhiệm vụ"),
+  write: t("Viết bài"),
+  result: t("Kết quả"),
+  detail: t("Chi tiết bài viết"),
+  clean: `${icon("sparkles", { size: 22 })} ${t("Bài viết hoàn chỉnh")}`,
+  reference: `${icon("sparkles", { size: 22 })} ${t("Bài tham khảo")}`,
 };
 
 export function renderWritingPractice(mount) {
@@ -165,10 +220,10 @@ export function renderWritingPractice(mount) {
   // list_writing_genres, KHÔNG gọi AI) + cấp độ + lĩnh vực (tuỳ chọn), TẤT CẢ trên CÙNG 1 màn —
   // ĐÚNG 1 nút "AI Giao Nhiệm Vụ" duy nhất, không còn màn "setup" riêng. ======
   function renderGenreStep() {
-    if (state.genres === null) return `<p class="muted">Đang tải...</p>`;
+    if (state.genres === null) return `<p class="muted">${t("Đang tải...")}</p>`;
     return `
       <label class="field">
-        <span class="field-question">Chọn thể loại luyện viết</span>
+        <span class="field-question">${t("Chọn thể loại luyện viết")}</span>
       </label>
       <div class="genre-list">
         ${state.genres
@@ -186,86 +241,86 @@ export function renderWritingPractice(mount) {
       </div>
 
       <label class="field">
-        <span class="field-question">Cấp độ luyện tập</span>
+        <span class="field-question">${t("Cấp độ luyện tập")}</span>
       </label>
       <div class="filter-row" id="level-chip-row">
         ${LEVELS.map((l) => `<button type="button" class="filter-chip level-chip ${l === state.level ? "active" : ""}" data-level="${l}">${l}</button>`).join("")}
       </div>
 
       <div id="genre-result-slot"></div>
-      <button type="button" class="btn btn-primary btn-block" id="genre-continue-btn" ${state.genre ? "" : "disabled"}>AI Giao Nhiệm Vụ</button>
+      <button type="button" class="btn btn-primary btn-block" id="genre-continue-btn" ${state.genre ? "" : "disabled"}>${t("AI Giao Nhiệm Vụ")}</button>
     `;
   }
 
   // ====== Bước 2: AI giao nhiệm vụ ======
   function renderTaskStep() {
-    const t = state.task;
+    const task = state.task;
     return `
       <div class="card writing-card writing-task-card">
-        <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Nhiệm vụ")} <span class="level-pill">${state.level}</span></div>
-        <p class="writing-topic-en">${escapeHtml(t.topic_en)}</p>
-        <p class="writing-topic-vi muted">${escapeHtml(t.topic_vi)}</p>
-        ${t.topic_note ? `<p class="writing-topic-note">${icon("compass", { size: 14 })} ${escapeHtml(t.topic_note)}</p>` : ""}
+        <div class="writing-genre-badge">${escapeHtml(task.genre_vi || t("Nhiệm vụ"))} <span class="level-pill">${state.level}</span></div>
+        <p class="writing-topic-en">${escapeHtml(task.topic_en)}</p>
+        <p class="writing-topic-vi muted">${escapeHtml(task.topic_vi)}</p>
+        ${task.topic_note ? `<p class="writing-topic-note">${icon("compass", { size: 14 })} ${escapeHtml(task.topic_note)}</p>` : ""}
       </div>
 
       <div class="card writing-card">
-        <div class="writing-section-title">Mục tiêu bài viết</div>
+        <div class="writing-section-title">${t("Mục tiêu bài viết")}</div>
         <ul class="writing-goals-list">
-          ${t.goals.map((g) => `<li>${icon("check-circle", { size: 16 })} <span>${escapeHtml(g)}</span></li>`).join("")}
+          ${task.goals.map((g) => `<li>${icon("check-circle", { size: 16 })} <span>${escapeHtml(g)}</span></li>`).join("")}
         </ul>
       </div>
 
       <div class="card writing-card">
-        <div class="writing-section-title">Cấu trúc gợi ý</div>
+        <div class="writing-section-title">${t("Cấu trúc gợi ý")}</div>
         <ol class="writing-structure-list">
-          ${t.structure.map((s) => `<li><strong>${escapeHtml(s.label)}</strong> <span class="muted">${s.label_vi ? `(${escapeHtml(s.label_vi)})` : ""}</span></li>`).join("")}
+          ${task.structure.map((s) => `<li><strong>${escapeHtml(s.label)}</strong> <span class="muted">${s.label_vi ? `(${escapeHtml(s.label_vi)})` : ""}</span></li>`).join("")}
         </ol>
       </div>
 
       <div id="task-result-slot"></div>
       <div class="director-card-actions">
-        <button type="button" class="btn btn-ghost btn-block" id="task-reroll-btn">Đổi đề khác</button>
-        <button type="button" class="btn btn-primary btn-block" id="task-start-btn">Bắt đầu viết</button>
+        <button type="button" class="btn btn-ghost btn-block" id="task-reroll-btn">${t("Đổi đề khác")}</button>
+        <button type="button" class="btn btn-primary btn-block" id="task-start-btn">${t("Bắt đầu viết")}</button>
       </div>
     `;
   }
 
   // ====== Bước 3: người dùng viết ======
   function renderWriteStep() {
-    const t = state.task;
+    const task = state.task;
     const n = countWords(state.text);
     return `
       <div class="card writing-task-recap">
-        <div class="writing-genre-badge">${escapeHtml(t.genre_vi || "Nhiệm vụ")} <span class="level-pill">${state.level}</span></div>
-        <p class="writing-topic-en">${escapeHtml(t.topic_en)}</p>
+        <div class="writing-genre-badge">${escapeHtml(task.genre_vi || t("Nhiệm vụ"))} <span class="level-pill">${state.level}</span></div>
+        <p class="writing-topic-en">${escapeHtml(task.topic_en)}</p>
       </div>
 
-      <textarea id="writing-textarea" rows="10" placeholder="Bắt đầu viết bài của bạn...">${escapeHtml(state.text)}</textarea>
-      <p class="field-hint" id="writing-wordcount">${n} từ · Mục tiêu: ${state.targetWordsMin}-${state.targetWordsMax} từ</p>
+      <textarea id="writing-textarea" rows="10" placeholder="${t("Bắt đầu viết bài của bạn...")}">${escapeHtml(state.text)}</textarea>
+      <p class="field-hint" id="writing-wordcount">${n} ${t("từ")} · ${t("Mục tiêu")}: ${state.targetWordsMin}-${state.targetWordsMax} ${t("từ")}</p>
 
       <div class="tabs" id="support-tabs">
-        <button type="button" class="tab-btn ${state.supportTab === "structure" ? "active" : ""}" data-tab="structure">Cấu trúc</button>
-        <button type="button" class="tab-btn ${state.supportTab === "vocab" ? "active" : ""}" data-tab="vocab">Từ vựng</button>
-        <button type="button" class="tab-btn ${state.supportTab === "phrases" ? "active" : ""}" data-tab="phrases">Cụm từ</button>
+        <button type="button" class="tab-btn ${state.supportTab === "structure" ? "active" : ""}" data-tab="structure">${t("Cấu trúc")}</button>
+        <button type="button" class="tab-btn ${state.supportTab === "vocab" ? "active" : ""}" data-tab="vocab">${t("Từ vựng")}</button>
+        <button type="button" class="tab-btn ${state.supportTab === "phrases" ? "active" : ""}" data-tab="phrases">${t("Cụm từ")}</button>
       </div>
       <div class="card writing-support-panel" id="support-panel">${renderSupportPanel()}</div>
 
       <div id="write-result-slot"></div>
-      <button type="button" class="btn btn-primary btn-block" id="submit-writing-btn">Gửi bài viết</button>
+      <button type="button" class="btn btn-primary btn-block" id="submit-writing-btn">${t("Gửi bài viết")}</button>
     `;
   }
 
   function renderSupportPanel() {
-    const t = state.task;
+    const task = state.task;
     if (state.supportTab === "structure") {
-      return `<ol class="writing-structure-list">${t.structure.map((s) => `<li><strong>${escapeHtml(s.label)}</strong> <span class="muted">${s.label_vi ? `(${escapeHtml(s.label_vi)})` : ""}</span></li>`).join("")}</ol>`;
+      return `<ol class="writing-structure-list">${task.structure.map((s) => `<li><strong>${escapeHtml(s.label)}</strong> <span class="muted">${s.label_vi ? `(${escapeHtml(s.label_vi)})` : ""}</span></li>`).join("")}</ol>`;
     }
     if (state.supportTab === "vocab") {
-      if (!t.vocabulary_suggestions?.length) return `<p class="muted">Không có gợi ý từ vựng riêng cho đề này.</p>`;
-      return `<ul class="writing-suggestion-list">${t.vocabulary_suggestions.map((v) => `<li><strong>${escapeHtml(v.word)}</strong> — ${escapeHtml(v.meaning)}</li>`).join("")}</ul>`;
+      if (!task.vocabulary_suggestions?.length) return `<p class="muted">${t("Không có gợi ý từ vựng riêng cho đề này.")}</p>`;
+      return `<ul class="writing-suggestion-list">${task.vocabulary_suggestions.map((v) => `<li><strong>${escapeHtml(v.word)}</strong> — ${escapeHtml(v.meaning)}</li>`).join("")}</ul>`;
     }
-    if (!t.useful_phrases?.length) return `<p class="muted">Không có gợi ý cụm từ riêng cho đề này.</p>`;
-    return `<ul class="writing-suggestion-list">${t.useful_phrases.map((p) => `<li><strong>${escapeHtml(p.phrase)}</strong> — ${escapeHtml(p.meaning)}</li>`).join("")}</ul>`;
+    if (!task.useful_phrases?.length) return `<p class="muted">${t("Không có gợi ý cụm từ riêng cho đề này.")}</p>`;
+    return `<ul class="writing-suggestion-list">${task.useful_phrases.map((p) => `<li><strong>${escapeHtml(p.phrase)}</strong> — ${escapeHtml(p.meaning)}</li>`).join("")}</ul>`;
   }
 
   // ====== Bước 4: AI chấm điểm tổng quan ======
@@ -301,14 +356,14 @@ export function renderWritingPractice(mount) {
         isWeak
           ? `<div class="result-panel result-error"><p>${escapeHtml(g.weak_message)}</p></div>`
           : `<div class="result-panel result-success">
-              <div class="result-title">Điểm mạnh</div>
+              <div class="result-title">${t("Điểm mạnh")}</div>
               <p>${escapeHtml(g.strengths)}</p>
             </div>`
       }
 
       <div class="director-card-actions">
-        ${isWeak ? "" : `<button type="button" class="btn btn-ghost btn-block" id="view-detail-btn">Xem chi tiết bài viết</button>`}
-        <button type="button" class="btn btn-primary btn-block" id="finish-writing-btn">Hoàn tất</button>
+        ${isWeak ? "" : `<button type="button" class="btn btn-ghost btn-block" id="view-detail-btn">${t("Xem chi tiết bài viết")}</button>`}
+        <button type="button" class="btn btn-primary btn-block" id="finish-writing-btn">${t("Hoàn tất")}</button>
       </div>
     `;
   }
@@ -320,9 +375,9 @@ export function renderWritingPractice(mount) {
     // mức điểm (xem SCORE_TIERS trong api/_generate/writing.js) — chỉ 1 trong 2 nút hiện ra.
     const secondaryBtnHtml =
       g.tier === "average" && g.reference_essay
-        ? `<button type="button" class="btn btn-ghost btn-block" id="view-reference-btn">${icon("sparkles", { size: 18 })} Xem bài tham khảo</button>`
+        ? `<button type="button" class="btn btn-ghost btn-block" id="view-reference-btn">${icon("sparkles", { size: 18 })} ${t("Xem bài tham khảo")}</button>`
         : (g.tier === "good" || g.tier === "excellent") && g.clean_rewrite
-        ? `<button type="button" class="btn btn-ghost btn-block" id="view-clean-btn">${icon("sparkles", { size: 18 })} Xem bài viết hoàn chỉnh</button>`
+        ? `<button type="button" class="btn btn-ghost btn-block" id="view-clean-btn">${icon("sparkles", { size: 18 })} ${t("Xem bài viết hoàn chỉnh")}</button>`
         : "";
     return `
       <div class="card writing-card">
@@ -331,9 +386,9 @@ export function renderWritingPractice(mount) {
       ${g.notices.length ? `<div class="writing-notices">${g.notices.map((n) => `<p class="writing-notice">${escapeHtml(n)}</p>`).join("")}</div>` : ""}
       <div id="save-detailed-slot"></div>
       <div class="director-card-actions">
-        <button type="button" class="btn btn-ghost btn-block" id="save-detailed-btn" ${state.savedDetailed ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedDetailed ? "Đã lưu bài đã sửa" : "Lưu bài đã sửa"}</button>
+        <button type="button" class="btn btn-ghost btn-block" id="save-detailed-btn" ${state.savedDetailed ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedDetailed ? t("Đã lưu bài đã sửa") : t("Lưu bài đã sửa")}</button>
         ${secondaryBtnHtml}
-        <button type="button" class="btn btn-ghost btn-block" id="back-to-result-btn">Quay lại kết quả</button>
+        <button type="button" class="btn btn-ghost btn-block" id="back-to-result-btn">${t("Quay lại kết quả")}</button>
       </div>
     `;
   }
@@ -350,8 +405,8 @@ export function renderWritingPractice(mount) {
       </div>
       <div id="save-reference-slot"></div>
       <div class="director-card-actions">
-        <button type="button" class="btn btn-ghost btn-block" id="save-reference-btn" ${state.savedReference ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedReference ? "Đã lưu bài tham khảo" : "Lưu bài tham khảo"}</button>
-        <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-from-reference-btn">Quay lại chi tiết</button>
+        <button type="button" class="btn btn-ghost btn-block" id="save-reference-btn" ${state.savedReference ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedReference ? t("Đã lưu bài tham khảo") : t("Lưu bài tham khảo")}</button>
+        <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-from-reference-btn">${t("Quay lại chi tiết")}</button>
       </div>
     `;
   }
@@ -395,14 +450,14 @@ export function renderWritingPractice(mount) {
       ${state.cleanCoverImage ? `<img class="writing-clean-cover" src="${escapeHtml(state.cleanCoverImage)}" alt="" />` : ""}
       ${state.cleanTab === "content" && isTTSSupported() ? renderAudioPlayerHtml() : ""}
       <div class="tabs" id="clean-tabs">
-        <button type="button" class="tab-btn ${state.cleanTab === "content" ? "active" : ""}" data-tab="content">Nội dung</button>
-        <button type="button" class="tab-btn ${state.cleanTab === "vocab-grammar" ? "active" : ""}" data-tab="vocab-grammar">Từ vựng &amp; Ngữ pháp</button>
+        <button type="button" class="tab-btn ${state.cleanTab === "content" ? "active" : ""}" data-tab="content">${t("Nội dung")}</button>
+        <button type="button" class="tab-btn ${state.cleanTab === "vocab-grammar" ? "active" : ""}" data-tab="vocab-grammar">${t("Từ vựng &amp; Ngữ pháp")}</button>
       </div>
       <div class="card writing-card" id="clean-panel">${renderCleanPanel()}</div>
       <div id="save-clean-slot"></div>
       <div class="director-card-actions">
-        <button type="button" class="btn btn-ghost btn-block" id="save-clean-btn" ${state.savedClean ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedClean ? "Đã lưu bài hoàn chỉnh" : "Lưu bài hoàn chỉnh"}</button>
-        <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-btn">Quay lại chi tiết</button>
+        <button type="button" class="btn btn-ghost btn-block" id="save-clean-btn" ${state.savedClean ? "disabled" : ""}>${icon("bookmark", { size: 16 })} ${state.savedClean ? t("Đã lưu bài hoàn chỉnh") : t("Lưu bài hoàn chỉnh")}</button>
+        <button type="button" class="btn btn-ghost btn-block" id="back-to-detail-btn">${t("Quay lại chi tiết")}</button>
       </div>
     `;
   }
@@ -414,7 +469,7 @@ export function renderWritingPractice(mount) {
     }
     const vocabHtml = c.vocab.length
       ? `<ul class="writing-suggestion-list">${c.vocab.map((v) => `<li><strong>${escapeHtml(v.word)}</strong>${v.meaning ? ` — ${escapeHtml(v.meaning)}` : ""}</li>`).join("")}</ul>`
-      : `<p class="muted">${state.industry ? "Bài mẫu không nổi bật từ chuyên ngành nào riêng." : "Không chọn lĩnh vực nên không có từ chuyên ngành để gợi ý."}</p>`;
+      : `<p class="muted">${state.industry ? t("Bài mẫu không nổi bật từ chuyên ngành nào riêng.") : t("Không chọn lĩnh vực nên không có từ chuyên ngành để gợi ý.")}</p>`;
     const patternsHtml = c.patterns.length
       ? c.patterns
           .map(
@@ -427,11 +482,11 @@ export function renderWritingPractice(mount) {
       `
           )
           .join("")
-      : `<p class="muted">Bài mẫu không có cấu trúc nào nổi bật hơn hẳn cách viết gốc của bạn.</p>`;
+      : `<p class="muted">${t("Bài mẫu không có cấu trúc nào nổi bật hơn hẳn cách viết gốc của bạn.")}</p>`;
     return `
-      <div class="writing-section-title">Từ vựng chuyên ngành đã dùng</div>
+      <div class="writing-section-title">${t("Từ vựng chuyên ngành đã dùng")}</div>
       ${vocabHtml}
-      <div class="writing-section-title writing-section-title-spaced">Cấu trúc đáng chú ý</div>
+      <div class="writing-section-title writing-section-title-spaced">${t("Cấu trúc đáng chú ý")}</div>
       ${patternsHtml}
     `;
   }
@@ -443,7 +498,7 @@ export function renderWritingPractice(mount) {
     const playing = ttsPlayer?.getState().playing || false;
     return `
       <div class="audio-player" id="clean-audio-player">
-        <button type="button" class="audio-play-btn" id="clean-audio-playpause" aria-label="${playing ? "Tạm dừng" : "Phát"}">
+        <button type="button" class="audio-play-btn" id="clean-audio-playpause" aria-label="${playing ? t("Tạm dừng") : t("Phát")}">
           ${icon(playing ? "pause" : "play", { size: 18 })}
         </button>
         <div class="clean-audio-track" id="clean-audio-track">
@@ -671,7 +726,7 @@ export function renderWritingPractice(mount) {
     const wc = mount.querySelector("#writing-wordcount");
     textarea.addEventListener("input", () => {
       state.text = textarea.value;
-      wc.textContent = `${countWords(state.text)} từ · Mục tiêu: ${state.targetWordsMin}-${state.targetWordsMax} từ`;
+      wc.textContent = `${countWords(state.text)} ${t("từ")} · ${t("Mục tiêu")}: ${state.targetWordsMin}-${state.targetWordsMax} ${t("từ")}`;
     });
     mount.querySelectorAll("#support-tabs .tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -773,7 +828,7 @@ export function renderWritingPractice(mount) {
       goalId: state.goalId,
     });
     if (!res.ok) {
-      if (slot) slot.innerHTML = `<p class="field-hint field-hint-error">${escapeHtml(res.error || "Lưu thất bại, vui lòng thử lại.")}</p>`;
+      if (slot) slot.innerHTML = `<p class="field-hint field-hint-error">${escapeHtml(res.error || t("Lưu thất bại, vui lòng thử lại."))}</p>`;
       return;
     }
     // SỬA 2026-08-09 (Đợt 4, mục 10 — Minh: "bỏ chớp Đã lưu thừa"): bỏ toast, GIỮ đổi label nút
@@ -807,12 +862,12 @@ export function renderWritingPractice(mount) {
     const resultSlot = mount.querySelector(state.step === "genre" ? "#genre-result-slot" : "#task-result-slot");
     const submitBtns = mount.querySelectorAll("#genre-continue-btn, #task-reroll-btn, #task-start-btn");
     submitBtns.forEach((b) => b && (b.disabled = true));
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> AI đang chọn nhiệm vụ...</div>`;
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${t("AI đang chọn nhiệm vụ...")}</div>`;
 
     const res = await generateWritingTask(state.level, state.industry, state.genre);
     submitBtns.forEach((b) => b && (b.disabled = false));
     if (!res.ok) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || t("Có lỗi xảy ra, vui lòng thử lại."))}</div>`;
       return;
     }
     state.task = res.data.task;
@@ -826,17 +881,17 @@ export function renderWritingPractice(mount) {
     const resultSlot = mount.querySelector("#write-result-slot");
     const n = countWords(state.text);
     if (n < 10) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">Bài viết quá ngắn (tối thiểu 10 từ).</div>`;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${t("Bài viết quá ngắn (tối thiểu 10 từ).")}</div>`;
       return;
     }
     const btn = mount.querySelector("#submit-writing-btn");
     btn.disabled = true;
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> AI đang chấm bài viết...</div>`;
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${t("AI đang chấm bài viết...")}</div>`;
 
     const res = await gradeWriting({ level: state.level, industry: state.industry, task: state.task, text: state.text });
     btn.disabled = false;
     if (!res.ok) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra, vui lòng thử lại.")}</div>`;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || t("Có lỗi xảy ra, vui lòng thử lại."))}</div>`;
       return;
     }
     state.grading = res.data;

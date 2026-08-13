@@ -14,19 +14,42 @@ import { createLessonFromText, fetchAndSaveLessonCover, analyzeLessonPhraseGroup
 import { getActiveLearningGoal } from "../../db.js";
 import { escapeHtml, countWords } from "../../utils.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Văn bản": "Text",
+  "Dán văn bản của bạn": "Paste your text",
+  "Dán văn bản tiếng Anh vào đây...": "Paste English text here...",
+  "0 từ (tối thiểu 20, tối đa 600)": "0 words (min 20, max 600)",
+  "Phân tích": "Analyze",
+  "từ": "words",
+  "tối thiểu 20 từ": "minimum 20 words",
+  "tối đa": "maximum",
+  "từ, chia nhỏ ra": "words, please split it up",
+  "Văn bản quá ngắn (tối thiểu 20 từ).": "Text too short (minimum 20 words).",
+  "Văn bản quá dài (tối đa": "Text too long (maximum",
+  "từ), vui lòng chia nhỏ.": "words), please split it into smaller parts.",
+  "Đang phân tích...": "Analyzing...",
+  "Đang phân tích cụm từ...": "Analyzing phrase groups...",
+  "Đang tải ảnh bìa...": "Loading cover image...",
+  "Đã phân tích xong": "Analysis complete",
+  "Cấp độ văn bản:": "Text level:",
+  "Xem bài học": "View lesson",
+  "Có lỗi xảy ra.": "Something went wrong.",
+});
 
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`Văn bản`, undefined, { showBack: true, archivePath: "/analysis-archive" })}
+      ${appHeaderHtml(t("Văn bản"), undefined, { showBack: true, archivePath: "/analysis-archive" })}
 
       <label class="field">
-        <span class="field-question">Dán văn bản của bạn</span>
-        <textarea id="paste-text-input" rows="10" placeholder="Dán văn bản tiếng Anh vào đây..."></textarea>
+        <span class="field-question">${t("Dán văn bản của bạn")}</span>
+        <textarea id="paste-text-input" rows="10" placeholder="${t("Dán văn bản tiếng Anh vào đây...")}"></textarea>
       </label>
-      <p class="field-hint" id="paste-wordcount">0 từ (tối thiểu 20, tối đa 600)</p>
+      <p class="field-hint" id="paste-wordcount">${t("0 từ (tối thiểu 20, tối đa 600)")}</p>
       <div id="paste-result-slot"></div>
-      <button type="button" class="btn btn-primary btn-block" id="paste-submit-btn">Phân tích</button>
+      <button type="button" class="btn btn-primary btn-block" id="paste-submit-btn">${t("Phân tích")}</button>
     </div>
   `;
 
@@ -45,7 +68,9 @@ export function renderCreateFromText(mount) {
   textarea.addEventListener("input", () => {
     const n = countWords(textarea.value);
     const outOfRange = n < 20 || n > MAX_WORDS;
-    wc.textContent = `${n} từ` + (n < 20 ? " (tối thiểu 20 từ)" : n > MAX_WORDS ? ` (tối đa ${MAX_WORDS} từ, chia nhỏ ra)` : "");
+    wc.textContent =
+      `${n} ${t("từ")}` +
+      (n < 20 ? ` (${t("tối thiểu 20 từ")})` : n > MAX_WORDS ? ` (${t("tối đa")} ${MAX_WORDS} ${t("từ, chia nhỏ ra")})` : "");
     wc.classList.toggle("field-hint-error", outOfRange);
     submitBtn.disabled = outOfRange;
   });
@@ -56,45 +81,45 @@ export function renderCreateFromText(mount) {
     const n = countWords(text);
     const resultSlot = mount.querySelector("#paste-result-slot");
     if (n < 20) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">Văn bản quá ngắn (tối thiểu 20 từ).</div>`;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${t("Văn bản quá ngắn (tối thiểu 20 từ).")}</div>`;
       return;
     }
     if (n > MAX_WORDS) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">Văn bản quá dài (tối đa ${MAX_WORDS} từ), vui lòng chia nhỏ.</div>`;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${t("Văn bản quá dài (tối đa")} ${MAX_WORDS} ${t("từ), vui lòng chia nhỏ.")}</div>`;
       return;
     }
     const btn = mount.querySelector("#paste-submit-btn");
     btn.disabled = true;
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang phân tích...</div>`;
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${t("Đang phân tích...")}</div>`;
     // "goal_id" (2026-08-06, tái cấu trúc theo cây mới) — gắn bài phân tích vào đúng Chuyên
     // ngành đang active để hiện đúng nhánh Phân tích của Chuyên ngành đó (xem analysisArchive.js).
     const activeGoal = await getActiveLearningGoal().catch(() => null);
     const res = await createLessonFromText(text, activeGoal?.id);
     btn.disabled = false;
     if (!res.ok) {
-      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || "Có lỗi xảy ra.")}</div>`;
+      resultSlot.innerHTML = `<div class="result-panel result-error">${escapeHtml(res.error || t("Có lỗi xảy ra."))}</div>`;
       return;
     }
     const lesson = res.data.lesson;
     // Phân tích cụm từ + tách câu PHẢI XONG TRƯỚC khi hiện bài (2026-08-11, cùng lý do ở
     // createLesson.js — Minh: "AI làm trước hoàn chỉnh... không còn phù hợp việc click vào mới
     // tra từ"). Best-effort: lỗi tạm thời không chặn hẳn việc xem bài, chỉ log lại.
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang phân tích cụm từ...</div>`;
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${t("Đang phân tích cụm từ...")}</div>`;
     const phraseRes = await analyzeLessonPhraseGroups(lesson.id, false);
     if (!phraseRes.ok) console.warn("analyzeLessonPhraseGroups lỗi lúc tạo bài:", phraseRes.error);
     const chunksRes = await analyzeLessonReadingChunks(lesson.id, false);
     if (!chunksRes.ok) console.warn("analyzeLessonReadingChunks lỗi lúc tạo bài:", chunksRes.error);
     // Chờ ảnh bìa sinh XONG trước khi hiện kết quả (2026-08-10, cùng lý do ở createLesson.js —
     // Minh: "Hình bài học phải được sinh trọn vẹn trước khi up lên").
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> Đang tải ảnh bìa...</div>`;
+    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${t("Đang tải ảnh bìa...")}</div>`;
     await fetchAndSaveLessonCover(lesson);
     btn.hidden = true;
     resultSlot.innerHTML = `
       <div class="result-panel result-success">
-        <div class="result-title">Đã phân tích xong</div>
-        <p>Cấp độ văn bản: <span class="level-pill">${escapeHtml(lesson.level)}</span></p>
+        <div class="result-title">${t("Đã phân tích xong")}</div>
+        <p>${t("Cấp độ văn bản:")} <span class="level-pill">${escapeHtml(lesson.level)}</span></p>
       </div>
-      <button type="button" class="btn btn-primary btn-block" id="paste-view-lesson-btn">Xem bài học</button>
+      <button type="button" class="btn btn-primary btn-block" id="paste-view-lesson-btn">${t("Xem bài học")}</button>
     `;
     mount.querySelector("#paste-view-lesson-btn").addEventListener("click", () => navigate(`/lesson/${lesson.id}`));
   });

@@ -15,6 +15,18 @@ import { navigate } from "../../router.js";
 import { listWritingFavorites, getActiveLearningGoal } from "../../db.js";
 import { escapeHtml, formatDate } from "../../utils.js";
 import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Lưu trữ": "Archive",
+  "Đang tải...": "Loading...",
+  "Chưa lưu bài viết nào.": "No saved writing yet.",
+  "Không tải được danh sách đã lưu.": "Couldn't load your saved list.",
+  "Bài đã sửa": "Corrected essay",
+  "Bài viết hoàn chỉnh": "Polished essay",
+  "Bài tham khảo": "Reference essay",
+  "Bài viết": "Essay",
+});
 
 const KIND_LABELS = {
   detailed: "Bài đã sửa",
@@ -25,8 +37,8 @@ const KIND_LABELS = {
 export async function renderWritingArchive(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(`Lưu trữ`, undefined, { showBack: true })}
-      <div id="writing-archive-list"><p class="muted">Đang tải...</p></div>
+      ${appHeaderHtml(t("Lưu trữ"), undefined, { showBack: true })}
+      <div id="writing-archive-list"><p class="muted">${t("Đang tải...")}</p></div>
     </div>
   `;
   wireBackLink(mount, () => history.back());
@@ -37,12 +49,12 @@ export async function renderWritingArchive(mount) {
     const goal = await getActiveLearningGoal().catch(() => null);
     const rows = await listWritingFavorites({ goalId: goal?.id });
     if (!rows.length) {
-      listEl.innerHTML = `<p class="muted">Chưa lưu bài viết nào.</p>`;
+      listEl.innerHTML = `<p class="muted">${t("Chưa lưu bài viết nào.")}</p>`;
       return;
     }
     listEl.innerHTML = rows
       .map((r) => {
-        const label = KIND_LABELS[r.variant] || KIND_LABELS[r.kind] || "Bài viết";
+        const label = t(KIND_LABELS[r.variant] || KIND_LABELS[r.kind] || "Bài viết");
         return `
           <div class="history-item" data-id="${r.id}">
             <div>
@@ -60,6 +72,6 @@ export async function renderWritingArchive(mount) {
       item.addEventListener("click", () => navigate(`/writing-favorite/${item.dataset.id}`));
     });
   } catch {
-    listEl.innerHTML = `<p class="error-text">Không tải được danh sách đã lưu.</p>`;
+    listEl.innerHTML = `<p class="error-text">${t("Không tải được danh sách đã lưu.")}</p>`;
   }
 }

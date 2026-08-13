@@ -16,6 +16,40 @@ import { showToast } from "../../toast.js";
 import { backChevronHtml, wireBackLink } from "../../header.js";
 import { getAutoScrollPreference } from "../../autoScroll.js";
 import { getLessonDisplayPrefs, setLessonDisplayPref } from "../../lessonDisplayPrefs.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Thiếu mã bài học.": "Missing lesson ID.",
+  "Không tải được bài học, thử lại sau.": "Could not load the lesson, please try again later.",
+  "Không tìm thấy bài học.": "Lesson not found.",
+  "Không tìm thấy bài học (có thể không thuộc tài khoản này).": "Lesson not found (it may not belong to this account).",
+  "Nội dung": "Content",
+  "Từ vựng": "Vocabulary",
+  "Ngữ pháp": "Grammar",
+  "Luyện tập": "Exercises",
+  "Đoạn gốc": "Original text",
+  "Ẩn/hiện bản dịch": "Show/hide translation",
+  "Tách câu": "Split sentences",
+  "Chưa có dữ liệu tách câu cho bài này.": "No sentence-split data for this lesson yet.",
+  "Câu": "Sentence",
+  "Đọc câu này": "Read this sentence",
+  "Phát": "Play",
+  "Âm lượng": "Volume",
+  "Lặp lại": "Repeat",
+  "Tốc độ đọc": "Playback speed",
+  "Đọc từ này": "Read this word",
+  "Không tra được từ.": "Could not look up this word.",
+  "Bài này không có từ vựng nổi bật.": "This lesson has no highlighted vocabulary.",
+  "Bài này không có điểm ngữ pháp nổi bật để học riêng.": "This lesson has no highlighted grammar points to study separately.",
+  "Cấu trúc câu đáng chú ý": "Notable sentence patterns",
+  "Kiểm tra": "Check",
+  "Chính xác! ": "Correct! ",
+  "Chưa đúng. ": "Not quite. ",
+  "Chính xác!": "Correct!",
+  "Đáp án đúng: ": "Correct answer: ",
+  "Bài này bạn đang học dở, mình lưu lại rồi, khi nào quay lại mình học tiếp nhé":
+    "You're partway through this lesson, we've saved your progress, come back and continue anytime",
+});
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const SPEEDS = [0.75, 1, 1.25, 1.5];
@@ -35,7 +69,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   const isNews = !!opts.news;
   const lessonId = params?.[0];
   if (!lessonId) {
-    mount.innerHTML = `<div class="screen"><p class="error-text">Thiếu mã bài học.</p></div>`;
+    mount.innerHTML = `<div class="screen"><p class="error-text">${t("Thiếu mã bài học.")}</p></div>`;
     return;
   }
   // Khung "xương" GIỐNG HÌNH DẠNG màn thật (header + hàng icon, mục B1 — 2026-07-30, Minh: "chớp
@@ -84,11 +118,11 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       ({ lesson, progress } = await getLessonWithProgress(lessonId));
     }
   } catch {
-    mount.innerHTML = `<div class="screen"><p class="error-text">Không tải được bài học, thử lại sau.</p></div>`;
+    mount.innerHTML = `<div class="screen"><p class="error-text">${t("Không tải được bài học, thử lại sau.")}</p></div>`;
     return;
   }
   if (!lesson) {
-    mount.innerHTML = `<div class="screen"><p class="error-text">Không tìm thấy bài học${isNews ? "" : " (có thể không thuộc tài khoản này)"}.</p></div>`;
+    mount.innerHTML = `<div class="screen"><p class="error-text">${isNews ? t("Không tìm thấy bài học.") : t("Không tìm thấy bài học (có thể không thuộc tài khoản này).")}</p></div>`;
     return;
   }
 
@@ -292,15 +326,15 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       ${headerRowHtml()}
       <div class="section-nav-row">
         <div class="section-icon-tabs" role="tablist">
-          <button type="button" class="section-icon-btn active" data-tab="content" title="Nội dung">${icon("book", { size: 18 })}</button>
-          <button type="button" class="section-icon-btn" data-tab="vocabulary" title="Từ vựng">${icon("book-open", { size: 18 })}</button>
-          <button type="button" class="section-icon-btn" data-tab="grammar" title="Ngữ pháp">${icon("graduation-cap", { size: 18 })}</button>
-          <button type="button" class="section-icon-btn" data-tab="exercises" title="Luyện tập">${icon("check-circle", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn active" data-tab="content" title="${t("Nội dung")}">${icon("book", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn" data-tab="vocabulary" title="${t("Từ vựng")}">${icon("book-open", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn" data-tab="grammar" title="${t("Ngữ pháp")}">${icon("graduation-cap", { size: 18 })}</button>
+          <button type="button" class="section-icon-btn" data-tab="exercises" title="${t("Luyện tập")}">${icon("check-circle", { size: 18 })}</button>
         </div>
         <div class="section-toggle-icons" id="content-toggle-icons">
-          <button type="button" class="icon-toggle-btn ${state.showOriginal ? "active" : ""}" id="toggle-original-btn" title="Đoạn gốc">${icon("file-text", { size: 16 })}</button>
-          <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="Ẩn/hiện bản dịch">${icon("languages", { size: 16 })}</button>
-          <button type="button" class="icon-toggle-btn ${state.showChunks ? "active" : ""}" id="toggle-chunks-btn" title="Tách câu">${icon("list", { size: 16 })}</button>
+          <button type="button" class="icon-toggle-btn ${state.showOriginal ? "active" : ""}" id="toggle-original-btn" title="${t("Đoạn gốc")}">${icon("file-text", { size: 16 })}</button>
+          <button type="button" class="icon-toggle-btn ${state.showTranslation ? "active" : ""}" id="toggle-translate-btn" title="${t("Ẩn/hiện bản dịch")}">${icon("languages", { size: 16 })}</button>
+          <button type="button" class="icon-toggle-btn ${state.showChunks ? "active" : ""}" id="toggle-chunks-btn" title="${t("Tách câu")}">${icon("list", { size: 16 })}</button>
         </div>
       </div>
       <div id="lesson-panel"></div>
@@ -473,7 +507,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // bài để dòng chờ đó chờ tới).
   function readingChunksLinesHtml(chunks) {
     if (!chunks.length) {
-      return `<div class="content-chunks muted">Chưa có dữ liệu tách câu cho bài này.</div>`;
+      return `<div class="content-chunks muted">${t("Chưa có dữ liệu tách câu cho bài này.")}</div>`;
     }
     return `
       <div class="content-chunks">
@@ -534,8 +568,8 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         ${sIdx > 0 ? '<div class="content-divider"></div>' : ""}
         <div class="content-sentence-block" data-item-idx="${itemIdx}" data-sentence-idx="${sIdx}">
         <div class="content-item-header">
-          <span class="sentence-number">Câu ${startSentenceNo + sIdx}</span>
-          ${ttsSupported ? `<button type="button" class="sentence-icon-btn" data-sentence-idx="${itemIdx}:${sIdx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>` : ""}
+          <span class="sentence-number">${t("Câu")} ${startSentenceNo + sIdx}</span>
+          ${ttsSupported ? `<button type="button" class="sentence-icon-btn" data-sentence-idx="${itemIdx}:${sIdx}" title="${t("Đọc câu này")}">${icon("volume", { size: 15 })}</button>` : ""}
         </div>
         ${
           state.showOriginal || forceOriginal
@@ -652,7 +686,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     if (!ttsSupported) return "";
     return `
       <div class="content-item-actions">
-        <button type="button" class="sentence-icon-btn" data-action="speak" data-idx="${idx}" title="Đọc câu này">${icon("volume", { size: 15 })}</button>
+        <button type="button" class="sentence-icon-btn" data-action="speak" data-idx="${idx}" title="${t("Đọc câu này")}">${icon("volume", { size: 15 })}</button>
       </div>
     `;
   }
@@ -687,18 +721,18 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   function audioBarHtml() {
     return `
       <div class="audio-bar" id="audio-bar">
-        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="Phát">${icon("play", { size: 18, filled: true })}</button>
+        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="${t("Phát")}">${icon("play", { size: 18, filled: true })}</button>
         <div class="audio-progress-track" id="audio-progress-track">
           <div class="audio-progress-fill" id="audio-progress-fill"></div>
           <div class="audio-progress-thumb" id="audio-progress-thumb"></div>
         </div>
         <span class="audio-time"><span id="audio-time-elapsed">0:00</span>/<span id="audio-time-total">0:00</span></span>
         <div class="audio-volume-wrap">
-          <button type="button" class="audio-btn" id="audio-volume-btn" title="Âm lượng">${icon("volume", { size: 15 })}</button>
+          <button type="button" class="audio-btn" id="audio-volume-btn" title="${t("Âm lượng")}">${icon("volume", { size: 15 })}</button>
           <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
         </div>
-        <button type="button" class="audio-btn audio-btn-loop" id="audio-replay" title="Lặp lại">${icon("repeat", { size: 15 })}<span class="audio-loop-badge">1</span></button>
-        <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="Tốc độ đọc">1x</button>
+        <button type="button" class="audio-btn audio-btn-loop" id="audio-replay" title="${t("Lặp lại")}">${icon("repeat", { size: 15 })}<span class="audio-loop-badge">1</span></button>
+        <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="${t("Tốc độ đọc")}">1x</button>
       </div>
     `;
   }
@@ -856,7 +890,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       <div class="word-popover-head">
         <span class="word-popover-level" data-level="${escapeHtml(data.level)}">${escapeHtml(data.level)}</span>
         <span class="word-popover-word">${escapeHtml(word)}</span>
-        ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="Đọc từ này">${icon("volume", { size: 14 })}</button>` : ""}
+        ${ttsSupported ? `<button type="button" class="word-popover-speak-btn" id="word-popover-speak" title="${t("Đọc từ này")}">${icon("volume", { size: 14 })}</button>` : ""}
       </div>
       ${data.type ? `<div class="word-popover-type">${escapeHtml(data.type)}</div>` : ""}
       <div class="word-popover-meaning">${escapeHtml(data.meaning || "")}</div>
@@ -877,7 +911,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   function showWordTooltip(anchorEl, word, sentence, genderHint, vocabEntry, itemIdx, tokenIdx) {
     if (!vocabEntry) {
       console.warn("[lesson] từ không có entry:", { lessonId: lesson.id, itemIdx, tokenIdx, word, sentence });
-      showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">Không tra được từ.</div>`);
+      showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">${t("Không tra được từ.")}</div>`);
       return;
     }
     // 2026-07-30 ("gom cụm từ khi sinh bài") — "vocabEntry" mang theo ĐỦ level/meaning/type riêng
@@ -902,7 +936,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   function renderVocabularyTab(panel) {
     const words = lesson.vocabulary || [];
     if (!words.length) {
-      panel.innerHTML = `<p class="muted">Bài này không có từ vựng nổi bật.</p>`;
+      panel.innerHTML = `<p class="muted">${t("Bài này không có từ vựng nổi bật.")}</p>`;
       return;
     }
     panel.innerHTML = `
@@ -915,7 +949,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
               <div class="vocab-word ${ttsSupported ? "vocab-word-clickable" : ""} ${w.is_specialized ? "vocab-word-specialized" : ""}" data-word="${escapeHtml(w.word)}">
                 ${escapeHtml(w.word)} <span class="vocab-ipa muted">${escapeHtml(w.ipa || "")}</span>
               </div>
-              ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="Đọc từ này">${icon("volume", { size: 15 })}</button>` : ""}
+              ${ttsSupported ? `<button type="button" class="sentence-icon-btn vocab-speak-btn" data-word="${escapeHtml(w.word)}" title="${t("Đọc từ này")}">${icon("volume", { size: 15 })}</button>` : ""}
             </div>
             ${w.type ? `<div class="vocab-type-badge badge">${escapeHtml(w.type)}</div>` : ""}
             <div class="vocab-meaning">${escapeHtml(w.meaning || "")}</div>
@@ -939,7 +973,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     const points = lesson.grammar || [];
     const patterns = lesson.sentence_patterns || [];
     if (!points.length && !patterns.length) {
-      panel.innerHTML = `<p class="muted">Bài này không có điểm ngữ pháp nổi bật để học riêng.</p>`;
+      panel.innerHTML = `<p class="muted">${t("Bài này không có điểm ngữ pháp nổi bật để học riêng.")}</p>`;
       return;
     }
     panel.innerHTML = `
@@ -966,7 +1000,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       ${
         patterns.length
           ? `
-        <div class="section-label-row"><span class="section-label-tab">Cấu trúc câu đáng chú ý</span></div>
+        <div class="section-label-row"><span class="section-label-tab">${t("Cấu trúc câu đáng chú ý")}</span></div>
         <div class="grammar-list">
           ${patterns
             .map(
@@ -1015,7 +1049,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       <div class="exercise-item ${done ? "exercise-done" : ""}" data-idx="${i}">
         <div class="exercise-question">${i + 1}. ${escapeHtml((ex.sentence || "").replace("___", "____"))}</div>
         <input type="text" class="fill-blank-input" placeholder="${escapeHtml(ex.hint || "")}" ${done ? "disabled" : ""} />
-        <button type="button" class="btn btn-ghost check-fill-btn" ${done ? "disabled" : ""}>Kiểm tra</button>
+        <button type="button" class="btn btn-ghost check-fill-btn" ${done ? "disabled" : ""}>${t("Kiểm tra")}</button>
         <div class="exercise-feedback" hidden></div>
       </div>
     `;
@@ -1040,7 +1074,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
           item.querySelectorAll(".option-btn").forEach((b) => (b.disabled = true));
           btn.classList.add(correct ? "option-correct" : "option-wrong");
           feedback.hidden = false;
-          feedback.innerHTML = feedbackHtml(correct, correct ? "Chính xác! " : "Chưa đúng. ", ex.explanation);
+          feedback.innerHTML = feedbackHtml(correct, correct ? t("Chính xác! ") : t("Chưa đúng. "), ex.explanation);
           markExerciseDone(i, correct, ex.grammar_tag);
         });
       });
@@ -1051,7 +1085,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
         input.disabled = true;
         item.querySelector(".check-fill-btn").disabled = true;
         feedback.hidden = false;
-        feedback.innerHTML = correct ? feedbackHtml(true, "Chính xác!") : feedbackHtml(false, "Đáp án đúng: ", ex.answer);
+        feedback.innerHTML = correct ? feedbackHtml(true, t("Chính xác!")) : feedbackHtml(false, t("Đáp án đúng: "), ex.answer);
         markExerciseDone(i, correct, ex.grammar_tag);
       });
     }
@@ -1138,7 +1172,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     const allDone = total > 0 && state.completedExercises.size === total;
     const hasProgress = state.completedExercises.size > 0 || state.page > 0;
     if (!allDone && hasProgress) {
-      showToast("Bài này bạn đang học dở, mình lưu lại rồi, khi nào quay lại mình học tiếp nhé");
+      showToast(t("Bài này bạn đang học dở, mình lưu lại rồi, khi nào quay lại mình học tiếp nhé"));
     }
   };
 }

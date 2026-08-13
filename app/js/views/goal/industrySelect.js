@@ -22,6 +22,28 @@ import { createGoal } from "../../goalApi.js";
 import { escapeHtml } from "../../utils.js";
 import { icon } from "../../icons.js";
 import { showToast } from "../../toast.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  "Chọn chuyên ngành<br />để bắt đầu": "Choose an industry<br />to get started",
+  "Nội dung được thiết kế riêng<br />cho công việc của bạn": "Content designed specifically<br />for your job",
+  "Sắp ra mắt": "Coming soon",
+  "Chuyên ngành này sắp ra mắt, chưa có nội dung để học.": "This industry is coming soon, no content to learn yet.",
+  "Không tạo được lộ trình, thử lại nhé.": "Couldn't create your learning path, please try again.",
+  "Tiếng Anh Giao Tiếp": "General English",
+  "Kế toán": "Accounting",
+  // Nhãn OTHER_INDUSTRIES (2026-08-12, dịch từ tiếng Anh sang tiếng Việt tự nhiên — Minh: "giao
+  // diện tiếng Việt không lẫn tiếng Anh trừ từ mượn thông dụng").
+  "Công nghệ thông tin": "Information Technology",
+  "Kinh doanh": "Business",
+  "Điều dưỡng": "Nursing",
+  "Du lịch": "Tourism",
+  "Kỹ thuật": "Engineering",
+  "Tài chính": "Finance",
+  // "Logistics"/"Marketing" giữ nguyên (từ mượn thông dụng trong tiếng Việt, giống "email").
+  "Logistics": "Logistics",
+  "Marketing": "Marketing",
+});
 
 function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms) {
   return {
@@ -71,13 +93,13 @@ const ACCOUNTING_PROFILE = occupationProfile(
 // Chuyên ngành KHÁC — chỉ trưng bày đúng khung ảnh mẫu, KHÔNG chọn được (Minh: "ghi ra và cho
 // toggle... để sắp ra mắt").
 const OTHER_INDUSTRIES = [
-  { key: "it", label: "Information Technology", icon: "monitor", chip: "blue" },
-  { key: "business", label: "Business", icon: "briefcase", chip: "green" },
-  { key: "nursing", label: "Nursing", icon: "flask", chip: "orange" },
-  { key: "tourism", label: "Tourism", icon: "compass", chip: "purple" },
+  { key: "it", label: "Công nghệ thông tin", icon: "monitor", chip: "blue" },
+  { key: "business", label: "Kinh doanh", icon: "briefcase", chip: "green" },
+  { key: "nursing", label: "Điều dưỡng", icon: "flask", chip: "orange" },
+  { key: "tourism", label: "Du lịch", icon: "compass", chip: "purple" },
   { key: "logistics", label: "Logistics", icon: "library", chip: "blue" },
-  { key: "engineering", label: "Engineering", icon: "settings", chip: "green" },
-  { key: "finance", label: "Finance", icon: "hash", chip: "orange" },
+  { key: "engineering", label: "Kỹ thuật", icon: "settings", chip: "green" },
+  { key: "finance", label: "Tài chính", icon: "hash", chip: "orange" },
   { key: "marketing", label: "Marketing", icon: "star", chip: "purple" },
 ];
 
@@ -125,8 +147,8 @@ export function renderIndustrySelect(mount) {
   function render() {
     mount.innerHTML = `
       <div class="screen industry-select-screen">
-        <h1 class="industry-select-title">Chọn chuyên ngành<br />để bắt đầu</h1>
-        <p class="industry-select-subtitle">Nội dung được thiết kế riêng<br />cho công việc của bạn</p>
+        <h1 class="industry-select-title">${t("Chọn chuyên ngành<br />để bắt đầu")}</h1>
+        <p class="industry-select-subtitle">${t("Nội dung được thiết kế riêng<br />cho công việc của bạn")}</p>
         <div class="industry-list">
           ${INDUSTRIES.map((ind) => industryRowHtml(ind)).join("")}
         </div>
@@ -141,8 +163,8 @@ export function renderIndustrySelect(mount) {
     return `
       <button type="button" class="industry-select-row ${ind.real ? "" : "is-coming-soon"}" data-industry="${ind.key}" ${state.submitting ? "disabled" : ""}>
         <span class="industry-select-icon chip-${ind.chip}">${icon(ind.icon, { size: 22 })}</span>
-        <span class="industry-select-label">${escapeHtml(ind.label)}</span>
-        ${ind.real ? "" : `<span class="industry-position-badge">Sắp ra mắt</span>`}
+        <span class="industry-select-label">${escapeHtml(t(ind.label))}</span>
+        ${ind.real ? "" : `<span class="industry-position-badge">${t("Sắp ra mắt")}</span>`}
       </button>
     `;
   }
@@ -152,7 +174,7 @@ export function renderIndustrySelect(mount) {
       row.addEventListener("click", () => {
         const ind = INDUSTRIES.find((i) => i.key === row.dataset.industry);
         if (!ind.real) {
-          showToast("Chuyên ngành này sắp ra mắt, chưa có nội dung để học.");
+          showToast(t("Chuyên ngành này sắp ra mắt, chưa có nội dung để học."));
           return;
         }
         if (ind.key === "general") return selectGeneral();
@@ -169,7 +191,7 @@ export function renderIndustrySelect(mount) {
     if (!res.ok) {
       state.submitting = false;
       render();
-      showToast(res.error || "Không tạo được lộ trình, thử lại nhé.");
+      showToast(res.error || t("Không tạo được lộ trình, thử lại nhé."));
       return;
     }
     navigate("/home");
@@ -186,7 +208,7 @@ export function renderIndustrySelect(mount) {
     if (!res.ok) {
       state.submitting = false;
       render();
-      showToast(res.error || "Không tạo được lộ trình, thử lại nhé.");
+      showToast(res.error || t("Không tạo được lộ trình, thử lại nhé."));
       return;
     }
     navigate("/home");

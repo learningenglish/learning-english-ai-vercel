@@ -13,13 +13,39 @@ import { getProgressOverview } from "../../db.js";
 import { escapeHtml } from "../../utils.js";
 import { icon } from "../../icons.js";
 import { wireAppHeader } from "../../header.js";
+import { t, registerTranslations } from "../../i18n.js";
+
+registerTranslations({
+  // "streak" (2026-08-12, bỏ chữ tiếng Anh lẫn trong khung tiếng Việt — không phải từ mượn thông
+  // dụng như "email").
+  "Kỷ lục chuỗi ngày": "Longest streak",
+  "Bài đã học": "Lessons completed",
+  "Chuỗi ngày": "Streak (days)",
+  "Tiến trình": "Progress",
+  "Hồ sơ &amp; cài đặt": "Profile &amp; settings",
+  "Bài đọc": "Reading",
+  "Hội thoại": "Dialogue",
+  "Luyện viết": "Writing practice",
+  "Lịch sử học": "Learning history",
+  "Đang tải...": "Loading...",
+  "Chưa có bài nào.": "No lessons yet.",
+  "Chưa có bài luyện viết nào.": "No writing exercises yet.",
+  "Hôm nay": "Today",
+  "Hôm qua": "Yesterday",
+  "Chưa có hoạt động hôm nay hoặc hôm qua.": "No activity today or yesterday.",
+  "(Bài học đã xoá)": "(Lesson deleted)",
+  "Đã học": "Completed",
+  "Chưa học": "Not started",
+  "Không tải được.": "Couldn't load.",
+  "Không tải được lịch sử học.": "Couldn't load learning history.",
+});
 
 function summaryCardsHtml() {
   return `
     <div class="progress-summary-grid" id="progress-summary">
-      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Kỷ lục streak</div></div>
-      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Bài đã học</div></div>
-      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">Streak (ngày)</div></div>
+      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">${t("Kỷ lục chuỗi ngày")}</div></div>
+      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">${t("Bài đã học")}</div></div>
+      <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">${t("Chuỗi ngày")}</div></div>
     </div>
   `;
 }
@@ -51,12 +77,12 @@ function barRowHtml(label, pct) {
 }
 
 function skillSectionHtml(rows) {
-  if (!rows.length) return `<p class="muted">Chưa có bài nào.</p>`;
+  if (!rows.length) return `<p class="muted">${t("Chưa có bài nào.")}</p>`;
   return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.level, r.pct)).join("")}</div>`;
 }
 
 function writingSectionHtml(rows) {
-  if (!rows.length) return `<p class="muted">Chưa có bài luyện viết nào.</p>`;
+  if (!rows.length) return `<p class="muted">${t("Chưa có bài luyện viết nào.")}</p>`;
   return `<div class="progress-bars-card">${rows.map((r) => barRowHtml(r.genre, r.pct)).join("")}</div>`;
 }
 
@@ -69,8 +95,8 @@ function dayGroupLabel(iso) {
   const dateStr = d.toLocaleDateString("vi-VN");
   const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
-  if (diffDays === 0) return `Hôm nay — ${dateStr}`;
-  if (diffDays === 1) return `Hôm qua — ${dateStr}`;
+  if (diffDays === 0) return `${t("Hôm nay")} — ${dateStr}`;
+  if (diffDays === 1) return `${t("Hôm qua")} — ${dateStr}`;
   return null;
 }
 
@@ -80,23 +106,23 @@ export function renderProgress(mount) {
   mount.innerHTML = `
     <div class="screen">
       <div class="home-topbar">
-        <h1 class="progress-title">${icon("bar-chart", { size: 22 })} Tiến trình</h1>
-        <button type="button" class="home-settings-btn" id="settings-btn" aria-label="Hồ sơ &amp; cài đặt">${icon("settings", { size: 20 })}</button>
+        <h1 class="progress-title">${icon("bar-chart", { size: 22 })} ${t("Tiến trình")}</h1>
+        <button type="button" class="home-settings-btn" id="settings-btn" aria-label="${t("Hồ sơ &amp; cài đặt")}">${icon("settings", { size: 20 })}</button>
       </div>
 
       ${summaryCardsHtml()}
 
-      <p class="progress-section-title">Bài đọc</p>
-      <div id="progress-reading"><p class="muted">Đang tải...</p></div>
+      <p class="progress-section-title">${t("Bài đọc")}</p>
+      <div id="progress-reading"><p class="muted">${t("Đang tải...")}</p></div>
 
-      <p class="progress-section-title">Hội thoại</p>
-      <div id="progress-dialogue"><p class="muted">Đang tải...</p></div>
+      <p class="progress-section-title">${t("Hội thoại")}</p>
+      <div id="progress-dialogue"><p class="muted">${t("Đang tải...")}</p></div>
 
-      <p class="progress-section-title">Luyện viết</p>
-      <div id="progress-writing"><p class="muted">Đang tải...</p></div>
+      <p class="progress-section-title">${t("Luyện viết")}</p>
+      <div id="progress-writing"><p class="muted">${t("Đang tải...")}</p></div>
 
-      <p class="progress-section-title">Lịch sử học</p>
-      <div id="history-list"><p class="muted">Đang tải...</p></div>
+      <p class="progress-section-title">${t("Lịch sử học")}</p>
+      <div id="history-list"><p class="muted">${t("Đang tải...")}</p></div>
     </div>
   `;
   wireAppHeader(mount);
@@ -115,10 +141,10 @@ export function renderProgress(mount) {
       mount.querySelector("#progress-writing").innerHTML = writingSectionHtml(data.writing);
       renderHistory(data.history);
     } catch {
-      mount.querySelector("#progress-reading").innerHTML = `<p class="error-text">Không tải được.</p>`;
-      mount.querySelector("#progress-dialogue").innerHTML = `<p class="error-text">Không tải được.</p>`;
-      mount.querySelector("#progress-writing").innerHTML = `<p class="error-text">Không tải được.</p>`;
-      mount.querySelector("#history-list").innerHTML = `<p class="error-text">Không tải được lịch sử học.</p>`;
+      mount.querySelector("#progress-reading").innerHTML = `<p class="error-text">${t("Không tải được.")}</p>`;
+      mount.querySelector("#progress-dialogue").innerHTML = `<p class="error-text">${t("Không tải được.")}</p>`;
+      mount.querySelector("#progress-writing").innerHTML = `<p class="error-text">${t("Không tải được.")}</p>`;
+      mount.querySelector("#history-list").innerHTML = `<p class="error-text">${t("Không tải được lịch sử học.")}</p>`;
     }
   }
 
@@ -142,7 +168,7 @@ export function renderProgress(mount) {
     const listEl = mount.querySelector("#history-list");
     const rows = (allRows || []).filter((r) => dayGroupLabel(r.last_opened_at) !== null);
     if (!rows.length) {
-      listEl.innerHTML = `<p class="muted">Chưa có hoạt động hôm nay hoặc hôm qua.</p>`;
+      listEl.innerHTML = `<p class="muted">${t("Chưa có hoạt động hôm nay hoặc hôm qua.")}</p>`;
       return;
     }
     let lastGroup = null;
@@ -159,10 +185,10 @@ export function renderProgress(mount) {
         <div class="progress-history-item" data-id="${r.lesson_id}">
           <span class="progress-history-icon">${icon(CONTENT_TYPE_ICON[lesson?.content_type] || "book", { size: 20 })}</span>
           <div class="progress-history-body">
-            <div class="progress-history-title">${escapeHtml(lesson?.title_vi || lesson?.title || "(Bài học đã xoá)")}</div>
+            <div class="progress-history-title">${escapeHtml(lesson?.title_vi || lesson?.title || t("(Bài học đã xoá)"))}</div>
             <div class="progress-history-meta"><span class="badge">${escapeHtml(lesson?.level || "")}</span></div>
           </div>
-          <span class="learn-status-badge ${done ? "learn-status-done" : "learn-status-not-started"}">${done ? icon("check-circle", { size: 12 }) : ""} ${done ? "Đã học" : "Chưa học"}</span>
+          <span class="learn-status-badge ${done ? "learn-status-done" : "learn-status-not-started"}">${done ? icon("check-circle", { size: 12 }) : ""} ${done ? t("Đã học") : t("Chưa học")}</span>
         </div>
       `);
     }
