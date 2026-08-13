@@ -1765,3 +1765,55 @@ xoá cache/SW rồi mới thấy đúng 34 từ tô đậm).
   + mẫu ngữ pháp cụ thể) — nếu còn gặp thường xuyên, có thể cần lưới đỡ bằng code tương tự
   `splitLeadingSubjectPronoun` (nhận diện ranh giới mệnh đề phụ bằng danh sách liên từ đóng, tách
   cứng bằng thuật toán) thay vì tiếp tục thêm chữ vào prompt.
+
+## 2026-08-13 (đợt 18) — Chi phí OpenAI tăng bất thường, kiểm tra gấp + giảm chi phí
+
+Minh xem OpenAI usage dashboard, thấy 2 bài mẫu #6a2/#6b2 tốn $0.14, yêu cầu kiểm tra gấp + giảm
+chi phí, mục tiêu $0.05/bài. Gửi thêm 1 lỗi thật: tra "recommend" trong câu "I recommend all
+companies to take this seriously" ra cụm "recommend all companies" — động từ kéo theo cả 1 cụm
+danh từ đầy đủ, không đúng ý nghĩa "cụm" là nhóm từ nhỏ.
+
+**Xác nhận 2 nguyên nhân thật gây tăng chi phí:**
+1. `PHRASE_GROUPS_RULES` phình to ~20000 ký tự (~5000 token) qua nhiều đợt vá liên tiếp trong 2
+   ngày — phần lớn là chú giải LỊCH SỬ (ngày sửa, lỗi đã gặp, trích dẫn Minh) không cần cho MODEL,
+   chỉ cần cho NGƯỜI ĐỌC code. Prompt này giờ chạy TỪNG CÂU 1 (sau fix tách câu thật đợt 16) — bài
+   B1+ nhiều câu gửi lại NGUYÊN VẸN ~5000 token này hàng chục lần/bài.
+2. Cả `analyzePhraseGroupsInChunks`/`analyzeReadingChunksInChunks` tự leo thang lên model "strong"
+   (gpt-4.1, đắt hơn ~13x giá công khai OpenAI so với "gpt-4o-mini" mặc định) khi thất bại 2 lần
+   đầu — không đáng cho 2 tính năng PHỤ (tooltip/tách câu, không chặn đọc bài).
+
+**Sửa:**
+- Rút gọn `PHRASE_GROUPS_RULES` xuống ~11800 ký tự (~2950 token, giảm ~40%) — dời TOÀN BỘ chú
+  giải lịch sử vào comment code trước `const`, KHÔNG đổi nội dung rule/ví dụ thực tế gửi AI.
+- Bỏ hẳn lượt leo thang "strong" ở cả 2 action vá — 2 lượt model mặc định là đủ, câu/đoạn nào vẫn
+  thất bại thì BỎ QUA riêng nó (coverage thiếu, lượt vá SAU tự thử lại), KHÔNG còn huỷ toàn bộ
+  lượt vá của cả bài như trước (quan trọng hơn khi giờ phân tích từng CÂU — 1 câu khó không nên
+  làm mất dữ liệu 14-19 câu khác đã đúng).
+- Làm rõ mẫu 10-13 (Verb+Object+X): tân ngữ CHỈ là phần bắt buộc của mẫu khi là ĐẠI TỪ ĐƠN (him/
+  her/them...), KHÔNG áp dụng khi tân ngữ là 1 CỤM DANH TỪ ĐẦY ĐỦ (all companies, the manager...)
+  — cụm danh từ đó luôn tách riêng.
+
+**Ước tính chi phí sau sửa** (đo trực tiếp kích thước prompt + số lượt gọi thật, model mặc định
+không leo thang): generate_lesson ≈ $0.002-0.003/bài + phrase_groups ≈ $0.01-0.012/bài (15 câu,
+bài B2) + reading_chunks ≈ $0.002/bài ≈ **$0.02-0.03/bài** — dưới mục tiêu $0.05/bài. LƯU Ý quan
+trọng báo Minh: $0.14 đo được hôm nay KHÔNG phải chi phí sạch của "2 bài" — cùng ngày đã chạy RẤT
+NHIỀU lượt debug/test lặp lại (phân tích lại CÙNG 1 bài #5b2 nhiều lần để kiểm tra từng fix, vài
+lượt sinh thử qua `analyze_user_text` riêng để chẩn đoán lỗi) CỘNG với các lượt leo thang đắt đã
+xảy ra trong lúc đó (nay đã bỏ) — con số thật cho 1 lượt sinh bài sạch, bình thường sẽ thấp hơn
+nhiều so với $0.07/bài suy ra từ phép chia "$0.14 ÷ 2 bài".
+
+**Verify sống:** test nhanh câu "I recommend all companies to keep good records" → đúng tách
+"recommend" (Cụm động từ) + "all companies" (Cụm danh từ) riêng — ĐÚNG case Minh báo. Case khác
+("might contact the bank for clarification") vẫn còn merge — residual đã biết, AI không tuân thủ
+đều 100% dù rule đã rõ; KHÔNG tiếp tục vá thêm ngay lúc này vì mâu thuẫn với mục tiêu giảm chi phí
+(thêm rule/ví dụ = tốn thêm token mỗi lượt gọi) — cần Minh xác nhận đánh đổi chất lượng-vs-chi phí
+trước khi đầu tư thêm vào hướng này.
+
+**Không đổi SW cache** — đợt này chỉ sửa `api/_generate/lesson.js` (backend, không cache client).
+
+**Còn lại cho Minh:**
+- Theo dõi chi phí thật trên OpenAI dashboard sau lượt sinh bài SẠCH tiếp theo (không phải lượt
+  debug) để xác nhận ước tính $0.02-0.03/bài có đúng thực tế không.
+- Quyết định đánh đổi chất lượng-vs-chi phí cho residual "Cụm động từ" đôi khi vẫn dài — có thể
+  cần lưới đỡ bằng CODE (như đã làm cho chủ ngữ) nếu muốn dứt điểm mà không tốn thêm token, nhưng
+  cần thời gian thiết kế kỹ hơn để không phá vỡ các mẫu 10-13 hợp lệ khác.
