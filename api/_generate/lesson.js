@@ -233,6 +233,18 @@ chỉ mảng "words" phải tách rời từng từ.
 Từ có DẤU GẠCH NỐI (long-term, 24-hour): tách thành 2 phần tử riêng trong "words" ("long","term"),
 có thể vẫn cùng 1 nhóm.
 
+QUY TRÌNH NHẬN DIỆN — LUÔN LÀM 2 BƯỚC THEO ĐÚNG THỨ TỰ NÀY (2026-08-13, Minh: "xác nhận từ độc
+lập trong câu trước, rồi đến các cụm... giảm thiểu việc gộp từ"):
+BƯỚC 1 — xác định TRƯỚC các từ ĐỘC LẬP luôn đứng riêng 1 mình, KHÔNG chung nhóm với từ nào khác:
+  liên từ (and, but, or, so, because, although, while, if, that đứng đầu mệnh đề phụ...), trạng
+  từ liên kết đứng đầu câu/mệnh đề (however, therefore, moreover, meanwhile, then, first, second,
+  finally, also...), và đại từ chủ ngữ (I, you, he, she, it, we, they) đứng ngay trước 1 động từ
+  chia — mỗi từ này TỰ làm 1 nhóm riêng gồm chính nó.
+BƯỚC 2 — CHỈ SAU KHI đã tách hết các từ độc lập ở Bước 1, mới nhóm PHẦN CÒN LẠI của câu thành các
+  cụm (danh từ/động từ/tính từ/... theo 24 loại dưới đây). Làm đúng thứ tự này giúp tránh lỗi
+  GỘP NHẦM 1 từ độc lập vào cụm liền kề (vd "and" bị nhét vào cụm động từ theo sau nó, hoặc chủ
+  ngữ bị nhét vào cụm động từ — xem ví dụ ❌/✅ ở mục ngay dưới).
+
 GIỚI HẠN ĐỘ DÀI (lưới đỡ cho việc chia MỆNH ĐỀ dài — KHÔNG dùng làm căn cứ chính cho "Cụm động
 từ", mục I có quy tắc riêng): mọi nhóm KHÔNG vượt quá 5 từ, kể cả mệnh đề quan hệ/trạng ngữ/danh
 từ (if/whether/because/although...) — câu/mệnh đề dài hơn PHẢI cắt thành nhiều nhóm liên tiếp ≤5
@@ -1555,21 +1567,54 @@ function splitEnglishSentencesForPhraseGroups(text) {
 // sang "1 câu thất bại -> BỎ QUA riêng câu đó, các câu KHÁC trong CÙNG bài vẫn được lưu" — quan
 // trọng hơn khi giờ phân tích TỪNG CÂU (không phải từng đoạn như trước): 1 bài B1+ có thể có
 // 15-20 câu, không nên để 1 câu khó làm mất hết dữ liệu của 14-19 câu còn lại đã phân tích đúng.
+// GHÉP CÂU NGẮN (2026-08-13, Minh: "đảm bảo phrase_groups rules không chạy quá nhiều... không thể
+// 1 việc nhỏ tốn 20k token") — mỗi lượt gọi AI đều phải gửi lại NGUYÊN VẸN PHRASE_GROUPS_RULES
+// (~3000 token cố định) làm system prompt, bất kể câu ngắn hay dài — tách MỖI CÂU 1 lượt riêng
+// (đúng đắn cho câu dài/phức, xem lịch sử bug ở analyzePhraseGroupsInChunks) nhưng LÃNG PHÍ cho
+// câu ngắn đơn giản (A1/A2, hội thoại — vốn hiếm khi gặp lỗi chunk dài). Ghép tối đa 3 CÂU NGẮN
+// (≤10 từ) liền kề vào CÙNG 1 lượt gọi — giảm số lần gửi lại prompt cố định mà KHÔNG quay lại lỗi
+// cũ (câu dài/phức vẫn tách riêng 1 lượt như cũ, chỉ câu ngắn mới ghép).
+function batchShortSentencesForPhraseGroups(sentences, maxWordsPerSentence = 10, maxPerBatch = 3) {
+  const batches = [];
+  let current = [];
+  for (const s of sentences) {
+    const wordCount = (s.match(/[A-Za-z0-9]+/g) || []).length;
+    if (wordCount > maxWordsPerSentence) {
+      if (current.length) {
+        batches.push(current);
+        current = [];
+      }
+      batches.push([s]);
+    } else {
+      current.push(s);
+      if (current.length >= maxPerBatch) {
+        batches.push(current);
+        current = [];
+      }
+    }
+  }
+  if (current.length) batches.push(current);
+  return batches;
+}
+
 async function analyzePhraseGroupsInChunks(toAnalyze) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
+    const batches = batchShortSentencesForPhraseGroups(sentences);
     const combinedGroups = [];
-    for (const sentence of sentences) {
-      const chunk = [{ text: sentence }];
+    for (const batch of batches) {
+      const chunk = batch.map((text) => ({ text }));
       let result = await callAnalyzePhraseGroups(chunk);
       if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
       if (!result.ok) {
-        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
+        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 lượt thất bại cả 2 lần:", result.reason, batch.join(" | ").slice(0, 80));
         continue;
       }
-      const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
-      combinedGroups.push(...(sentenceItem?.phrase_groups || []));
+      for (let bIdx = 0; bIdx < batch.length; bIdx++) {
+        const sentenceItem = result.items.find((x) => x.index === bIdx) || result.items[bIdx];
+        combinedGroups.push(...(sentenceItem?.phrase_groups || []));
+      }
     }
     allItems.push({ index: i, phrase_groups: combinedGroups });
   }
