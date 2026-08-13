@@ -202,118 +202,72 @@ function orNone(v) {
 // trực tiếp qua script, không qua UI) PHẢI tự gọi thêm analyze_lesson_phrase_groups sau khi tạo,
 // giống các script test đã làm trong đợt này — KHÔNG còn có phrase_groups "miễn phí" kèm theo
 // generate_lesson nữa.
-const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content", áp dụng
-mọi content_type) — CHỈ phục vụ TRA TỪ khi người học BẤM vào 1 từ/cụm (tooltip), KHÔNG liên quan
-"reading_chunks" (tách câu) hay "grammar"/"sentence_patterns" (phần ngữ pháp — dùng catalog RIÊNG):
-- ƯU TIÊN CAO NHẤT (hệ thống KIỂM TRA BẰNG CODE, không tốn thêm lượt AI): với MỖI phần tử, ghép
-  TOÀN BỘ "words" của MỌI nhóm theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" đó
-  (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo thứ tự, không lặp từ
-  ở 2 nhóm. Đây là điều kiện SỐNG CÒN, quan trọng hơn việc chọn đúng loại cụm — nếu phân vân giữa
-  "chọn đúng loại cụm" và "chắc chắn không sót/thừa từ nào", LUÔN ưu tiên vế sau.
-- QUAN TRỌNG — từ có DẤU GẠCH NỐI (vd "long-term", "well-known", "24-hour"): hệ thống coi dấu
-  gạch nối như dấu câu phân cách, KHÔNG phải 1 phần của từ — PHẢI tách thành 2 (hoặc nhiều) phần
-  tử RIÊNG trong "words" đúng theo từng khúc bị gạch nối tách ra (vd "long-term" -> 2 phần tử
-  "long" và "term", KHÔNG viết chung "long-term" thành 1 phần tử) — 2 phần tử đó vẫn có thể cùng
-  nằm trong 1 nhóm (words: ["long", "term"]) nếu cùng 1 cụm ý nghĩa, chỉ cần đừng viết liền 1
-  chuỗi có gạch nối.
-- GIỚI HẠN ĐỘ DÀI — QUY TẮC CỨNG:
-  * MỌI nhóm KHÔNG ĐƯỢC VƯỢT QUÁ 5 TỪ. Đây là trần cứng, áp dụng cho MỌI loại cụm kể cả mệnh đề
-    quan hệ/trạng ngữ/danh từ — KHÔNG có ngoại lệ "cụm cố định dài hơn 5 từ".
-  * Câu/mệnh đề dài hơn 5 từ BẮT BUỘC phải chia thành NHIỀU nhóm liên tiếp, mỗi nhóm ≤5 từ — coi
-    đây là "cắt khúc" 1 mệnh đề dài thành các khúc nhỏ liền nhau, KHÔNG phải chọn ra 1 khúc rồi bỏ
-    qua phần còn lại (mọi từ vẫn phải có mặt ở 1 nhóm nào đó, xem quy tắc phủ đủ 100% ở trên).
-  ❌ SAI (11 từ gộp 1 nhóm):
-  {"words": ["who","has","worked","at","this","company","since","she","graduated","from","college"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại công ty này kể từ khi cô tốt nghiệp đại học"}
-  ✅ ĐÚNG (cắt thành 3 nhóm liên tiếp, mỗi nhóm ≤5 từ, vẫn phủ đủ 11 từ, mỗi nhóm tự đủ nghĩa để tra riêng):
-  {"words": ["who","has","worked","at","this"], "type": "Mệnh đề quan hệ", "meaning": "người đã làm việc tại đây"}
-  {"words": ["company","since","she","graduated"], "type": "Cụm giới từ", "meaning": "công ty này kể từ khi cô tốt nghiệp"}
-  {"words": ["from","college"], "type": "Cụm giới từ", "meaning": "từ đại học"}
-  - Quy tắc này áp dụng ĐỦ cho MỌI loại mệnh đề, không chỉ mệnh đề quan hệ — mệnh đề trạng ngữ/danh
-    từ bắt đầu bằng if/whether/because/although... dài hơn 5 từ cũng PHẢI chia tiếp giống hệt vậy
-    (lỗi thật đã xảy ra 2026-08-12: model chỉ nhớ áp dụng cho mệnh đề quan hệ, quên áp dụng cho
-    mệnh đề if/whether):
-  ❌ SAI (9 từ gộp 1 nhóm "Mệnh đề" dù đã có ví dụ mệnh đề quan hệ ở trên):
-  {"words": ["if","they","are","making","a","profit","or","a","loss"], "type": "Mệnh đề danh từ", "meaning": "liệu họ đang có lợi nhuận hay lỗ"}
-  ✅ ĐÚNG (chia tiếp theo đúng ranh giới cụm bên trong mệnh đề, mỗi nhóm ≤5 từ):
-  {"words": ["if","they","are","making"], "type": "Mệnh đề danh từ", "meaning": "liệu họ đang kiếm được"}
-  {"words": ["a","profit","or","a","loss"], "type": "Cụm danh từ", "meaning": "lợi nhuận hay lỗ"}
-  - TUYỆT ĐỐI KHÔNG gộp nguyên 1 câu thành 1 nhóm dù câu ngắn (trừ câu chỉ đúng 1 từ như
-    "Really?"), KHÔNG gộp 2 mệnh đề độc lập (nối bằng and/but/so/because...) vào chung 1 nhóm.
+//
+// 2026-08-13 — RÚT GỌN prompt text bên dưới ~45% (19960 → ~11000 ký tự) sau khi Minh phát hiện
+// chi phí OpenAI tăng bất thường: prompt này chạy TỪNG CÂU 1 (sau fix tách câu thật cùng ngày,
+// xem analyzePhraseGroupsInChunks) — với bài B1+ nhiều câu/đoạn, phần system prompt ~5000 token
+// bị gửi lại ĐẦY ĐỦ hàng chục lần/bài, phần lớn là chú giải LỊCH SỬ (ngày sửa, lỗi thật đã gặp,
+// trích dẫn Minh) không cần cho MÔ HÌNH, chỉ cần cho NGƯỜI ĐỌC code. Toàn bộ chú giải đó dời vào
+// đây + các đoạn comment phía trên — nội dung THỰC THỂ (mọi rule + ví dụ tối giản) giữ nguyên
+// không đổi, chỉ bớt phần "vì sao"/"lịch sử". Các mốc đã ghi trong nội dung rút gọn:
+// - "chủ ngữ không chung nhóm với Cụm động từ" (2026-08-12/13): xác nhận qua nhiều vòng test thật
+//   — dù đã có ví dụ, model không tuân thủ đều 100%, xem thêm lưới đỡ bằng CODE
+//   (splitLeadingSubjectPronoun bên dưới, xử lý phần AI vẫn bỏ lọt).
+// - "13 mẫu ngữ pháp cho Cụm động từ" (2026-08-13, thay 10 mẫu cũ): Minh — "không yêu cầu giữ
+//   trần hay sàn, yêu cầu nhận diện đúng" — đổi từ đếm-từ sang nhận-diện-mẫu.
+// - "word_types"/"word_levels" (2026-08-12/13): thêm để tooltip hiện đúng loại từ NGỮ PHÁP và
+//   cấp độ RIÊNG của từng từ, thay vì mượn của cả nhóm (quá thô cho nhóm nhiều từ khác cấp độ).
+const PHRASE_GROUPS_RULES = `QUY TẮC VỀ GOM CỤM TỪ (chunking — trường "phrase_groups" trong MỖI phần tử "content") — CHỈ phục vụ
+TRA TỪ khi bấm vào 1 từ/cụm (tooltip), KHÔNG liên quan "reading_chunks" (tách câu) hay
+"grammar"/"sentence_patterns" (ngữ pháp, dùng catalog riêng).
 
-QUY TẮC RIÊNG VỀ CHỦ NGỮ (2026-08-12, xác nhận qua test thật — lỗi KHÁC lỗi ở mục "NGUYÊN TẮC
-CHUNG VỀ ĐỘNG TỪ CHIA" ngay dưới đây: lỗi đó là gắn NHÃN SAI (gọi "Cụm danh từ" khi có động từ
-chia); lỗi NÀY là gắn ĐÚNG NHÃN "Cụm động từ" nhưng vẫn nhét LUÔN chủ ngữ vào chung nhóm — 2 lỗi
-độc lập, sửa 1 không tự sửa được lỗi kia):
-- Chủ ngữ (danh từ/đại từ đứng NGAY TRƯỚC 1 động từ chia) KHÔNG BAO GIỜ nằm chung 1 nhóm với
-  "Cụm động từ" theo sau nó — kể cả khi tổng số từ (chủ ngữ + động từ chia + phần theo sau) vẫn
-  ≤5 từ. Đối chiếu lại 10 mẫu ở mục I ngay dưới: KHÔNG mẫu nào bắt đầu bằng 1 danh từ/đại từ chủ
-  ngữ, tất cả đều bắt đầu NGAY từ động từ/trợ động từ/modal.
-  ❌ SAI (chủ ngữ bị nhét chung với cụm động từ, đúng nguyên văn output thật 2026-08-12):
-  {"words":["Accounting","is","often","described","as"], "type":"Cụm động từ", "meaning":"thường được mô tả là"}
-  {"words":["Maria","takes","notes"], "type":"Cụm động từ", "meaning":"ghi chú"}
-  {"words":["They","find","mistakes"], "type":"Cụm động từ", "meaning":"tìm ra lỗi"}
-  ✅ ĐÚNG (tách chủ ngữ ra làm 1 nhóm riêng TRƯỚC, phần còn lại mới mang nhãn "Cụm động từ"):
-  {"words":["Accounting"], "type":"Cụm danh từ", "meaning":"kế toán"}
-  {"words":["is","often","described","as"], "type":"Cụm động từ", "meaning":"thường được mô tả là"}
-  {"words":["Maria"], "type":"Cụm danh từ", "meaning":"Maria (tên riêng)"}
-  {"words":["takes","notes"], "type":"Cụm động từ", "meaning":"ghi chú"}
-  {"words":["They"], "type":"Cụm danh từ", "meaning":"họ"}
-  {"words":["find","mistakes"], "type":"Cụm động từ", "meaning":"tìm ra lỗi"}
+BẮT BUỘC (hệ thống TỰ ĐỘNG KIỂM TRA bằng code): ghép TOÀN BỘ "words" của MỌI nhóm theo đúng thứ
+tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" (chỉ khác dấu câu/khoảng trắng) — không thiếu,
+không thừa, không đảo thứ tự, không lặp từ ở 2 nhóm. Quan trọng hơn việc chọn đúng loại cụm.
 
-NGUYÊN TẮC CHUNG VỀ ĐỘNG TỪ CHIA (áp dụng cho MỌI loại cụm ở 24 mục dưới, không phải riêng loại
-nào — tự kiểm TRƯỚC KHI gắn nhãn, không đợi phát hiện lỗi ở từng loại mới vá thêm):
-- Các loại BẢN CHẤT KHÔNG chứa động từ chia (finite verb — động từ có chủ ngữ, chia theo thời/thể;
-  KHÁC dạng V-ing/to-V/V3 làm bổ nghĩa không chủ ngữ riêng): mục V (Cụm danh từ), VI (Cụm tính từ),
-  VII (Cụm trạng từ), VIII (Cụm giới từ), IX (Cụm phân từ), X (Cụm nguyên mẫu), XI (Gerund), XII
-  (Cụm so sánh), XIII (Cụm liên từ), XIV (Cấu trúc song song), XV (Cụm cố định), XVI (Thành ngữ),
-  XVII (Collocation), XXI-XXIV (các cụm giới từ/tính từ/danh từ cố định + cụm chỉ số lượng).
-- Các loại BẢN CHẤT CÓ chứa động từ chia (đúng cấu trúc, KHÔNG phải lỗi): mục I (Cụm động từ), II
-  (Phrasal verb), III (Prepositional verb), IV (Verb pattern), XVIII (Mệnh đề — quan hệ/danh
-  từ/trạng ngữ, luôn có 1 động từ chia riêng bên trong), XIX (Cấu trúc đặc biệt — There is/It is...
-  đều có "is/are/takes" là động từ chia của CHÍNH cấu trúc đó, không tính là lỗi), XX (Mẫu ngữ
-  pháp cố định — nhiều mẫu như "be going to"/"had better" chứa động từ chia).
-- TRƯỚC KHI gắn 1 nhãn thuộc nhóm "KHÔNG chứa động từ chia" ở trên, tự hỏi: cụm này có từ nào là
-  ĐỘNG TỪ CHIA theo đúng chủ ngữ đứng trước nó không — BAO GỒM CẢ 3 DẠNG: (a) động từ thường chia
-  theo ngôi/thời (checks/helps/tracks/lists/represents/shows/indicates...), (b) MỌI dạng của "be"
-  (is/are/was/were), (c) ĐỘNG TỪ KHUYẾT THIẾU/MODAL đứng SAU chủ ngữ (can/could/will/would/
-  should/must/may/might + V — "can track", "should prioritize", "will help" ĐỀU LÀ động từ chia
-  của mệnh đề đó, dù modal không đổi dạng theo ngôi). Nếu CÓ BẤT KỲ dạng nào trong 3 dạng trên, đây
-  thực chất là 1 phần của MỆNH ĐỀ hay CỤM ĐỘNG TỪ (mục I/XVIII), KHÔNG phải loại đang định gắn —
-  phải tách riêng phần chủ ngữ (đúng mục V-XI tuỳ cấu trúc) khỏi phần động từ chia + phần theo sau
-  (mục I, "Cụm động từ").
-  ❌ SAI (3 lỗi thật đã xảy ra — động từ thường/"be"/modal+verb đều bị gắn nhãn thuộc nhóm "không
-  chứa động từ chia"):
-  {"words":["an","accountant","checks","financial","records"], "type":"Cụm danh từ", "meaning":"một kế toán kiểm tra các hồ sơ tài chính"}
-  {"words":["Financial","statements","are","important","documents"], "type":"Cụm danh từ", "meaning":"báo cáo tài chính là những tài liệu quan trọng"}
-  {"words":["companies","can","track","their","expenses"], "type":"Cụm danh từ", "meaning":"các công ty có thể theo dõi chi phí của họ"}
-  ✅ ĐÚNG (tách chủ ngữ khỏi phần động từ chia + phần theo sau, mỗi phần đúng nhãn của nó):
-  {"words":["an","accountant"], "type":"Cụm danh từ", "meaning":"một kế toán"}
-  {"words":["checks","financial","records"], "type":"Cụm động từ", "meaning":"kiểm tra các hồ sơ tài chính"}
-  {"words":["Financial","statements"], "type":"Cụm danh từ", "meaning":"báo cáo tài chính"}
-  {"words":["are","important","documents"], "type":"Cụm động từ", "meaning":"là những tài liệu quan trọng"}
+Mỗi phần tử trong "words" PHẢI là ĐÚNG 1 TỪ ĐƠN (hoặc 1 từ có dấu nháy như "don't" — vẫn 1 từ) —
+KHÔNG nhét nhiều từ cách nhau bởi khoảng trắng vào 1 chuỗi.
+❌ {"words": ["oil traffic could"]} ✅ {"words": ["oil","traffic","could"]} — vẫn 1 NHÓM DUY NHẤT,
+chỉ mảng "words" phải tách rời từng từ.
 
-24 LOẠI CỤM (nguyên văn theo file "Cụm cho tooltip.txt" Minh cung cấp — dùng ĐÚNG danh sách này để
-chọn "type", không diễn giải lại):
+Từ có DẤU GẠCH NỐI (long-term, 24-hour): tách thành 2 phần tử riêng trong "words" ("long","term"),
+có thể vẫn cùng 1 nhóm.
 
-I. Cụm động từ (Verb Phrase) — nhãn "type": "Cụm động từ". LƯU Ý: KHÔNG mẫu nào dưới đây bắt đầu
-  bằng chủ ngữ, tất cả bắt đầu ngay từ động từ/trợ động từ/modal — xem "QUY TẮC RIÊNG VỀ CHỦ NGỮ"
-  ở trên trước khi gắn nhãn này.
-  NGUYÊN TẮC NHẬN DIỆN (2026-08-13, Minh: "tôi không yêu cầu giữ trần hay giữ sàn, tôi yêu cầu
-  nhận diện đúng" — trần 5 từ ở mục "GIỚI HẠN ĐỘ DÀI" phía trên là LƯỚI ĐỠ cho việc chia MỆNH ĐỀ
-  dài, KHÔNG phải căn cứ để xác định ranh giới "Cụm động từ" — ranh giới ĐÚNG của "Cụm động từ"
-  là ĐÚNG HẾT 1 trong các MẪU NGỮ PHÁP dưới đây, KHÔNG HƠN KHÔNG KÉM): nhận diện ĐÚNG mẫu ngữ pháp
-  nào của động từ chính đang dùng, nhóm ĐỦ VÀ CHỈ các từ cấu thành mẫu đó — SAU KHI đủ mẫu, DỪNG
-  LẠI ngay, KHÔNG kéo dài thêm tân ngữ/bổ ngữ/trạng ngữ đứng sau (những từ đó thuộc nhóm RIÊNG,
-  đúng mục V/VI/VII/VIII tuỳ loại) — TRỪ 4 mẫu 7-10 dưới đây, nơi tân ngữ là PHẦN BẮT BUỘC của
-  chính tên mẫu (Verb+Object+...), thì nhóm dừng đúng tại hết tân ngữ đó, không kéo dài thêm nữa.
-  1. Động từ biến đổi theo thì (Cụm thì): am/is/are, was/were, do/does/did + V, V-ed/V-s, will + V,
-     has eaten, had finished, will be working, has been waiting, will have been studying.
-  2. be + V-ing (thì tiếp diễn): is working, was studying, will be working.
-  3. has/have/had + V-ed (thì hoàn thành): has eaten, had finished, has done.
-  4. have/has/had + been + V-ed/V-ing (hoàn thành tiếp diễn/hoàn thành bị động): has been waiting,
-     have been working, had been repaired.
-  5. Cụm dạng bị động (Voice, be + V3): is built, was written, has been repaired, will be invited.
-  6. Modal Verb: can swim, must leave, should study, might come, would have gone.
+GIỚI HẠN ĐỘ DÀI (lưới đỡ cho việc chia MỆNH ĐỀ dài — KHÔNG dùng làm căn cứ chính cho "Cụm động
+từ", mục I có quy tắc riêng): mọi nhóm KHÔNG vượt quá 5 từ, kể cả mệnh đề quan hệ/trạng ngữ/danh
+từ (if/whether/because/although...) — câu/mệnh đề dài hơn PHẢI cắt thành nhiều nhóm liên tiếp ≤5
+từ, KHÔNG gộp nguyên 1 câu hay 2 mệnh đề độc lập (nối bằng and/but/so/because) thành 1 nhóm.
+Ví dụ: "who has worked at this company since she graduated from college" (11 từ) → 3 nhóm:
+["who","has","worked","at","this"] (Mệnh đề quan hệ) + ["company","since","she","graduated"]
+(Cụm giới từ) + ["from","college"] (Cụm giới từ).
+
+CHỦ NGỮ KHÔNG BAO GIỜ chung nhóm với "Cụm động từ" theo sau, dù tổng vẫn ≤5 từ — chủ ngữ luôn 1
+nhóm riêng (Cụm danh từ/đại từ).
+❌ {"words":["They","find","mistakes"],"type":"Cụm động từ"}
+✅ {"words":["They"],"type":"Cụm danh từ"} + {"words":["find","mistakes"],"type":"Cụm động từ"}
+
+TRƯỚC KHI gắn nhãn "KHÔNG chứa động từ chia" (mục V,VI,VII,VIII,IX,X,XI,XII,XIII,XIV,XV,XVI,XVII,
+XXI-XXIV), tự hỏi: cụm có từ nào là ĐỘNG TỪ CHIA theo chủ ngữ trước nó không — gồm (a) động từ
+thường chia ngôi/thời, (b) mọi dạng "be", (c) modal đứng sau chủ ngữ (can/could/will/would/
+should/must/may/might + V). Nếu CÓ, đây thực chất là 1 phần MỆNH ĐỀ/CỤM ĐỘNG TỪ (mục I/XVIII) —
+tách riêng chủ ngữ khỏi phần động từ chia.
+❌ {"words":["companies","can","track","their","expenses"],"type":"Cụm danh từ"}
+✅ {"words":["companies"],"type":"Cụm danh từ"} +
+   {"words":["can","track","their","expenses"],"type":"Cụm động từ"}
+
+24 LOẠI CỤM (nguyên văn theo file "Cụm cho tooltip.txt" — dùng ĐÚNG danh sách này để chọn "type"):
+
+I. Cụm động từ (Verb Phrase) — nhãn "Cụm động từ". KHÔNG mẫu nào bắt đầu bằng chủ ngữ. Nhận diện
+ĐÚNG 1 trong 13 mẫu dưới đây, nhóm ĐỦ VÀ CHỈ từ cấu thành mẫu đó rồi DỪNG LẠI — KHÔNG kéo dài
+thêm tân ngữ/bổ ngữ/trạng ngữ không thuộc mẫu (trừ mẫu 10-13, nơi tân ngữ là PHẦN BẮT BUỘC của
+tên mẫu, dừng đúng tại hết tân ngữ đó):
+  1. Biến đổi theo thì: am/is/are, was/were, do/does/did+V, V-ed/V-s, will+V, has eaten, had
+     finished, will be working, has been waiting, will have been studying.
+  2. be + V-ing: is working, was studying, will be working.
+  3. has/have/had + V-ed: has eaten, had finished, has done.
+  4. have/has/had + been + V-ed/V-ing: has been waiting, have been working, had been repaired.
+  5. Bị động (be + V3): is built, was written, has been repaired, will be invited.
+  6. Modal: can swim, must leave, should study, might come, would have gone.
   7. Modal + Perfect: must have forgotten, should have called, may have left, could have done.
   8. Verb + to infinitive: want to go, decide to stay, hope to see, refuse to help.
   9. Verb + V-ing: enjoy reading, avoid eating, keep talking, finish writing.
@@ -321,25 +275,32 @@ I. Cụm động từ (Verb Phrase) — nhãn "type": "Cụm động từ". LƯU
   11. Verb + Object + Bare infinitive: let him go, make me laugh, have someone clean.
   12. Verb + Object + V-ing: catch him cheating, keep me waiting, leave the water running.
   13. Verb + Object + Past Participle: get it repaired, have my hair cut, leave the door locked.
-  NẾU câu KHÔNG khớp rõ 1 trong 13 mẫu trên (cấu trúc động từ hiếm/phức tạp hơn): tự suy luận
-  bằng chính năng lực ngữ pháp thật của bạn để nhận diện ĐÚNG ranh giới cụm động từ thật — KHÔNG
-  cố gán ép vào 1 trong 13 mẫu nếu không khớp, và KHÔNG dùng số từ làm căn cứ thay cho ngữ pháp.
+  Không khớp rõ mẫu nào (cấu trúc hiếm/phức tạp hơn): tự suy luận bằng năng lực ngữ pháp thật,
+  KHÔNG cố gán ép vào 1 trong 13 mẫu, và KHÔNG dùng số từ làm căn cứ thay ngữ pháp.
+  "Tân ngữ" ở mẫu 10-13 CHỈ tính là PHẦN BẮT BUỘC của mẫu khi tân ngữ đó là 1 ĐẠI TỪ ĐƠN (him/
+  her/them/me/us/it/someone) hoặc 1 TÊN RIÊNG ngắn — nếu tân ngữ là 1 CỤM DANH TỪ ĐẦY ĐỦ (có mạo
+  từ/lượng từ/tính từ đi kèm danh từ, vd "all companies", "the manager", "a new employee"), cụm
+  danh từ đó KHÔNG thuộc "Cụm động từ" — tách riêng làm 1 "Cụm danh từ" của chính nó, "Cụm động
+  từ" DỪNG LẠI ngay trước cụm danh từ đó (kể cả khi verb thuộc đúng 1 trong mẫu 10-13).
+  ❌ {"words":["recommend","all","companies"],"type":"Cụm động từ"} (tân ngữ "all companies" là 1
+     cụm danh từ đầy đủ, không phải đại từ đơn)
+  ✅ {"words":["recommend"],"type":"Cụm động từ"} + {"words":["all","companies"],"type":"Cụm danh từ"}
 
 II. Phrasal Verbs — nhãn "Phrasal verb": look after, look up, give up, carry on, put off, turn
   down (động từ + giới từ/trạng từ đi liền, tách khỏi phần còn lại của câu).
 
 III. Prepositional Verbs — nhãn "Prepositional verb": depend on, belong to, listen to, insist on,
-  apologize for (động từ + giới từ CỐ ĐỊNH đi kèm).
+  apologize for.
 
 IV. Verb Pattern — nhãn "Verb pattern": prevent somebody from doing, accuse somebody of doing,
   remind somebody to do, remind somebody of something, persuade somebody to do.
 
 V. Cụm danh từ (Noun Phrase) — nhãn "Cụm danh từ": the tall young man, a cup of coffee, an
-  interesting book, the boy wearing glasses. Bao gồm: article, adjective, noun, modifier,
-  determiner — KHÔNG BAO GIỜ chứa động từ chia (xem NGUYÊN TẮC CHUNG ở trên).
+  interesting book. Bao gồm: article, adjective, noun, modifier, determiner — KHÔNG BAO GIỜ chứa
+  động từ chia.
 
-VI. Cụm tính từ (Adjective Phrase) — nhãn "Cụm tính từ": very happy, full of water, interested in
-  music, difficult to understand.
+VI. Cụm tính từ (Adjective Phrase) — nhãn "Cụm tính từ": very happy, full of water, interested
+  in music, difficult to understand.
 
 VII. Cụm trạng từ (Adverb Phrase) — nhãn "Cụm trạng từ": quite slowly, very carefully, much more
   quickly.
@@ -402,70 +363,44 @@ XXIV. Cụm chỉ số lượng (Quantifier Phrases) — nhãn "Cụm chỉ số
 Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
 nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
 
-QUY TẮC XÁC ĐỊNH "level" (2026-08-11, Minh xác nhận: dùng AI nhận dạng cấp độ — không dùng từ điển
-tĩnh, vì từ điển KHÔNG phủ được từ chuyên ngành, vốn là phần lớn nội dung app này — nhưng phản hồi
-thật là cấp độ đang gán SAI khá nhiều) — tự hỏi theo ĐÚNG 1 câu hỏi duy nhất: "1 người học ĐÃ ĐẠT
-ĐÚNG cấp độ này (không hơn) có khả năng cao đã BIẾT/GẶP từ hoặc cụm này trong giao tiếp thông
-thường KHÔNG (không tính riêng ngành)?" — không phải "từ này CÓ THỂ xuất hiện ở cấp độ nào" (câu
-hỏi sai, gần như từ nào cũng "có thể" xuất hiện ở mọi cấp nếu hỏi kiểu đó). Mốc neo cụ thể (dùng để
-tự so sánh, không phải danh sách đầy đủ):
-- A1: từ chức năng cơ bản (a/an/the/is/are/have/this/that), từ vựng sinh hoạt hàng ngày cực phổ
-  biến (name/time/day/work/like/want/good/big).
-- A2: từ vựng thông dụng nhưng ít lõi hơn A1 (decide/prepare/example/perhaps/several/although).
+QUY TẮC XÁC ĐỊNH "level": tự hỏi theo ĐÚNG 1 câu hỏi duy nhất: "1 người học ĐÃ ĐẠT ĐÚNG cấp độ
+này (không hơn) có khả năng cao đã BIẾT/GẶP từ hoặc cụm này trong giao tiếp thông thường KHÔNG
+(không tính riêng ngành)?" — không phải "từ này CÓ THỂ xuất hiện ở cấp độ nào" (câu hỏi sai, gần
+như từ nào cũng "có thể" xuất hiện ở mọi cấp nếu hỏi kiểu đó). Mốc neo:
+- A1: từ chức năng cơ bản (a/an/the/is/are/have/this/that), từ vựng sinh hoạt cực phổ biến
+  (name/time/day/work/like/want/good/big).
+- A2: từ thông dụng nhưng ít lõi hơn A1 (decide/prepare/example/perhaps/several/although).
 - B1: từ trừu tượng/học thuật nhẹ bắt đầu xuất hiện (analyze/consider/tendency/significant).
-- B2: từ trừu tượng/học thuật rõ, ít dùng trong giao tiếp đời thường (implement/comprehensive/
-  facilitate/subsequently).
-- C1: từ trang trọng/học thuật cao, hiếm trong giao tiếp thường ngày (nonetheless/notwithstanding/
-  ambiguous/discrepancy).
-- THUẬT NGỮ CHUYÊN NGÀNH (vd "balance sheet", "cash flow", "audit trail"): xếp cấp độ theo ĐỘ KHÓ
-  NGÔN NGỮ của chính cụm từ đó (cấu trúc câu/từ vựng nó dùng), KHÔNG xếp theo độ khó KHÁI NIỆM
-  chuyên môn — 1 thuật ngữ ghép từ toàn từ A1-A2 quen thuộc (vd "cash flow" = "tiền" + "chảy") vẫn
-  có thể xếp A2-B1 dù khái niệm kế toán phía sau nó phức tạp, KHÔNG tự động đẩy lên B2/C1 chỉ vì
-  "nghe có vẻ chuyên ngành".
-- TỰ KIỂM sau khi gán: nếu 1 bài A1/A2 có QUÁ NHIỀU cụm bị gán B1 trở lên (hơn 1-2 cụm/câu ngắn),
-  dừng lại xét lại — cấp độ CHUNG của bài (A1/A2) phải là cấp độ CỦA PHẦN LỚN từ vựng thật dùng
-  trong bài đó, không thể vừa tự nhận "bài A1" vừa gán "level" cao cho gần hết từ trong bài.
+- B2: từ trừu tượng/học thuật rõ, ít dùng đời thường (implement/comprehensive/facilitate).
+- C1: từ trang trọng/học thuật cao, hiếm đời thường (nonetheless/notwithstanding/ambiguous).
+- THUẬT NGỮ CHUYÊN NGÀNH (balance sheet, cash flow...): xếp theo ĐỘ KHÓ NGÔN NGỮ của chính cụm
+  từ đó, KHÔNG xếp theo độ khó KHÁI NIỆM chuyên môn — 1 thuật ngữ ghép từ toàn A1-A2 quen thuộc
+  (cash flow = tiền + chảy) vẫn có thể xếp A2-B1 dù khái niệm phức tạp.
+- TỰ KIỂM: nếu 1 bài A1/A2 có QUÁ NHIỀU cụm bị gán B1+ (hơn 1-2 cụm/câu ngắn), dừng lại xét lại —
+  cấp độ CHUNG của bài phải là cấp độ của PHẦN LỚN từ vựng thật dùng trong bài.
 
 Mỗi nhóm có cấu trúc:
   {
     "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
-    "level": "cấp độ CEFR CHUNG của cả cụm (dùng khi nhóm chỉ 1 từ, hoặc làm lưới đỡ nếu
-      "word_levels" bên dưới thiếu từ nào) — CÓ THỂ khác cấp độ chung của bài",
+    "level": "cấp độ CEFR chung của cả cụm (dùng khi nhóm chỉ 1 từ, hoặc làm lưới đỡ nếu
+      "word_levels" thiếu từ nào) — CÓ THỂ khác cấp độ chung của bài",
     "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại ở trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ
-      trong "words" của nhóm khi nhóm có >1 từ (KHÔNG được thiếu bất kỳ từ nào — từ nào KHÔNG có
-      trong "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế, trộn 2 ngôn ngữ nếu
-      ghép nhiều nguồn — ĐÂY LÀ YÊU CẦU CỨNG, không phải tuỳ chọn: dù nhóm 2 từ hay 5 từ,
-      "word_meanings" phải có ĐỦ chính xác từng đó khoá, không thiếu 1 từ nào),
+      trong "words" của nhóm khi nhóm có >1 từ (không thiếu bất kỳ từ nào — từ nào không có trong
+      "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế, trộn 2 ngôn ngữ nếu ghép
+      nhiều nguồn — YÊU CẦU CỨNG, không phải tuỳ chọn),
     "word_types": {"từ": "chức năng NGỮ PHÁP RIÊNG của chính từ đó (noun/verb/adjective/adverb/
       pronoun/preposition/conjunction/determiner/auxiliary/particle/interjection...) — KHÁC "type"
-      của CẢ NHÓM (vd "Cụm động từ"): đây là loại từ của TỪNG TỪ, dùng để hiện trong tooltip khi
-      người học bấm đúng từ đó (2026-08-12, Minh: tooltip chỉ hiện "noun/verb/adj/..." của từ được
-      bấm, KHÔNG hiện tên loại cụm). BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ trong "words", kể cả nhóm chỉ 1 từ
-      (khi đó "word_types" chỉ có đúng 1 khoá, trùng giá trị với "type" của nhóm).
-    "word_levels": {"từ": "cấp độ CEFR RIÊNG của chính từ đó (2026-08-13, Minh: nhận diện cấp độ
-      từ CHƯA chính xác, cấp độ gán theo CẢ NHÓM quá thô — 1 nhóm 3-5 từ chắc chắn có từ dễ/khó
-      lẫn nhau, vd nhóm "is often described as" không thể gán 1 cấp độ DUY NHẤT cho cả "is" (A1)
-      và "described" (B1) — PHẢI tự hỏi lại ĐÚNG 1 câu hỏi ở "QUY TẮC XÁC ĐỊNH level" TRÊN cho
-      TỪNG TỪ riêng, không suy diễn từ cấp độ chung của nhóm/của bài) — dùng để hiện trong tooltip
-      khi bấm đúng từ đó, THAY CHO "level" của cả nhóm. BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ trong "words",
-      kể cả nhóm chỉ 1 từ (khi đó trùng giá trị với "level" của nhóm).
+      của CẢ NHÓM (vd "Cụm động từ"): loại từ của TỪNG TỪ, hiện trong tooltip khi bấm đúng từ đó.
+      BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ trong "words", kể cả nhóm chỉ 1 từ (khi đó trùng "type" nhóm).
+    "word_levels": {"từ": "cấp độ CEFR RIÊNG của chính từ đó — KHÁC "level" của CẢ NHÓM (1 nhóm
+      nhiều từ có thể có từ dễ/khó khác nhau, tự hỏi lại đúng câu hỏi ở "QUY TẮC XÁC ĐỊNH level"
+      TRÊN cho TỪNG TỪ riêng, không suy diễn từ cấp độ chung nhóm/bài). BẮT BUỘC PHỦ ĐỦ 100% MỌI
+      TỪ trong "words", kể cả nhóm chỉ 1 từ (khi đó trùng "level" nhóm).
   }
-- LỖI THẬT HAY GẶP (2026-08-09, xác nhận qua dữ liệu thật — hệ thống dùng "words" để tô sáng
-  TỪNG TỪ bấm được trong câu, 1 phần tử mảng KHÔNG được chứa nhiều hơn 1 từ): mỗi phần tử trong
-  "words" PHẢI là ĐÚNG 1 TỪ ĐƠN (hoặc 1 từ có dấu nháy như "don't", "it's" — vẫn tính là 1 từ) —
-  TUYỆT ĐỐI KHÔNG được nhét nhiều từ cách nhau bởi khoảng trắng vào CHUNG 1 chuỗi.
-  ❌ SAI: {"words": ["normal oil traffic could resume"], ...} — 1 phần tử chứa nguyên 5 từ.
-  ✅ ĐÚNG: {"words": ["normal", "oil", "traffic", "could", "resume"], ...} — 5 phần tử riêng biệt,
-  MỖI phần tử đúng 1 từ, dù cả cụm 5 từ này vẫn được coi là 1 NHÓM DUY NHẤT (1 object) mang chung
-  1 "meaning" — chỉ mảng "words" bên trong nhóm đó phải tách rời từng từ, không phải tách nhóm.
-- BẮT BUỘC (hệ thống sẽ TỰ ĐỘNG KIỂM TRA bằng code, không tốn thêm lượt AI): ghép TOÀN BỘ
-  "words" của MỌI nhóm trong 1 phần tử, theo đúng thứ tự, PHẢI tái tạo lại CHÍNH XÁC các từ của
-  "text" phần tử đó (chỉ khác dấu câu/khoảng trắng) — không thiếu từ, không thừa từ, không đảo
-  thứ tự, không có từ nào bị lặp ở 2 nhóm khác nhau. NẾU KIỂM TRA NÀY THẤT BẠI, hệ thống sẽ bắt
-  làm lại (sinh lại toàn bộ bài, hoặc với "vá" bài cũ — thử lại đúng lượt gọi đó) — không được
-  để sót từ nào, ở BẤT KỲ cấp độ nào.`;
+- NẾU KIỂM TRA COVERAGE THẤT BẠI (words không tái tạo đủ/đúng "text"), hệ thống sẽ bắt làm lại —
+  không được để sót từ nào, ở BẤT KỲ cấp độ nào.`;
 
 // 2026-08-10, Đợt 14 — Minh: "phần tách câu là phần tinh hoa của app... cụm của tách câu có thể
 // là cụm dài, không liên quan gì tới tooltip". TRƯỚC ĐÂY "Tách câu" (UI) tự suy ra từ chính
@@ -1611,6 +1546,15 @@ function splitEnglishSentencesForPhraseGroups(text) {
 // đầu với đúng các câu còn thiếu). "toAnalyze[i].text" GIỜ có thể là 1 ĐOẠN nhiều câu (xem ghi
 // chú splitEnglishSentencesForPhraseGroups ở trên) — tách thật theo câu trước, mỗi câu 1 lượt gọi
 // riêng NHƯ CŨ, ghép lại đúng thứ tự thành 1 mảng phrase_groups cho ĐÚNG phần tử gốc.
+// SỬA 2026-08-13 (Minh: "chi phí OpenAI quá cao, kiểm tra gấp") — 2 thay đổi để giảm chi phí:
+// (1) BỎ HẲN lượt leo thang model "strong" (đắt ~13x model mặc định "gpt-4o-mini" theo giá
+// OpenAI công khai) — action này chỉ phục vụ TOOLTIP (tính năng phụ, không chặn đọc bài), không
+// đáng trả giá cao để "chắc thắng" 1 câu khó — 2 lượt model mặc định là đủ, câu vẫn thất bại thì
+// BỎ QUA câu đó (coverage vẫn thiếu, lượt "vá" SAU sẽ tự thử lại đúng câu đó, không mất dữ liệu).
+// (2) BỎ hành vi "1 câu thất bại -> HUỶ TOÀN BỘ lượt vá" (trước đây return {ok:false} ngay) — đổi
+// sang "1 câu thất bại -> BỎ QUA riêng câu đó, các câu KHÁC trong CÙNG bài vẫn được lưu" — quan
+// trọng hơn khi giờ phân tích TỪNG CÂU (không phải từng đoạn như trước): 1 bài B1+ có thể có
+// 15-20 câu, không nên để 1 câu khó làm mất hết dữ liệu của 14-19 câu còn lại đã phân tích đúng.
 async function analyzePhraseGroupsInChunks(toAnalyze) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
@@ -1620,8 +1564,10 @@ async function analyzePhraseGroupsInChunks(toAnalyze) {
       const chunk = [{ text: sentence }];
       let result = await callAnalyzePhraseGroups(chunk);
       if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
-      if (!result.ok) result = await callAnalyzePhraseGroups(chunk, "strong");
-      if (!result.ok) return { ok: false, reason: result.reason };
+      if (!result.ok) {
+        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
+        continue;
+      }
       const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
       combinedGroups.push(...(sentenceItem?.phrase_groups || []));
     }
@@ -1800,14 +1746,20 @@ async function callAnalyzeReadingChunks(items, tier) {
 
 // Gửi TỪNG CÂU MỘT + tự thử lại tối đa 3 lần (lượt cuối leo thang model mạnh) — ĐÚNG PATTERN
 // analyzePhraseGroupsInChunks() ở trên, xem ghi chú đầy đủ tại đó.
+// SỬA 2026-08-13 — cùng lý do/thay đổi đã áp dụng cho analyzePhraseGroupsInChunks() phía trên
+// (Minh: "chi phí OpenAI quá cao"): bỏ lượt leo thang model "strong" (đắt, không đáng cho tính
+// năng phụ "Tách câu"), 1 đoạn thất bại chỉ bỏ qua RIÊNG đoạn đó, không huỷ cả lượt vá.
 async function analyzeReadingChunksInChunks(toAnalyze) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
     const chunk = [toAnalyze[i]];
     let result = await callAnalyzeReadingChunks(chunk);
     if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
-    if (!result.ok) result = await callAnalyzeReadingChunks(chunk, "strong");
-    if (!result.ok) return { ok: false, reason: result.reason };
+    if (!result.ok) {
+      console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 đoạn thất bại cả 2 lượt:", result.reason);
+      allItems.push({ index: i, reading_chunks: [] });
+      continue;
+    }
     allItems.push(...result.items);
   }
   return { ok: true, items: allItems };
