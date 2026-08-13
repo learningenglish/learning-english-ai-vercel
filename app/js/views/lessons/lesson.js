@@ -1189,6 +1189,27 @@ function buildVocabMap(vocabulary) {
   return map;
 }
 
+// BUG THẬT (2026-08-13, Minh: "bài A2 tô đậm từ chuyên ngành, bài B2 lại không" — cấp cao hơn có
+// nhiều từ chuyên ngành GHÉP THÀNH CỤM nhiều từ hơn, ví dụ "bank reconciliation") — vocabMap ở
+// trên chỉ khớp theo CẢ CỤM nguyên văn, nhưng khi 1 từ trong cụm đó lại rơi vào 1 phrase_group
+// KHÁC của AI (vd chỉ còn "reconciliation" trong 1 nhóm riêng), so khớp đơn-từ không tìm lại được
+// "is_specialized" của từ vựng gốc. Tách riêng TỪNG TỪ ĐƠN bên trong mọi từ vựng nhiều-từ CHUYÊN
+// NGÀNH thành 1 tập riêng — bất kỳ đâu từ đó xuất hiện trong bài đều được tô đậm đúng, không cần
+// khớp lại nguyên cụm.
+function buildSpecializedWordSet(vocabulary) {
+  const set = new Set();
+  (vocabulary || []).forEach((w) => {
+    if (w.is_specialized && w.word) {
+      w.word
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .forEach((part) => set.add(normalizeAnswer(part)));
+    }
+  });
+  return set;
+}
+
 function findVocabEntry(matchedText, vocabMap) {
   const lower = normalizeAnswer(matchedText);
   if (vocabMap.has(lower)) return vocabMap.get(lower);
@@ -1245,20 +1266,32 @@ function tokenizeWords(text) {
 // "phraseText" (mới, 2026-08-12, Minh: "hiển thị cụm nhưng không hiển thị nghĩa của cụm" — ví dụ
 // "A2 morning / noun / buổi sáng / in the morning") — cụm chứa từ này, hiện làm dòng NGỮ CẢNH
 // dưới nghĩa từ, KHÔNG kèm bản dịch/nghĩa cụm riêng.
-function wordEntryFromPhraseGroup(group, word, vocabMap) {
+function wordEntryFromPhraseGroup(group, word, vocabMap, specializedWordSet) {
   const allWords = Array.isArray(group?.words) ? group.words : [];
   const isMultiWord = allWords.length > 1;
   const vocabMatch = !isMultiWord ? findVocabEntry(word, vocabMap) : null;
   const ownMeaning = isMultiWord && group.word_meanings ? group.word_meanings[word] : null;
   const ownType = group.word_types ? group.word_types[word] : null;
+  // "word_levels" (2026-08-13, Minh: "nhận diện cấp độ từ chưa chính xác" — cấp độ trước đây LUÔN
+  // lấy của CẢ NHÓM (group.level), quá thô cho nhóm nhiều từ có độ khó lẫn nhau, vd nhóm "is often
+  // described as" không thể dùng 1 cấp độ chung cho cả "is" (A1) và "described" (B1)) — ưu tiên
+  // cấp độ RIÊNG của chính từ này, chỉ rơi về "group.level" khi bài CŨ chưa có field này.
+  const ownLevel = group.word_levels ? group.word_levels[word] : null;
+  // BUG THẬT (2026-08-13, Minh: "bài A2 có tô đậm từ chuyên ngành, bài B2 lại không" — cấp cao
+  // hơn nhiều từ chuyên ngành GHÉP CỤM nhiều từ hơn (vd "bank reconciliation"), rơi vào nhánh
+  // isMultiWord=true, "vocabMatch" ở trên LUÔN null cho nhóm nhiều từ -> is_specialized luôn
+  // false dù từ đó CHÍNH LÀ từ chuyên ngành đã chọn trong "vocabulary") — kiểm THÊM qua tập từ
+  // đơn tách ra từ MỌI từ vựng chuyên ngành nhiều-từ (specializedWordSet, xem buildVocabMap()),
+  // không chỉ khớp CẢ CỤM y nguyên.
+  const isSpecialized = !!vocabMatch?.is_specialized || !!specializedWordSet?.has(normalizeAnswer(word));
 
   return {
     word,
     meaning: ownMeaning || group.meaning || vocabMatch?.meaning || "",
-    level: group.level || vocabMatch?.level || "",
+    level: ownLevel || vocabMatch?.level || group.level || "",
     type: ownType || vocabMatch?.type || group.type || "",
     phraseText: isMultiWord ? allWords.join(" ") : "",
-    is_specialized: !!vocabMatch?.is_specialized,
+    is_specialized: isSpecialized,
     highlight: isMultiWord || !!vocabMatch,
     fromPhraseGroups: true, // dữ liệu này đã NẰM SẴN vĩnh viễn trong content của bài (phân tích
     // xong ngay lúc tạo bài, xem đầu file), không cần lưu thêm 1 bản riêng vào lesson.vocabulary/
@@ -1288,7 +1321,7 @@ function normalizeMatchWord(w) {
 // liền kề của CÙNG 1 nhóm vẫn tô CÙNG 1 class màu (renderInteractiveHtml() đọc entry.highlight),
 // khoảng trắng giữa 2 từ nằm NGOÀI mọi span (không tô màu) — không cần span "cha" bọc ngoài,
 // nhìn vẫn liền mạch vì không có viền/margin chen giữa.
-function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap) {
+function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap, specializedWordSet) {
   const spans = [];
   let tIdx = 0;
   for (const group of phraseGroups) {
@@ -1302,7 +1335,7 @@ function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap) {
         text: text.slice(tok.start, tok.end),
         start: tok.start,
         end: tok.end,
-        entry: wordEntryFromPhraseGroup(group, w, vocabMap),
+        entry: wordEntryFromPhraseGroup(group, w, vocabMap, specializedWordSet),
       });
       tIdx++;
     }
@@ -1320,9 +1353,10 @@ function computeInteractiveSpans(text, vocabulary, phraseGroups) {
   const { tokens } = tokenizeWords(text);
   if (!tokens.length) return [];
   const vocabMap = buildVocabMap(vocabulary);
+  const specializedWordSet = buildSpecializedWordSet(vocabulary);
 
   if (Array.isArray(phraseGroups) && phraseGroups.length) {
-    const spansFromGroups = spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap);
+    const spansFromGroups = spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap, specializedWordSet);
     if (spansFromGroups) return spansFromGroups;
   }
 

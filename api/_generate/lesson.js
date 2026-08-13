@@ -297,17 +297,33 @@ chọn "type", không diễn giải lại):
 
 I. Cụm động từ (Verb Phrase) — nhãn "type": "Cụm động từ". LƯU Ý: KHÔNG mẫu nào dưới đây bắt đầu
   bằng chủ ngữ, tất cả bắt đầu ngay từ động từ/trợ động từ/modal — xem "QUY TẮC RIÊNG VỀ CHỦ NGỮ"
-  ở trên trước khi gắn nhãn này:
-  1. Cụm thì: has eaten, had finished, will be working, has been waiting, will have been studying.
-  2. Cụm dạng bị động (Voice): is built, was written, has been repaired, will be invited.
-  3. Modal Verb: can swim, must leave, should study, might come, would have gone.
-  4. Modal + Perfect: must have forgotten, should have called, may have left, could have done.
-  5. Verb + to infinitive: want to go, decide to stay, hope to see, refuse to help.
-  6. Verb + V-ing: enjoy reading, avoid eating, keep talking, finish writing.
-  7. Verb + Object + to V: ask him to come, tell me to wait, force them to leave.
-  8. Verb + Object + Bare infinitive: let him go, make me laugh, have someone clean.
-  9. Verb + Object + V-ing: catch him cheating, keep me waiting, leave the water running.
-  10. Verb + Object + Past Participle: get it repaired, have my hair cut, leave the door locked.
+  ở trên trước khi gắn nhãn này.
+  NGUYÊN TẮC NHẬN DIỆN (2026-08-13, Minh: "tôi không yêu cầu giữ trần hay giữ sàn, tôi yêu cầu
+  nhận diện đúng" — trần 5 từ ở mục "GIỚI HẠN ĐỘ DÀI" phía trên là LƯỚI ĐỠ cho việc chia MỆNH ĐỀ
+  dài, KHÔNG phải căn cứ để xác định ranh giới "Cụm động từ" — ranh giới ĐÚNG của "Cụm động từ"
+  là ĐÚNG HẾT 1 trong các MẪU NGỮ PHÁP dưới đây, KHÔNG HƠN KHÔNG KÉM): nhận diện ĐÚNG mẫu ngữ pháp
+  nào của động từ chính đang dùng, nhóm ĐỦ VÀ CHỈ các từ cấu thành mẫu đó — SAU KHI đủ mẫu, DỪNG
+  LẠI ngay, KHÔNG kéo dài thêm tân ngữ/bổ ngữ/trạng ngữ đứng sau (những từ đó thuộc nhóm RIÊNG,
+  đúng mục V/VI/VII/VIII tuỳ loại) — TRỪ 4 mẫu 7-10 dưới đây, nơi tân ngữ là PHẦN BẮT BUỘC của
+  chính tên mẫu (Verb+Object+...), thì nhóm dừng đúng tại hết tân ngữ đó, không kéo dài thêm nữa.
+  1. Động từ biến đổi theo thì (Cụm thì): am/is/are, was/were, do/does/did + V, V-ed/V-s, will + V,
+     has eaten, had finished, will be working, has been waiting, will have been studying.
+  2. be + V-ing (thì tiếp diễn): is working, was studying, will be working.
+  3. has/have/had + V-ed (thì hoàn thành): has eaten, had finished, has done.
+  4. have/has/had + been + V-ed/V-ing (hoàn thành tiếp diễn/hoàn thành bị động): has been waiting,
+     have been working, had been repaired.
+  5. Cụm dạng bị động (Voice, be + V3): is built, was written, has been repaired, will be invited.
+  6. Modal Verb: can swim, must leave, should study, might come, would have gone.
+  7. Modal + Perfect: must have forgotten, should have called, may have left, could have done.
+  8. Verb + to infinitive: want to go, decide to stay, hope to see, refuse to help.
+  9. Verb + V-ing: enjoy reading, avoid eating, keep talking, finish writing.
+  10. Verb + Object + to V: ask him to come, tell me to wait, force them to leave.
+  11. Verb + Object + Bare infinitive: let him go, make me laugh, have someone clean.
+  12. Verb + Object + V-ing: catch him cheating, keep me waiting, leave the water running.
+  13. Verb + Object + Past Participle: get it repaired, have my hair cut, leave the door locked.
+  NẾU câu KHÔNG khớp rõ 1 trong 13 mẫu trên (cấu trúc động từ hiếm/phức tạp hơn): tự suy luận
+  bằng chính năng lực ngữ pháp thật của bạn để nhận diện ĐÚNG ranh giới cụm động từ thật — KHÔNG
+  cố gán ép vào 1 trong 13 mẫu nếu không khớp, và KHÔNG dùng số từ làm căn cứ thay cho ngữ pháp.
 
 II. Phrasal Verbs — nhãn "Phrasal verb": look after, look up, give up, carry on, put off, turn
   down (động từ + giới từ/trạng từ đi liền, tách khỏi phần còn lại của câu).
@@ -414,7 +430,8 @@ Mỗi nhóm có cấu trúc:
   {
     "words": ["từ 1", "từ 2", ...] — ĐÚNG NGUYÊN VĂN, ĐÚNG THỨ TỰ như trong "text",
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
-    "level": "cấp độ CEFR của riêng cụm/từ này — CÓ THỂ khác cấp độ chung của bài",
+    "level": "cấp độ CEFR CHUNG của cả cụm (dùng khi nhóm chỉ 1 từ, hoặc làm lưới đỡ nếu
+      "word_levels" bên dưới thiếu từ nào) — CÓ THỂ khác cấp độ chung của bài",
     "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại ở trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ
       trong "words" của nhóm khi nhóm có >1 từ (KHÔNG được thiếu bất kỳ từ nào — từ nào KHÔNG có
@@ -427,6 +444,13 @@ Mỗi nhóm có cấu trúc:
       người học bấm đúng từ đó (2026-08-12, Minh: tooltip chỉ hiện "noun/verb/adj/..." của từ được
       bấm, KHÔNG hiện tên loại cụm). BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ trong "words", kể cả nhóm chỉ 1 từ
       (khi đó "word_types" chỉ có đúng 1 khoá, trùng giá trị với "type" của nhóm).
+    "word_levels": {"từ": "cấp độ CEFR RIÊNG của chính từ đó (2026-08-13, Minh: nhận diện cấp độ
+      từ CHƯA chính xác, cấp độ gán theo CẢ NHÓM quá thô — 1 nhóm 3-5 từ chắc chắn có từ dễ/khó
+      lẫn nhau, vd nhóm "is often described as" không thể gán 1 cấp độ DUY NHẤT cho cả "is" (A1)
+      và "described" (B1) — PHẢI tự hỏi lại ĐÚNG 1 câu hỏi ở "QUY TẮC XÁC ĐỊNH level" TRÊN cho
+      TỪNG TỪ riêng, không suy diễn từ cấp độ chung của nhóm/của bài) — dùng để hiện trong tooltip
+      khi bấm đúng từ đó, THAY CHO "level" của cả nhóm. BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ trong "words",
+      kể cả nhóm chỉ 1 từ (khi đó trùng giá trị với "level" của nhóm).
   }
 - LỖI THẬT HAY GẶP (2026-08-09, xác nhận qua dữ liệu thật — hệ thống dùng "words" để tô sáng
   TỪNG TỪ bấm được trong câu, 1 phần tử mảng KHÔNG được chứa nhiều hơn 1 từ): mỗi phần tử trong
