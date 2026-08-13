@@ -259,8 +259,19 @@ nên bỏ cách đó, quay về đúng khung ngữ pháp S-V-O):
 5. CHỈ 2 loại từ sau được đứng RIÊNG 1 mình ngoài khung S-V-O (không gộp chung S/V/O nào): (a)
    liên từ nối 2 mệnh đề (and, but, or, so, because, although, while — khi dùng để NỐI, không phải
    khi đứng trong 1 cụm), (b) trạng từ liên kết đầu câu/mệnh đề (however, therefore, moreover,
-   meanwhile, then, first, second, finally, also). Đây là danh sách ĐÓNG — mạo từ/giới từ/tính từ/
+   meanwhile, then, first, second, finally). Đây là danh sách ĐÓNG — mạo từ/giới từ/tính từ/
    đại từ sở hữu KHÔNG thuộc danh sách này, không được tách riêng theo lý do "là từ độc lập".
+6. BẮT BUỘC PHỦ HẾT: sau khi đã có S, V, O (nếu có) và các từ độc lập ở bước 5, câu có thể còn
+   TỪ CHƯA THUỘC NHÓM NÀO — thường là trạng từ đứng GIỮA câu bổ nghĩa cho V (also, always, often,
+   never, just, already, usually, sometimes, still, even khi KHÔNG đứng đầu câu). Từ này KHÔNG
+   được phép biến mất — PHẢI tạo 1 "Cụm trạng từ" (mục VII) riêng cho nó, TÁCH khỏi cả V lẫn S/O.
+   Không được bỏ sót BẤT KỲ từ nào của câu khỏi mọi nhóm cộng lại — đây là yêu cầu BẮT BUỘC hệ
+   thống tự kiểm (xem đầu file), quan trọng hơn việc chọn đúng loại cụm.
+   ❌ "They also prepare reports for the manager." → {"words":["They"],...} +
+      {"words":["prepare","reports","for","the","manager"],...} (THIẾU hẳn từ "also" — SAI)
+   ✅ {"words":["They"],"type":"Cụm danh từ"} + {"words":["also"],"type":"Cụm trạng từ"} +
+      {"words":["prepare"],"type":"Cụm động từ"} + {"words":["reports"],"type":"Cụm danh từ"} +
+      {"words":["for","the","manager"],"type":"Cụm giới từ"}
 
 GIỚI HẠN ĐỘ DÀI (lưới đỡ cho việc chia MỆNH ĐỀ dài — KHÔNG dùng làm căn cứ chính cho "Cụm động
 từ", mục I có quy tắc riêng): mọi nhóm KHÔNG vượt quá 5 từ, kể cả mệnh đề quan hệ/trạng ngữ/danh
@@ -1529,14 +1540,6 @@ async function callAnalyzePhraseGroups(items, tier) {
   for (let i = 0; i < items.length; i++) {
     const match = resultItems.find((x) => x.index === i) || resultItems[i];
     if (!itemPhraseCoverageOk({ text: items[i].text, phrase_groups: match?.phrase_groups })) {
-      console.warn(
-        "[callAnalyzePhraseGroups] coverage mismatch DEBUG — text:",
-        items[i].text,
-        "real:",
-        JSON.stringify(sentenceWordTokens(items[i].text)),
-        "got:",
-        JSON.stringify((match?.phrase_groups || []).flatMap((g) => (Array.isArray(g?.words) ? g.words : [])).map(normalizePhraseWord))
-      );
       return { ok: false, reason: "phrase_coverage_incomplete", itemIndex: i };
     }
   }
