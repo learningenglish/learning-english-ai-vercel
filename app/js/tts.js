@@ -305,7 +305,23 @@ export function createPlayer({ onStateChange } = {}) {
   function currentItemWordOffset() {
     const currentItemWords = wordCount(state.items[state.itemIndex]?.text);
     let offset = Math.min(state.wordOffset, currentItemWords);
-    if (state.playing && !fullAudioEl && utteranceStartedAt) {
+    // BUG THẬT (2026-08-13, Minh: "bài đọc mở hết toggle không cuộn đúng theo từng câu mà cuộn
+    // theo đoạn") — NHÁNH NÀY (Web Speech) đã nội suy đúng, nhưng khi "fullAudioEl" (audio thật,
+    // ghép sẵn) đang phát thì hàm này TRƯỚC ĐÂY bỏ qua hoàn toàn (chỉ vào nhánh !fullAudioEl bên
+    // dưới) — "state.wordOffset" CHỈ được ghi lại 1 LẦN lúc mới sang đoạn (xem
+    // fullAudioEl.ontimeupdate, chỉ ghi khi ĐỔI itemIndex) rồi ĐỨNG YÊN suốt cả đoạn, khiến
+    // views/lesson.js (currentSentenceIdxForItem) luôn tính ra câu ĐẦU của đoạn cho tới khi đổi
+    // đoạn — auto-scroll do đó chỉ nhảy theo ĐOẠN, không theo CÂU. SỬA: nội suy TRỰC TIẾP từ
+    // "fullAudioEl.currentTime" thật (luôn cập nhật liên tục, không phụ thuộc "state.wordOffset"
+    // đứng yên) — cùng công thức tỉ lệ thời gian/số từ đã dùng ở estimatePositionForSeconds().
+    if (state.playing && fullAudioEl && hasRealSegmentTimes()) {
+      const seg = state.segmentTimes[state.itemIndex];
+      if (seg) {
+        const segDuration = seg.end - seg.start;
+        const frac = segDuration > 0 ? Math.max(0, Math.min(1, (fullAudioEl.currentTime - seg.start) / segDuration)) : 0;
+        offset = Math.min(currentItemWords, Math.round(frac * currentItemWords));
+      }
+    } else if (state.playing && !fullAudioEl && utteranceStartedAt) {
       if (utteranceBoundaryAt) {
         // Có mốc THẬT từ "onboundary" — dùng làm gốc, chỉ nội suy thêm khoảng NHỎ từ mốc đó tới
         // hiện tại (không phải nội suy suốt cả utterance từ lúc "onstart" như trước), nên sai số
@@ -374,7 +390,19 @@ export function createPlayer({ onStateChange } = {}) {
       for (let i = 0; i < state.segmentTimes.length; i++) {
         const seg = state.segmentTimes[i];
         if (!seg) continue;
-        if (seconds < seg.end || i === state.segmentTimes.length - 1) return { index: i, wordOffset: 0 };
+        if (seconds < seg.end || i === state.segmentTimes.length - 1) {
+          // BUG THẬT (2026-08-13, Minh: "bài đọc mở hết toggle không cuộn đúng theo từng câu mà
+          // cuộn theo đoạn") — "wordOffset: 0" CỐ ĐỊNH ở đây (bất kể đang ở đâu TRONG đoạn) khiến
+          // views/lesson.js (currentSentenceIdxForItem) luôn tính ra CÂU ĐẦU của đoạn suốt cả lúc
+          // đoạn đó đang phát — auto-scroll do đó chỉ nhảy lúc ĐỔI ĐOẠN, y hệt hành vi "cuộn theo
+          // đoạn" đã sửa hôm 2026-08-11 rồi tưởng xong. SỬA: nội suy TỈ LỆ THỜI GIAN đã qua trong
+          // CHÍNH đoạn này (seg.start..seg.end) ra số từ tương ứng — cùng công thức nội suy NGƯỢC
+          // đã có sẵn ở estimateSecondsForPosition() ngay trên, chỉ đổi chiều.
+          const words = wordCount(state.items[i]?.text);
+          const segDuration = seg.end - seg.start;
+          const frac = segDuration > 0 ? Math.max(0, Math.min(1, (seconds - seg.start) / segDuration)) : 0;
+          return { index: i, wordOffset: Math.round(frac * words) };
+        }
       }
     }
     let target = Math.max(0, seconds) * WORDS_PER_SECOND_AT_RATE_1;
