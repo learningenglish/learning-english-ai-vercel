@@ -1683,8 +1683,13 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
 
   // CHỈ gửi AI các câu/đoạn CHƯA đủ dữ liệu — item nào đã đạt coverage (vd bài B2/C1 sinh giai
   // đoạn trước khi ép 100% may mắn đã đủ, hoặc 1 lượt vá TRƯỚC ĐÓ đã xử lý xong) thì GIỮ NGUYÊN,
-  // không tốn thêm token phân tích lại.
-  const missingIdx = content.map((it, i) => (itemPhraseCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
+  // không tốn thêm token phân tích lại. "data.force" (2026-08-13, cần cho việc PHÂN TÍCH LẠI bài
+  // CŨ đã có coverage đủ nhưng chunk sai — vd bài trước khi có fix tách câu THẬT ở
+  // analyzePhraseGroupsInChunks, coverage-check chỉ so khớp DÃY TỪ, không phát hiện được chunk
+  // sai/quá dài) — bỏ qua hẳn bước lọc, coi MỌI item đều cần phân tích lại.
+  const missingIdx = data.force
+    ? content.map((_, i) => i)
+    : content.map((it, i) => (itemPhraseCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
 
   if (missingIdx.length) {
     const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
