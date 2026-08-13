@@ -1061,6 +1061,15 @@ function normalizePhraseWord(w) {
 function sentenceWordTokens(text) {
   return ((text || "").match(/[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
 }
+// BUG THẬT (2026-08-13, Minh xem trực tiếp bài #7b2 câu 13 — tooltip "organizations" hiện level
+// "B2" đồng loạt cho MỌI từ trong câu, không phân biệt từng từ): hàm này TRƯỚC ĐÂY chỉ so khớp
+// DÃY TỪ ("words" ghép lại đúng "text") — 1 lượt gọi AI có thể trả về nhóm ĐÚNG ranh giới từ
+// (words khớp) nhưng THIẾU HẲN "word_meanings"/"word_types"/"word_levels" cho 1 phần câu (model
+// bỏ sót, không phải lỗi tách từ) — coverage-check CŨ coi đó là "ĐẠT" (chỉ nhìn "words"), never
+// kích hoạt retry, dữ liệu thiếu tồn tại vĩnh viễn. SỬA: BẮT BUỘC mọi nhóm ≥1 từ phải có ĐỦ
+// word_meanings/word_types/word_levels cho MỌI từ trong "words" của nó — thiếu 1 từ ở BẤT KỲ
+// nhóm nào cũng coi là CHƯA ĐẠT, kích hoạt đúng cơ chế retry/leo thang đã có (analyzePhraseGroupsInChunks),
+// KHÔNG cần thêm lượt gọi AI mới nào ngoài retry sẵn có.
 function itemPhraseCoverageOk(item) {
   const realWords = sentenceWordTokens(item?.text);
   if (!realWords.length) return true; // item rỗng/chỉ dấu câu -> không có gì để phủ, coi như đạt
@@ -1070,6 +1079,16 @@ function itemPhraseCoverageOk(item) {
   if (groupWords.length !== realWords.length) return false;
   for (let i = 0; i < realWords.length; i++) {
     if (groupWords[i] !== realWords[i]) return false;
+  }
+  for (const g of groups) {
+    const words = Array.isArray(g?.words) ? g.words : [];
+    if (!words.length) continue;
+    const wm = g.word_meanings || {};
+    const wt = g.word_types || {};
+    const wl = g.word_levels || {};
+    for (const w of words) {
+      if (!wm[w] || !wt[w] || !wl[w]) return false;
+    }
   }
   return true;
 }
@@ -1466,6 +1485,14 @@ async function callAnalyzePhraseGroups(items, tier) {
   for (let i = 0; i < items.length; i++) {
     const match = resultItems.find((x) => x.index === i) || resultItems[i];
     if (!itemPhraseCoverageOk({ text: items[i].text, phrase_groups: match?.phrase_groups })) {
+      console.warn(
+        "[callAnalyzePhraseGroups] DEBUG coverage fail — text:",
+        items[i].text,
+        "real:",
+        JSON.stringify(sentenceWordTokens(items[i].text)),
+        "groups:",
+        JSON.stringify(match?.phrase_groups)
+      );
       return { ok: false, reason: "phrase_coverage_incomplete", itemIndex: i };
     }
   }
