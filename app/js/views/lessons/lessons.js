@@ -50,9 +50,15 @@ const LEVEL_CARDS = [
 // định A1 (danh sách 'Tất cả' quá dài khi có tới 400 bài), lần sau nhớ level gần nhất") — cùng
 // pattern localStorage đơn giản như app/js/palette.js/theme.js/fontSize.js, 2 key riêng vì Bài
 // đọc/Hội thoại là 2 màn khác nhau dùng CHUNG file này.
+const VALID_LEVEL_FILTERS = new Set(["A1", "A2", "B1", "B2", "C1"]);
+// SỬA 2026-08-13 (Minh: "nếu không nhấn level nào thì luôn mặc định mở A1 — không để như hiện
+// tại là tôi có thể tắt A1 và toàn bộ bài đều hiển thị") — TRƯỚC ĐÂY có thể lưu "all" (bấm lại
+// đúng level đang chọn để "tắt" lọc, xem wire() bên dưới, đã BỎ hành vi đó) — "all" cũ có thể
+// vẫn còn tồn trong localStorage từ trước khi sửa, PHẢI tự coi là không hợp lệ, rơi về "A1".
 function getLevelPreference(contentType) {
   try {
-    return localStorage.getItem(`lea_lessons_level_${contentType}`) || "A1";
+    const saved = localStorage.getItem(`lea_lessons_level_${contentType}`);
+    return VALID_LEVEL_FILTERS.has(saved) ? saved : "A1";
   } catch {
     return "A1";
   }
@@ -120,7 +126,11 @@ export function renderLessons(mount, params) {
   mount.querySelectorAll(".level-card").forEach((card) => {
     card.addEventListener("click", () => {
       const lv = card.dataset.level;
-      state.level = state.level === lv ? "all" : lv;
+      // KHÔNG còn "tắt" level đang chọn để hiện "Tất cả" (2026-08-13, Minh: "không để như hiện
+      // tại là tôi có thể tắt A1 và toàn bộ bài đều hiển thị") — bấm lại đúng level đang active
+      // thì giữ nguyên, chỉ đổi khi bấm 1 level KHÁC.
+      if (state.level === lv) return;
+      state.level = lv;
       setLevelPreference(contentType, state.level);
       mount.querySelectorAll(".level-card").forEach((c) => c.classList.toggle("active", c.dataset.level === state.level));
       renderList();
@@ -147,11 +157,12 @@ export function renderLessons(mount, params) {
 
   function renderList() {
     const listEl = mount.querySelector("#lessons-list");
-    let lessons = allLessons;
-    if (state.level !== "all") lessons = lessons.filter((l) => l.level === state.level);
+    // "state.level" LUÔN là 1 trong 5 cấp độ hợp lệ (không còn "all" — xem getLevelPreference()/
+    // wire() phía trên) — luôn lọc, không còn nhánh "hiện hết".
+    const lessons = allLessons.filter((l) => l.level === state.level);
     if (!lessons.length) {
       const base = t(contentType === "dialogue" ? "Chưa có bài hội thoại nào" : "Chưa có bài đọc nào");
-      const suffix = state.level !== "all" ? ` ${t("ở cấp độ")} ${state.level}` : "";
+      const suffix = ` ${t("ở cấp độ")} ${state.level}`;
       listEl.innerHTML = `<p class="muted">${base}${suffix}.</p>`;
       return;
     }
