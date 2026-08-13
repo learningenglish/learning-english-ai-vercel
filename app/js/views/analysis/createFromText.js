@@ -109,10 +109,14 @@ export function renderCreateFromText(mount) {
     if (!phraseRes.ok) console.warn("analyzeLessonPhraseGroups lỗi lúc tạo bài:", phraseRes.error);
     const chunksRes = await analyzeLessonReadingChunks(lesson.id, false);
     if (!chunksRes.ok) console.warn("analyzeLessonReadingChunks lỗi lúc tạo bài:", chunksRes.error);
-    // Chờ ảnh bìa sinh XONG trước khi hiện kết quả (2026-08-10, cùng lý do ở createLesson.js —
-    // Minh: "Hình bài học phải được sinh trọn vẹn trước khi up lên").
-    resultSlot.innerHTML = `<div class="result-panel result-pending"><div class="spinner spinner-sm"></div> ${t("Đang tải ảnh bìa...")}</div>`;
-    await fetchAndSaveLessonCover(lesson);
+    // KHÔNG còn chờ ảnh bìa (2026-08-13, Minh: "gọi hình ảnh tốn phí và lâu, bỏ qua bước đó để
+    // không tốn thời gian người dùng — cái đó chủ yếu phục vụ nội dung [Thư viện AI dùng chung],
+    // không cần thiết cho Phân tích cá nhân") — RÚT LẠI quy tắc "chờ ảnh xong mới hiện" từng áp
+    // dụng ở đây 2026-08-10 (quy tắc đó vẫn đúng cho createLesson.js/Thư viện AI, nơi ảnh hiện
+    // trong carousel/danh sách công khai). "Phân tích" vẫn tự sinh ảnh NGẦM (fire-and-forget,
+    // cùng cơ chế lesson.js dùng cho bài thiếu ảnh) để hiện đẹp trong analysisArchive.js về sau,
+    // chỉ không CHẶN người dùng chờ nữa.
+    fetchAndSaveLessonCover(lesson).catch(() => {});
     btn.hidden = true;
     resultSlot.innerHTML = `
       <div class="result-panel result-success">
