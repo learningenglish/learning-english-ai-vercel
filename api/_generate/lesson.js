@@ -233,17 +233,26 @@ chỉ mảng "words" phải tách rời từng từ.
 Từ có DẤU GẠCH NỐI (long-term, 24-hour): tách thành 2 phần tử riêng trong "words" ("long","term"),
 có thể vẫn cùng 1 nhóm.
 
-QUY TRÌNH NHẬN DIỆN — LUÔN LÀM 2 BƯỚC THEO ĐÚNG THỨ TỰ NÀY (2026-08-13, Minh: "xác nhận từ độc
-lập trong câu trước, rồi đến các cụm... giảm thiểu việc gộp từ"):
-BƯỚC 1 — xác định TRƯỚC các từ ĐỘC LẬP luôn đứng riêng 1 mình, KHÔNG chung nhóm với từ nào khác:
-  liên từ (and, but, or, so, because, although, while, if, that đứng đầu mệnh đề phụ...), trạng
-  từ liên kết đứng đầu câu/mệnh đề (however, therefore, moreover, meanwhile, then, first, second,
-  finally, also...), và đại từ chủ ngữ (I, you, he, she, it, we, they) đứng ngay trước 1 động từ
-  chia — mỗi từ này TỰ làm 1 nhóm riêng gồm chính nó.
-BƯỚC 2 — CHỈ SAU KHI đã tách hết các từ độc lập ở Bước 1, mới nhóm PHẦN CÒN LẠI của câu thành các
-  cụm (danh từ/động từ/tính từ/... theo 24 loại dưới đây). Làm đúng thứ tự này giúp tránh lỗi
-  GỘP NHẦM 1 từ độc lập vào cụm liền kề (vd "and" bị nhét vào cụm động từ theo sau nó, hoặc chủ
-  ngữ bị nhét vào cụm động từ — xem ví dụ ❌/✅ ở mục ngay dưới).
+QUY TRÌNH NHẬN DIỆN — theo khung S + V + O (2026-08-13, Minh: "câu luôn có cấu trúc S+V+O, các
+nhóm đã được phân định rõ, chỉ cần tách theo các bước này"; ĐÃ THỬ tách "từ độc lập" trước tiên
+ở 1 bản trước — model chẻ luôn cả mạo từ/tính từ/giới từ thành nhóm 1-từ, hỏng hẳn khái niệm cụm,
+nên bỏ cách đó, quay về đúng khung ngữ pháp S-V-O):
+1. Với MỖI mệnh đề trong câu (câu có and/but/so/because/who/which/that nối 2 mệnh đề thì làm việc
+   này riêng cho từng mệnh đề), xác định 3 thành phần chính: S (chủ ngữ), V (động từ chia theo
+   mệnh đề đó), O (tân ngữ/bổ ngữ nếu có).
+2. S = ĐÚNG 1 "Cụm danh từ" (mục V) — gồm TRỌN VẸN mọi mạo từ/đại từ sở hữu/tính từ/danh từ đi
+   cùng chủ ngữ trong 1 nhóm DUY NHẤT. KHÔNG tách "an" ra khỏi "accountant", KHÔNG tách "many" ra
+   khỏi "companies" — mạo từ/lượng từ/tính từ KHÔNG BAO GIỜ đứng riêng, luôn nằm trong cụm danh từ
+   chứa nó.
+3. V = ĐÚNG 1 "Cụm động từ" theo 13 mẫu ở mục I ngay dưới — nhóm đủ phần động từ chia theo thì rồi
+   dừng đúng theo luật mục I (không kéo O vào, trừ khi O là đại từ đơn theo đúng mẫu 10-13).
+4. O (nếu có) = làm như bước 2 — nếu là cụm danh từ, nhóm TRỌN VẸN (mạo từ+tính từ+danh từ) thành
+   1 "Cụm danh từ", không tách rời từng từ bên trong nó.
+5. CHỈ 2 loại từ sau được đứng RIÊNG 1 mình ngoài khung S-V-O (không gộp chung S/V/O nào): (a)
+   liên từ nối 2 mệnh đề (and, but, or, so, because, although, while — khi dùng để NỐI, không phải
+   khi đứng trong 1 cụm), (b) trạng từ liên kết đầu câu/mệnh đề (however, therefore, moreover,
+   meanwhile, then, first, second, finally, also). Đây là danh sách ĐÓNG — mạo từ/giới từ/tính từ/
+   đại từ sở hữu KHÔNG thuộc danh sách này, không được tách riêng theo lý do "là từ độc lập".
 
 GIỚI HẠN ĐỘ DÀI (lưới đỡ cho việc chia MỆNH ĐỀ dài — KHÔNG dùng làm căn cứ chính cho "Cụm động
 từ", mục I có quy tắc riêng): mọi nhóm KHÔNG vượt quá 5 từ, kể cả mệnh đề quan hệ/trạng ngữ/danh
@@ -1567,54 +1576,28 @@ function splitEnglishSentencesForPhraseGroups(text) {
 // sang "1 câu thất bại -> BỎ QUA riêng câu đó, các câu KHÁC trong CÙNG bài vẫn được lưu" — quan
 // trọng hơn khi giờ phân tích TỪNG CÂU (không phải từng đoạn như trước): 1 bài B1+ có thể có
 // 15-20 câu, không nên để 1 câu khó làm mất hết dữ liệu của 14-19 câu còn lại đã phân tích đúng.
-// GHÉP CÂU NGẮN (2026-08-13, Minh: "đảm bảo phrase_groups rules không chạy quá nhiều... không thể
-// 1 việc nhỏ tốn 20k token") — mỗi lượt gọi AI đều phải gửi lại NGUYÊN VẸN PHRASE_GROUPS_RULES
-// (~3000 token cố định) làm system prompt, bất kể câu ngắn hay dài — tách MỖI CÂU 1 lượt riêng
-// (đúng đắn cho câu dài/phức, xem lịch sử bug ở analyzePhraseGroupsInChunks) nhưng LÃNG PHÍ cho
-// câu ngắn đơn giản (A1/A2, hội thoại — vốn hiếm khi gặp lỗi chunk dài). Ghép tối đa 3 CÂU NGẮN
-// (≤10 từ) liền kề vào CÙNG 1 lượt gọi — giảm số lần gửi lại prompt cố định mà KHÔNG quay lại lỗi
-// cũ (câu dài/phức vẫn tách riêng 1 lượt như cũ, chỉ câu ngắn mới ghép).
-function batchShortSentencesForPhraseGroups(sentences, maxWordsPerSentence = 10, maxPerBatch = 3) {
-  const batches = [];
-  let current = [];
-  for (const s of sentences) {
-    const wordCount = (s.match(/[A-Za-z0-9]+/g) || []).length;
-    if (wordCount > maxWordsPerSentence) {
-      if (current.length) {
-        batches.push(current);
-        current = [];
-      }
-      batches.push([s]);
-    } else {
-      current.push(s);
-      if (current.length >= maxPerBatch) {
-        batches.push(current);
-        current = [];
-      }
-    }
-  }
-  if (current.length) batches.push(current);
-  return batches;
-}
-
+// GHÉP CÂU NGẮN — THỬ 2026-08-13 rồi ĐẢO LẠI ngay trong cùng ngày (Minh: "đảm bảo phrase_groups
+// rules không chạy quá nhiều") — verify sống trên bài B2/A2 thật cho kết quả XẤU HẲN: gộp nhiều
+// câu vào 1 lượt gọi khiến model mất phương hướng, tự ý chẻ hầu hết từ thành nhóm 1-từ riêng
+// (mất hẳn khái niệm "cụm"), có đoạn còn trả về THIẾU HẲN cả câu (0 nhóm). Batching KHÔNG đáng
+// đánh đổi so với rủi ro chất lượng — quay lại ĐÚNG 1 câu/lượt gọi (đã verify ổn định qua nhiều
+// vòng trước đó). Tiết kiệm chi phí giờ CHỈ còn dựa vào 2 việc đã làm ổn (rút gọn prompt ~40%,
+// bỏ leo thang model đắt) — không đánh đổi thêm bằng chất lượng.
 async function analyzePhraseGroupsInChunks(toAnalyze) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
-    const batches = batchShortSentencesForPhraseGroups(sentences);
     const combinedGroups = [];
-    for (const batch of batches) {
-      const chunk = batch.map((text) => ({ text }));
+    for (const sentence of sentences) {
+      const chunk = [{ text: sentence }];
       let result = await callAnalyzePhraseGroups(chunk);
       if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
       if (!result.ok) {
-        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 lượt thất bại cả 2 lần:", result.reason, batch.join(" | ").slice(0, 80));
+        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
         continue;
       }
-      for (let bIdx = 0; bIdx < batch.length; bIdx++) {
-        const sentenceItem = result.items.find((x) => x.index === bIdx) || result.items[bIdx];
-        combinedGroups.push(...(sentenceItem?.phrase_groups || []));
-      }
+      const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+      combinedGroups.push(...(sentenceItem?.phrase_groups || []));
     }
     allItems.push({ index: i, phrase_groups: combinedGroups });
   }
