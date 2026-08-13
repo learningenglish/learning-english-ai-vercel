@@ -1680,6 +1680,38 @@ function mergeFragmentedNounPhrases(phraseGroups) {
   return out;
 }
 
+// LƯỚI ĐỠ 3 (2026-08-13, phát hiện qua đọc thật 2 bài mẫu #7a2/#7b2 — RẤT PHỔ BIẾN, xuất hiện
+// 8-10+ lần chỉ trong 2 bài): giới từ đứng LẺ 1 mình (nhãn "preposition", KHÔNG phải "Cụm giới
+// từ") ngay TRƯỚC 1 "Cụm danh từ" — đúng ra phải gộp thành 1 "Cụm giới từ" DUY NHẤT (mục IV) —
+// vd "with" + "risk assessments" -> phải là "with risk assessments". CHỈ gộp khi nhóm liền sau là
+// "Cụm danh từ" (an toàn, không đụng tới ca "to" + "Cụm động từ" — "to" nguyên mẫu đôi khi bị
+// word_types gắn nhầm "preposition", gộp nhầm sẽ tạo "Cụm giới từ" SAI cho 1 cụm động từ thật).
+function mergeStrandedPreposition(phraseGroups) {
+  if (!Array.isArray(phraseGroups)) return phraseGroups;
+  const out = [];
+  for (let i = 0; i < phraseGroups.length; i++) {
+    const g = phraseGroups[i];
+    const words = Array.isArray(g?.words) ? g.words : [];
+    const isLonePreposition = words.length === 1 && (g.word_types?.[words[0]] === "preposition" || g.type === "preposition");
+    const next = phraseGroups[i + 1];
+    if (isLonePreposition && next?.type === "Cụm danh từ") {
+      out.push({
+        ...next,
+        words: [...words, ...(next.words || [])],
+        meaning: `${g.meaning || words[0]} ${next.meaning || ""}`.trim(),
+        type: "Cụm giới từ",
+        word_meanings: { ...(g.word_meanings || {}), ...(next.word_meanings || {}) },
+        word_types: { ...(g.word_types || {}), ...(next.word_types || {}) },
+        word_levels: { ...(g.word_levels || {}), ...(next.word_levels || {}) },
+      });
+      i++; // đã dùng luôn nhóm kế tiếp
+    } else {
+      out.push(g);
+    }
+  }
+  return out;
+}
+
 export async function analyze_lesson_phrase_groups(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
@@ -1714,7 +1746,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
     const match = result.items.find((x) => x.index === 0) || result.items[0];
     content[origIdx] = {
       ...content[origIdx],
-      phrase_groups: mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(match.phrase_groups)),
+      phrase_groups: mergeStrandedPreposition(mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(match.phrase_groups))),
     };
     const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
       method: "PATCH",
@@ -1735,7 +1767,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // tự "dọn" lại bài cũ mỗi khi được gọi lại, không cần phân biệt bài mới/cũ.
   for (const item of content) {
     if (Array.isArray(item.phrase_groups)) {
-      item.phrase_groups = mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(item.phrase_groups));
+      item.phrase_groups = mergeStrandedPreposition(mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(item.phrase_groups)));
     }
   }
 
