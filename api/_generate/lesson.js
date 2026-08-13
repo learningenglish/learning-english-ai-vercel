@@ -230,6 +230,15 @@ KHÔNG nhét nhiều từ cách nhau bởi khoảng trắng vào 1 chuỗi.
 ❌ {"words": ["oil traffic could"]} ✅ {"words": ["oil","traffic","could"]} — vẫn 1 NHÓM DUY NHẤT,
 chỉ mảng "words" phải tách rời từng từ.
 
+TỪ VIẾT TẮT có dấu nháy đơn (contraction — You're, I'm, It's, He's, They've, We'll, Don't, Can't,
+Won't...) LUÔN LUÔN là ĐÚNG 1 phần tử DUY NHẤT trong "words", giữ NGUYÊN VẸN dấu nháy — TUYỆT ĐỐI
+KHÔNG tách thành "You"+"are"/"You"+"'re", KHÔNG viết lại thành dạng đầy đủ. Đây là lỗi THẬT lặp
+lại nhiều lần (You're welcome → sai thành "You"+"are" hoặc "You"+"'re", I'm glad → sai thành
+"I"+"am") khiến hệ thống bắt lỗi liên tục, quan trọng hơn hẳn việc chọn đúng loại cụm.
+❌ {"words":["You","are","welcome"]} ❌ {"words":["You","'re","welcome"]}
+✅ {"words":["You're","welcome"]} — "You're" giữ NGUYÊN 1 phần tử, y hệt cách nó xuất hiện trong câu.
+❌ {"words":["I","am","glad"]} ✅ {"words":["I'm","glad"]}
+
 Từ có DẤU GẠCH NỐI (long-term, 24-hour): tách thành 2 phần tử riêng trong "words" ("long","term"),
 có thể vẫn cùng 1 nhóm.
 
@@ -1485,14 +1494,6 @@ async function callAnalyzePhraseGroups(items, tier) {
   for (let i = 0; i < items.length; i++) {
     const match = resultItems.find((x) => x.index === i) || resultItems[i];
     if (!itemPhraseCoverageOk({ text: items[i].text, phrase_groups: match?.phrase_groups })) {
-      console.warn(
-        "[callAnalyzePhraseGroups] DEBUG coverage fail — text:",
-        items[i].text,
-        "real:",
-        JSON.stringify(sentenceWordTokens(items[i].text)),
-        "groups:",
-        JSON.stringify(match?.phrase_groups)
-      );
       return { ok: false, reason: "phrase_coverage_incomplete", itemIndex: i };
     }
   }
