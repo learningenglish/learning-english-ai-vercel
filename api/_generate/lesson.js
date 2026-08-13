@@ -1700,17 +1700,35 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
     ? content.map((_, i) => i)
     : content.map((it, i) => (itemPhraseCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
 
-  if (missingIdx.length) {
-    const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
-    const result = await analyzePhraseGroupsInChunks(toAnalyze);
+  // LƯU NGAY SAU MỖI ITEM (2026-08-13, bug thật: bài B1 nhiều lượt thoại -> tổng thời gian phân
+  // tích TUẦN TỰ từng câu vượt trần thời gian 1 lượt gọi Vercel -> 504 FUNCTION_INVOCATION_TIMEOUT
+  // -> TRƯỚC ĐÂY chỉ PATCH 1 LẦN DUY NHẤT ở cuối, nghĩa là timeout giữa chừng làm MẤT TOÀN BỘ việc
+  // đã làm, gọi lại (retry) lại phân tích lại từ đầu -> lặp lại đúng 504 y hệt, không bao giờ xong
+  // được). Giờ PATCH ngay sau MỖI item — timeout giữa chừng vẫn giữ lại các item đã xử lý xong,
+  // gọi lại action này (missingIdx tự lọc lại item còn thiếu) sẽ tiếp tục đúng chỗ dang dở, không
+  // làm lại từ đầu.
+  for (const origIdx of missingIdx) {
+    const result = await analyzePhraseGroupsInChunks([{ text: content[origIdx].text }]);
     if (!result.ok) {
-      console.error("[analyze_lesson_phrase_groups] thất bại:", result.reason);
-      return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
+      console.error("[analyze_lesson_phrase_groups] thất bại tại item", origIdx, result.reason);
+      continue;
     }
-    missingIdx.forEach((origIdx, i) => {
-      const match = result.items.find((x) => x.index === i) || result.items[i];
-      content[origIdx] = { ...content[origIdx], phrase_groups: match.phrase_groups };
+    const match = result.items.find((x) => x.index === 0) || result.items[0];
+    content[origIdx] = {
+      ...content[origIdx],
+      phrase_groups: mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(match.phrase_groups)),
+    };
+    const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ content }),
     });
+    if (!stepPatchRes.ok) console.error("analyze_lesson_phrase_groups step-patch error:", stepPatchRes.status, await stepPatchRes.text());
   }
 
   // ÁP DỤNG LƯỚI ĐỠ chủ ngữ (splitLeadingSubjectPronoun) cho MỌI item, KỂ CẢ item đã đạt
@@ -1815,18 +1833,29 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
   if (!missingIdx.length) {
     return { content: JSON.stringify({ content }) };
   }
-  const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
-
-  const result = await analyzeReadingChunksInChunks(toAnalyze);
-  if (!result.ok) {
-    console.error("[analyze_lesson_reading_chunks] thất bại:", result.reason);
-    return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
-  }
-
-  missingIdx.forEach((origIdx, i) => {
-    const match = result.items.find((x) => x.index === i) || result.items[i];
+  // LƯU NGAY SAU MỖI ITEM (2026-08-13) — cùng lý do/fix đã áp dụng ở analyze_lesson_phrase_groups
+  // (bài dài nhiều lượt thoại có thể vượt trần thời gian 1 lượt gọi Vercel; PATCH 1 lần duy nhất ở
+  // cuối làm timeout giữa chừng mất hết việc đã làm, retry lại từ đầu lặp lại đúng lỗi).
+  for (const origIdx of missingIdx) {
+    const result = await analyzeReadingChunksInChunks([{ text: content[origIdx].text }]);
+    if (!result.ok) {
+      console.error("[analyze_lesson_reading_chunks] thất bại tại item", origIdx, result.reason);
+      continue;
+    }
+    const match = result.items.find((x) => x.index === 0) || result.items[0];
     content[origIdx] = { ...content[origIdx], reading_chunks: match.reading_chunks };
-  });
+    const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ content }),
+    });
+    if (!stepPatchRes.ok) console.error("analyze_lesson_reading_chunks step-patch error:", stepPatchRes.status, await stepPatchRes.text());
+  }
 
   const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
     method: "PATCH",
