@@ -233,175 +233,93 @@ chỉ mảng "words" phải tách rời từng từ.
 Từ có DẤU GẠCH NỐI (long-term, 24-hour): tách thành 2 phần tử riêng trong "words" ("long","term"),
 có thể vẫn cùng 1 nhóm.
 
-QUY TRÌNH NHẬN DIỆN — theo khung S + V + O (2026-08-13, Minh: "câu luôn có cấu trúc S+V+O, các
-nhóm đã được phân định rõ, chỉ cần tách theo các bước này"; ĐÃ THỬ tách "từ độc lập" trước tiên
-ở 1 bản trước — model chẻ luôn cả mạo từ/tính từ/giới từ thành nhóm 1-từ, hỏng hẳn khái niệm cụm,
-nên bỏ cách đó, quay về đúng khung ngữ pháp S-V-O):
-1. Với MỖI mệnh đề trong câu (câu có and/but/so/because/who/which/that nối 2 mệnh đề thì làm việc
-   này riêng cho từng mệnh đề), xác định 3 thành phần chính: S (chủ ngữ), V (động từ chia theo
-   mệnh đề đó), O (tân ngữ/bổ ngữ nếu có).
-2. S = ĐÚNG 1 "Cụm danh từ" (mục V) — gồm TRỌN VẸN mọi mạo từ/đại từ sở hữu/tính từ/danh từ đi
-   cùng chủ ngữ trong 1 nhóm DUY NHẤT. KHÔNG tách "an" ra khỏi "accountant", KHÔNG tách "many" ra
-   khỏi "companies" — mạo từ/lượng từ/tính từ KHÔNG BAO GIỜ đứng riêng, luôn nằm trong cụm danh từ
-   chứa nó.
-3. V = ĐÚNG 1 "Cụm động từ" theo 13 mẫu ở mục I ngay dưới — nhóm đủ phần động từ chia theo thì rồi
-   DỪNG NGAY, KHÔNG kéo O vào (trừ mẫu 10-13, nơi O là đại từ đơn nằm trong chính tên mẫu). Với
-   mẫu 1-9 (biến đổi theo thì, be+V-ing, has/have/had+V-ed, bị động, modal...), V CHỈ gồm các từ
-   tạo nên hình thái động từ đó — KHÔNG BAO GIỜ gồm cả tân ngữ, dù tổng vẫn ≤5 từ.
-4. O (nếu có) = làm như bước 2 — nếu là cụm danh từ, nhóm TRỌN VẸN (mạo từ+tính từ+danh từ) thành
-   1 "Cụm danh từ" RIÊNG, tách khỏi V, không tách rời từng từ bên trong nó.
-   Ví dụ mẫu 1 (biến đổi theo thì) có tân ngữ: "checks financial records every day"
-   ❌ {"words":["checks","financial","records","every","day"],"type":"Cụm động từ"} (gộp cả V+O+
-      trạng ngữ thời gian vào 1 nhóm — SAI, dù ≤5 từ)
-   ✅ {"words":["checks"],"type":"Cụm động từ"} (V, mẫu 1, dừng ngay sau động từ) +
-      {"words":["financial","records"],"type":"Cụm danh từ"} (O, tách riêng) +
-      {"words":["every","day"],"type":"Cụm trạng từ"} (trạng ngữ thời gian, tách riêng)
-5. CHỈ 2 loại từ sau được đứng RIÊNG 1 mình ngoài khung S-V-O (không gộp chung S/V/O nào): (a)
-   liên từ nối 2 mệnh đề (and, but, or, so, because, although, while — khi dùng để NỐI, không phải
-   khi đứng trong 1 cụm), (b) trạng từ liên kết đầu câu/mệnh đề (however, therefore, moreover,
-   meanwhile, then, first, second, finally). Đây là danh sách ĐÓNG — mạo từ/giới từ/tính từ/
-   đại từ sở hữu KHÔNG thuộc danh sách này, không được tách riêng theo lý do "là từ độc lập".
-6. BẮT BUỘC PHỦ HẾT: sau khi đã có S, V, O (nếu có) và các từ độc lập ở bước 5, câu có thể còn
-   TỪ CHƯA THUỘC NHÓM NÀO — thường là trạng từ đứng GIỮA câu bổ nghĩa cho V (also, always, often,
-   never, just, already, usually, sometimes, still, even khi KHÔNG đứng đầu câu). Từ này KHÔNG
-   được phép biến mất — PHẢI tạo 1 "Cụm trạng từ" (mục VII) riêng cho nó, TÁCH khỏi cả V lẫn S/O.
-   Không được bỏ sót BẤT KỲ từ nào của câu khỏi mọi nhóm cộng lại — đây là yêu cầu BẮT BUỘC hệ
-   thống tự kiểm (xem đầu file), quan trọng hơn việc chọn đúng loại cụm.
-   ❌ "They also prepare reports for the manager." → {"words":["They"],...} +
-      {"words":["prepare","reports","for","the","manager"],...} (THIẾU hẳn từ "also" — SAI)
-   ✅ {"words":["They"],"type":"Cụm danh từ"} + {"words":["also"],"type":"Cụm trạng từ"} +
-      {"words":["prepare"],"type":"Cụm động từ"} + {"words":["reports"],"type":"Cụm danh từ"} +
-      {"words":["for","the","manager"],"type":"Cụm giới từ"}
+QUY TẮC CHIA CỤM — 6 LOẠI DUY NHẤT (2026-08-13, thay hẳn bộ 24 loại + khung "S-V-O" thử nghiệm
+trước đó — Minh gửi bộ quy tắc gốc, test thật cho kết quả ổn định + prompt NGẮN hơn nhiều lần so
+với 24 loại cũ, giảm token mỗi lượt gọi). CHỈ dùng ĐÚNG 6 nhãn sau cho "type" của mỗi nhóm ≥1 từ
+thuộc 1 cụm; nếu 1 từ KHÔNG thuộc cụm nào (đứng độc lập — liên từ, thán từ, trạng từ 1-từ không
+bổ nghĩa trực tiếp cho gì...), tự làm 1 nhóm riêng, "type" ghi loại từ đơn của chính nó (noun/verb/
+adjective/adverb/pronoun/preposition/conjunction/...), KHÔNG dùng 1 trong 5 nhãn cụm dưới đây:
+- "Cụm danh từ" (Noun Phrase — NP)
+- "Cụm động từ" (Verb Phrase — VP)
+- "Cụm giới từ" (Prepositional Phrase — PP)
+- "Cụm tính từ" (Adjective Phrase — AdjP)
+- "Cụm trạng từ" (Adverb Phrase — AdvP, CHỈ dùng khi ≥2 từ; trạng từ ĐƠN 1 từ đứng độc lập thì
+  dùng "type" = "adverb" như trên, không phải "Cụm trạng từ")
 
-GIỚI HẠN ĐỘ DÀI (lưới đỡ cho việc chia MỆNH ĐỀ dài — KHÔNG dùng làm căn cứ chính cho "Cụm động
-từ", mục I có quy tắc riêng): mọi nhóm KHÔNG vượt quá 5 từ, kể cả mệnh đề quan hệ/trạng ngữ/danh
-từ (if/whether/because/although...) — câu/mệnh đề dài hơn PHẢI cắt thành nhiều nhóm liên tiếp ≤5
-từ, KHÔNG gộp nguyên 1 câu hay 2 mệnh đề độc lập (nối bằng and/but/so/because) thành 1 nhóm.
-Ví dụ: "who has worked at this company since she graduated from college" (11 từ) → 3 nhóm:
-["who","has","worked","at","this"] (Mệnh đề quan hệ) + ["company","since","she","graduated"]
-(Cụm giới từ) + ["from","college"] (Cụm giới từ).
+NGUYÊN TẮC CỐT LÕI: nhận diện cụm có RANH GIỚI NGỮ PHÁP RIÊNG, KHÔNG cố tạo cụm LỚN NHẤT có thể.
+1 cụm phải TÁCH khỏi cụm liền kề khi cụm đó có bản sắc ngữ pháp riêng — cụ thể: NP thường tách
+khỏi PP theo sau nó; NP tách khỏi VP; VP tách khỏi PP; VP tách khỏi NP tân ngữ theo sau; AdjP tách
+khỏi NP/VP; AdvP tách riêng khi nó hoạt động độc lập.
+Thứ tự chia cơ bản cho 1 mệnh đề: NP → VP → NP/PP/AdjP/AdvP/từ đơn.
+❌ {"words":["She","works"],"type":"Cụm danh từ"} (gộp cả chủ ngữ vào 1 nhóm — SAI)
+✅ {"words":["She"],"type":"Cụm danh từ"} + {"words":["works"],"type":"Cụm động từ"} +
+   {"words":["at","school"],"type":"Cụm giới từ"}
 
-CHỦ NGỮ KHÔNG BAO GIỜ chung nhóm với "Cụm động từ" theo sau, dù tổng vẫn ≤5 từ — chủ ngữ luôn 1
-nhóm riêng (Cụm danh từ/đại từ).
-❌ {"words":["They","find","mistakes"],"type":"Cụm động từ"}
-✅ {"words":["They"],"type":"Cụm danh từ"} + {"words":["find","mistakes"],"type":"Cụm động từ"}
+KHÔNG BAO GIỜ giữ nguyên 1 MỆNH ĐỀ (kể cả mệnh đề quan hệ/phụ) làm 1 khối — luôn tiếp tục chia
+mệnh đề đó thành các cụm NP/VP/PP/AdjP/AdvP/từ đơn bên trong nó, y như mệnh đề chính. Liên từ nối
+mệnh đề (and, but, because, although, that, who, which khi dẫn mệnh đề...) tự làm 1 nhóm từ đơn
+riêng, KHÔNG gộp vào cụm nào.
+Câu: "She stayed at home because she was sick." →
+{"words":["She"],"type":"Cụm danh từ"} + {"words":["stayed"],"type":"Cụm động từ"} +
+{"words":["at","home"],"type":"Cụm giới từ"} + {"words":["because"],"type":"conjunction"} +
+{"words":["she"],"type":"Cụm danh từ"} + {"words":["was","sick"],"type":"Cụm động từ"}
 
-TRƯỚC KHI gắn nhãn "KHÔNG chứa động từ chia" (mục V,VI,VII,VIII,IX,X,XI,XII,XIII,XIV,XV,XVI,XVII,
-XXI-XXIV), tự hỏi: cụm có từ nào là ĐỘNG TỪ CHIA theo chủ ngữ trước nó không — gồm (a) động từ
-thường chia ngôi/thời, (b) mọi dạng "be", (c) modal đứng sau chủ ngữ (can/could/will/would/
-should/must/may/might + V). Nếu CÓ, đây thực chất là 1 phần MỆNH ĐỀ/CỤM ĐỘNG TỪ (mục I/XVIII) —
-tách riêng chủ ngữ khỏi phần động từ chia.
-❌ {"words":["companies","can","track","their","expenses"],"type":"Cụm danh từ"}
-✅ {"words":["companies"],"type":"Cụm danh từ"} +
-   {"words":["can","track","their","expenses"],"type":"Cụm động từ"}
+I. "Cụm danh từ" (NP): danh từ + mọi mạo từ/đại từ sở hữu/tính từ/lượng từ đi TRỰC TIẾP cùng nó
+trong 1 nhóm DUY NHẤT — KHÔNG tách "an" khỏi "accountant", KHÔNG tách "the" khỏi "company".
+Danh từ+danh từ ghép nghĩa (compound noun: English teacher, coffee shop, student visa, language
+learning app) LUÔN giữ 1 NP, không tách rời từng từ.
+KHÔNG tự động kéo cụm giới từ (PP) theo sau vào NP — tách riêng PP:
+❌ {"words":["the","book","on","the","table"],"type":"Cụm danh từ"}
+✅ {"words":["the","book"],"type":"Cụm danh từ"} + {"words":["on","the","table"],"type":"Cụm giới từ"}
 
-24 LOẠI CỤM (nguyên văn theo file "Cụm cho tooltip.txt" — dùng ĐÚNG danh sách này để chọn "type"):
+II. "Cụm động từ" (VP): động từ chính + trợ động từ + modal + biến đổi thời/thể/bị động, VÍ DỤ
+giữ nguyên 1 VP: works, is working, has worked, has been working, will work, can speak, was
+repaired, is being repaired, must have forgotten. KHÔNG tách trợ động từ khỏi động từ chính.
+Verb + to-infinitive HOẶC verb + V-ing làm BỔ NGỮ CHO ĐỘNG TỪ (không phải tân ngữ danh từ) VẪN
+giữ chung 1 VP với động từ chính, nhưng KHÔNG kéo tân ngữ của to-infinitive/V-ing đó vào VP:
+❌ {"words":["want","to","learn","English"],"type":"Cụm động từ"}
+✅ {"words":["want","to","learn"],"type":"Cụm động từ"} + {"words":["English"],"type":"Cụm danh từ"}
+❌ {"words":["enjoy","reading","books"],"type":"Cụm động từ"}
+✅ {"words":["enjoy","reading"],"type":"Cụm động từ"} + {"words":["books"],"type":"Cụm danh từ"}
+PHÂN BIỆT BẮT BUỘC — bổ ngữ động từ (giữ trong VP) khác TÂN NGỮ DANH TỪ (tách riêng thành NP):
+"want to learn" (VP) + "English" (NP tân ngữ) — KHÔNG viết chung "want to learn English" = 1 VP.
 
-I. Cụm động từ (Verb Phrase) — nhãn "Cụm động từ". KHÔNG mẫu nào bắt đầu bằng chủ ngữ. Nhận diện
-ĐÚNG 1 trong 13 mẫu dưới đây, nhóm ĐỦ VÀ CHỈ từ cấu thành mẫu đó rồi DỪNG LẠI — KHÔNG kéo dài
-thêm tân ngữ/bổ ngữ/trạng ngữ không thuộc mẫu (trừ mẫu 10-13, nơi tân ngữ là PHẦN BẮT BUỘC của
-tên mẫu, dừng đúng tại hết tân ngữ đó):
-  1. Biến đổi theo thì: am/is/are, was/were, do/does/did+V, V-ed/V-s, will+V, has eaten, had
-     finished, will be working, has been waiting, will have been studying.
-  2. be + V-ing: is working, was studying, will be working.
-  3. has/have/had + V-ed: has eaten, had finished, has done.
-  4. have/has/had + been + V-ed/V-ing: has been waiting, have been working, had been repaired.
-  5. Bị động (be + V3): is built, was written, has been repaired, will be invited.
-  6. Modal: can swim, must leave, should study, might come, would have gone.
-  7. Modal + Perfect: must have forgotten, should have called, may have left, could have done.
-  8. Verb + to infinitive: want to go, decide to stay, hope to see, refuse to help.
-  9. Verb + V-ing: enjoy reading, avoid eating, keep talking, finish writing.
-  10. Verb + Object + to V: ask him to come, tell me to wait, force them to leave.
-  11. Verb + Object + Bare infinitive: let him go, make me laugh, have someone clean.
-  12. Verb + Object + V-ing: catch him cheating, keep me waiting, leave the water running.
-  13. Verb + Object + Past Participle: get it repaired, have my hair cut, leave the door locked.
-  Không khớp rõ mẫu nào (cấu trúc hiếm/phức tạp hơn): tự suy luận bằng năng lực ngữ pháp thật,
-  KHÔNG cố gán ép vào 1 trong 13 mẫu, và KHÔNG dùng số từ làm căn cứ thay ngữ pháp.
-  "Tân ngữ" ở mẫu 10-13 CHỈ tính là PHẦN BẮT BUỘC của mẫu khi tân ngữ đó là 1 ĐẠI TỪ ĐƠN (him/
-  her/them/me/us/it/someone) hoặc 1 TÊN RIÊNG ngắn — nếu tân ngữ là 1 CỤM DANH TỪ ĐẦY ĐỦ (có mạo
-  từ/lượng từ/tính từ đi kèm danh từ, vd "all companies", "the manager", "a new employee"), cụm
-  danh từ đó KHÔNG thuộc "Cụm động từ" — tách riêng làm 1 "Cụm danh từ" của chính nó, "Cụm động
-  từ" DỪNG LẠI ngay trước cụm danh từ đó (kể cả khi verb thuộc đúng 1 trong mẫu 10-13).
-  ❌ {"words":["recommend","all","companies"],"type":"Cụm động từ"} (tân ngữ "all companies" là 1
-     cụm danh từ đầy đủ, không phải đại từ đơn)
-  ✅ {"words":["recommend"],"type":"Cụm động từ"} + {"words":["all","companies"],"type":"Cụm danh từ"}
+III. Giới từ BẮT BUỘC đi kèm động từ để ĐỦ NGHĨA (depend on, belong to, listen to, wait for, look
+at, talk about, think about, pay for...): gộp CHUNG với động từ thành 1 "Cụm động từ", tân ngữ
+theo sau tách riêng thành "Cụm danh từ":
+✅ {"words":["listens","to"],"type":"Cụm động từ"} + {"words":["music"],"type":"Cụm danh từ"}
+✅ {"words":["depend","on"],"type":"Cụm động từ"} + {"words":["him"],"type":"Cụm danh từ"}
+Giới từ TÙY CHỌN (chỉ nơi/thời gian/cách thức, KHÔNG bắt buộc để động từ đủ nghĩa — work at
+school, study in Germany, eat at a restaurant, live in Hanoi): tách hẳn PP riêng khỏi VP, KHÔNG
+gộp vào động từ — tự hỏi "động từ này có CẦN đúng giới từ này để đủ nghĩa không?": CÓ → gộp VP
+(mục III); KHÔNG (chỉ là thông tin thêm về nơi/lúc/cách) → tách PP riêng (mục IV).
 
-II. Phrasal Verbs — nhãn "Phrasal verb": look after, look up, give up, carry on, put off, turn
-  down (động từ + giới từ/trạng từ đi liền, tách khỏi phần còn lại của câu).
+IV. "Cụm giới từ" (PP): giới từ + toàn bộ cụm danh từ theo sau nó, giữ nguyên 1 khối — in the
+room, at school, on the table, with my friends, for three years. KHÔNG tách giới từ khỏi phần
+danh từ theo sau (❌ {"words":["in"]}+{"words":["the","classroom"]} riêng — phải gộp 1 PP).
 
-III. Prepositional Verbs — nhãn "Prepositional verb": depend on, belong to, listen to, insist on,
-  apologize for.
+V. "Cụm tính từ" (AdjP): tính từ + bổ ngữ THUỘC VỀ nó (very happy, interested in music, afraid of
+dogs, good at English, full of water) — không gồm chủ ngữ đứng trước nó.
+"She is very good at English." → {"words":["She"],"type":"Cụm danh từ"} +
+{"words":["is"],"type":"Cụm động từ"} + {"words":["very","good","at","English"],"type":"Cụm tính từ"}
 
-IV. Verb Pattern — nhãn "Verb pattern": prevent somebody from doing, accuse somebody of doing,
-  remind somebody to do, remind somebody of something, persuade somebody to do.
+VI. "Cụm trạng từ" (AdvP, ≥2 từ): very slowly, extremely carefully, much more quickly. Trạng từ
+ĐƠN 1 từ bổ nghĩa cho động từ nhưng KHÔNG đứng đầu câu (also, always, often, never, just, already,
+usually — ở giữa câu) PHẢI có 1 nhóm riêng (type="adverb", KHÔNG được biến mất khỏi mọi nhóm):
+❌ "They also prepare reports." → {"words":["They"],...}+{"words":["prepare","reports"],...}
+   (THIẾU hẳn "also" — SAI, vi phạm yêu cầu phủ đủ 100% từ)
+✅ {"words":["They"],"type":"Cụm danh từ"} + {"words":["also"],"type":"adverb"} +
+   {"words":["prepare"],"type":"Cụm động từ"} + {"words":["reports"],"type":"Cụm danh từ"}
 
-V. Cụm danh từ (Noun Phrase) — nhãn "Cụm danh từ": the tall young man, a cup of coffee, an
-  interesting book. Bao gồm: article, adjective, noun, modifier, determiner — KHÔNG BAO GIỜ chứa
-  động từ chia.
-
-VI. Cụm tính từ (Adjective Phrase) — nhãn "Cụm tính từ": very happy, full of water, interested
-  in music, difficult to understand.
-
-VII. Cụm trạng từ (Adverb Phrase) — nhãn "Cụm trạng từ": quite slowly, very carefully, much more
-  quickly.
-
-VIII. Giới từ + Cụm danh từ (Prepositional Phrase) — nhãn "Cụm giới từ": in the room, at school,
-  on the table, during the meeting.
-
-IX. Cụm phân từ (Participle Phrase) — nhãn "Cụm phân từ": walking along the street, sitting by
-  the window (present participle); built in 1990, damaged by fire (past participle).
-
-X. Cụm nguyên mẫu (Infinitive Phrase) — nhãn "Cụm nguyên mẫu": to study English, to solve the
-  problem, to become a doctor.
-
-XI. Gerund Phrase — nhãn "Gerund phrase": studying English, swimming every morning, reading
-  books.
-
-XII. Cụm so sánh — nhãn "Cụm so sánh": as...as, more...than, less...than, the most..., the
-  least...
-
-XIII. Cụm liên từ (Conjunction Structures) — nhãn "Cụm liên từ": not only...but also...,
-  either...or..., neither...nor..., both...and..., whether...or...
-
-XIV. Cấu trúc song song (Parallel Structure) — nhãn "Cấu trúc song song": singing, dancing, and
-  reading; to eat, to drink, and to sleep.
-
-XV. Cụm cố định (Fixed Expressions) — nhãn "Cụm cố định": by the way, in fact, of course, at
-  least, as soon as possible.
-
-XVI. Thành ngữ (Idioms) — nhãn "Thành ngữ" (chỉ cấp cao): once in a blue moon, break the ice, hit
-  the sack, cost an arm and a leg.
-
-XVII. Collocations — nhãn "Collocation": make a decision, take a break, heavy rain, strong
-  coffee, pay attention (các từ thường đi cùng nhau).
-
-XVIII. Cụm mệnh đề (Clause) — nhãn "Mệnh đề quan hệ" (who lives here, which I bought yesterday),
-  "Mệnh đề danh từ" (what he said, whether she will come), hoặc "Mệnh đề trạng ngữ" (because he
-  was sick, although it rained, if you study hard) — CHỈ giữ nguyên 1 nhóm khi mệnh đề đó NGẮN
-  (≤4-5 từ), mệnh đề dài hơn PHẢI chia nhỏ theo quy tắc "GIỚI HẠN ĐỘ DÀI" ở trên.
-
-XIX. Cấu trúc đặc biệt — nhãn "Cấu trúc đặc biệt": There is..., There are..., It is...that...,
-  It takes..., It seems..., It appears...
-
-XX. Các mẫu ngữ pháp cố định (Grammar Patterns) — nhãn "Mẫu ngữ pháp cố định": too...to...,
-  enough to..., so...that..., such...that..., the more..., the more..., had better, would
-  rather, be supposed to, be likely to, be about to, be used to, get used to, used to, be able
-  to, be going to.
-
-XXI. Cụm giới từ cố định — nhãn "Cụm giới từ cố định": in charge of, in front of, because of, due
-  to, according to, instead of, in spite of, on behalf of.
-
-XXII. Cụm tính từ cố định — nhãn "Cụm tính từ cố định": afraid of, interested in, proud of,
-  responsible for, good at, familiar with, similar to.
-
-XXIII. Cụm danh từ cố định — nhãn "Cụm danh từ cố định": a piece of advice, a bit of, a lot of,
-  plenty of, a number of, the majority of.
-
-XXIV. Cụm chỉ số lượng (Quantifier Phrases) — nhãn "Cụm chỉ số lượng": a few, a little, a great
-  deal of, plenty of, a large number of, lots of.
-
-Từ không thuộc cụm nào ở trên (chủ ngữ đơn, liên từ đứng riêng...) vẫn PHẢI có mặt — tự làm 1
-nhóm riêng gồm chính nó, "type" ghi loại từ đơn (noun/verb/adjective/pronoun/preposition/...).
+KIỂM TRA CUỐI (tự rà lại trước khi trả JSON):
+- Mọi từ của câu thuộc ĐÚNG 1 nhóm — không thiếu, không lặp (yêu cầu hệ thống tự kiểm, xem đầu
+  quy tắc này, quan trọng hơn chọn đúng loại cụm).
+- NP không dính PP/VP liền sau nó. VP không dính NP tân ngữ liền sau nó (trừ mục III — giới từ
+  bắt buộc). Danh từ ghép (noun+noun) không bị tách rời.
+- Không có nhóm nào là 1 MỆNH ĐỀ nguyên vẹn (relative/subordinate clause) — luôn chia tiếp bên
+  trong mệnh đề đó thành NP/VP/PP/AdjP/AdvP/từ đơn.
+- Auxiliary/modal không tách khỏi động từ chính. Verb+to-infinitive hoặc verb+V-ing bổ ngữ không
+  kéo theo tân ngữ danh từ của nó vào cùng VP.
 
 QUY TẮC XÁC ĐỊNH "level": tự hỏi theo ĐÚNG 1 câu hỏi duy nhất: "1 người học ĐÃ ĐẠT ĐÚNG cấp độ
 này (không hơn) có khả năng cao đã BIẾT/GẶP từ hoặc cụm này trong giao tiếp thông thường KHÔNG
@@ -425,7 +343,11 @@ Mỗi nhóm có cấu trúc:
     "meaning": "nghĩa tiếng Việt của CẢ CỤM (hoặc của từ đơn nếu nhóm chỉ 1 từ)",
     "level": "cấp độ CEFR chung của cả cụm (dùng khi nhóm chỉ 1 từ, hoặc làm lưới đỡ nếu
       "word_levels" thiếu từ nào) — CÓ THỂ khác cấp độ chung của bài",
-    "type": "tên loại cụm theo ĐÚNG 1 trong 24 loại ở trên (hoặc loại từ đơn nếu là 1 từ riêng lẻ)",
+    "type": "ĐÚNG 1 trong 5 nhãn cụm ở trên (Cụm danh từ/Cụm động từ/Cụm giới từ/Cụm tính từ/Cụm
+      trạng từ) — DÙNG CẢ KHI nhóm chỉ có 1 từ nhưng từ đó vẫn là chủ ngữ/động từ/tân ngữ (vd 1
+      đại từ/danh từ riêng làm chủ ngữ vẫn ghi 'Cụm danh từ', 1 động từ đơn vẫn ghi 'Cụm động từ')
+      — CHỈ dùng loại từ đơn (noun/verb/adjective/adverb/pronoun/preposition/conjunction/...) khi
+      từ đó THỰC SỰ đứng độc lập, không thuộc cụm nào (liên từ, thán từ, trạng từ 1-từ giữa câu)",
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ
       trong "words" của nhóm khi nhóm có >1 từ (không thiếu bất kỳ từ nào — từ nào không có trong
       "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế, trộn 2 ngôn ngữ nếu ghép
