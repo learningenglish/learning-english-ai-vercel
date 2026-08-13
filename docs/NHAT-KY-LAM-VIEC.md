@@ -1718,3 +1718,50 @@ app thay vì tiền tố.
   15 — giờ Minh đã xác nhận giám khảo giữ NGOÀI luồng, việc này có thể coi là đã trả lời/đóng),
   và phạm vi tái cấu trúc code sâu hơn (đợt 15 hỏi mở, đợt 16 đã làm phần views/ theo yêu cầu cụ
   thể "Mục 6" — api/_generate/ chưa đụng, có thể còn muốn làm tiếp nếu Minh yêu cầu).
+
+## 2026-08-13 (đợt 17) — Tô đậm từ chuyên ngành mất ở cụm nhiều từ, mẫu ngữ pháp thay đếm từ, cấp độ riêng từng từ, sinh mẫu #6
+
+Minh xem trực tiếp bài #5b2 (B2) thật trong app, gửi 3 phản hồi + yêu cầu sinh 2 bài mẫu #6a2/#6b2.
+
+1. **Tô đậm từ chuyên ngành mất ở bài B2:** xác nhận đúng — `vocabMap` chỉ khớp từ vựng chuyên
+   ngành THEO CẢ CỤM nguyên văn (`wordEntryFromPhraseGroup` chỉ tra `vocabMatch` khi nhóm 1 từ),
+   nhưng bài cấp cao có nhiều từ chuyên ngành GHÉP CỤM nhiều từ hơn (`"bank reconciliation"`,
+   `"inventory valuation"`...) — khi 1 từ trong cụm đó rơi vào 1 phrase_group KHÁC của AI, tra
+   riêng không tìm lại được `is_specialized`. Thêm `buildSpecializedWordSet()`: tách từng TỪ ĐƠN
+   trong mọi từ vựng chuyên ngành nhiều-từ thành 1 tập riêng, khớp bất kỳ đâu từ đó xuất hiện —
+   verify sống: 34 từ được tô đậm đúng trên bài B2 mới (trước đó 0).
+2. **Cấp độ từ chưa chính xác:** xác nhận nguyên nhân — cấp độ trước đây LUÔN lấy của CẢ NHÓM
+   (`group.level`), quá thô cho nhóm nhiều từ có độ khó khác nhau (vd nhóm "is often described
+   as" không thể dùng 1 cấp độ chung cho "is" (A1) và "described" (B1)). Thêm field mới
+   `"word_levels"` (cấp độ RIÊNG từng từ, cùng cơ chế `word_types` đã có) — verify sống: hầu hết
+   từ trong 2 bài mẫu mới có cấp độ riêng đúng theo từng từ, không còn dùng chung 1 cấp độ cho cả
+   cụm 4-5 từ.
+3. **Cụm động từ — Minh: "không yêu cầu giữ trần hay sàn, yêu cầu nhận diện đúng":** viết lại mục
+   I (Cụm động từ) từ 10 mẫu mơ hồ sang ĐÚNG 13 mẫu ngữ pháp cụ thể theo danh sách Minh liệt kê
+   (verb+giới từ, verb+V-ing, verb+to-V, biến đổi theo thì, be+V-ing, have+V-ed, have+been+V-ed/
+   V-ing, bị động, modal, modal+perfect, 3 mẫu verb+object+...) — nhận diện ĐÚNG mẫu rồi DỪNG
+   LẠI, không kéo dài thêm tân ngữ/bổ ngữ không thuộc mẫu; nếu không khớp rõ mẫu nào, tự suy luận
+   bằng năng lực ngữ pháp thật, KHÔNG dùng số từ làm căn cứ. Trần 5 từ ở mục "GIỚI HẠN ĐỘ DÀI" giờ
+   CHỈ còn là lưới đỡ cho việc chia MỆNH ĐỀ dài, không còn là căn cứ chính cho Cụm động từ.
+   **Kết quả verify thật:** cải thiện rõ (nhiều cụm modal/perfect/bị động giờ đúng gọn 2-4 từ,
+   dừng đúng trước tân ngữ) nhưng CHƯA hoàn hảo 100% — vài mệnh đề phức (10-12 từ) vẫn bị AI giữ
+   nguyên 1 khối dù đã có rule chia mệnh đề từ đợt 16 — residual đã biết, AI không tuân thủ đều
+   dù rule đã rõ, cùng bản chất giới hạn đã ghi nhận nhiều lần trong nhật ký này.
+4. **Bug thật tự phát hiện khi verify:** nhóm chủ ngữ tách bằng code (`splitLeadingSubjectPronoun`,
+   đợt 16) thiếu `word_levels` (chỉ có `word_types`) — sửa bổ sung, verify lại 0 nhóm còn thiếu.
+
+**Sinh 2 bài mẫu #6a2 (A2)/#6b2 (B2), Kế toán, bài đọc, qua đúng luồng** (`generate_lesson` → vá
+`phrase_groups`+`reading_chunks` → ảnh bìa) — cả 2 thành công NGAY LẦN ĐẦU (không cần retry):
+#6a2 "Why Organizing Receipts is Important", #6b2 "Inventory Valuation Methods in Accounting".
+Verify trực tiếp qua dữ liệu thật + browser (SW cache cũ trong tab test gây hiểu lầm ban đầu —
+xoá cache/SW rồi mới thấy đúng 34 từ tô đậm).
+
+**Bump SW cache v73→v74.**
+
+**Còn lại cho Minh:**
+- Xem trực tiếp 2 bài #6a2/#6b2 trong app — cùng hạn chế tiền tố số hiệu như đợt 15 (sandbox
+  không đổi được title qua service-role key), nhận diện qua level+chủ đề.
+- Residual mục 3: vài mệnh đề phức 10-12 từ vẫn chưa tách chuẩn dù đã có 2 lớp rule (chia mệnh đề
+  + mẫu ngữ pháp cụ thể) — nếu còn gặp thường xuyên, có thể cần lưới đỡ bằng code tương tự
+  `splitLeadingSubjectPronoun` (nhận diện ranh giới mệnh đề phụ bằng danh sách liên từ đóng, tách
+  cứng bằng thuật toán) thay vì tiếp tục thêm chữ vào prompt.
