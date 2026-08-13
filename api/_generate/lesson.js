@@ -1693,6 +1693,60 @@ function splitLeadingSubjectPronoun(phraseGroups) {
   return out;
 }
 
+// LƯỚI ĐỠ 2 (2026-08-13, cùng nguyên tắc splitLeadingSubjectPronoun ở trên — model KHÔNG tuân
+// thủ đều 100% dù prompt đã có ví dụ ❌/✅ rõ, đo được qua nhiều lượt force-retry cùng 1 câu: có
+// lượt gộp đúng "an accountant"/"the company's financial status" thành 1 nhóm, có lượt lại chẻ
+// rời từng từ ra thành nhiều nhóm 1-từ). Gộp LẠI bằng CODE: bất kỳ dãy ≥2 nhóm LIÊN TIẾP, MỖI
+// nhóm CHỈ 1 từ, mà "word_types" của các từ đó là determiner/adjective (0 hoặc nhiều từ đầu) rồi
+// kết thúc bằng ĐÚNG 1 từ "noun" — luôn là 1 cụm danh từ bị chẻ vụn, gộp lại thành 1 nhóm "Cụm
+// danh từ" duy nhất. KHÔNG đụng tới nhóm đã ≥2 từ (đã đúng) hay dãy có xen verb/pronoun/preposition
+// ở giữa (ranh giới cụm thật, không phải lỗi chẻ vụn).
+const NP_FRAGMENT_PREFIX_TYPES = new Set(["determiner", "adjective"]);
+function isNpFragmentPrefix(word, wType) {
+  return NP_FRAGMENT_PREFIX_TYPES.has(wType) || /['’]s$/i.test(word || "");
+}
+function mergeFragmentedNounPhrases(phraseGroups) {
+  if (!Array.isArray(phraseGroups)) return phraseGroups;
+  const out = [];
+  let run = []; // các nhóm 1-từ liên tiếp đang xét gộp (determiner/adjective/possessive 's)
+  const flushRun = (extra) => {
+    const items = extra ? [...run, extra] : run;
+    if (items.length >= 2) {
+      const words = items.flatMap((g) => g.words);
+      const word_meanings = Object.assign({}, ...items.map((g) => g.word_meanings || {}));
+      const word_types = Object.assign({}, ...items.map((g) => g.word_types || {}));
+      const word_levels = Object.assign({}, ...items.map((g) => g.word_levels || {}));
+      out.push({
+        words,
+        meaning: items.map((g) => g.meaning || g.words[0]).join(" "),
+        level: items[items.length - 1].level,
+        type: "Cụm danh từ",
+        word_meanings,
+        word_types,
+        word_levels,
+      });
+    } else {
+      out.push(...items);
+    }
+    run = [];
+  };
+  for (const g of phraseGroups) {
+    const words = Array.isArray(g?.words) ? g.words : [];
+    const w = words[0];
+    const wType = words.length === 1 ? g.word_types?.[w] : null;
+    if (words.length === 1 && wType === "noun" && run.length) {
+      flushRun(g);
+    } else if (words.length === 1 && isNpFragmentPrefix(w, wType)) {
+      run.push(g);
+    } else {
+      flushRun();
+      out.push(g);
+    }
+  }
+  flushRun();
+  return out;
+}
+
 export async function analyze_lesson_phrase_groups(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
@@ -1729,7 +1783,9 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // code), nên lượt gọi action này (dù coverage đã đủ, không cần gọi AI ở trên) vẫn luôn có ích:
   // tự "dọn" lại bài cũ mỗi khi được gọi lại, không cần phân biệt bài mới/cũ.
   for (const item of content) {
-    if (Array.isArray(item.phrase_groups)) item.phrase_groups = splitLeadingSubjectPronoun(item.phrase_groups);
+    if (Array.isArray(item.phrase_groups)) {
+      item.phrase_groups = mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(item.phrase_groups));
+    }
   }
 
   const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
