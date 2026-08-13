@@ -245,9 +245,17 @@ nên bỏ cách đó, quay về đúng khung ngữ pháp S-V-O):
    khỏi "companies" — mạo từ/lượng từ/tính từ KHÔNG BAO GIỜ đứng riêng, luôn nằm trong cụm danh từ
    chứa nó.
 3. V = ĐÚNG 1 "Cụm động từ" theo 13 mẫu ở mục I ngay dưới — nhóm đủ phần động từ chia theo thì rồi
-   dừng đúng theo luật mục I (không kéo O vào, trừ khi O là đại từ đơn theo đúng mẫu 10-13).
+   DỪNG NGAY, KHÔNG kéo O vào (trừ mẫu 10-13, nơi O là đại từ đơn nằm trong chính tên mẫu). Với
+   mẫu 1-9 (biến đổi theo thì, be+V-ing, has/have/had+V-ed, bị động, modal...), V CHỈ gồm các từ
+   tạo nên hình thái động từ đó — KHÔNG BAO GIỜ gồm cả tân ngữ, dù tổng vẫn ≤5 từ.
 4. O (nếu có) = làm như bước 2 — nếu là cụm danh từ, nhóm TRỌN VẸN (mạo từ+tính từ+danh từ) thành
-   1 "Cụm danh từ", không tách rời từng từ bên trong nó.
+   1 "Cụm danh từ" RIÊNG, tách khỏi V, không tách rời từng từ bên trong nó.
+   Ví dụ mẫu 1 (biến đổi theo thì) có tân ngữ: "checks financial records every day"
+   ❌ {"words":["checks","financial","records","every","day"],"type":"Cụm động từ"} (gộp cả V+O+
+      trạng ngữ thời gian vào 1 nhóm — SAI, dù ≤5 từ)
+   ✅ {"words":["checks"],"type":"Cụm động từ"} (V, mẫu 1, dừng ngay sau động từ) +
+      {"words":["financial","records"],"type":"Cụm danh từ"} (O, tách riêng) +
+      {"words":["every","day"],"type":"Cụm trạng từ"} (trạng ngữ thời gian, tách riêng)
 5. CHỈ 2 loại từ sau được đứng RIÊNG 1 mình ngoài khung S-V-O (không gộp chung S/V/O nào): (a)
    liên từ nối 2 mệnh đề (and, but, or, so, because, although, while — khi dùng để NỐI, không phải
    khi đứng trong 1 cụm), (b) trạng từ liên kết đầu câu/mệnh đề (however, therefore, moreover,
