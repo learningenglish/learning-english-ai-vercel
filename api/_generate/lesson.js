@@ -1594,6 +1594,49 @@ async function loadLessonForPatch(lessonId, isNews, studentId) {
   return { ok: true, table, content: row.content };
 }
 
+// LƯỚI ĐỠ BẰNG CODE (2026-08-13, Minh xem trực tiếp trên bài #5b2 thật: tra từ "might" hiện cụm
+// "They might contact the bank" — nguyên cả mệnh đề, không phải "nhóm từ vài chữ làm rõ nghĩa
+// phạm vi nhỏ" như đúng ý nghĩa "cụm" phải có) — xác nhận đây là ĐÚNG lỗi "QUY TẮC RIÊNG VỀ CHỦ
+// NGỮ" đã thêm rule+ví dụ trong PHRASE_GROUPS_RULES vẫn không chặn được 100% (model không tuân
+// thủ đều, đúng bản chất AI, không phải lỗi thiếu ví dụ). Do đại từ chủ ngữ (I/you/he/she/it/we/
+// they) là danh sách ĐÓNG, hữu hạn — tách bằng CODE ngay tại đây đảm bảo ĐÚNG 100%, không phụ
+// thuộc AI có tuân thủ hay không, thay vì tiếp tục thêm chữ vào prompt (đã thử, không ăn chắc).
+// CHỈ xử lý đại từ (danh từ riêng làm chủ ngữ, vd "Maria", "Accounting" đứng đầu câu, KHÔNG có
+// danh sách đóng để nhận diện chắc chắn bằng code — vẫn phải dựa vào prompt, chấp nhận rủi ro còn
+// lại thấp hơn nhiều vì đại từ là phần lớn trường hợp thật đã gặp).
+const LEADING_SUBJECT_PRONOUNS = new Set(["i", "you", "he", "she", "it", "we", "they"]);
+
+function splitLeadingSubjectPronoun(phraseGroups) {
+  if (!Array.isArray(phraseGroups)) return phraseGroups;
+  const out = [];
+  for (const g of phraseGroups) {
+    const words = Array.isArray(g?.words) ? g.words : [];
+    const first = words[0];
+    if (words.length > 1 && first && LEADING_SUBJECT_PRONOUNS.has(first.toLowerCase())) {
+      const rest = words.slice(1);
+      const wordMeanings = g.word_meanings || {};
+      const wordTypes = g.word_types || {};
+      out.push({
+        words: [first],
+        meaning: wordMeanings[first] || first,
+        level: g.level,
+        type: wordTypes[first] || "pronoun",
+        word_meanings: { [first]: wordMeanings[first] || first },
+        word_types: { [first]: wordTypes[first] || "pronoun" },
+      });
+      out.push({
+        ...g,
+        words: rest,
+        word_meanings: Object.fromEntries(Object.entries(wordMeanings).filter(([k]) => k !== first)),
+        word_types: Object.fromEntries(Object.entries(wordTypes).filter(([k]) => k !== first)),
+      });
+    } else {
+      out.push(g);
+    }
+  }
+  return out;
+}
+
 export async function analyze_lesson_phrase_groups(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
@@ -1606,21 +1649,27 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // đoạn trước khi ép 100% may mắn đã đủ, hoặc 1 lượt vá TRƯỚC ĐÓ đã xử lý xong) thì GIỮ NGUYÊN,
   // không tốn thêm token phân tích lại.
   const missingIdx = content.map((it, i) => (itemPhraseCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
-  if (!missingIdx.length) {
-    return { content: JSON.stringify({ content }) };
-  }
-  const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
 
-  const result = await analyzePhraseGroupsInChunks(toAnalyze);
-  if (!result.ok) {
-    console.error("[analyze_lesson_phrase_groups] thất bại:", result.reason);
-    return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
+  if (missingIdx.length) {
+    const toAnalyze = missingIdx.map((i) => ({ text: content[i].text }));
+    const result = await analyzePhraseGroupsInChunks(toAnalyze);
+    if (!result.ok) {
+      console.error("[analyze_lesson_phrase_groups] thất bại:", result.reason);
+      return { error: "Không phân tích được bài học, vui lòng thử lại.", status: 502 };
+    }
+    missingIdx.forEach((origIdx, i) => {
+      const match = result.items.find((x) => x.index === i) || result.items[i];
+      content[origIdx] = { ...content[origIdx], phrase_groups: match.phrase_groups };
+    });
   }
 
-  missingIdx.forEach((origIdx, i) => {
-    const match = result.items.find((x) => x.index === i) || result.items[i];
-    content[origIdx] = { ...content[origIdx], phrase_groups: match.phrase_groups };
-  });
+  // ÁP DỤNG LƯỚI ĐỠ chủ ngữ (splitLeadingSubjectPronoun) cho MỌI item, KỂ CẢ item đã đạt
+  // coverage từ trước (bài CŨ, sinh trước khi có lưới đỡ này) — không tốn thêm lượt AI (thuần
+  // code), nên lượt gọi action này (dù coverage đã đủ, không cần gọi AI ở trên) vẫn luôn có ích:
+  // tự "dọn" lại bài cũ mỗi khi được gọi lại, không cần phân biệt bài mới/cũ.
+  for (const item of content) {
+    if (Array.isArray(item.phrase_groups)) item.phrase_groups = splitLeadingSubjectPronoun(item.phrase_groups);
+  }
 
   const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
     method: "PATCH",
