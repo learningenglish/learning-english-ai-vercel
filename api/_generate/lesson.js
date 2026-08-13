@@ -1529,6 +1529,14 @@ async function callAnalyzePhraseGroups(items, tier) {
   for (let i = 0; i < items.length; i++) {
     const match = resultItems.find((x) => x.index === i) || resultItems[i];
     if (!itemPhraseCoverageOk({ text: items[i].text, phrase_groups: match?.phrase_groups })) {
+      console.warn(
+        "[callAnalyzePhraseGroups] coverage mismatch DEBUG — text:",
+        items[i].text,
+        "real:",
+        JSON.stringify(sentenceWordTokens(items[i].text)),
+        "got:",
+        JSON.stringify((match?.phrase_groups || []).flatMap((g) => (Array.isArray(g?.words) ? g.words : [])).map(normalizePhraseWord))
+      );
       return { ok: false, reason: "phrase_coverage_incomplete", itemIndex: i };
     }
   }
