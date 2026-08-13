@@ -106,8 +106,22 @@ export async function publishLesson(token, sample) {
   const parsed = JSON.parse(genRes.data.content);
   const lesson = parsed.lesson;
   report.lessonId = lesson.id;
-  report.title = lesson.title;
   report.level = lesson.level;
+
+  // Đánh số hiệu (vd "#1-A2 ") NGAY sau khi có lesson.id — 2026-08-13, Minh: "tại sao không đánh
+  // # để tôi dễ nhận biết" khi duyệt bài test. Không chặn các bước sau nếu lỗi (chỉ để nhận diện,
+  // không phải điều kiện "đủ 4 bước").
+  const tagRes = await callChat(token, "set_lesson_title_tag", { lesson_id: lesson.id, tag: sample.tag });
+  if (tagRes.status === 200) {
+    const tagParsed = JSON.parse(tagRes.data.content);
+    report.title = tagParsed.title;
+  } else {
+    report.title = lesson.title;
+  }
+  const totalWords = (lesson.content || []).reduce((sum, it) => sum + (it.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
+  const totalChars = (lesson.content || []).reduce((sum, it) => sum + (it.text || "").length, 0);
+  report.totalWords = totalWords;
+  report.totalChars = totalChars;
   report.steps.content = { ok: true };
 
   const chunksResult = await ensureFieldComplete(token, lesson.id, "analyze_lesson_reading_chunks", "reading_chunks");
@@ -127,9 +141,21 @@ export async function publishLesson(token, sample) {
 }
 
 const SAMPLES = [
-  // Điền bài cần sinh ở đây, ví dụ:
-  // { tag: "#8a2", level: "A2", content_type: "reading", topic: "...", description: "...",
-  //   field: "Kế toán", industry: "Kế toán", situation: "...", term_density: 2 },
+  { tag: "#1-A1", level: "A1", content_type: "reading", topic: "An accountant's simple daily tasks at the office",
+    description: "Bài đọc trình độ A1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
+    situation: "Kế toán viên làm các việc đơn giản hàng ngày ở văn phòng", term_density: 1 },
+  { tag: "#1-A2", level: "A2", content_type: "reading", topic: "A bookkeeper organizing receipts and invoices for small businesses",
+    description: "Bài đọc trình độ A2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
+    situation: "Nhân viên sổ sách sắp xếp biên lai và hóa đơn cho doanh nghiệp nhỏ", term_density: 2 },
+  { tag: "#1-B1", level: "B1", content_type: "reading", topic: "How a company prepares its monthly financial summary for the manager",
+    description: "Bài đọc trình độ B1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
+    situation: "Công ty chuẩn bị báo cáo tài chính tháng cho quản lý", term_density: 3 },
+  { tag: "#1-B2", level: "B2", content_type: "reading", topic: "How auditors assess internal financial controls before annual reporting",
+    description: "Bài đọc trình độ B2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
+    situation: "Kiểm toán viên đánh giá kiểm soát tài chính nội bộ trước kỳ báo cáo năm", term_density: 4 },
+  { tag: "#1-C1", level: "C1", content_type: "reading", topic: "How multinational firms reconcile financial statements across different accounting standards",
+    description: "Bài đọc trình độ C1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
+    situation: "Các công ty đa quốc gia đối chiếu báo cáo tài chính giữa các chuẩn kế toán khác nhau", term_density: 5 },
 ];
 
 if (SAMPLES.length) {
