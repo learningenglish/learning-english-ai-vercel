@@ -1943,6 +1943,44 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
   return { content: JSON.stringify({ content }) };
 }
 
+// Đặt tiền tố số hiệu (vd "#1-A2 ") cho bài mẫu — 2026-08-13, Minh: "tại sao không đánh # để tôi
+// dễ nhận biết" khi kiểm tra bài mẫu sinh thử. CÙNG PATTERN set_lesson_cover_image (client bị
+// REVOKE UPDATE cột "title"/"title_vi" trực tiếp, xem supabase/019_lessons.sql) — chỉ chủ bài
+// mới đặt được tiền tố cho bài của mình (lọc "user_id=eq.${ctx.studentId}" ở câu PATCH).
+export async function set_lesson_title_tag(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id || !data.tag) return { error: "Thiếu 'lesson_id' hoặc 'tag'.", status: 400 };
+
+  const selectRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(data.lesson_id)}&user_id=eq.${encodeURIComponent(ctx.studentId)}&select=title,title_vi`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!selectRes.ok) return { error: "Không tải được bài học.", status: 502 };
+  const rows = await selectRes.json();
+  const lesson = rows?.[0];
+  if (!lesson) return { error: "Không tìm thấy bài học.", status: 404 };
+
+  const tag = data.tag.trim();
+  const stripOldTag = (s) => (s || "").replace(/^#\S+\s+/, "");
+  const newTitle = `${tag} ${stripOldTag(lesson.title)}`;
+  const newTitleVi = `${tag} ${stripOldTag(lesson.title_vi)}`;
+
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(data.lesson_id)}&user_id=eq.${encodeURIComponent(ctx.studentId)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ title: newTitle, title_vi: newTitleVi }),
+  });
+  if (!patchRes.ok) {
+    console.error("set_lesson_title_tag patch error:", patchRes.status, await patchRes.text());
+    return { error: "Không đặt được số hiệu bài học.", status: 502 };
+  }
+  return { content: JSON.stringify({ ok: true, title: newTitle, title_vi: newTitleVi }) };
+}
+
 // ============================================================
 // NỢ KỸ THUẬT:
 // 1. Không tự động sinh ảnh bìa (cover_image_url luôn null khi tạo) — logic
