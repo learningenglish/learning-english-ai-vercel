@@ -1547,6 +1547,34 @@ async function callAnalyzePhraseGroups(items, tier) {
   return { ok: true, items: resultItems };
 }
 
+// BUG THẬT (2026-08-13, Minh xem trực tiếp bài B2 #5b2 thật — cụm dài 6-10 từ, vượt xa trần 5,
+// xuất hiện hàng loạt CHỈ ở bài "reading" cấp B1+): comment gốc "gửi TỪNG CÂU MỘT" ở dưới đây
+// GIẢ ĐỊNH mỗi phần tử "content" (`toAnalyze[i].text`) LUÔN là 1 CÂU — ĐÚNG với hội thoại/A1-A2
+// (mỗi lượt thoại/câu ngắn tự nhiên là 1 câu), nhưng SAI với "reading" cấp B1+ — mỗi phần tử ở đó
+// thường là 1 ĐOẠN VĂN 2-3 CÂU. Gửi nguyên cả đoạn làm model buộc phải nhồi nhiều mệnh đề vào
+// cùng 1 lượt phân tích, phá vỡ đúng giả định "1 lượt = 1 câu ngắn, dễ giữ trần 5 từ" đã có.
+// SỬA: tách THẬT theo câu (dùng lại đúng thuật toán splitIntoSentences() phía client, xem
+// app/js/views/lessons/lesson.js — bảo vệ viết tắt Mr./U.S./e.g. trước khi tách) TRƯỚC khi gửi
+// AI, phân tích ĐÚNG 1 CÂU/lượt gọi dù phần tử gốc dài bao nhiêu câu, rồi GHÉP LẠI đúng thứ tự
+// thành 1 mảng "phrase_groups" DUY NHẤT cho phần tử đó — coverage-check (so khớp DÃY TỪ, không
+// quan tâm khoảng trắng/câu) vẫn đúng ĐỦ như cũ, không đổi hình dạng dữ liệu trả về.
+const PHRASE_SENTENCE_ABBR_SENTINEL = " "; // ký tự KHÔNG BAO GIỜ xuất hiện trong văn bản thật
+const PHRASE_SENTENCE_TRAILING_CHARS = `["'“”‘’)\\]]*`;
+function splitEnglishSentencesForPhraseGroups(text) {
+  if (!text) return [text];
+  const protectedText = text
+    .replace(/\b([A-Z]\.){2,}/g, (m) => m.replace(/\./g, PHRASE_SENTENCE_ABBR_SENTINEL))
+    .replace(/\b(Mr|Mrs|Ms|Dr|Prof|St|Sr|Jr|vs|etc|approx|Ltd|Co|Inc)\.(?=\s)/gi, (m) => m.replace(/\./g, PHRASE_SENTENCE_ABBR_SENTINEL))
+    .replace(/\b(e\.g|i\.e|a\.m|p\.m)\.(?=\s|$)/gi, (m) => m.replace(/\./g, PHRASE_SENTENCE_ABBR_SENTINEL));
+  const matches = protectedText.match(
+    new RegExp(`[^.!?]+[.!?]+${PHRASE_SENTENCE_TRAILING_CHARS}(\\s+|$)|[^.!?]+$`, "g")
+  );
+  const sentences = (matches || [protectedText])
+    .map((s) => s.split(PHRASE_SENTENCE_ABBR_SENTINEL).join(".").trim())
+    .filter(Boolean);
+  return sentences.length ? sentences : [text];
+}
+
 // Gửi TỪNG CÂU MỘT (2026-08-08 — phát hiện thật qua nhiều vòng test trực tiếp, xem
 // docs/NHAT-KY-LAM-VIEC.md mục cùng ngày cho đầy đủ diễn biến): gửi nhiều câu/đoạn cùng lúc từng
 // gây JSON bị CẮT NGANG (chạm trần "maxTokens" CHUNG toàn app = 6000, aiProvider.js — không nên
@@ -1556,16 +1584,24 @@ async function callAnalyzePhraseGroups(items, tier) {
 // "model mạnh là lưới cuối" đã áp dụng cho generate_lesson) — cho model nhiều "sức" suy luận hơn
 // đúng lúc cần nhất thay vì lặp lại y hệt 3 lần cùng model yếu. Thất bại cả 3 thì dừng TOÀN BỘ
 // (không lưu dở dang 1 phần "vá", giữ đúng tính idempotent — lượt bấm/mở bài SAU sẽ thử lại từ
-// đầu với đúng các câu còn thiếu).
+// đầu với đúng các câu còn thiếu). "toAnalyze[i].text" GIỜ có thể là 1 ĐOẠN nhiều câu (xem ghi
+// chú splitEnglishSentencesForPhraseGroups ở trên) — tách thật theo câu trước, mỗi câu 1 lượt gọi
+// riêng NHƯ CŨ, ghép lại đúng thứ tự thành 1 mảng phrase_groups cho ĐÚNG phần tử gốc.
 async function analyzePhraseGroupsInChunks(toAnalyze) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
-    const chunk = [toAnalyze[i]];
-    let result = await callAnalyzePhraseGroups(chunk);
-    if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
-    if (!result.ok) result = await callAnalyzePhraseGroups(chunk, "strong");
-    if (!result.ok) return { ok: false, reason: result.reason };
-    allItems.push(...result.items);
+    const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
+    const combinedGroups = [];
+    for (const sentence of sentences) {
+      const chunk = [{ text: sentence }];
+      let result = await callAnalyzePhraseGroups(chunk);
+      if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
+      if (!result.ok) result = await callAnalyzePhraseGroups(chunk, "strong");
+      if (!result.ok) return { ok: false, reason: result.reason };
+      const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+      combinedGroups.push(...(sentenceItem?.phrase_groups || []));
+    }
+    allItems.push({ index: i, phrase_groups: combinedGroups });
   }
   return { ok: true, items: allItems };
 }
