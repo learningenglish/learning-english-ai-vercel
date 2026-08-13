@@ -245,6 +245,10 @@ adjective/adverb/pronoun/preposition/conjunction/...), KHÔNG dùng 1 trong 5 nh
 - "Cụm tính từ" (Adjective Phrase — AdjP)
 - "Cụm trạng từ" (Adverb Phrase — AdvP, CHỈ dùng khi ≥2 từ; trạng từ ĐƠN 1 từ đứng độc lập thì
   dùng "type" = "adverb" như trên, không phải "Cụm trạng từ")
+TUYỆT ĐỐI KHÔNG tự đặt thêm type nào ngoài 5 nhãn cụm trên + loại từ đơn — ví dụ SAI thường gặp:
+"to-infinitive", "clause", "subject", "object", "verb pattern" (không phải type hợp lệ). Từ "to"
+đứng ngay trước động từ nguyên mẫu (to learn, to go, to become) KHÔNG BAO GIỜ tự làm 1 nhóm/type
+riêng — nó LUÔN nằm chung "Cụm động từ" với động từ chính đứng trước (mục II bên dưới).
 
 NGUYÊN TẮC CỐT LÕI: nhận diện cụm có RANH GIỚI NGỮ PHÁP RIÊNG, KHÔNG cố tạo cụm LỚN NHẤT có thể.
 1 cụm phải TÁCH khỏi cụm liền kề khi cụm đó có bản sắc ngữ pháp riêng — cụ thể: NP thường tách
