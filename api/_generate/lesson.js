@@ -43,7 +43,9 @@ const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 // (2 request gần như đồng thời cùng đọc thấy còn 1 suất) có thể khiến 1 ngày có 11 bài thay
 // vì tối đa 10 — CHẤP NHẬN được cho MVP (không phải hệ thống thanh toán, không cần RPC
 // "for update" như credit cũ).
-const DAILY_LESSON_LIMIT = 10;
+const DAILY_LESSON_LIMIT = 30; // TẠM TĂNG (2026-08-13, cùng lý do buổi sáng) để chạy thử
+// scripts/publish-lesson.mjs 5 bài #1-A1..#1-C1 test chất lượng trước khi chạy toàn giáo trình.
+// SẼ TRẢ VỀ 10 ngay sau khi chạy xong.
 const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè
 
 // Trả về thời điểm UTC tương ứng với 00:00:00 hôm nay theo giờ VN (dùng làm mốc "gte" khi
