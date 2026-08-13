@@ -1676,19 +1676,22 @@ function splitLeadingSubjectPronoun(phraseGroups) {
       const rest = words.slice(1);
       const wordMeanings = g.word_meanings || {};
       const wordTypes = g.word_types || {};
+      const wordLevels = g.word_levels || {};
       out.push({
         words: [first],
         meaning: wordMeanings[first] || first,
-        level: g.level,
+        level: wordLevels[first] || g.level,
         type: wordTypes[first] || "pronoun",
         word_meanings: { [first]: wordMeanings[first] || first },
         word_types: { [first]: wordTypes[first] || "pronoun" },
+        word_levels: { [first]: wordLevels[first] || g.level },
       });
       out.push({
         ...g,
         words: rest,
         word_meanings: Object.fromEntries(Object.entries(wordMeanings).filter(([k]) => k !== first)),
         word_types: Object.fromEntries(Object.entries(wordTypes).filter(([k]) => k !== first)),
+        word_levels: Object.fromEntries(Object.entries(wordLevels).filter(([k]) => k !== first)),
       });
     } else {
       out.push(g);
