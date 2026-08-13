@@ -1641,3 +1641,80 @@ vẫn chạy đúng toàn bộ chain (`archiveOtherActiveGoals`→`insertLearnin
   bài thật — đang treo, xem mục 3 ở đợt 6-mục trên.
 - Yêu cầu mới "sắp xếp lại từng bước theo đúng luồng, chuẩn bị đóng băng mở rộng đa ngôn ngữ
   (Đức/Trung)" — cần 1 buổi bàn riêng về phạm vi trước khi động tay, chưa bắt đầu.
+
+## 2026-08-12 (đợt 16) — Sửa tooltip cụm gộp chủ ngữ, đổi tên đúng luồng, i18n giao diện, sinh mẫu #5
+
+Minh gửi 2 file tham khảo ("Cụm cho tooltip.txt", "cấu trúc câu.txt") + 8 mục phản hồi, yêu cầu:
+đối chiếu tooltip với đúng file cụm, xây lựa chọn ngôn ngữ giao diện (đồng bộ Việt/Anh, làm hết 1
+lượt), tái cấu trúc `app/js/views/` theo đúng luồng, toggle mặc định mở hết, kiểm tra SQL đổi tên
+có cần không, cuối cùng sinh 2 bài mẫu #5a2/#5b2 kiểm tra.
+
+1. **Lỗi thật cụm động từ gộp chủ ngữ (tooltip):** test A/B trực tiếp xác nhận `PHRASE_GROUPS_
+   RULES` cũ (dù đã đúng 10 mẫu nguyên văn từ file gốc + trần cứng 5 từ) vẫn hay nhét chủ ngữ vào
+   chung "Cụm động từ" (`"Accounting is often described as"` — cả câu 1 nhóm). Thêm rule riêng +
+   ví dụ SAI/ĐÚNG lấy từ đúng output lỗi thật. Phát hiện quan trọng hơn: **nhúng rule vào 2 prompt
+   sinh CẢ BÀI cho kết quả XẤU HƠN RÕ RỆT** so với CHẠY RIÊNG qua action vá từng câu đã có sẵn —
+   đúng lịch sử/lý do đã áp dụng cho "Tách câu" đợt 14. Bỏ hẳn `PHRASE_GROUPS_RULES` khỏi
+   `GENERATE_LESSON_SYSTEM_PROMPT`/`ANALYZE_TEXT_SYSTEM_PROMPT` — `phrase_groups` giờ CHỈ có qua
+   action vá riêng (đã tự chạy sau khi tạo bài, không cần đổi UI).
+2. **Tooltip đổi hiển thị đúng mẫu Minh gửi** (`A2 morning 🔊 / noun / buổi sáng / in the
+   morning`): thêm field mới `word_types` (loại NGỮ PHÁP riêng từng từ, khác `type` của CẢ NHÓM) —
+   tooltip giờ ưu tiên `word_types` thay vì tên loại cụm; thêm dòng cụm chứa từ làm NGỮ CẢNH,
+   KHÔNG kèm nghĩa/dịch riêng.
+3. **Ngữ pháp sơ sài** (Minh: dùng file cấu trúc câu CHỈ để bổ sung, không thay thế taxonomy):
+   đo 5 bài gần nhất xác nhận đúng — 4/5 `grammar=0`, `sentence_patterns` luôn dừng đúng mức sàn
+   cũ (3). Nâng sàn `sentence_patterns` 3→5, giữ nguyên yêu cầu chất lượng.
+4. **Ngôn ngữ giao diện — làm hết 1 lượt:** xây `app/js/i18n.js` (`t()`/`registerTranslations()`,
+   Việt = khoá tra, đổi ngôn ngữ tải lại trang). Áp dụng cho TOÀN BỘ 13+ file view + header/toast/
+   lessonCard/app.js (3 agent song song cho phần view lớn, tự làm phần lưu lượng cao). Đồng thời
+   sửa các chỗ tiếng Anh lẫn xộn Minh chỉ ra: nav "Home/Ads/Setting"→"Trang chủ/Quản trị/Cài đặt",
+   badge cấp "Explorer/Adventurer/Master"→tiếng Việt, 6/8 nhãn "Chuyên ngành khác" (Information
+   Technology...→tiếng Việt, giữ Logistics/Marketing vì quá thông dụng), cấp độ viết tắt
+   "Begin./Elem..."→"Sơ cấp/Cơ bản...", chữ "streak" lẫn trong Tiến trình→"chuỗi ngày". Verify sống
+   nhiều màn (Cài đặt/Trang chủ/Tiến trình/Bài học/Luyện viết) bằng cách bấm đổi ngôn ngữ thật.
+5. **Toggle trong bài học mặc định mở hết** cả 3 (trước "Tách câu" mặc định tắt).
+6. **Tái cấu trúc `app/js/views/`:** 13 file phẳng → nhóm theo đúng luồng thật (`auth/`, `goal/`,
+   `home/`, `lessons/`, `analysis/`, `writing/`, `progress/`, `settings/`, `admin/`). Xác nhận
+   trước khi làm: KHÔNG có import chéo giữa các view (chỉ import từ `app/js/*.js` dùng chung) —
+   chỉ cần sửa độ sâu `"../"`→`"../../"` mỗi file di chuyển + import trong `app.js` + đường dẫn
+   `SHELL_FILES` trong `sw.js`. Verify sống: đăng nhập→Home→Bài đọc→mở bài, không lỗi console.
+7. **SQL đổi tên — xác nhận KHÔNG cần:** mọi đổi tên (mentor.js→goal.js, action, hàm) chỉ là
+   JS/file, không đụng schema DB. Đúng 1 chỗ CÓ thể cần SQL (bảng log `mentor_events`→
+   `goal_events`) nhưng CHỦ Ý để tuỳ chọn/chưa làm — bảng chỉ ghi log nội bộ, không lộ API/UI nào.
+8. **Bug thật phát hiện khi sinh mẫu #5a2:** câu có trích dẫn dấu nháy đơn (`'This is...'`) khiến
+   action vá `phrase_groups` thất bại LIÊN TỤC (3 lần/9 lượt gọi AI). Root cause: regex tokenize
+   (`sentenceWordTokens` server + `tokenizeWords` client, PHẢI khớp nhau — đã có ghi chú từ bug số
+   trước) coi dấu nháy đơn MỞ ĐẦU 1 từ (trích dẫn) là 1 phần của từ liền sau ("'this" thay vì
+   "this") — AI viết từ sạch, 2 bên không bao giờ khớp. Sửa: chỉ giữ dấu nháy khi đứng GIỮA 2 ký
+   tự chữ/số (đúng như "don't"). Sửa CẢ 2 nơi, verify lại patch thành công 100% sau fix.
+
+**Rà soát đổi tên khác** (Minh: "app hiện không liên quan Mentor, đổi tên cho phù hợp luồng"):
+`mentor.js`→`goal.js`, `mentorApi.js`→`goalApi.js`, action `mentor_create_goal`→`create_goal`,
+`logMentorEvent`→`logGoalEvent`, archive thư mục `mentor-lines/` đã chết, xoá 2 hàm dead code
+trong `db.js` (`listGoalStatuses`/`listMentorLibraryLessons`, 0 caller xác nhận qua grep), dọn CSS
+`.mentor-*` chết + comment lệch tên còn sót ở ~10 file. Bảng `mentors` (vai trò giáo viên duyệt
+ảnh, khái niệm THẬT khác) và giám khảo (`lessonJudge.js`) GIỮ NGUYÊN theo đúng xác nhận Minh.
+
+**Sinh 2 bài mẫu #5a2 (A2)/#5b2 (B2), Kế toán, bài đọc, qua đúng luồng mới** (`generate_lesson` →
+vá `phrase_groups`+`reading_chunks` → ảnh bìa) — verify dữ liệu thật: #5a2 124 từ, coverage
+phrase_groups 100% (sau fix mục 8), grammar=1+sentence_patterns=5; #5b2 179 từ, coverage 100%,
+grammar=1+sentence_patterns=3 (dưới sàn mới 5 — xác nhận sàn vẫn là mềm, model đôi khi không đạt
+dù đã nâng, cần theo dõi thêm). KHÔNG gắn được tiền tố "#5a2 "/"#5b2 " vào title (cần service-role
+key đổi DB, sandbox chỉ có placeholder "[SENSITIVE]") — báo Minh xem trực tiếp qua ID/level trong
+app thay vì tiền tố.
+
+**Bump SW cache v67→...→v73 (nhiều đợt nhỏ, mỗi lần đụng app/js/app/css).**
+
+**Còn lại cho Minh:**
+- Xem trực tiếp 2 bài #5a2/#5b2 trong app (lọc theo cấp A2/B2, Kế toán, "Bài học gần đây") — không
+  có tiền tố số hiệu do hạn chế sandbox, nhận diện qua level+chủ đề.
+- Cân nhắc có muốn đổi tên bảng `mentor_events`→`goal_events` không (tuỳ chọn, không khẩn).
+- 1 câu phức (mệnh đề mở đầu bằng dấu phẩy + chủ ngữ + chuỗi modal) vẫn chưa tách chuẩn 100% ở
+  phrase_groups — theo dõi thêm nếu còn gặp.
+- `sentence_patterns` sàn mới (5) không phải lúc nào cũng đạt (xem #5b2 chỉ 3) — model đôi khi vẫn
+  dừng dưới sàn, chưa có cách bắt cứng 100% (đánh đổi với nguyên tắc "không hạ chuẩn chất lượng để
+  đủ số lượng" đã có từ trước).
+- Còn 3 việc treo từ đợt 15: chạy SQL reset Pro (đợt 15), quyết định giám khảo retry N lần (đợt
+  15 — giờ Minh đã xác nhận giám khảo giữ NGOÀI luồng, việc này có thể coi là đã trả lời/đóng),
+  và phạm vi tái cấu trúc code sâu hơn (đợt 15 hỏi mở, đợt 16 đã làm phần views/ theo yêu cầu cụ
+  thể "Mục 6" — api/_generate/ chưa đụng, có thể còn muốn làm tiếp nếu Minh yêu cầu).
