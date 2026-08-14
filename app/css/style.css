@@ -1768,6 +1768,13 @@ textarea:focus {
   font-size: 1.1rem;
 }
 
+/* 2026-08-14 — chờ xác nhận audio thật trước khi cho bấm Phát (chặn race condition free/trả phí,
+   xem "fullAudioPending" ở app/js/views/lessons/lesson.js). */
+.audio-btn-play.audio-btn-loading {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .audio-btn-speed {
   font-size: 0.75rem;
   font-weight: 800;

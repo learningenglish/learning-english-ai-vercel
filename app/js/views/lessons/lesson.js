@@ -175,7 +175,17 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // NGUYÊN CẢ FILE). lessonApi.js::prefetchLessonAudio() đã gọi action này NGAY lúc tạo bài
   // (fire-and-forget) — ở đây gọi LẠI làm lưới đỡ (idempotent, server trả thẳng URL đã lưu nếu
   // có) cho ca mở bài quá nhanh trước khi lượt gọi sớm kịp xong.
-  const audioEligible = !isNews && lesson.source === "ai_generated" && !!lesson.industry;
+  // "fullAudioPending" (2026-08-14, Minh real-device: "vẫn bị lỗi hiển thị audio đọc free, sau
+  // đó mới chạy audio có phí" — race condition) — comment CŨ ở updateAudioBarUI() bên dưới nói
+  // "không còn trạng thái đang chờ audio nào nữa" nhưng ĐÓ LÀ SAI: getLessonFullAudioUrl() vẫn là
+  // 1 lượt fetch BẤT ĐỒNG BỘ, nếu người dùng bấm Phát TRƯỚC khi fetch xong thì playPause() (tts.js)
+  // không thấy fullAudioEl nên chạy Web Speech miễn phí trước, rồi lượt fetch xong mới "nhảy"
+  // sang giọng thật giữa chừng — đúng hiện tượng Minh mô tả. Với bài đủ điều kiện audio thật
+  // (audioEligible), CHẶN nút Phát (hiện spinner) cho tới khi biết chắc có audio thật hay không —
+  // do publish-lesson.mjs giờ bắt buộc audio là 1 điều kiện xuất bản, lượt fetch này trong thực tế
+  // chỉ là đọc lại URL ĐÃ CÓ SẴN trong DB (không phải sinh mới), nên độ trễ chặn cực ngắn, không
+  // đáng kể với người dùng thật.
+  let fullAudioPending = audioEligible;
   if (audioEligible) {
     getLessonFullAudioUrl(lesson.id, genderHints)
       .then((res) => {
@@ -184,7 +194,25 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       .catch(() => {
         // Im lặng — lỗi ở đây chỉ có nghĩa "chưa nâng cấp được lên audio thật", vẫn nghe được
         // bằng Web Speech miễn phí ngay lập tức, không phải lỗi cần hiện thông báo.
+      })
+      .finally(() => {
+        fullAudioPending = false;
+        refreshPlayButtonPendingState();
       });
+  }
+  // Cập nhật lại icon/khả năng bấm nút Phát khi trạng thái "đang chờ audio thật" đổi — tách hàm
+  // riêng vì audioBarHtml()/wireAudioBar() có thể chưa mount (người dùng đang ở tab khác) lúc
+  // promise trên resolve, nên phải tự kiểm tra querySelector rỗng, không giả định phần tử tồn tại.
+  function refreshPlayButtonPendingState() {
+    const btn = document.getElementById("audio-play");
+    if (!btn) return;
+    btn.disabled = fullAudioPending;
+    btn.classList.toggle("audio-btn-loading", fullAudioPending);
+    if (fullAudioPending) {
+      btn.innerHTML = `<span class="spinner spinner-sm"></span>`;
+    } else if (!ttsPlayer.getState().playing) {
+      btn.innerHTML = icon("play", { size: 18, filled: true });
+    }
   }
 
   // Ảnh bìa còn thiếu -> thử lại NGAY LÚC MỞ BÀI (2026-07-30, mục 7 — Minh: "một số bài có
@@ -654,6 +682,10 @@ export async function renderLessonDetail(mount, params, opts = {}) {
       body.querySelectorAll(".sentence-icon-btn[data-idx]").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          // 2026-08-14 — cùng lý do chặn nút Phát chính (xem "fullAudioPending" đầu hàm): bấm
+          // icon loa từng câu TRƯỚC khi biết chắc có audio thật cũng rơi về Web Speech miễn phí,
+          // đúng hiện tượng Minh báo. Chặn tạm trong lúc đang chờ, không lặng lẽ phát giọng máy.
+          if (fullAudioPending) return;
           const itemIdx = Number(btn.dataset.idx);
           // 2026-07-30 (mục 1+2) — phát ĐÚNG đoạn audio thật đã cắt sẵn cho câu này (nếu bài đã
           // có), KHÔNG còn luôn luôn Web Speech như trước — xem playSegment() trong tts.js.
@@ -721,7 +753,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   function audioBarHtml() {
     return `
       <div class="audio-bar" id="audio-bar">
-        <button type="button" class="audio-btn audio-btn-play" id="audio-play" title="${t("Phát")}">${icon("play", { size: 18, filled: true })}</button>
+        <button type="button" class="audio-btn audio-btn-play${fullAudioPending ? " audio-btn-loading" : ""}" id="audio-play" title="${t("Phát")}"${fullAudioPending ? " disabled" : ""}>${fullAudioPending ? `<span class="spinner spinner-sm"></span>` : icon("play", { size: 18, filled: true })}</button>
         <div class="audio-progress-track" id="audio-progress-track">
           <div class="audio-progress-fill" id="audio-progress-fill"></div>
           <div class="audio-progress-thumb" id="audio-progress-thumb"></div>
@@ -749,7 +781,10 @@ export async function renderLessonDetail(mount, params, opts = {}) {
 
   function wireAudioBar(panel) {
     panel.querySelector("#audio-replay").addEventListener("click", () => ttsPlayer.toggleLoop());
-    panel.querySelector("#audio-play").addEventListener("click", () => ttsPlayer.playPause());
+    panel.querySelector("#audio-play").addEventListener("click", () => {
+      if (fullAudioPending) return; // đang chờ xác nhận audio thật — xem refreshPlayButtonPendingState()
+      ttsPlayer.playPause();
+    });
 
     // "audioSeeking" (khai báo cùng ensureProgressTimer() ở trên) — bật khi NGÓN TAY đang kéo,
     // chặn timer/onStateChange ghi đè vị trí thanh giữa chừng; chỉ thật sự tua khi NHẢ tay
@@ -815,10 +850,12 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     const speedBtn = document.getElementById("audio-speed");
     const volSlider = document.getElementById("audio-volume-slider");
     const loopBtn = document.getElementById("audio-replay");
-    // SỬA 2026-07-30 (ghép 1 file audio duy nhất, xem tts.js đầu file) — không còn trạng thái
-    // "đang chờ audio" nào nữa (URL đã sinh sẵn từ trước hoặc chưa có -> Web Speech phát ngay,
-    // cả 2 đều tức thời), bỏ hẳn spinner thay nút phát.
-    if (playBtn) {
+    // SỬA 2026-08-14 (Minh real-device bắt được race condition free/trả phí — xem
+    // "fullAudioPending" đầu hàm renderLessonView) — comment CŨ ở đây (2026-07-30) khẳng định
+    // "không còn trạng thái đang chờ audio nào" là SAI trên thực tế: getLessonFullAudioUrl() vẫn
+    // fetch bất đồng bộ. Khi đang chờ (fullAudioPending), GIỮ NGUYÊN spinner đã vẽ ở
+    // audioBarHtml()/refreshPlayButtonPendingState() — không ghi đè bằng icon play/pause ở đây.
+    if (playBtn && !fullAudioPending) {
       playBtn.innerHTML = s.playing ? icon("pause", { size: 18, filled: true }) : icon("play", { size: 18, filled: true });
     }
     if (speedBtn) speedBtn.textContent = `${s.rate}x`;
