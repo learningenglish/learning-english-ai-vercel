@@ -105,7 +105,13 @@ function isFullyCovered(content, field) {
 // Lặp lại action tra-từ/tách-câu tới khi ĐỦ 100% (đọc lại DB xác nhận thật, không suy đoán từ
 // status HTTP — 1 lượt gọi có thể trả 200 nhưng vẫn còn item lỗi/thiếu bên trong, hoặc 504 nhưng
 // đã lưu được vài item nhờ patch-per-item, xem ghi chú đầu file).
-async function ensureFieldComplete(token, lessonId, action, field, { maxAttempts = 8 } = {}) {
+// GIẢM 8->4 (2026-08-14, Minh xem dashboard OpenAI thật: chi phí model mạnh $0.19/$0.29 hôm nay
+// tới từ việc gọi lại action này QUÁ NHIỀU LẦN cho 1 câu vẫn lỗi, cộng với lượt leo thang "strong"
+// đã BỎ HẲN ở analyzePhraseGroupsInChunks — dù giờ chỉ còn tier mặc định RẺ, vẫn KHÔNG NÊN lặp vô
+// ích quá nhiều lần cho 1 câu không tự khỏi được bằng cách gọi lại y hệt) — câu vẫn lỗi sau 4 lượt
+// cần SỬA RULE (như contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may
+// mắn thêm nữa.
+async function ensureFieldComplete(token, lessonId, action, field, { maxAttempts = 4 } = {}) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     await callChat(token, action, { lesson_id: lessonId, is_news: false }).catch(() => null);
     const lesson = await fetchLessonContent(token, lessonId);
@@ -230,21 +236,15 @@ export async function publishLesson(token, sample, usedBaseUrls) {
 }
 
 const SAMPLES = [
-  { tag: "#1-A1", level: "A1", content_type: "reading", topic: "An accountant's simple daily tasks at the office",
-    description: "Bài đọc trình độ A1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Kế toán viên làm các việc đơn giản hàng ngày ở văn phòng", term_density: 1 },
-  { tag: "#1-A2", level: "A2", content_type: "reading", topic: "A bookkeeper organizing receipts and invoices for small businesses",
+  { tag: "#a-A2", level: "A2", content_type: "reading", topic: "A payroll clerk calculating employee salaries and deductions each month",
     description: "Bài đọc trình độ A2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Nhân viên sổ sách sắp xếp biên lai và hóa đơn cho doanh nghiệp nhỏ", term_density: 2 },
-  { tag: "#1-B1", level: "B1", content_type: "reading", topic: "How a company prepares its monthly financial summary for the manager",
+    situation: "Nhân viên tính lương tính lương và các khoản khấu trừ cho nhân viên mỗi tháng", term_density: 2 },
+  { tag: "#a-B1", level: "B1", content_type: "reading", topic: "How a small business tracks cash flow to avoid running out of money",
     description: "Bài đọc trình độ B1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Công ty chuẩn bị báo cáo tài chính tháng cho quản lý", term_density: 3 },
-  { tag: "#1-B2", level: "B2", content_type: "reading", topic: "How auditors assess internal financial controls before annual reporting",
+    situation: "Doanh nghiệp nhỏ theo dõi dòng tiền để tránh cạn vốn", term_density: 3 },
+  { tag: "#a-B2", level: "B2", content_type: "reading", topic: "How companies choose between different depreciation methods for tax purposes",
     description: "Bài đọc trình độ B2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Kiểm toán viên đánh giá kiểm soát tài chính nội bộ trước kỳ báo cáo năm", term_density: 4 },
-  { tag: "#1-C1", level: "C1", content_type: "reading", topic: "How multinational firms reconcile financial statements across different accounting standards",
-    description: "Bài đọc trình độ C1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Các công ty đa quốc gia đối chiếu báo cáo tài chính giữa các chuẩn kế toán khác nhau", term_density: 5 },
+    situation: "Công ty lựa chọn giữa các phương pháp khấu hao khác nhau cho mục đích thuế", term_density: 4 },
 ];
 
 if (SAMPLES.length) {
