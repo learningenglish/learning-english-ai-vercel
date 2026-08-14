@@ -184,7 +184,14 @@ export async function generate_lesson_full_audio(data, ctx) {
     return { content: JSON.stringify({ eligible: false, url: null }) };
   }
 
-  if (lesson.audio_full_url) {
+  // "data.force" (2026-08-14, Minh real-device: hội thoại có audio SAI giọng do publish-
+  // lesson.mjs từng truyền gender_hints rỗng — audio đã sinh SAI vẫn nằm ở audio_full_url, gọi
+  // lại action này bình thường chỉ trả về ĐÚNG URL SAI đó, không sinh lại) — cho phép bỏ qua
+  // cache khi cần SINH LẠI có chủ đích (đã sửa gender_hints đúng, cần ghi đè bản audio sai cũ).
+  // KHÔNG mở rủi ro bảo mật mới: "ai_generated" vốn đã KHÔNG kiểm ownership cho hành động audio
+  // (dùng chung toàn bộ giáo trình, xem điều kiện ngay trên), force chỉ thêm khả năng SINH LẠI
+  // cùng 1 tài nguyên dùng chung đó, không truy cập được lesson nào khác.
+  if (lesson.audio_full_url && !data.force) {
     // "segmentTimes" có thể null cho bài đã sinh TRƯỚC cột audio_segment_times tồn tại (chưa
     // regenerate) — client tự rơi về công thức ước lượng cũ cho riêng bài đó, xem tts.js.
     return { content: JSON.stringify({ eligible: true, url: lesson.audio_full_url, segmentTimes: lesson.audio_segment_times || null }) };
