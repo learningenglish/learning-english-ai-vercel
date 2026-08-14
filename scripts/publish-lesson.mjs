@@ -44,11 +44,11 @@
 // phrase_groups/analyze_lesson_reading_chunks, api/_generate/lesson.js) — script này tự lặp,
 // KHÔNG dừng giữa đường, KHÔNG coi "gọi 1 lần xong" là đủ.
 //
-// HẠN MỨC (2026-08-14): DAILY_LESSON_LIMIT phía server hiện = 10 bài/ngày/tài khoản (api/_generate/
-// lesson.js) — chạy batch > 10 bài trong 1 ngày với CÙNG tài khoản sẽ bị chặn giữa STAGE 1. Script
-// KHÔNG tự ý sửa hạn mức này (đây là hằng số nghiệp vụ áp dụng cho MỌI người dùng thật, không chỉ
-// tài khoản test) — nếu cần sinh > 10 bài/lần, phải QUYẾT ĐỊNH TRƯỚC (tăng tạm rồi trả lại như đã
-// làm 2 lần trước, hoặc chia batch theo nhiều ngày) trước khi chạy, không âm thầm đổi.
+// HẠN MỨC: ĐÃ GỠ HẲN (2026-08-14, Minh: "Loại bỏ giới hạn. không gán giới hạn cho tài khoản
+// nữa" — hạn mức DAILY_LESSON_LIMIT=10/ngày/tài khoản từng chặn chính batch này, xem
+// api/_generate/lesson.js) — generate_lesson() giờ không còn đếm số bài/ngày, chỉ còn cổng gói
+// Pro (hiện tắt). "isQuotaExceeded()" bên dưới GIỮ LẠI làm lưới đỡ tổng quát (không hại gì nếu
+// không còn khớp lỗi nào) phòng khi có hạn mức khác được thêm lại sau này.
 //
 // Dùng: sửa SAMPLES bên dưới rồi:
 //   node scripts/publish-lesson.mjs
@@ -57,7 +57,6 @@ const SUPABASE_URL = "https://ijwttrlxsmgaqxszphlp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_D6NUatDu3ZapsLRwjKiBJw_Uh0ku3An";
 const APP_SECRET = "Learning-English-AI";
 const BASE = "https://learning-english-ai-vercel-git-feature-8ef108-learningenglishai.vercel.app";
-const DAILY_LESSON_LIMIT_HINT = 10; // PHẢI khớp DAILY_LESSON_LIMIT ở api/_generate/lesson.js — chỉ để cảnh báo, không tự sửa hạn mức thật.
 
 async function login(email, password) {
   const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -366,10 +365,6 @@ async function stageCoverImage(token, lessons, usedBaseUrls) {
 // đầu file). KHÔNG trả "xong" cho bài nào chưa đạt đủ 5 điều kiện sau hết số lượt thử — gọi nơi
 // khác (báo cáo/CI) phải TỰ KIỂM "ok:true" trước khi coi bài đã sẵn sàng public.
 export async function publishBatch(samples) {
-  if (samples.length > DAILY_LESSON_LIMIT_HINT) {
-    console.warn(`\nCẢNH BÁO: ${samples.length} bài > hạn mức DAILY_LESSON_LIMIT=${DAILY_LESSON_LIMIT_HINT}/ngày hiện tại (api/_generate/lesson.js). STAGE 1 sẽ bị chặn giữa chừng nếu không tăng tạm hạn mức hoặc chia batch theo ngày. Xem ghi chú "HẠN MỨC" đầu file.\n`);
-  }
-
   const token = await login("kimchinamvn+studentpro1@gmail.com", "StudentPro2026!");
   const usedBaseUrls = await fetchExistingCoverBaseUrls(token);
 
@@ -424,16 +419,21 @@ export async function publishBatch(samples) {
   return lessons;
 }
 
+// 2026-08-14 — Đợt "#b": kiểm tra chất lượng SAU khi sửa sentence_patterns B1+ (cụm từ, không
+// công thức), thêm QUY TẮC VỀ GIỌNG VĂN (hài hước/sinh động cho hội thoại, giá trị thực tế cho
+// bài đọc), gộp từ điển cụm động từ-giới từ, sửa tokenizer $-amount, ảnh bìa tự lưu trữ — TRƯỚC
+// KHI sinh hàng loạt giáo trình thật. #b-B1 CỐ Ý là hội thoại (khác #a toàn bài đọc) để kiểm tra
+// đúng QUY TẮC VỀ GIỌNG VĂN mới cho hội thoại.
 const SAMPLES = [
-  { tag: "#a-A2", level: "A2", content_type: "reading", topic: "A payroll clerk calculating employee salaries and deductions each month",
+  { tag: "#b-A2", level: "A2", content_type: "reading", topic: "A store clerk checking inventory and reordering supplies before running out of stock",
     description: "Bài đọc trình độ A2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Nhân viên tính lương tính lương và các khoản khấu trừ cho nhân viên mỗi tháng", term_density: 2 },
-  { tag: "#a-B1", level: "B1", content_type: "reading", topic: "How a small business tracks cash flow to avoid running out of money",
-    description: "Bài đọc trình độ B1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Doanh nghiệp nhỏ theo dõi dòng tiền để tránh cạn vốn", term_density: 3 },
-  { tag: "#a-B2", level: "B2", content_type: "reading", topic: "How companies choose between different depreciation methods for tax purposes",
+    situation: "Nhân viên cửa hàng kiểm kê hàng hoá và đặt thêm hàng trước khi hết hàng", term_density: 2 },
+  { tag: "#b-B1", level: "B1", content_type: "dialogue", topic: "An accountant explains to a new employee why petty cash records keep going missing",
+    description: "Hội thoại trình độ B1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
+    situation: "Kế toán viên giải thích cho nhân viên mới vì sao sổ quỹ tiền mặt hay bị thất lạc", term_density: 3 },
+  { tag: "#b-B2", level: "B2", content_type: "reading", topic: "Why relying on a single client puts a small business at serious financial risk",
     description: "Bài đọc trình độ B2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Công ty lựa chọn giữa các phương pháp khấu hao khác nhau cho mục đích thuế", term_density: 4 },
+    situation: "Vì sao chỉ phụ thuộc vào một khách hàng khiến doanh nghiệp nhỏ gặp rủi ro tài chính nghiêm trọng", term_density: 4 },
 ];
 
 if (SAMPLES.length) {

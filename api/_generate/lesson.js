@@ -37,14 +37,8 @@ const VALID_CONTENT_TYPES = ["dialogue", "reading"];
 // tới ở đây, 2 tính năng độc lập dùng chung RPC trước đây chỉ vì tiện, không phải vì cùng
 // 1 hạn mức nghiệp vụ).
 //
-// Chỉ có bước ĐỌC-trước-khi-gọi-AI (đỡ tốn 1 lượt AI khi đã hết hạn mức) — KHÔNG có bước
-// "consume" atomic riêng như credit cũ: hạn mức đơn giản là ĐẾM bản ghi đã có, và bản ghi
-// insertLesson() ngay sau đó tự nhiên làm tăng số đếm cho lần kiểm tiếp theo. Race hiếm gặp
-// (2 request gần như đồng thời cùng đọc thấy còn 1 suất) có thể khiến 1 ngày có 11 bài thay
-// vì tối đa 10 — CHẤP NHẬN được cho MVP (không phải hệ thống thanh toán, không cần RPC
-// "for update" như credit cũ).
-const DAILY_LESSON_LIMIT = 10;
-const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè
+const VN_TZ_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh = UTC+7, không có giờ mùa hè — vẫn
+// dùng cho checkDailyTextAnalysisLimit() bên dưới (cầu chì chống script, KHÔNG đụng tới).
 
 // Trả về thời điểm UTC tương ứng với 00:00:00 hôm nay theo giờ VN (dùng làm mốc "gte" khi
 // đếm bản ghi lessons trong ngày).
@@ -54,48 +48,31 @@ function startOfTodayVN() {
   return new Date(midnightVN - VN_TZ_OFFSET_MS);
 }
 
-// Tính năng tự tạo bài (generate_lesson/analyze_user_text) VỐN là đặc quyền gói Student PRO
-// (499.000đ/tháng, "tự học độc lập, không cần Mentor" — xem project_business_model_pricing
-// trong memory) — cổng "phải là Pro" TẮT theo yêu cầu Minh (2026-08-07, "Tắt tính năng gói
-// Pro"), xem PRO_GATE_ENFORCED trong _shared.js — chỉ cần đổi false->true ở đó để bật lại,
-// KHÔNG sửa gì ở đây. Hạn mức SỐ LƯỢNG (DAILY_LESSON_LIMIT) vẫn giữ nguyên, không tắt.
-async function checkDailyLessonLimit(studentId) {
+// 2026-08-14 — GỠ HẲN hạn mức số lượng (DAILY_LESSON_LIMIT, từng =10/ngày/tài khoản): Minh
+// "Loại bỏ giới hạn. không gán giới hạn cho tài khoản nữa" — chặn thẳng việc sinh hàng loạt
+// giáo trình (400+ bài) bằng chính tài khoản test/service, và không còn lý do giữ hạn mức số
+// lượng cho MVP giai đoạn này. checkDailyLessonLimit() (đếm bản ghi/ngày) đã XOÁ HẲN, không
+// còn gọi ở generate_lesson() bên dưới.
+// VẪN GIỮ cổng gói Pro (PRO_GATE_ENFORCED, xem _shared.js) — đây là CƠ CHẾ KHÁC (theo GÓI,
+// không theo SỐ LƯỢNG/NGÀY) và hiện đang TẮT (2026-08-07, "Tắt tính năng gói Pro") nên không
+// ảnh hưởng hành vi thật — giữ nguyên để không phải viết lại nếu Minh bật lại cổng Pro sau này.
+async function checkProGateForLessonGeneration(studentId) {
+  if (!PRO_GATE_ENFORCED) return { allowed: true };
   try {
     const studentRes = await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=plan`, {
       headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
     });
     if (!studentRes.ok) {
-      console.error("checkDailyLessonLimit (plan lookup) error:", studentRes.status);
-      return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
+      console.error("checkProGateForLessonGeneration (plan lookup) error:", studentRes.status);
+      return { allowed: false, message: "Không kiểm tra được quyền tạo bài, thử lại sau." };
     }
     const student = (await studentRes.json())?.[0];
     if (!student) return { allowed: false, message: "Không tìm thấy tài khoản học viên." };
-    if (PRO_GATE_ENFORCED && student.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo bài chỉ dành cho gói Pro." };
-
-    const sinceISO = startOfTodayVN().toISOString();
-    const countRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/lessons?user_id=eq.${studentId}&created_at=gte.${sinceISO}&select=id`,
-      {
-        method: "HEAD",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          Prefer: "count=exact",
-        },
-      }
-    );
-    if (!countRes.ok) {
-      console.error("checkDailyLessonLimit (count) error:", countRes.status);
-      return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
-    }
-    const used = Number((countRes.headers.get("content-range") || "").split("/")[1] || 0);
-    if (used >= DAILY_LESSON_LIMIT) {
-      return { allowed: false, message: `Đã dùng hết ${DAILY_LESSON_LIMIT} bài hôm nay, quay lại vào ngày mai.`, used };
-    }
-    return { allowed: true, used };
+    if (student.plan !== "pro") return { allowed: false, message: "Tính năng tự tạo bài chỉ dành cho gói Pro." };
+    return { allowed: true };
   } catch (e) {
-    console.error("checkDailyLessonLimit error:", e);
-    return { allowed: false, message: "Không kiểm tra được hạn mức tạo bài, thử lại sau." };
+    console.error("checkProGateForLessonGeneration error:", e);
+    return { allowed: false, message: "Không kiểm tra được quyền tạo bài, thử lại sau." };
   }
 }
 
@@ -1398,9 +1375,10 @@ export async function generate_lesson(data, ctx) {
   if (!VALID_LEVELS.includes(data.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
   if (!VALID_CONTENT_TYPES.includes(data.content_type)) return { error: "Thiếu hoặc sai 'content_type'.", status: 400 };
 
-  // (a) Đọc hạn mức TRƯỚC — hết hạn mức thì chặn ngay, không tốn 1 lượt gọi OpenAI thật.
-  const limitCheck = await checkDailyLessonLimit(ctx.studentId);
-  if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
+  // (a) Cổng gói Pro (hiện TẮT, xem checkProGateForLessonGeneration) — hạn mức SỐ LƯỢNG/ngày
+  // đã gỡ hẳn 2026-08-14, xem ghi chú tại đó.
+  const gateCheck = await checkProGateForLessonGeneration(ctx.studentId);
+  if (!gateCheck.allowed) return { error: gateCheck.message, status: 403 };
 
   // Lấy khoảng độ dài THẬT theo bảng cấp CEFR (xem LEVEL_LENGTH_TABLE) — A1/A2 luôn 1 mức cố
   // định, B1+ theo data.length_tier ("short"/"medium"/"long", mặc định "medium").
