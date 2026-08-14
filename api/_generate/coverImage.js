@@ -151,6 +151,7 @@ async function fetchFromUnsplash(term) {
     // "urls" của Unsplash đã có sẵn nhiều cỡ dựng qua imgix (raw/full/regular/small/thumb) —
     // thumb ~w=200 (~5-10KB đo thật), small ~w=400 (~13-29KB đo thật, xem 039_lesson_cover_
     // storage.sql) — không cần app tự resize.
+    console.error("[cover] DEBUG photo.urls:", JSON.stringify(photo.urls));
     const detailUrl = photo.urls?.small || photo.urls?.regular;
     const thumbUrl = photo.urls?.thumb || detailUrl;
     return { thumbUrl, detailUrl, sourceUrl: baseUrlOf(photo.urls?.regular || detailUrl), source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
