@@ -583,6 +583,23 @@ QUY TẮC VỀ LOẠI NỘI DUNG:
 - "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
 - "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
 
+QUY TẮC VỀ GIỌNG VĂN (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần
+sinh động hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng bất kỳ ràng buộc nào khác đã nêu ở trên
+như ĐỘ DÀI, cấp độ ngữ pháp, hay bám sát TÌNH HUỐNG):
+- "hội thoại": đề cao HÀI HƯỚC, THÔNG MINH, DÍ DỎM, SINH ĐỘNG — nhân vật có cá tính riêng (không
+  nói kiểu trả lời máy móc, đúng chuẩn), thỉnh thoảng chêm phản ứng bất ngờ nhẹ, câu đùa/nhận xét
+  dí dỏm phù hợp ngữ cảnh (kể cả trong tình huống công việc — người thật vẫn đùa vui khi làm
+  việc), "nhiều chuyện" theo nghĩa tự nhiên bàn tán/hỏi han thêm ngoài lề chứ không chỉ hỏi-đáp
+  cụt lủn đúng mục đích. Ưu tiên để nhân vật CHIA SẺ một điều hay/kinh nghiệm/mẹo thật cụ thể qua
+  lời thoại tự nhiên (không phải giảng giải khô khan) — người đọc học được điều gì đó thú vị,
+  không chỉ theo dõi một giao dịch/tác vụ khô cứng.
+- "bài đọc": ngoài cung cấp đúng kiến thức chủ đề, PHẢI có GIÁ TRỊ THỰC TẾ — chia sẻ kinh nghiệm
+  thực chiến, mẹo hay, bài học rút ra, hoặc góc nhìn cụ thể — viết như một người có kinh nghiệm
+  thật đang chia sẻ lại, KHÔNG liệt kê định nghĩa/thông tin chung chung kiểu tài liệu tra cứu khô
+  khan.
+- Vẫn PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như đã quy định) — hài hước/sinh động
+  không có nghĩa là dùng từ lóng hay cấu trúc vượt cấp độ.
+
 QUY TẮC VỀ GIỚI TÍNH NHÂN VẬT (2026-08-08, CHỈ áp dụng khi loại nội dung là "hội thoại" — bỏ
 qua hoàn toàn với "bài đọc"): hệ thống dùng "characters" để chọn ĐÚNG giọng đọc nam/nữ cho từng
 nhân vật — liệt kê MỌI tên/vai trò xuất hiện ở trường "speaker" trong "content" (đúng NGUYÊN VĂN
@@ -603,11 +620,13 @@ QUY TẮC VỀ ĐỘ DÀI (KIỂM TRA MÁY, KHÔNG PHẢI GỢI Ý):
 - Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. Hệ thống sẽ TỰ ĐỘNG TỪ CHỐI và bắt sinh lại nếu lệch quá 25% — bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
 - LỖI THẬT HAY GẶP Ở HỘI THOẠI MỌI CẤP ĐỘ (không riêng A1/A2): quy tắc "lượt ngắn 1-4 từ xen giữa lượt dài" (QUY TẮC HỘI THOẠI TỰ NHIÊN) khiến độ dài trung bình MỖI LƯỢT THỰC TẾ thấp hơn nhiều so với cảm giác khi viết — đo được thật: hội thoại B1 yêu cầu 200 từ chỉ đạt ~110-140 từ (thiếu 30-45%) khi dừng theo cảm giác "đã đủ ý" thay vì đếm số lượt. Cách DUY NHẤT để đạt đủ length_words khi có nhiều lượt ngắn là TĂNG TỔNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — KHÔNG PHẢI viết từng lượt dài hơn trần cấp độ cho phép. User prompt đã tính SẴN số lượt/đoạn tối thiểu cần có (công thức đã cộng biên an toàn cho đúng thực tế lượt ngắn) — coi đó là SỐ CỨNG phải đạt hoặc vượt, không phải gợi ý tham khảo. Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó (chẻ tình huống thành nhiều bước nhỏ, xem ví dụ ở đầu prompt) — không lặp ý, không rề rà giả tạo.
 
-QUY TẮC VỀ CẤU TRÚC CÂU ĐÁNG CHÚ Ý (trường "grammar"/"sentence_patterns" — 2026-08-10, Đợt 6,
-dùng làm CATALOG THAM CHIẾU để chọn ĐÚNG cấu trúc phù hợp cấp độ, không phải danh sách CỐ ĐỊNH
-phải nhét đủ mọi mục — chỉ chọn những cấu trúc THẬT SỰ xuất hiện tự nhiên trong bài):
-- Mỗi cấp CEFR có 1 tập cấu trúc "công thức" (Grammar Formula Chunks) đặc trưng, KHÔNG học lẫn
-  cấp cao hơn khi viết bài cấp thấp:
+QUY TẮC VỀ CẤU TRÚC CÂU ĐÁNG CHÚ Ý (trường "grammar"/"sentence_patterns" — 2026-08-14, Đợt 7,
+đổi hẳn nội dung "sentence_patterns" ở B1 trở lên sang CỤM TỪ ĐÁNG CHÚ Ý thay vì công thức ngữ
+pháp — lý do: người học B1+ đã nắm cấu trúc câu cơ bản từ lâu, liệt kê lại kiểu "S + can + V"
+không có giá trị học thêm gì; cái họ cần là CÁCH DIỄN ĐẠT/CỤM TỪ tự nhiên hay gặp lại được):
+- Mỗi cấp CEFR có 1 tập cấu trúc "công thức" (Grammar Formula Chunks) đặc trưng cho trường
+  "grammar" (LUÔN dùng công thức ngữ pháp ở MỌI cấp độ, mục này không đổi), KHÔNG học lẫn cấp cao
+  hơn khi viết bài cấp thấp:
   * A1: am/is/are (hiện tại đơn của "be"), have/has (sở hữu), do/does + V (nghi vấn/phủ định
     hiện tại đơn), động từ thường số ít/nhiều (work/works), am/is/are + V-ing (hiện tại tiếp
     diễn), quá khứ đơn V-ed/bất quy tắc (went, saw), there is/there are.
@@ -626,11 +645,29 @@ phải nhét đủ mọi mục — chỉ chọn những cấu trúc THẬT SỰ 
     lược (ellipsis), thành ngữ, cấu trúc văn phong học thuật nâng cao.
 - "grammar": chọn 2-4 điểm ngữ pháp THẬT SỰ dùng trong bài, đúng cấp độ (nếu có "Điểm ngữ pháp
   trọng tâm BẮT BUỘC" ở trên, mục đó LUÔN có mặt, xem quy tắc riêng).
-- "sentence_patterns": chọn 1-3 khuôn câu (ưu tiên các "công thức" tự nhiên đã liệt kê ở trên
-  theo đúng cấp độ bài) THẬT SỰ xuất hiện trong "content", trích ĐÚNG NGUYÊN VĂN câu ví dụ — đây
-  là nội dung hiển thị trực tiếp ở tab "Ngữ pháp" cho người học, không phải phần phân tích ẩn (quy
-  tắc SỐ LƯỢNG/chất lượng ĐẦY ĐỦ của trường này ở mục riêng phía sau, xem "sentence_patterns: quét
-  TOÀN BỘ...").
+- "sentence_patterns" — NỘI DUNG KHÁC NHAU theo cấp độ bài (đọc đúng "Cấp độ" đã cho ở phần yêu
+  cầu bài học):
+  * NẾU cấp độ là A1 hoặc A2: giữ nguyên cách cũ — chọn 1-3 KHUÔN CÂU (ưu tiên các "công thức"
+    Grammar Formula Chunks liệt kê ở trên theo đúng cấp) THẬT SỰ xuất hiện trong "content", viết
+    "pattern" thành khuôn câu có chỗ trống, tự nhiên (vd "I would like to V..." không viết "S +
+    would like + to V" trừu tượng).
+  * NẾU cấp độ là B1, B2 hoặc C1: KHÔNG liệt kê công thức ngữ pháp kiểu "S + V + O" hay "S + can
+    + V" nữa (đã có "grammar" lo phần này) — thay vào đó chọn 1-3 CỤM TỪ/CÁCH DIỄN ĐẠT đáng chú ý
+    THẬT SỰ xuất hiện trong "content": collocation (đi cùng nhau tự nhiên, vd "avoid running out
+    of money", "consult a financial advisor"), cụm giới từ/động từ cố định hay lặp lại trong giao
+    tiếp thực tế (vd "depend heavily on", "be responsible for"), hoặc cách diễn đạt/thành ngữ nhẹ
+    đáng học lại. "pattern" ghi ĐÚNG NGUYÊN VĂN cụm đó (không phải khuôn có chỗ trống, không phải
+    công thức trừu tượng) — vd "pattern": "avoid running out of money", KHÔNG viết "S + avoid +
+    V-ing + O". TUYỆT ĐỐI CẤM dùng dấu ba chấm "..." hay bất kỳ chỗ trống nào trong "pattern" ở
+    mức B1 trở lên (lỗi thật đã gặp: model viết "If a company depends on ...", "A business that
+    ... is more likely to ..." — đây VẪN LÀ khuôn câu trừu tượng trá hình, SAI như công thức
+    S+V+O) — "pattern" phải là 1 CHUỖI TỪ LIỀN MẠCH, ĐẦY ĐỦ, không chỗ trống, đúng ví dụ ❌/✅:
+    ❌ "If a company depends on ..." / ✅ "depend heavily on" — ❌ "A business that ... is more
+    likely to ..." / ✅ "is more likely to face" hoặc "fails to plan ahead".
+  Trong cả 2 trường hợp: trích "example_from_lesson" ĐÚNG NGUYÊN VĂN câu ví dụ trong "content" —
+  đây là nội dung hiển thị trực tiếp ở tab "Ngữ pháp" cho người học, không phải phần phân tích ẩn
+  (quy tắc SỐ LƯỢNG/chất lượng ĐẦY ĐỦ của trường này ở mục riêng phía sau, xem "sentence_patterns:
+  quét TOÀN BỘ...").
 
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT một khối JSON hợp lệ theo đúng schema bên dưới.
@@ -676,8 +713,8 @@ SCHEMA JSON:
   ],
   "sentence_patterns": [
     {
-      "pattern": "khuôn câu có chỗ trống, viết tự nhiên (KHÔNG phải công thức trừu tượng kiểu S+V+O)",
-      "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong \\"content\\" có dùng khuôn này, không bịa thêm",
+      "pattern": "A1/A2: khuôn câu có chỗ trống, viết tự nhiên (KHÔNG công thức trừu tượng S+V+O). B1 trở lên: CỤM TỪ/CÁCH DIỄN ĐẠT đáng chú ý ĐÚNG NGUYÊN VĂN xuất hiện trong bài (KHÔNG công thức ngữ pháp, xem quy tắc riêng)",
+      "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong \\"content\\" có dùng khuôn/cụm này, không bịa thêm",
       "example_translation": "bản dịch tiếng Việt của chính câu \\"example_from_lesson\\" ở trên",
       "note": "1 câu tiếng Việt ngắn, nói khuôn này DÙNG ĐỂ LÀM GÌ trong giao tiếp thực tế — KHÔNG giải thích ngữ pháp hàn lâm",
       "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn này đáng học lại ở ĐÚNG cấp độ bài này — không mô tả lại nghĩa câu"
@@ -982,11 +1019,11 @@ SCHEMA JSON:
   ],
   "sentence_patterns": [
     {
-      "pattern": "khuôn câu có chỗ trống, viết tự nhiên (KHÔNG phải công thức trừu tượng kiểu S+V+O)",
-      "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong văn bản có dùng khuôn này, không bịa thêm",
+      "pattern": "NẾU 'level' tự xác định ở trên là A1/A2: khuôn câu có chỗ trống, viết tự nhiên (KHÔNG công thức trừu tượng S+V+O). NẾU B1 trở lên: KHÔNG liệt kê công thức ngữ pháp nữa (đã có 'grammar' lo phần đó), KHÔNG dùng dấu ba chấm/chỗ trống dưới bất kỳ hình thức nào (vd 'If a company depends on ...' là SAI, coi như công thức trá hình) — thay bằng CỤM TỪ/CÁCH DIỄN ĐẠT đáng chú ý (collocation, cụm giới từ/động từ cố định, cách diễn đạt hay lặp lại) là 1 CHUỖI TỪ LIỀN MẠCH ĐẦY ĐỦ, ĐÚNG NGUYÊN VĂN xuất hiện trong văn bản, vd 'depend heavily on' KHÔNG viết 'S + depend + on + O' hay 'depends on ...'",
+      "example_from_lesson": "trích ĐÚNG NGUYÊN VĂN một câu đầy đủ trong văn bản có dùng khuôn/cụm này, không bịa thêm",
       "example_translation": "bản dịch tiếng Việt của chính câu \\"example_from_lesson\\" ở trên",
-      "note": "1 câu tiếng Việt ngắn, nói khuôn này DÙNG ĐỂ LÀM GÌ trong giao tiếp thực tế — KHÔNG giải thích ngữ pháp hàn lâm",
-      "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn này đáng học lại ở ĐÚNG cấp độ đã xác định ở 'level' — không mô tả lại nghĩa câu"
+      "note": "1 câu tiếng Việt ngắn, nói khuôn/cụm này DÙNG ĐỂ LÀM GÌ trong giao tiếp thực tế — KHÔNG giải thích ngữ pháp hàn lâm",
+      "why_worth_it": "1 câu tiếng Việt ngắn, TẠI SAO khuôn/cụm này đáng học lại ở ĐÚNG cấp độ đã xác định ở 'level' — không mô tả lại nghĩa câu"
     }
   ],
   "exercises": [

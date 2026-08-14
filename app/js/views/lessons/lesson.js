@@ -1238,8 +1238,9 @@ function tokenizeWords(text) {
   // Nhận cả dấu nháy đơn CONG "’" (U+2019, "smart quote" — model hay tự sinh trong văn xuôi,
   // vd "organization’s") — PHẢI khớp ĐÚNG sentenceWordTokens() phía server (api/_generate/
   // lesson.js), 2 quy tắc tokenize khác nhau làm coverage-check thất bại dai dẳng (bug thật
-  // 2026-08-13, bài #1-B2).
-  const re = /[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g;
+  // 2026-08-13, bài #1-B2). Nhận cả SỐ có "$" trước/dấu phẩy phân nhóm nghìn (vd "$10,000") làm
+  // 1 token DUY NHẤT (bug thật 2026-08-14, bài #a-B2 — "$10,000" bị tách "10"+"000").
+  const re = /\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g;
   let m;
   while ((m = re.exec(text || ""))) {
     tokens.push({ word: m[0], start: m.index, end: m.index + m[0].length });
