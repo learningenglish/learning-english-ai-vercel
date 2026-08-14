@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, set_lesson_title_tag } from "./_generate/lesson.js";
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
+import { ensure_skin_chunk } from "./_generate/curriculum/skinBatch.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
 import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
 import { generate_lesson_full_audio } from "./_generate/audio.js";
@@ -30,7 +31,14 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
-const DAILY_LIMIT_PER_IP = 100;
+// TẠM TĂNG 100->3000 (2026-08-14, Đợt 21, Minh: sinh hàng loạt giáo trình Kế toán A1/A2 qua
+// scripts/publish-lesson.mjs — 1 lần sinh 1 bài tốn ~10-15 request (content+tag+tách câu lặp+
+// tra từ lặp+audio+ảnh+skin chunk+giám khảo), 89-170 bài/lần chạy vượt xa 100/ngày, tất cả từ
+// CÙNG 1 IP sandbox). Đây là chống-spam MỀM theo IP, KHÔNG phải hạn mức nghiệp vụ theo tài
+// khoản (khác hẳn DAILY_LESSON_LIMIT đã gỡ trong lesson.js) — vẫn còn tác dụng chặn spam thật từ
+// IP lạ, chỉ nới đủ cho batch chính chủ. TRẢ VỀ 100 SAU KHI XONG GIAI ĐOẠN SINH GIÁO TRÌNH, trước
+// khi mở rộng người dùng thật (không để mãi mãi ở mức cao).
+const DAILY_LIMIT_PER_IP = 3000;
 const MAX_TOKENS_CAP = 4000;
 
 // ====== ƯU TIÊN 0: bắt buộc danh tính hợp lệ (Mentor hoặc Student đã đăng nhập
@@ -1279,6 +1287,9 @@ const ACTIONS = {
   // Đặt goal_id=NULL cho vài bài mẫu đã ĐẠT giám khảo, để chúng hiện trong app bất kể goal nào
   // đang active — chỉ dùng để đưa mẫu lên app cho Minh xem trực tiếp (Việc 3), xem lessonJudge.js.
   orphan_lessons_for_preview,
+  // "Da lĩnh vực" theo chunk (2026-08-14, Đợt 21) — hồi phục orchestration đã archive cùng
+  // mentor.js, nối cho luồng sinh hàng loạt qua script (publish-lesson.mjs), xem skinBatch.js.
+  ensure_skin_chunk,
   // Luyện viết (2026-07-27) — AI giao đề + AI chấm bài, xem api/_generate/writing.js. Độc
   // lập hoàn toàn với luồng Lesson-first, không đụng gì tới generate_lesson/analyze_user_text.
   // list_writing_genres (2026-08-04) — đọc thuần, KHÔNG gọi AI, phục vụ màn "Chọn dạng bài viết".

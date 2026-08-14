@@ -403,6 +403,34 @@ function stageGrammarVerify(lessons) {
   }
 }
 
+// ====== STAGE: Giám khảo chất lượng (2026-08-14, Minh: "Đồng thời kích hoạt cơ chế giám khảo
+// khi sinh nội dung") ====== action "judge_lesson_quality" (lessonJudge.js) đã tồn tại từ trước
+// nhưng CHƯA từng được publish-lesson.mjs gọi (chỉ dùng thủ công 1 lần cho lô hiệu chỉnh) — nối
+// vào đây làm CỔNG CHẤT LƯỢNG thật cho sinh hàng loạt. Tier "default" (rẻ), tự tra grammar_focus/
+// situation_frame qua spine_slot đã có sẵn trên mỗi lesson — không cần truyền thêm gì.
+// KHÔNG tự động sinh lại bài KHÔNG ĐẠT (rủi ro lặp lại đúng bẫy retry-loop tốn tiền đã gặp ở
+// phrase_groups trước đó) — chỉ đánh dấu để loại khỏi "sẵn sàng public", Minh tự xem lý do rồi
+// quyết định sinh lại tay cho ĐÚNG bài đó nếu cần.
+async function stageJudge(token, lessons) {
+  for (const lesson of lessons) {
+    if (!lesson.ok) continue;
+    try {
+      const res = await callChat(token, "judge_lesson_quality", { lesson_id: lesson.lessonId });
+      if (res.status !== 200) {
+        lesson.judge = { ok: false, error: `judge_lesson_quality lỗi: ${res.status} ${JSON.stringify(res.data)}` };
+      } else {
+        const parsed = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+        const content = JSON.parse(parsed.content);
+        lesson.judge = { ok: content.passed === true, passed: content.passed, reason: content.reason };
+      }
+      console.log(`  ${lesson.tag}: giám khảo — ${lesson.judge.ok ? "ĐẠT" : "KHÔNG ĐẠT"}${lesson.judge.reason ? ` (${lesson.judge.reason})` : ""}`);
+    } catch (err) {
+      lesson.judge = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+      console.log(`  ${lesson.tag}: giám khảo — LỖI BẤT NGỜ (${lesson.judge.error})`);
+    }
+  }
+}
+
 // ====== STAGE 5: Audio, cho TOÀN BỘ lô ======
 async function stageAudio(token, lessons) {
   for (const lesson of lessons) {
@@ -442,27 +470,31 @@ export async function publishBatch(samples) {
   const token = await login("kimchinamvn+studentpro1@gmail.com", "StudentPro2026!");
   const usedBaseUrls = await fetchExistingCoverBaseUrls(token);
 
-  console.log(`\n=== STAGE 1/6: Nội dung (${samples.length} bài) ===`);
+  console.log(`\n=== STAGE 1/7: Nội dung (${samples.length} bài) ===`);
   const lessons = await stageContent(token, samples);
 
-  console.log(`\n=== STAGE 2/6: Tách câu (reading_chunks) ===`);
+  console.log(`\n=== STAGE 2/7: Giám khảo chất lượng ===`);
+  await stageJudge(token, lessons);
+
+  console.log(`\n=== STAGE 3/7: Tách câu (reading_chunks) ===`);
   await stageField(token, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
 
-  console.log(`\n=== STAGE 3/6: Tra từ (phrase_groups) ===`);
+  console.log(`\n=== STAGE 4/7: Tra từ (phrase_groups) ===`);
   await stageField(token, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ");
 
-  console.log(`\n=== STAGE 4/6: Ngữ pháp (verify, không gọi thêm AI) ===`);
+  console.log(`\n=== STAGE 5/7: Ngữ pháp (verify, không gọi thêm AI) ===`);
   stageGrammarVerify(lessons);
 
-  console.log(`\n=== STAGE 5/6: Audio ===`);
+  console.log(`\n=== STAGE 6/7: Audio ===`);
   await stageAudio(token, lessons);
 
-  console.log(`\n=== STAGE 6/6: Ảnh bìa ===`);
+  console.log(`\n=== STAGE 7/7: Ảnh bìa ===`);
   await stageCoverImage(token, lessons, usedBaseUrls);
 
   for (const lesson of lessons) {
     lesson.ok =
       lesson.ok &&
+      (lesson.judge?.ok ?? false) &&
       (lesson.readingChunks?.ok ?? false) &&
       (lesson.phraseGroups?.ok ?? false) &&
       (lesson.grammarCheck?.ok ?? false) &&
@@ -493,26 +525,146 @@ export async function publishBatch(samples) {
   return lessons;
 }
 
-// 2026-08-14 — Đợt "#b": kiểm tra chất lượng SAU khi sửa sentence_patterns B1+ (cụm từ, không
-// công thức), thêm QUY TẮC VỀ GIỌNG VĂN (hài hước/sinh động cho hội thoại, giá trị thực tế cho
-// bài đọc), gộp từ điển cụm động từ-giới từ, sửa tokenizer $-amount, ảnh bìa tự lưu trữ — TRƯỚC
-// KHI sinh hàng loạt giáo trình thật. #b-B1 CỐ Ý là hội thoại (khác #a toàn bài đọc) để kiểm tra
-// đúng QUY TẮC VỀ GIỌNG VĂN mới cho hội thoại.
-const SAMPLES = [
-  { tag: "#b-A2", level: "A2", content_type: "reading", topic: "A store clerk checking inventory and reordering supplies before running out of stock",
-    description: "Bài đọc trình độ A2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Nhân viên cửa hàng kiểm kê hàng hoá và đặt thêm hàng trước khi hết hàng", term_density: 2 },
-  { tag: "#b-B1", level: "B1", content_type: "dialogue", topic: "An accountant explains to a new employee why petty cash records keep going missing",
-    description: "Hội thoại trình độ B1, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Kế toán viên giải thích cho nhân viên mới vì sao sổ quỹ tiền mặt hay bị thất lạc", term_density: 3 },
-  { tag: "#b-B2", level: "B2", content_type: "reading", topic: "Why relying on a single client puts a small business at serious financial risk",
-    description: "Bài đọc trình độ B2, chuyên ngành Kế toán", field: "Kế toán", industry: "Kế toán",
-    situation: "Vì sao chỉ phụ thuộc vào một khách hàng khiến doanh nghiệp nhỏ gặp rủi ro tài chính nghiêm trọng", term_density: 4 },
-];
+// ====== Sinh hàng loạt THEO ĐÚNG curriculum_spine.json + "da lĩnh vực" (2026-08-14, Đợt 21) ======
+// SỬA LẠI TOÀN BỘ sau khi Minh phát hiện bản đầu (chỉ ghép 2 dòng string làm "situation") sinh
+// ra hàng loạt bài TRÙNG CHỦ ĐỀ và KHÔNG liên quan chuyên ngành — hoá ra hệ thống ĐÚNG cho việc
+// này đã tồn tại sẵn (api/_generate/curriculum/skin.js, duyệt 2026-07-19) nhưng phần orchestration
+// (đọc/ghi cache industry_skins) bị archive cùng mentor.js khi đổi kiến trúc sang giáo trình dùng
+// chung — không ai nối lại. Đã hồi phục orchestration đó thành action "ensure_skin_chunk"
+// (api/_generate/curriculum/skinBatch.js) — bản này GỌI ĐÚNG action đó để lấy chủ đề THẬT (đã
+// thích nghi đúng ngành + có "story_chains" chống trùng lặp), thay vì tự chế.
+import { fileURLToPath } from "url";
+import path from "path";
+import { loadCurriculumSpine, localOccurrenceInChunk, chunkIndexForSlot, normalizeOccupationKey, SKIN_CHUNK_SIZE } from "../api/_generate/curriculum/skin.js";
+import { GRAMMAR_CATALOG } from "../api/_generate/curriculum/grammar-catalog.js";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-if (SAMPLES.length) {
-  publishBatch(SAMPLES).catch((err) => {
-    console.error("ERROR:", err);
-    process.exit(1);
-  });
+// Slot nào cần thêm bài MỞ RỘNG (#{slot}b-{level}, #{slot}c-{level}...) — để trống mặc định,
+// điền tay theo {level: {slot: số bài mở rộng}} khi rà soát phát hiện cần (Minh: "nếu là bài mở
+// rộng"). Ví dụ: { A1: { 12: 1 } } nghĩa là slot 12 của A1 có thêm 1 bài "#12b-A1".
+const EXTRA_SLOTS = {};
+const EXTENSION_LETTERS = ["b", "c", "d", "e"];
+
+// Chuyển "specialized_density_target_percent" (spine, tỉ lệ %) sang SỐ LƯỢT tuyệt đối mà
+// generate_lesson thật sự dùng (xem "QUY TẮC VỀ TỪ CHUYÊN NGÀNH" — lượng từ chuyên ngành là SỐ
+// LƯỢT xuất hiện, KHÔNG PHẢI %) — quy đổi theo trung điểm khung độ dài THẬT của level đó
+// (LEVEL_LENGTH_TABLE, api/_generate/lesson.js: A1=[60,90], A2=[90,130]).
+const LEVEL_WORD_MIDPOINT = { A1: 75, A2: 110, B1: 205, B2: 340, C1: 460 };
+function computeTermDensity(level) {
+  const midpoint = LEVEL_WORD_MIDPOINT[level] || 100;
+  return Math.max(1, Math.round(0.05 * midpoint)); // 5% mặc định — spine không ghi % riêng theo slot khác biệt đáng kể
 }
+
+// Đúng buildGrammarFocus() bản archive (mentor.js) — tra công thức đầy đủ qua GRAMMAR_CATALOG,
+// KHÔNG chỉ dùng name_vi trần từ spine (spine không có "formula").
+function buildGrammarFocus(slotGrammar) {
+  if (!Array.isArray(slotGrammar) || !slotGrammar.length) return undefined;
+  const out = slotGrammar
+    .map((g) => {
+      const entry = GRAMMAR_CATALOG[g.key];
+      if (!entry) {
+        console.error("[buildGrammarFocus] thiếu key trong GRAMMAR_CATALOG:", g.key);
+        return { name_vi: g.name_vi };
+      }
+      return { key: g.key, name_vi: entry.name_vi, formula: entry.formula };
+    })
+    .filter(Boolean);
+  return out.length ? out : undefined;
+}
+
+// Đúng topicFromFrames() bản archive — "frames" ở đây LUÔN là da lĩnh vực thật (industry_skins),
+// mỗi biến thể {topic, fallback}.
+function topicFromFrames(frames, frameKey, occurrenceIndex) {
+  const variants = frames?.[frameKey];
+  if (!variants?.length) return null;
+  const variant = variants[occurrenceIndex % variants.length];
+  return typeof variant === "string" ? variant : variant?.topic || null;
+}
+
+// Lấy occupation_profile CỦA GOAL "Kế toán" đang active của tài khoản test — TÁI DÙNG (không
+// gọi lại generateOccupationProfile, đã có sẵn confidence "cao" từ trước, tốn tiền vô ích nếu
+// sinh lại).
+async function fetchOccupationProfile(token, rawKeywordsMatch) {
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/learning_goals?raw_keywords=eq.${encodeURIComponent(rawKeywordsMatch)}&status=eq.active&select=occupation_profile&order=created_at.desc&limit=1`,
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } }
+  );
+  const rows = await r.json();
+  if (!rows?.[0]?.occupation_profile) throw new Error(`Không tìm thấy learning_goals active có raw_keywords="${rawKeywordsMatch}" cho tài khoản test.`);
+  return rows[0].occupation_profile;
+}
+
+// Đảm bảo đủ da lĩnh vực cho TOÀN BỘ level (gọi ensure_skin_chunk theo từng chunk 20 slot, cache
+// phía server — chunk đã có rồi thì action trả ngay, không tốn AI lại) — trả về map
+// chunkIndex -> {frames, story_chains} dùng để tra topic cho từng slot, + skin_id để gắn vào
+// từng lesson.
+async function ensureSkinForLevel(token, occupationProfile, level, slotCount) {
+  const totalChunks = Math.ceil(slotCount / SKIN_CHUNK_SIZE);
+  const chunksByIndex = {};
+  let skinId = null;
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    console.log(`  Đang chuẩn bị da lĩnh vực: level ${level}, chunk ${chunkIndex + 1}/${totalChunks}...`);
+    const res = await callChat(token, "ensure_skin_chunk", { occupation_profile: occupationProfile, level, chunk_index: chunkIndex });
+    if (res.status !== 200) {
+      throw new Error(`ensure_skin_chunk thất bại (level ${level}, chunk ${chunkIndex}): ${res.status} ${JSON.stringify(res.data)}`);
+    }
+    const parsed = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+    const content = JSON.parse(parsed.content);
+    skinId = content.skin_id;
+    chunksByIndex[chunkIndex] = content.frames;
+    console.log(`  ${content.from_cache ? "(đã có sẵn trong cache)" : "(vừa sinh mới)"}`);
+  }
+  return { chunksByIndex, skinId };
+}
+
+async function buildSpineSamples(token, level, { industry, field, rawKeywordsMatch } = {}) {
+  const spineLevels = loadCurriculumSpine();
+  const slots = spineLevels[level];
+  if (!Array.isArray(slots)) throw new Error(`Không tìm thấy level "${level}" trong curriculum_spine.json`);
+
+  const occupationProfile = await fetchOccupationProfile(token, rawKeywordsMatch);
+  const { chunksByIndex, skinId } = await ensureSkinForLevel(token, occupationProfile, level, slots.length);
+
+  const samples = [];
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+    const slot = slots[slotIndex];
+    const { chunkIndex, occurrenceIndex } = localOccurrenceInChunk(slots, slotIndex);
+    const frames = chunksByIndex[chunkIndex];
+    const topic = topicFromFrames(frames, slot.situation_frame_key, occurrenceIndex);
+    if (!topic) {
+      console.warn(`  CẢNH BÁO: slot ${slot.slot} (${slot.situation_frame_key}) không có topic từ da lĩnh vực — bỏ trống, generate_lesson sẽ tự chọn theo Lĩnh vực.`);
+    }
+    const baseSample = {
+      tag: `#${slot.slot}-${level}`,
+      level,
+      content_type: slot.content_type,
+      field,
+      industry,
+      topic: topic || undefined,
+      term_density: computeTermDensity(level),
+      spine_slot: slot.slot,
+      skin_id: skinId,
+      grammar_focus: buildGrammarFocus(slot.grammar),
+    };
+    samples.push(baseSample);
+
+    const extraCount = EXTRA_SLOTS[level]?.[slot.slot] || 0;
+    for (let i = 0; i < extraCount && i < EXTENSION_LETTERS.length; i++) {
+      samples.push({ ...baseSample, tag: `#${slot.slot}${EXTENSION_LETTERS[i]}-${level}` });
+    }
+  }
+  return samples;
+}
+
+// Đợt 1 (Minh chọn "A1 trước, kiểm tra xong mới sinh A2"): 89 slot A1, chuyên ngành Kế toán.
+async function main() {
+  const token = await login("kimchinamvn+studentpro1@gmail.com", "StudentPro2026!");
+  const samples = await buildSpineSamples(token, "A1", { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
+  console.log(`\nChuẩn bị sinh ${samples.length} bài (level A1, Kế toán) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
+  await publishBatch(samples);
+}
+
+main().catch((err) => {
+  console.error("ERROR:", err);
+  process.exit(1);
+});
