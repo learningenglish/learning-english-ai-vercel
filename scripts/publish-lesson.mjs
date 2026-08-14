@@ -171,8 +171,13 @@ function coverImageBaseUrl(url) {
 // ảnh bìa có thể vượt mốc này khi app đã chạy lâu. Không phân trang thì ảnh cũ rơi khỏi tập dedup
 // mà không báo lỗi gì — set "limit" cao + đọc "Content-Range" để BIẾT khi bị cắt bớt thay vì im
 // lặng bỏ sót.
+// 2026-08-14 — cover_image_url/cover_thumb_url giờ là link NỘI BỘ (kho lesson-covers của
+// chính app, xem api/_generate/coverImage.js), LUÔN khác nhau giữa các bài (đường dẫn có
+// lessonId) dù dùng chung 1 ảnh gốc bên ngoài -> so 2 cột đó KHÔNG còn phát hiện được trùng
+// ảnh. Đổi sang so "cover_source_url" (base URL ảnh GỐC bên ngoài, lưu riêng CHỈ để chống
+// trùng, không hiển thị) — đây mới là tín hiệu ổn định giữa các lần chạy.
 async function fetchExistingCoverBaseUrls(token) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/lessons?cover_image_url=not.is.null&select=cover_image_url&limit=20000`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/lessons?cover_source_url=not.is.null&select=cover_source_url&limit=20000`, {
     headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, Prefer: "count=exact" },
   });
   const rows = await r.json();
@@ -181,7 +186,7 @@ async function fetchExistingCoverBaseUrls(token) {
   if (total > rows.length) {
     console.warn(`CẢNH BÁO: chỉ lấy được ${rows.length}/${total} ảnh bìa hiện có (giới hạn truy vấn) — dedup ảnh có thể bỏ sót.`);
   }
-  return new Set((rows || []).map((r) => coverImageBaseUrl(r.cover_image_url)));
+  return new Set((rows || []).map((r) => coverImageBaseUrl(r.cover_source_url)));
 }
 async function ensureCoverImageComplete(token, lessonId, title, contentType, usedBaseUrls, { maxAttempts = 4 } = {}) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -192,13 +197,22 @@ async function ensureCoverImageComplete(token, lessonId, title, contentType, use
     if (searchRes.status === 200) {
       const parsed = typeof searchRes.data === "string" ? JSON.parse(searchRes.data) : searchRes.data;
       const content = JSON.parse(parsed.content);
-      const url = content?.image?.url;
-      const base = coverImageBaseUrl(url);
-      if (url && !usedBaseUrls.has(base)) {
-        const setRes = await callChat(token, "set_lesson_cover_image", { lesson_id: lessonId, cover_image_url: url });
+      const image = content?.image;
+      const base = coverImageBaseUrl(image?.sourceUrl);
+      if (image?.thumbUrl && image?.detailUrl && !usedBaseUrls.has(base)) {
+        // set_lesson_cover_image giờ TỰ tải bytes 2 URL nguồn về + đẩy lên kho riêng của app,
+        // trả về link nội bộ đã lưu (không còn là link ngoài vừa search).
+        const setRes = await callChat(token, "set_lesson_cover_image", {
+          lesson_id: lessonId,
+          thumb_url: image.thumbUrl,
+          detail_url: image.detailUrl,
+          source_url: image.sourceUrl,
+        });
         if (setRes.status === 200) {
           usedBaseUrls.add(base);
-          return { ok: true, url, attempts: attempt };
+          const setParsed = typeof setRes.data === "string" ? JSON.parse(setRes.data) : setRes.data;
+          const setContent = JSON.parse(setParsed.content);
+          return { ok: true, url: setContent.cover_image_url, attempts: attempt };
         }
       }
     }

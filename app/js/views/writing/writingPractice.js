@@ -866,8 +866,12 @@ export function renderWritingPractice(mount) {
       const res = await callChatAction("search_lesson_cover_image", { title: state.task.topic_en, content_type: "reading" });
       if (!res.ok) return;
       const { image } = JSON.parse(res.content);
-      if (!image?.url) return;
-      state.cleanCoverImage = image.url;
+      // 2026-08-14 — search_lesson_cover_image đổi trả về 2 cỡ (thumbUrl/detailUrl) thay vì 1
+      // "url" duy nhất (xem api/_generate/coverImage.js) vì bài học giờ tự tải-lưu ảnh vào kho
+      // riêng của app. Ảnh minh hoạ ở đây KHÔNG qua set_lesson_cover_image (không phải "lesson",
+      // không cần lưu bền) nên vẫn dùng thẳng link ngoài như trước, chỉ đổi tên field đọc.
+      if (!image?.detailUrl) return;
+      state.cleanCoverImage = image.detailUrl;
       if (state.step === "clean") render();
     } catch {
       // Im lặng — tính năng "cố gắng tốt nhất", không có ảnh thì thôi, không chặn trải nghiệm chính.

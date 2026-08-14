@@ -42,8 +42,16 @@ export function lessonCardHtml(l) {
   return `
     <div class="lesson-card" data-id="${l.id}">
       <div class="lesson-card-cover">${
-        l.cover_image_url
-          ? `<img src="${escapeHtml(l.cover_image_url)}" alt="" />`
+        // Ưu tiên "cover_thumb_url" (bản nhỏ đã tải-lưu vào kho riêng của app, xem
+        // api/_generate/coverImage.js) cho đúng cỡ hiển thị nhỏ ở thẻ danh sách — đỡ băng thông
+        // hơn hẳn so với tải bản "cover_image_url" (bản vừa, dùng cho trang nội dung).
+        // "onerror" (2026-08-14) — nếu ảnh lỗi (kể cả kho riêng của app hiếm khi trục trặc), chỉ
+        // ẨN thẻ <img> (this.style.display='none') — icon placeholder LUÔN nằm sẵn phía dưới
+        // (position:absolute, xem .cover-placeholder trong style.css), lộ ra ngay khi ảnh ẩn,
+        // không cần dựng HTML bằng JS (tránh lồng escape chuỗi phức tạp/rủi ro trong onerror).
+        l.cover_thumb_url || l.cover_image_url
+          ? `<div class="cover-placeholder">${icon(l.content_type === "dialogue" ? "message-circle" : "book", { size: 28 })}</div>
+             <img src="${escapeHtml(l.cover_thumb_url || l.cover_image_url)}" alt="" onerror="this.style.display='none'" />`
           : `<div class="cover-placeholder">${icon(l.content_type === "dialogue" ? "message-circle" : "book", { size: 28 })}</div>`
       }<span class="lesson-card-type-badge">${icon(l.content_type === "dialogue" ? "message-circle" : "book", { size: 13 })}</span></div>
       <div class="lesson-card-body">

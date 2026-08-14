@@ -319,8 +319,20 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // + back/tiêu đề chuyển thành LỚP PHỦ đè lên ảnh (dùng lại đúng gradient tối dần của
   // .continue-card-overlay để chữ trắng luôn đọc được bất kể ảnh nền màu gì) — nhờ vậy nút back
   // luôn nằm CỐ ĐỊNH ở góc trên-trái như mọi màn khác, không còn bị đẩy xuống dưới ảnh.
+  // 2026-08-14, Minh: "hiện tại bài phân tích không có hình. dùng icon gắn vào, không để trống"
+  // — bài từ Phân tích KHÔNG có cover_image_url (đã bỏ hẳn phần ảnh cho luồng này) nên trước đây
+  // rơi vào nhánh return "" (không hiện khối ảnh nào cả, chỉ còn headerRowHtml() thường). Thêm 1
+  // banner ICON PLACEHOLDER (cùng chiều cao/bo góc ".lesson-cover", nền trung tính, KHÔNG overlay
+  // tối + không đè chữ trắng lên vì không có ảnh làm nền) — headerRowHtml() vẫn tự hiện header
+  // thường ngay bên dưới (điều kiện của nó chỉ bỏ qua khi CÓ cover_image_url thật), không cần đổi.
   function coverImageHtml() {
-    if (isNews || !lesson.cover_image_url) return "";
+    if (isNews) return "";
+    if (!lesson.cover_image_url) {
+      return `
+        <div class="lesson-cover lesson-cover-placeholder">
+          ${icon(lesson.content_type === "dialogue" ? "message-circle" : "book", { size: 40 })}
+        </div>`;
+    }
     return `
       <div class="lesson-cover">
         <img src="${escapeHtml(lesson.cover_image_url)}" alt="" loading="lazy" />

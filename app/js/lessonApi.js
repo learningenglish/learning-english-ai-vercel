@@ -102,8 +102,16 @@ export async function fetchAndSaveLessonCover(lesson) {
     const imgRes = await callChatAction("search_lesson_cover_image", { title, content_type: lesson.content_type });
     if (!imgRes.ok) return;
     const { image } = JSON.parse(imgRes.content);
-    if (!image?.url) return;
-    await callChatAction("set_lesson_cover_image", { lesson_id: lesson.id, cover_image_url: image.url });
+    if (!image?.thumbUrl || !image?.detailUrl) return;
+    // 2026-08-14 — search chỉ TÌM link nguồn ngoài, set_lesson_cover_image giờ TỰ tải bytes về
+    // và lưu hẳn vào kho của app (xem api/_generate/coverImage.js) — không còn lưu thẳng link
+    // ngoài như trước, "source_url" chỉ để server chống trùng ảnh, không hiển thị.
+    await callChatAction("set_lesson_cover_image", {
+      lesson_id: lesson.id,
+      thumb_url: image.thumbUrl,
+      detail_url: image.detailUrl,
+      source_url: image.sourceUrl,
+    });
   } catch {
     // Im lặng — xem ghi chú ở trên, đây là tính năng "cố gắng tốt nhất", không chặn luồng chính.
   }

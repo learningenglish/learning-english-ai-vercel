@@ -1337,6 +1337,11 @@ textarea:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* position:relative (2026-08-14) — KHÔNG đổi vị trí thật (không offset), chỉ để ảnh vẽ
+     SAU/ĐÈ LÊN ".cover-placeholder" (position:absolute, cùng z-index:auto -> thắng theo thứ
+     tự DOM sau) khi cả 2 cùng tồn tại — ảnh lỗi tải bị ẩn (onerror, lessonCard.js) thì lộ
+     ngay icon placeholder nằm sẵn phía dưới, không cần dựng lại HTML. */
+  position: relative;
 }
 
 .lesson-card-body {
@@ -1449,6 +1454,17 @@ textarea:focus {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Bài không có cover_image_url thật (vd luồng Phân tích, đã bỏ hẳn phần ảnh) — icon trung tính
+   thay vì để trống, xem coverImageHtml(). KHÔNG dùng overlay/chữ trắng như bản có ảnh thật vì
+   nền không phải ảnh, không cần tương phản đó. */
+.lesson-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-soft);
+  color: var(--text-dim);
 }
 
 /* Lớp phủ tối dần phía dưới ảnh — dùng lại ĐÚNG gradient của .continue-card-overlay (xem ghi
@@ -2402,9 +2418,13 @@ textarea:focus {
   margin: 10px 0 0;
 }
 
+/* position:absolute (2026-08-14) — cho phép xếp CHỒNG dưới <img> cùng cấp trong
+   .lesson-card-cover (đã position:relative sẵn): ảnh lỗi tải chỉ cần ẩn <img> (onerror,
+   xem lessonCard.js) là icon này lộ ra ngay, không cần dựng lại HTML bằng JS. Đứng riêng
+   (không có <img> cùng cấp) vẫn hiển thị y hệt trước vì lấp đầy đúng khung cha. */
 .cover-placeholder {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;

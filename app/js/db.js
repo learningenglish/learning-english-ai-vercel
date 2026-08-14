@@ -125,7 +125,7 @@ export async function listAiGeneratedLessons({ filter = "all" } = {}) {
   // TRONG ĐÚNG level đó, theo curriculum_spine.json) — bài tự nhập/phân tích văn bản có
   // spine_slot=null, lessonCard.js tự ẩn số khi null.
   let q =
-    `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,industry,goal_id,spine_slot,${PROGRESS_EMBED}` +
+    `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,cover_thumb_url,is_favorite,created_at,industry,goal_id,spine_slot,${PROGRESS_EMBED}` +
     "&source=eq.ai_generated&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
@@ -141,7 +141,7 @@ export async function listAiGeneratedLessons({ filter = "all" } = {}) {
 // đã áp dụng cho listAiGeneratedLessons() ở trên, xem ghi chú đầy đủ ở đó.
 export async function listTextAnalyzedLessons({ filter = "all", goalId = null } = {}) {
   let q =
-    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id" +
+    "select=id,title,title_vi,level,situation,content,content_type,cover_image_url,cover_thumb_url,is_favorite,created_at,goal_id" +
     "&source=eq.user_text&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (goalId) q += `&or=(goal_id.eq.${encodeURIComponent(goalId)},goal_id.is.null)`;
@@ -160,7 +160,7 @@ export async function listInProgressLessons({ limit = 6 } = {}) {
   const rows = await restFetch(
     "lesson_progress?completed_at=is.null&last_opened_at=not.is.null&order=last_opened_at.desc" +
       `&limit=${limit}` +
-      "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,is_favorite,created_at,goal_id)"
+      "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,cover_thumb_url,is_favorite,created_at,goal_id)"
   );
   return (rows || [])
     .filter((r) => r.lessons)

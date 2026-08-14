@@ -3,20 +3,28 @@
 // 1. "search_lesson_cover_image": tìm ảnh bìa từ NGUỒN MIỄN PHÍ (Unsplash -> Pexels ->
 //    Wikimedia) theo TIÊU ĐỀ TIẾNG ANH của bài — QUYẾT ĐỊNH CHI PHÍ (2026-07-18, xác nhận
 //    với Minh): KHÔNG dùng DALL-E cho ảnh bìa nữa vì (a) ~$0.04 ≈ 1.000đ/ảnh, đắt gấp ~10
-//    lần chi phí sinh nội dung cả bài, (b) URL ảnh DALL-E là link TẠM, hết hạn sau ~1-2 giờ
-//    — lưu vào lessons.cover_image_url là hôm sau ảnh vỡ, muốn giữ phải tải về Supabase
-//    Storage (tốn lưu trữ, đúng thứ cần tránh). Nguồn free: 0đ + URL vĩnh viễn. Ghi chú của
-//    chat.js về "search cả đoạn văn trật ngữ cảnh" KHÔNG áp dụng ở đây: chỉ search theo
-//    TITLE ngắn ("A Day at the Hotel") — tương đương search 1 cụm danh từ, độ chuẩn tốt.
-//    Bài hiếm hoi không nguồn nào có ảnh -> trả image:null, UI giữ icon placeholder, không
-//    fallback AI. 3 hàm fetch nguồn COPY 1 LẦN từ chat.js (đóng băng, không export được) —
-//    đúng quy ước _shared.js/_generate đã ghi ở lesson.js.
+//    lần chi phí sinh nội dung cả bài, (b) URL ảnh DALL-E là link TẠM, hết hạn sau ~1-2 giờ.
+//    Nguồn free: 0đ. Ghi chú của chat.js về "search cả đoạn văn trật ngữ cảnh" KHÔNG áp dụng
+//    ở đây: chỉ search theo TITLE ngắn ("A Day at the Hotel") — tương đương search 1 cụm danh
+//    từ, độ chuẩn tốt. Bài hiếm hoi không nguồn nào có ảnh -> trả image:null, UI giữ icon
+//    placeholder, không fallback AI. 3 hàm fetch nguồn COPY 1 LẦN từ chat.js (đóng băng, không
+//    export được) — đúng quy ước _shared.js/_generate đã ghi ở lesson.js.
+//    Trả về 2 CỠ (thumbUrl nhỏ cho danh sách, detailUrl vừa cho trang nội dung) — LẤY THẲNG
+//    từ chính response của Unsplash/Pexels/Wikimedia (họ đã tự resize sẵn nhiều cỡ, KHÔNG cần
+//    app tự xử lý ảnh, xem 039_lesson_cover_storage.sql cho bối cảnh đầy đủ quyết định này).
 //    Cache: dùng chung bảng word_image_cache, lookup_key = "cover:" + title thường hoá,
 //    status "approved" ngay (ảnh bìa cho bài TỰ TẠO của chính học viên, không qua hàng chờ
 //    duyệt Mentor như ảnh từ-khoá của app cũ — cùng lập luận với get_lesson_cover_image).
 //
-// 2. "set_lesson_cover_image": PATCH cover_image_url vào 1 lesson SAU KHI đã có URL — tách
-//    riêng vì client bị REVOKE quyền UPDATE cột này trực tiếp (xem GRANT trong
+// 2. "set_lesson_cover_image": TẢI BYTES 2 URL nguồn (thumb+detail) về, ĐẨY LÊN bucket riêng
+//    của app "lesson-covers", rồi PATCH 2 cột nội bộ vào lesson — 2026-08-14, Minh: "tôi không
+//    muốn khi app chạy sẽ bị lỗi tải hình" (lo ngại đúng: link ngoài có thể chết) + tự đề xuất
+//    "ảnh đã thu nhỏ rồi thì lưu hẳn vào kho" (đo thật: bản nhỏ 5-10KB, bản vừa 13-29KB, quá
+//    rẻ để ngại tải lưu). Từ đây "cover_image_url"/"cover_thumb_url" là link CỦA CHÍNH APP,
+//    không còn trỏ thẳng Unsplash/Pexels/Wikimedia nữa — hết phụ thuộc uptime nguồn ngoài.
+//    "cover_source_url" vẫn lưu base URL ảnh GỐC bên ngoài — CHỈ để publish-lesson.mjs chống
+//    trùng ảnh giữa các bài (so theo photo ID gốc), KHÔNG dùng để hiển thị.
+//    Tách khỏi search vì client bị REVOKE quyền UPDATE các cột này trực tiếp (xem GRANT trong
 //    supabase/019_lessons.sql, chỉ "is_favorite" mở cho client).
 //
 // LUỒNG đầy đủ (app/js/lessonApi.js::fetchAndSaveLessonCover, chạy RỜI ngay sau khi tạo bài
@@ -31,6 +39,7 @@
 import { SUPABASE_URL } from "./_shared.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const COVER_BUCKET = "lesson-covers";
 
 // ====== 3 nguồn ảnh miễn phí — copy nguyên văn từ chat.js (xem ghi chú đầu file) ======
 const WIKIMEDIA_ALLOWED_LICENSE_RE = /^(cc0|public domain|cc[\s-]?by(?:[\s-]?sa)?)([\s-]?\d.*)?$/i;
@@ -78,9 +87,18 @@ function isFlagOrSymbolImage(text) {
   return FLAG_SYMBOL_RE.test(text || "");
 }
 
+// Base URL (bỏ query string) — dùng làm "sourceUrl" cho việc chống trùng ảnh giữa các bài ở
+// publish-lesson.mjs (so theo photo ID gốc, không phụ thuộc query string ngẫu nhiên).
+function baseUrlOf(url) {
+  return (url || "").split("?")[0];
+}
+
+// 2 lượt gọi (search + 1 lượt lấy thumb riêng cho ĐÚNG file đã chọn) — API Wikimedia không trả
+// nhiều cỡ trong 1 lượt gọi "iiurlwidth" như Unsplash/Pexels tự có sẵn field "urls"/"src" nhiều
+// cỡ, nhưng chi phí 0đ (API công cộng, không giới hạn key) nên không đáng ngại thêm 1 lượt gọi.
 async function fetchFromWikimedia(term) {
   try {
-    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`;
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=400&format=json&origin=*`;
     const r = await fetch(url);
     if (!r.ok) return null;
     const data = await r.json();
@@ -93,7 +111,24 @@ async function fetchFromWikimedia(term) {
       const description = (info.extmetadata?.ImageDescription?.value || "").replace(/<[^>]+>/g, "");
       if (isFlagOrSymbolImage(page.title) || isFlagOrSymbolImage(description)) continue;
       const artist = (info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
-      return { url: info.url, source: "wikimedia", license: licenseShort, attribution: artist || null };
+      const detailUrl = info.thumburl || info.url;
+      // Lượt gọi riêng lấy bản 200px CHO ĐÚNG file vừa chọn (dùng "titles=" trực tiếp, không
+      // search lại — đảm bảo cùng 1 ảnh, không lệch giữa 2 lượt gọi).
+      let thumbUrl = detailUrl;
+      try {
+        const thumbRes = await fetch(
+          `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(page.title)}&prop=imageinfo&iiprop=url&iiurlwidth=200&format=json&origin=*`
+        );
+        if (thumbRes.ok) {
+          const thumbData = await thumbRes.json();
+          const thumbPages = Object.values(thumbData?.query?.pages || {});
+          const thumbInfo = thumbPages?.[0]?.imageinfo?.[0];
+          if (thumbInfo?.thumburl) thumbUrl = thumbInfo.thumburl;
+        }
+      } catch {
+        // Lỗi lượt lấy thumb riêng -> dùng tạm bản detail cho cả 2 cỡ, không chặn cả kết quả.
+      }
+      return { thumbUrl, detailUrl, sourceUrl: baseUrlOf(info.url), source: "wikimedia", license: licenseShort, attribution: artist || null };
     }
     return null;
   } catch (e) {
@@ -113,7 +148,12 @@ async function fetchFromUnsplash(term) {
     const data = await r.json();
     const photo = (data?.results || []).find((p) => !isFlagOrSymbolImage(p.alt_description) && !isFlagOrSymbolImage(p.description));
     if (!photo) return null;
-    return { url: photo.urls?.regular || photo.urls?.small, source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
+    // "urls" của Unsplash đã có sẵn nhiều cỡ dựng qua imgix (raw/full/regular/small/thumb) —
+    // thumb ~w=200 (~5-10KB đo thật), small ~w=400 (~13-29KB đo thật, xem 039_lesson_cover_
+    // storage.sql) — không cần app tự resize.
+    const detailUrl = photo.urls?.small || photo.urls?.regular;
+    const thumbUrl = photo.urls?.thumb || detailUrl;
+    return { thumbUrl, detailUrl, sourceUrl: baseUrlOf(photo.urls?.regular || detailUrl), source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
   } catch (e) {
     console.error("[cover] fetchFromUnsplash error:", e);
     return null;
@@ -131,7 +171,9 @@ async function fetchFromPexels(term) {
     const data = await r.json();
     const photo = (data?.photos || []).find((p) => !isFlagOrSymbolImage(p.alt));
     if (!photo) return null;
-    return { url: photo.src?.medium || photo.src?.large, source: "pexels", license: "Pexels License", attribution: photo.photographer || null };
+    const detailUrl = photo.src?.medium || photo.src?.large;
+    const thumbUrl = photo.src?.tiny || photo.src?.small || detailUrl;
+    return { thumbUrl, detailUrl, sourceUrl: baseUrlOf(photo.src?.large || detailUrl), source: "pexels", license: "Pexels License", attribution: photo.photographer || null };
   } catch (e) {
     console.error("[cover] fetchFromPexels error:", e);
     return null;
@@ -144,7 +186,7 @@ function coverCacheKey(title) {
 
 async function getCoverFromCache(key) {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache?lookup_key=eq.${encodeURIComponent(key)}&select=url,source,status`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/word_image_cache?lookup_key=eq.${encodeURIComponent(key)}&select=url,thumb_url,source,status`, {
       headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
     });
     if (!r.ok) return null;
@@ -169,7 +211,7 @@ async function saveCoverToCache(key, term, image) {
         Prefer: "resolution=merge-duplicates",
       },
       body: JSON.stringify({
-        lookup_key: key, term, url: image.url, source: image.source,
+        lookup_key: key, term, url: image.detailUrl, thumb_url: image.thumbUrl, source: image.source,
         license: image.license || null, attribution: image.attribution || null,
         status: "approved",
       }),
@@ -194,7 +236,7 @@ export async function search_lesson_cover_image(data, ctx) {
   const query = sanitizeCoverQuery(title, contentType);
   const key = coverCacheKey(query);
   const cached = await getCoverFromCache(key);
-  if (cached) return { content: JSON.stringify({ image: { url: cached.url, source: cached.source } }) };
+  if (cached) return { content: JSON.stringify({ image: { thumbUrl: cached.thumb_url || cached.url, detailUrl: cached.url, sourceUrl: baseUrlOf(cached.url), source: cached.source } }) };
 
   let image = (await fetchFromUnsplash(query)) || (await fetchFromPexels(query)) || (await fetchFromWikimedia(query));
   // 2026-08-11 (Minh: "hình ảnh là 1 phần không thể thiếu của bài học, phải đảm bảo có hình ảnh
@@ -215,14 +257,47 @@ export async function search_lesson_cover_image(data, ctx) {
   }
   if (!image) return { content: JSON.stringify({ image: null }) };
   saveCoverToCache(coverCacheKey(usedQuery), usedQuery, image);
-  return { content: JSON.stringify({ image: { url: image.url, source: image.source } }) };
+  return { content: JSON.stringify({ image: { thumbUrl: image.thumbUrl, detailUrl: image.detailUrl, sourceUrl: image.sourceUrl, source: image.source } }) };
+}
+
+// Tải bytes 1 URL nguồn về, ĐẨY LÊN bucket "lesson-covers" của app — đúng khuôn uploadAudio()
+// trong api/_generate/audio.js. Đọc Content-Type THẬT từ response nguồn (không hardcode
+// image/jpeg) vì Wikimedia đôi khi trả PNG/WebP tuỳ file gốc.
+async function reuploadCoverImage(sourceUrl, path) {
+  const sourceRes = await fetch(sourceUrl);
+  if (!sourceRes.ok) return null;
+  const buffer = Buffer.from(await sourceRes.arrayBuffer());
+  const contentType = sourceRes.headers.get("content-type") || "image/jpeg";
+  const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${COVER_BUCKET}/${path}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": contentType,
+      "x-upsert": "true",
+    },
+    body: buffer,
+  });
+  if (!uploadRes.ok) {
+    console.error("[cover] reuploadCoverImage upload error:", uploadRes.status, await uploadRes.text().catch(() => ""));
+    return null;
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/${COVER_BUCKET}/${path}`;
 }
 
 export async function set_lesson_cover_image(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
-  if (!data.lesson_id || !data.cover_image_url) return { error: "Thiếu 'lesson_id' hoặc 'cover_image_url'.", status: 400 };
+  if (!data.lesson_id || !data.thumb_url || !data.detail_url) return { error: "Thiếu 'lesson_id', 'thumb_url' hoặc 'detail_url'.", status: 400 };
 
   try {
+    const [internalThumbUrl, internalDetailUrl] = await Promise.all([
+      reuploadCoverImage(data.thumb_url, `${data.lesson_id}/thumb.jpg`),
+      reuploadCoverImage(data.detail_url, `${data.lesson_id}/detail.jpg`),
+    ]);
+    if (!internalThumbUrl || !internalDetailUrl) {
+      return { error: "Không tải/lưu được ảnh bìa.", status: 502 };
+    }
+
     const r = await fetch(
       `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(data.lesson_id)}&user_id=eq.${encodeURIComponent(ctx.studentId)}`,
       {
@@ -233,14 +308,18 @@ export async function set_lesson_cover_image(data, ctx) {
           "Content-Type": "application/json",
           Prefer: "return=minimal",
         },
-        body: JSON.stringify({ cover_image_url: data.cover_image_url }),
+        body: JSON.stringify({
+          cover_image_url: internalDetailUrl,
+          cover_thumb_url: internalThumbUrl,
+          cover_source_url: data.source_url || null,
+        }),
       }
     );
     if (!r.ok) {
       console.error("set_lesson_cover_image PATCH error:", r.status, await r.text());
       return { error: "Không lưu được ảnh bìa.", status: 502 };
     }
-    return { content: JSON.stringify({ ok: true }) };
+    return { content: JSON.stringify({ ok: true, cover_image_url: internalDetailUrl, cover_thumb_url: internalThumbUrl }) };
   } catch (e) {
     console.error("set_lesson_cover_image error:", e);
     return { error: "Không lưu được ảnh bìa.", status: 502 };
