@@ -101,15 +101,18 @@ async function fetchLessonContent(token, lessonId) {
 // check yếu này. PHẢI ghép lại TOÀN BỘ "words" (hoặc "text" của reading_chunks) theo đúng thứ tự
 // rồi so khớp CHÍNH XÁC với "text" gốc — ĐÚNG THUẬT TOÁN itemPhraseCoverageOk() phía server
 // (api/_generate/lesson.js), không phải suy đoán từ độ dài mảng.
+// 2026-08-14 — thêm dấu gạch nối (vd "long-term") vào ký tự hợp lệ của từ, PHẢI khớp ĐÚNG
+// sentenceWordTokens()/normalizePhraseWord() phía server (api/_generate/lesson.js) — lỗi lặp
+// lại 2 lần độc lập ở #a-B2 và #b-B2 ("long-term" bị tách "long"+"term").
 function normalizeToken(w) {
   return (w || "")
     .toString()
     .toLowerCase()
     .replace(/[’‘ʼ]/g, "'")
-    .replace(/[^a-z0-9']/g, "");
+    .replace(/[^a-z0-9'-]/g, "");
 }
 function realWordTokens(text) {
-  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g) || []).map(normalizeToken);
+  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ-][A-Za-z0-9]+)*/g) || []).map(normalizeToken);
 }
 function isFullyCovered(content, field) {
   if (!Array.isArray(content) || !content.length) return false;

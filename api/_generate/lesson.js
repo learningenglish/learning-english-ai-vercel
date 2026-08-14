@@ -1087,12 +1087,20 @@ function endsOnDanglingQuestion(content) {
 // "organization"+"s" (dấu ’ bị coi là dấu câu, làm đứt từ) — coverage-check thất bại DAI DẲNG dù
 // "words" AI trả về đúng ranh giới thật, chỉ khác KIỂU dấu nháy. Nhận CẢ 2 kiểu dấu nháy
 // (thẳng/cong) là 1 phần hợp lệ của từ, chuẩn hoá về CÙNG 1 dạng trước khi so khớp.
+// BUG THẬT (2026-08-14, #a-B2 VÀ #b-B2 — cùng lỗi lặp lại 2 lần độc lập ở B2, câu chứa
+// "long-term"): regex CŨ không coi dấu gạch nối "-" là 1 phần của từ, nên "long-term" bị tách
+// thành 2 token rời "long"+"term" (dấu gạch nối bị coi là dấu câu, cắt đứt từ ghép) — trong khi
+// AI hợp lý viết "words" gồm "long-term" NGUYÊN VẸN 1 phần tử (đúng cách từ ghép có gạch nối
+// xuất hiện tự nhiên trong câu, giống contraction/dấu nháy đã sửa trước đó) — 2 bên không bao
+// giờ khớp được, coverage-check thất bại DAI DẲNG dù thử lại nhiều lần (không tự khỏi bằng retry
+// vì đây là lỗi tokenizer, không phải AI ngẫu nhiên sai). Nhận dấu gạch nối là 1 phần hợp lệ của
+// từ, cùng cách đã làm cho dấu nháy đơn.
 function normalizePhraseWord(w) {
   return (w || "")
     .toString()
     .toLowerCase()
     .replace(/[’‘ʼ]/g, "'")
-    .replace(/[^a-z0-9']/g, "");
+    .replace(/[^a-z0-9'-]/g, "");
 }
 // BUG THẬT (2026-08-12, xác nhận qua dữ liệu sống — bài #5a2 A2 có câu chứa lời trích dẫn trong
 // dấu nháy đơn 'This is...' — coverage-check thất bại LIÊN TỤC dù thử lại 3 lần/9 lượt gọi AI):
@@ -1111,7 +1119,7 @@ function normalizePhraseWord(w) {
 // Tham khảo file v6 (Minh cung cấp) — thêm hẳn 1 mẫu SỐ (có thể có "$" trước, dấu phẩy phân
 // nhóm nghìn, phần thập phân) làm lựa chọn ĐẦU TIÊN trong regex, thử trước mẫu chữ cái.
 function sentenceWordTokens(text) {
-  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
+  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ-][A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
 }
 // BUG THẬT (2026-08-13, Minh xem trực tiếp bài #7b2 câu 13 — tooltip "organizations" hiện level
 // "B2" đồng loạt cho MỌI từ trong câu, không phân biệt từng từ): hàm này TRƯỚC ĐÂY chỉ so khớp

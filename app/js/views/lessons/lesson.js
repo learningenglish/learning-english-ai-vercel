@@ -1288,8 +1288,10 @@ function tokenizeWords(text) {
   // vd "organization’s") — PHẢI khớp ĐÚNG sentenceWordTokens() phía server (api/_generate/
   // lesson.js), 2 quy tắc tokenize khác nhau làm coverage-check thất bại dai dẳng (bug thật
   // 2026-08-13, bài #1-B2). Nhận cả SỐ có "$" trước/dấu phẩy phân nhóm nghìn (vd "$10,000") làm
-  // 1 token DUY NHẤT (bug thật 2026-08-14, bài #a-B2 — "$10,000" bị tách "10"+"000").
-  const re = /\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g;
+  // 1 token DUY NHẤT (bug thật 2026-08-14, bài #a-B2 — "$10,000" bị tách "10"+"000"). Nhận cả
+  // dấu gạch nối trong từ ghép (vd "long-term") làm 1 token DUY NHẤT (bug thật 2026-08-14, LẶP
+  // LẠI 2 LẦN độc lập ở #a-B2 và #b-B2 — "long-term" bị tách "long"+"term").
+  const re = /\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ-][A-Za-z0-9]+)*/g;
   let m;
   while ((m = re.exec(text || ""))) {
     tokens.push({ word: m[0], start: m.index, end: m.index + m[0].length });
@@ -1371,7 +1373,7 @@ function normalizeMatchWord(w) {
     .toString()
     .toLowerCase()
     .replace(/[’‘ʼ]/g, "'")
-    .replace(/[^a-z0-9']/g, "");
+    .replace(/[^a-z0-9'-]/g, "");
 }
 
 // SỬA 2026-08-10 (Đợt 13 mục 4) — mỗi TỪ giờ là 1 span RIÊNG (trước đây cả cụm là 1 span DUY
