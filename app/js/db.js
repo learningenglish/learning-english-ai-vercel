@@ -118,7 +118,19 @@ export async function listLessons({ filter = "all" } = {}) {
 // tích văn bản cá nhân người dùng tự dán vào) VẪN RIÊNG TƯ, không đụng tới ở đây. Tham số
 // "goalId" giữ lại trong chữ ký hàm (không dùng) để không phải sửa lessons.js ngay — dọn sau khi
 // Minh xác nhận hướng phân gói tài khoản (câu "sau khi test xong... phân gói tài khoản").
-export async function listAiGeneratedLessons({ filter = "all" } = {}) {
+// "industryFilter" (2026-08-14, Minh: "Kiểm tra luồng Giao tiếp tổng quát không hiển thị bài
+// qua luồng kế toán và ngược lại" — BUG THẬT xác nhận: hàm này chưa từng lọc theo industry dù
+// đã bỏ lọc goal_id/user_id từ 2026-08-10 để dùng chung giáo trình — nghĩa là NẾU có nhiều
+// industry cùng tồn tại (Kế toán VÀ Giao tiếp tổng quát), TẤT CẢ trộn lẫn vào chung 1 danh sách
+// "Bài đọc"/"Hội thoại", không hề tách theo Chuyên ngành đang active. Chưa lộ ra vì tới nay CHỈ
+// có industry="Kế toán" tồn tại thật trong DB. Giá trị:
+// - undefined (mặc định): KHÔNG lọc — giữ nguyên hành vi cũ cho lời gọi nào chưa truyền tham số.
+// - null: lọc industry IS NULL (đúng bài "Giao tiếp tổng quát"/Tin tức/Phân tích — xem ghi chú
+//   "industry rỗng" ở api/_generate/audio.js).
+// - chuỗi (vd "Kế toán"): lọc industry=eq.<chuỗi> — PHẢI khớp NGUYÊN VĂN giá trị "raw_keywords"
+//   của learning_goals (xem views/goal/industrySelect.js::selectPosition(), industry và
+//   raw_keywords CÙNG lấy từ "ind.label" trong catalog INDUSTRIES, luôn khớp nhau).
+export async function listAiGeneratedLessons({ filter = "all", industryFilter } = {}) {
   // "spine_slot" (2026-08-06, Minh: "mỗi chuyên ngành là trọn bộ giáo trình, cần đánh số #1,#2..
   // để rà soát") — chỉ bài sinh qua next_slot/khung giáo trình (mentor_next_lesson ->
   // generate_lesson, xem spine_slot trong api/_generate/lesson.js) mới có giá trị (vị trí 1-based
@@ -129,6 +141,8 @@ export async function listAiGeneratedLessons({ filter = "all" } = {}) {
     "&source=eq.ai_generated&order=created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
+  if (industryFilter === null) q += "&industry=is.null";
+  else if (industryFilter) q += `&industry=eq.${encodeURIComponent(industryFilter)}`;
   return restFetch(`lessons?${q}`);
 }
 
@@ -156,11 +170,16 @@ export async function listTextAnalyzedLessons({ filter = "all", goalId = null } 
 // bộ giáo trình dùng chung, không còn khoá theo goal_id/user_id). "lesson_progress" đã tự khoá
 // theo user hiện tại qua RLS (chỉ đọc được tiến độ CỦA CHÍNH MÌNH), nên danh sách trả về ở đây
 // LUÔN chỉ gồm bài chính người dùng này đã mở, không cần lọc thêm theo goal.
-export async function listInProgressLessons({ limit = 6 } = {}) {
+// "industryFilter" — cùng chính sách đã thêm ở listAiGeneratedLessons() phía trên (xem ghi chú
+// đầy đủ ở đó), áp dụng cho ĐÚNG carousel "BÀI ĐANG ĐỌC" ở Home — dùng "lessons!inner(...)" (bắt
+// buộc để PostgREST cho lọc theo cột của bảng NHÚNG, embed mặc định không hỗ trợ lọc trực tiếp).
+export async function listInProgressLessons({ limit = 6, industryFilter } = {}) {
+  const lessonsFilterClause = industryFilter === null ? "&lessons.industry=is.null" : industryFilter ? `&lessons.industry=eq.${encodeURIComponent(industryFilter)}` : "";
+  const embedPrefix = industryFilter === null || industryFilter ? "lessons!inner" : "lessons";
   const rows = await restFetch(
     "lesson_progress?completed_at=is.null&last_opened_at=not.is.null&order=last_opened_at.desc" +
-      `&limit=${limit}` +
-      "&select=lesson_id,completed_paragraphs,completed_exercises,lessons(id,title,title_vi,level,situation,content,content_type,cover_image_url,cover_thumb_url,is_favorite,created_at,goal_id)"
+      `&limit=${limit}${lessonsFilterClause}` +
+      `&select=lesson_id,completed_paragraphs,completed_exercises,${embedPrefix}(id,title,title_vi,level,situation,content,content_type,cover_image_url,cover_thumb_url,is_favorite,created_at,goal_id)`
   );
   return (rows || [])
     .filter((r) => r.lessons)

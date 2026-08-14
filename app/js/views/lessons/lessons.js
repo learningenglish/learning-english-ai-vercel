@@ -15,7 +15,7 @@
 // trước khi có hệ thống Chuyên ngành, vẫn hiện — xem chính sách "goal_id khớp HOẶC null" trong
 // db.js::listAiGeneratedLessons()).
 import { navigate } from "../../router.js";
-import { listAiGeneratedLessons, listInProgressLessons } from "../../db.js";
+import { listAiGeneratedLessons, listInProgressLessons, getActiveLearningGoal } from "../../db.js";
 import { icon } from "../../icons.js";
 import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
@@ -173,11 +173,16 @@ export function renderLessons(mount, params) {
   async function load() {
     try {
       // Bộ giáo trình dùng chung mọi tài khoản (2026-08-10, Minh: "tất cả bài học đều hiển thị ở
-      // tất cả tài khoản" — không còn lọc theo Chuyên ngành/goal_id của riêng user hiện tại, xem
-      // ghi chú đầy đủ ở listAiGeneratedLessons() trong db.js).
+      // tất cả tài khoản" — không còn lọc theo goal_id/user_id CỦA RIÊNG user hiện tại, xem ghi
+      // chú đầy đủ ở listAiGeneratedLessons() trong db.js) — NHƯNG vẫn PHẢI lọc theo INDUSTRY
+      // (2026-08-14, Minh: "luồng Giao tiếp tổng quát không hiển thị bài qua luồng kế toán và
+      // ngược lại") — 2 chính sách khác nhau, không mâu thuẫn: dùng chung GIỮA các tài khoản
+      // CÙNG 1 chuyên ngành, nhưng KHÔNG trộn GIỮA các chuyên ngành khác nhau.
+      const goal = await getActiveLearningGoal().catch(() => null);
+      const industryFilter = goal ? (goal.occupation_profile?.is_general ? null : goal.raw_keywords) : undefined;
       const [lessons, inProgress] = await Promise.all([
-        listAiGeneratedLessons({ filter: contentType }),
-        listInProgressLessons({ limit: 6 }).catch(() => []),
+        listAiGeneratedLessons({ filter: contentType, industryFilter }),
+        listInProgressLessons({ limit: 6, industryFilter }).catch(() => []),
       ]);
       allLessons = lessons;
       renderContinueSection(inProgress);
