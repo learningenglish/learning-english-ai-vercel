@@ -185,6 +185,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // do publish-lesson.mjs giờ bắt buộc audio là 1 điều kiện xuất bản, lượt fetch này trong thực tế
   // chỉ là đọc lại URL ĐÃ CÓ SẴN trong DB (không phải sinh mới), nên độ trễ chặn cực ngắn, không
   // đáng kể với người dùng thật.
+  const audioEligible = !isNews && lesson.source === "ai_generated" && !!lesson.industry;
   let fullAudioPending = audioEligible;
   if (audioEligible) {
     getLessonFullAudioUrl(lesson.id, genderHints)
