@@ -151,7 +151,6 @@ async function fetchFromUnsplash(term) {
     // "urls" của Unsplash đã có sẵn nhiều cỡ dựng qua imgix (raw/full/regular/small/thumb) —
     // thumb ~w=200 (~5-10KB đo thật), small ~w=400 (~13-29KB đo thật, xem 039_lesson_cover_
     // storage.sql) — không cần app tự resize.
-    console.error("[cover] DEBUG photo.urls:", JSON.stringify(photo.urls));
     const detailUrl = photo.urls?.small || photo.urls?.regular;
     const thumbUrl = photo.urls?.thumb || detailUrl;
     return { thumbUrl, detailUrl, sourceUrl: baseUrlOf(photo.urls?.regular || detailUrl), source: "unsplash", license: "Unsplash License", attribution: photo.user?.name || null };
@@ -194,6 +193,11 @@ async function getCoverFromCache(key) {
     const rows = await r.json();
     const row = rows?.[0];
     if (!row || row.status === "rejected") return null;
+    // 2026-08-14 — cache CŨ (trước migration 039) không có "thumb_url" (cột mới thêm), coi là
+    // MISS thay vì trả "thumb_url: null" (sẽ khiến search_lesson_cover_image fallback dùng
+    // CHUNG 1 cỡ ảnh lớn cho cả thumb lẫn detail, mất hẳn lợi ích giảm băng thông) — search lại
+    // 1 lần cho ĐÚNG title đó là đủ để cache tự lành, không cần migrate dữ liệu cũ thủ công.
+    if (!row.thumb_url) return null;
     return row;
   } catch (e) {
     console.error("[cover] getCoverFromCache error:", e);
