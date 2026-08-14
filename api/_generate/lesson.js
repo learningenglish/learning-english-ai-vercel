@@ -1086,8 +1086,15 @@ function normalizePhraseWord(w) {
 // SỬA: chỉ coi dấu nháy đơn là 1 phần của từ khi nó đứng NGAY GIỮA 2 ký tự chữ/số (đúng vị trí
 // duy nhất dấu nháy xuất hiện trong từ tiếng Anh thật: "don't", "it's"), không phải ở đầu/cuối 1
 // khối ký tự liên tiếp.
+// BUG THẬT (2026-08-14, bài #a-B2 — câu chứa "$10,000"/"$1,000" bị MẤT TRẮNG khỏi phrase_groups,
+// tốn tiền retry vô ích vì lỗi này KHÔNG tự khỏi bằng cách gọi lại): regex CŨ không có số/dấu
+// phẩy trong nhóm ký tự của từ, nên "$10,000" bị tách thành 2 token rời "10" + "000" (dấu $ và
+// dấu phẩy bị coi là dấu câu, cắt đứt số) — trong khi AI hợp lý viết "words" gồm "$10,000" NGUYÊN
+// VẸN 1 phần tử (đúng cách số tiền xuất hiện tự nhiên trong câu) — 2 bên không bao giờ khớp được.
+// Tham khảo file v6 (Minh cung cấp) — thêm hẳn 1 mẫu SỐ (có thể có "$" trước, dấu phẩy phân
+// nhóm nghìn, phần thập phân) làm lựa chọn ĐẦU TIÊN trong regex, thử trước mẫu chữ cái.
 function sentenceWordTokens(text) {
-  return ((text || "").match(/[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
+  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ][A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
 }
 // BUG THẬT (2026-08-13, Minh xem trực tiếp bài #7b2 câu 13 — tooltip "organizations" hiện level
 // "B2" đồng loạt cho MỌI từ trong câu, không phân biệt từng từ): hàm này TRƯỚC ĐÂY chỉ so khớp
@@ -1761,6 +1768,133 @@ function mergeStrandedPreposition(phraseGroups) {
   return out;
 }
 
+// TỪ ĐIỂN CỤM ĐỘNG TỪ CỐ ĐỊNH (2026-08-14, Minh: "đối chiếu từ điển thay vì soạn thêm quy tắc
+// prompt" — sau khi phát hiện "run out of"/"look for" bị chẻ vụn dù đã có ví dụ trong prompt).
+// GỘP BẰNG CODE, đối chiếu DANH SÁCH TĨNH — miễn phí tuyệt đối, KHÔNG gọi thêm AI, và CHẮC CHẮN
+// hơn hẳn hy vọng model tuân thủ ví dụ trong prompt mỗi lượt. Mỗi entry là 1 mảng CÁC DẠNG CHIA
+// thật của từ đầu tiên (bao gồm bất quy tắc) + phần đuôi cố định — khớp ĐÚNG THỨ TỰ liên tiếp
+// trong "words" (không phân biệt hoa/thường). Mở rộng danh sách này khi phát hiện thêm cụm bị
+// chẻ sai, KHÔNG cần sửa gì khác.
+const KNOWN_MULTI_WORD_VERBS = [
+  // Cụm động từ-giới từ 3 từ (phrasal-prepositional) — hay bị chẻ vụn nhất
+  [["run", "runs", "running", "ran"], "out", "of"],
+  [["look", "looks", "looking", "looked"], "forward", "to"],
+  [["put", "puts", "putting"], "up", "with"],
+  [["get", "gets", "getting", "got", "gotten"], "away", "with"],
+  [["come", "comes", "coming", "came"], "up", "with"],
+  [["catch", "catches", "catching", "caught"], "up", "with"],
+  [["look", "looks", "looking", "looked"], "down", "on"],
+  [["do", "does", "doing", "did", "done"], "away", "with"],
+  [["cut", "cuts", "cutting"], "down", "on"],
+  [["keep", "keeps", "keeping", "kept"], "up", "with"],
+  [["make", "makes", "making", "made"], "up", "for"],
+  [["take", "takes", "taking", "took", "taken"], "part", "in"],
+  [["get", "gets", "getting", "got", "gotten"], "rid", "of"],
+  // Cụm động từ-giới từ 2 từ (prepositional verb — nghĩa KHÔNG suy ra được từ 2 từ cộng lại)
+  [["look", "looks", "looking", "looked"], "for"],
+  [["look", "looks", "looking", "looked"], "after"],
+  [["depend", "depends", "depending", "depended"], "on"],
+  [["rely", "relies", "relying", "relied"], "on"],
+  [["belong", "belongs", "belonging", "belonged"], "to"],
+  [["listen", "listens", "listening", "listened"], "to"],
+  [["wait", "waits", "waiting", "waited"], "for"],
+  [["pay", "pays", "paying", "paid"], "for"],
+  [["talk", "talks", "talking", "talked"], "about"],
+  [["think", "thinks", "thinking", "thought"], "about"],
+  [["apply", "applies", "applying", "applied"], "to"],
+  [["refer", "refers", "referring", "referred"], "to"],
+  [["lead", "leads", "leading", "led"], "to"],
+  [["result", "results", "resulting", "resulted"], "in"],
+  [["rule", "rules", "ruling", "ruled"], "out"],
+  [["find", "finds", "finding", "found"], "out"],
+  [["point", "points", "pointing", "pointed"], "out"],
+  [["carry", "carries", "carrying", "carried"], "on"],
+  [["turn", "turns", "turning", "turned"], "down"],
+  [["give", "gives", "giving", "gave", "given"], "up"],
+  [["set", "sets", "setting"], "up"],
+  [["call", "calls", "calling", "called"], "off"],
+  [["break", "breaks", "breaking", "broke", "broken"], "down"],
+  [["break", "breaks", "breaking", "broke", "broken"], "out"],
+  [["take", "takes", "taking", "took", "taken"], "over"],
+];
+
+function mergeKnownMultiWordVerbs(phraseGroups) {
+  if (!Array.isArray(phraseGroups)) return phraseGroups;
+  // Làm phẳng thành dãy từ đơn kèm nhóm gốc để dò cụm liên tiếp xuyên NHÓM (AI có thể đã lỡ chẻ
+  // "run"/"out of" thành 2 nhóm khác nhau, không chỉ 2 từ trong CÙNG 1 nhóm).
+  const flat = [];
+  for (const g of phraseGroups) {
+    const words = Array.isArray(g?.words) ? g.words : [];
+    for (const w of words) flat.push({ word: w, group: g });
+  }
+  const used = new Array(flat.length).fill(false);
+  const matches = []; // {start, end} theo chỉ số flat
+  for (let i = 0; i < flat.length; i++) {
+    for (const entry of KNOWN_MULTI_WORD_VERBS) {
+      const firstForms = entry[0];
+      if (!firstForms.includes(flat[i].word.toLowerCase())) continue;
+      let ok = true;
+      for (let k = 1; k < entry.length; k++) {
+        const tok = flat[i + k];
+        if (!tok || tok.word.toLowerCase() !== entry[k]) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        matches.push({ start: i, end: i + entry.length - 1 });
+        break;
+      }
+    }
+  }
+  if (!matches.length) return phraseGroups;
+  // Ghép lại thành nhóm mới cho các đoạn TRÙNG với 1 cụm đã biết — giữ nguyên mọi nhóm khác.
+  const out = [];
+  let flatIdx = 0;
+  for (const g of phraseGroups) {
+    const words = Array.isArray(g?.words) ? g.words : [];
+    if (!words.length) continue;
+    const groupStart = flatIdx;
+    const groupEnd = flatIdx + words.length - 1;
+    const match = matches.find((m) => m.start >= groupStart && m.start <= groupEnd);
+    if (match && !used[match.start]) {
+      // Thu thập TOÀN BỘ từ trong khoảng [match.start, match.end], có thể trải qua nhiều nhóm gốc.
+      const spanWords = [];
+      const wordMeanings = {};
+      const wordTypes = {};
+      const wordLevels = {};
+      const meaningParts = [];
+      let lastGroup = null;
+      for (let idx = match.start; idx <= match.end; idx++) {
+        used[idx] = true;
+        const { word, group: srcGroup } = flat[idx];
+        spanWords.push(word);
+        Object.assign(wordMeanings, srcGroup?.word_meanings);
+        Object.assign(wordTypes, srcGroup?.word_types);
+        Object.assign(wordLevels, srcGroup?.word_levels);
+        if (srcGroup !== lastGroup) {
+          meaningParts.push(srcGroup?.meaning || word);
+          lastGroup = srcGroup;
+        }
+      }
+      out.push({
+        words: spanWords,
+        meaning: meaningParts.join(" ").trim(),
+        level: flat[match.start].group?.level,
+        type: "Cụm động từ",
+        word_meanings: wordMeanings,
+        word_types: wordTypes,
+        word_levels: wordLevels,
+      });
+    } else if (!used[groupStart]) {
+      out.push(g);
+    }
+    // Nếu nhóm gốc đã bị "used" (thuộc 1 match đã xử lý ở lượt trước), bỏ qua hẳn — tránh lặp.
+    flatIdx += words.length;
+  }
+  return out;
+}
+
 export async function analyze_lesson_phrase_groups(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
@@ -1795,7 +1929,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
     const match = result.items.find((x) => x.index === 0) || result.items[0];
     content[origIdx] = {
       ...content[origIdx],
-      phrase_groups: mergeStrandedPreposition(mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(match.phrase_groups))),
+      phrase_groups: mergeStrandedPreposition(mergeFragmentedNounPhrases(mergeKnownMultiWordVerbs(splitLeadingSubjectPronoun(match.phrase_groups)))),
     };
     const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
       method: "PATCH",
@@ -1816,7 +1950,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // tự "dọn" lại bài cũ mỗi khi được gọi lại, không cần phân biệt bài mới/cũ.
   for (const item of content) {
     if (Array.isArray(item.phrase_groups)) {
-      item.phrase_groups = mergeStrandedPreposition(mergeFragmentedNounPhrases(splitLeadingSubjectPronoun(item.phrase_groups)));
+      item.phrase_groups = mergeStrandedPreposition(mergeFragmentedNounPhrases(mergeKnownMultiWordVerbs(splitLeadingSubjectPronoun(item.phrase_groups))));
     }
   }
 
