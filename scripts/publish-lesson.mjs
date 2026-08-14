@@ -601,6 +601,11 @@ async function fetchOccupationProfile(token, rawKeywordsMatch) {
 async function ensureSkinForLevel(token, occupationProfile, level, slotCount) {
   const totalChunks = Math.ceil(slotCount / SKIN_CHUNK_SIZE);
   const chunksByIndex = {};
+  // 2026-08-14 — Minh: "tôi không thấy phục hồi phần story" — trước đây CHỈ giữ "frames", VỨT
+  // hẳn "story_chains" (nhóm slot liên tiếp thành 1 mạch chuyện chống trùng lặp, xem
+  // LEVEL_SYSTEM_PROMPT trong skin.js) dù action đã trả về sẵn. Giữ lại + IN RA để kiểm tra được
+  // thật (không suy đoán) trước khi chi tiền sinh bài — xem printStoryChains() bên dưới.
+  const storyChainsByChunk = {};
   let skinId = null;
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     console.log(`  Đang chuẩn bị da lĩnh vực: level ${level}, chunk ${chunkIndex + 1}/${totalChunks}...`);
@@ -612,9 +617,26 @@ async function ensureSkinForLevel(token, occupationProfile, level, slotCount) {
     const content = JSON.parse(parsed.content);
     skinId = content.skin_id;
     chunksByIndex[chunkIndex] = content.frames;
+    storyChainsByChunk[chunkIndex] = content.story_chains || [];
     console.log(`  ${content.from_cache ? "(đã có sẵn trong cache)" : "(vừa sinh mới)"}`);
   }
-  return { chunksByIndex, skinId };
+  return { chunksByIndex, storyChainsByChunk, skinId };
+}
+
+// In ra TOÀN BỘ story_chains để soát bằng mắt trước khi chi tiền sinh bài thật — đúng tinh thần
+// "không suy đoán, xác nhận thật" đã áp dụng xuyên suốt (Minh bắt lỗi trùng lặp lần trước vì
+// KHÔNG có bước soát này). Không tốn thêm gì (dữ liệu đã có sẵn từ ensure_skin_chunk).
+function printStoryChains(level, storyChainsByChunk) {
+  console.log(`\n--- Mạch chuyện (story_chains) đã sinh cho level ${level} ---`);
+  for (const [chunkIndex, chains] of Object.entries(storyChainsByChunk)) {
+    if (!chains.length) {
+      console.log(`  Chunk ${chunkIndex}: KHÔNG có story_chains (bất thường, cần kiểm tra tay).`);
+      continue;
+    }
+    for (const c of chains) {
+      console.log(`  Chunk ${chunkIndex}, vị trí ${c.start_position}-${c.end_position}: "${c.character}" tại "${c.setting}" — ${c.arc}`);
+    }
+  }
 }
 
 async function buildSpineSamples(token, level, { industry, field, rawKeywordsMatch } = {}) {
@@ -623,7 +645,8 @@ async function buildSpineSamples(token, level, { industry, field, rawKeywordsMat
   if (!Array.isArray(slots)) throw new Error(`Không tìm thấy level "${level}" trong curriculum_spine.json`);
 
   const occupationProfile = await fetchOccupationProfile(token, rawKeywordsMatch);
-  const { chunksByIndex, skinId } = await ensureSkinForLevel(token, occupationProfile, level, slots.length);
+  const { chunksByIndex, storyChainsByChunk, skinId } = await ensureSkinForLevel(token, occupationProfile, level, slots.length);
+  printStoryChains(level, storyChainsByChunk);
 
   const samples = [];
   for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
@@ -657,10 +680,23 @@ async function buildSpineSamples(token, level, { industry, field, rawKeywordsMat
 }
 
 // Đợt 1 (Minh chọn "A1 trước, kiểm tra xong mới sinh A2"): 89 slot A1, chuyên ngành Kế toán.
+// SLOT_LIMIT (biến môi trường, TÙY CHỌN) — 2026-08-14, sau bài học "chạy 89 bài rồi mới phát
+// hiện lỗi hệ thống": cho phép soát chủ đề+story_chains của 1 CHUNK NHỎ (vd 20 slot đầu) trước
+// khi cam kết chạy hết level, mà không cần sửa code mỗi lần muốn test nhỏ. DRY_RUN=1 dừng
+// NGAY SAU khi in chủ đề/story_chains, KHÔNG gọi publishBatch (không tốn tiền sinh bài thật) —
+// dùng khi chỉ cần soát bằng mắt trước.
 async function main() {
   const token = await login("kimchinamvn+studentpro1@gmail.com", "StudentPro2026!");
-  const samples = await buildSpineSamples(token, "A1", { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
+  let samples = await buildSpineSamples(token, "A1", { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
+  const slotLimit = Number(process.env.SLOT_LIMIT) || null;
+  if (slotLimit) samples = samples.slice(0, slotLimit);
   console.log(`\nChuẩn bị sinh ${samples.length} bài (level A1, Kế toán) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
+  console.log("\n--- Danh sách chủ đề (soát trùng lặp bằng mắt) ---");
+  samples.forEach((s) => console.log(`  ${s.tag}: ${s.topic || "(không có topic, generate_lesson tự chọn)"}`));
+  if (process.env.DRY_RUN === "1") {
+    console.log("\nDRY_RUN=1 — dừng tại đây, KHÔNG sinh bài thật.");
+    return;
+  }
   await publishBatch(samples);
 }
 
