@@ -297,11 +297,20 @@ giữ chung 1 VP với động từ chính, nhưng KHÔNG kéo tân ngữ của 
 PHÂN BIỆT BẮT BUỘC — bổ ngữ động từ (giữ trong VP) khác TÂN NGỮ DANH TỪ (tách riêng thành NP):
 "want to learn" (VP) + "English" (NP tân ngữ) — KHÔNG viết chung "want to learn English" = 1 VP.
 
-III. Giới từ BẮT BUỘC đi kèm động từ để ĐỦ NGHĨA (depend on, belong to, listen to, wait for, look
-at, talk about, think about, pay for...): gộp CHUNG với động từ thành 1 "Cụm động từ", tân ngữ
-theo sau tách riêng thành "Cụm danh từ":
+III. Giới từ/tiểu từ BẮT BUỘC đi kèm động từ để ĐỦ NGHĨA (2-3 từ, nghĩa KHÔNG suy ra được từ nghĩa
+riêng từng từ cộng lại — phrasal/prepositional verb thật): depend on, belong to, listen to, wait
+for, look at, look for, talk about, think about, pay for, look after, give up, carry on...) — gộp
+CHUNG cả cụm (kể cả 3 từ) thành 1 "Cụm động từ" DUY NHẤT, tân ngữ theo sau tách riêng "Cụm danh từ":
 ✅ {"words":["listens","to"],"type":"Cụm động từ"} + {"words":["music"],"type":"Cụm danh từ"}
-✅ {"words":["depend","on"],"type":"Cụm động từ"} + {"words":["him"],"type":"Cụm danh từ"}
+✅ {"words":["look","for"],"type":"Cụm động từ"} + {"words":["errors"],"type":"Cụm danh từ"}
+BẮT BUỘC với cụm động từ-giới từ 3 TỪ (run out of, look forward to, put up with, get away with,
+come up with, catch up with, look down on, do away with...) — GIỮ NGUYÊN CẢ 3 TỪ trong 1 "Cụm
+động từ", KHÔNG tách rời, và KHÔNG gộp thêm động từ catenative đứng TRƯỚC nó (avoid, want, decide,
+enjoy, keep, finish...) vào cùng nhóm — động từ catenative đó luôn là 1 "Cụm động từ" RIÊNG:
+❌ {"words":["avoid","running","out","of","money"],"type":"Cụm động từ"} (gộp cả câu, tách rời cụm
+   3-từ "running out of" — SAI, đây là lỗi thật đã xảy ra)
+✅ {"words":["avoid"],"type":"Cụm động từ"} + {"words":["running","out","of"],"type":"Cụm động từ"}
+   + {"words":["money"],"type":"Cụm danh từ"}
 Giới từ TÙY CHỌN (chỉ nơi/thời gian/cách thức, KHÔNG bắt buộc để động từ đủ nghĩa — work at
 school, study in Germany, eat at a restaurant, live in Hanoi): tách hẳn PP riêng khỏi VP, KHÔNG
 gộp vào động từ — tự hỏi "động từ này có CẦN đúng giới từ này để đủ nghĩa không?": CÓ → gộp VP
