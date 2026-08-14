@@ -222,6 +222,72 @@ async function ensureCoverImageComplete(token, lessonId, title, contentType, use
   return { ok: false, attempts: maxAttempts };
 }
 
+// BUG THẬT (2026-08-14, Minh real-device: "bài hội thoại vẫn bị lỗi nhân vật. nhân vật nữ
+// nhưng giọng nam") — root cause: stageAudio() (bên dưới) trước đây LUÔN truyền gender_hints
+// RỖNG "[]" cho MỌI bài kể cả hội thoại, khiến server (api/_generate/audio.js) không có căn cứ
+// gán đúng giọng theo TỪNG nhân vật — không phải lỗi AI/audio, mà lỗi Ở CHÍNH SCRIPT NÀY chưa
+// tính gender_hints thật. Port NGUYÊN VẸN computeGenderHints() từ app/js/tts.js (client dùng cho
+// Web Speech) để dùng CHUNG 1 logic — ưu tiên "characters" (AI tự khai báo giới tính lúc sinh
+// bài), rồi đoán theo tên phổ biến, cuối cùng gán cân bằng nam/nữ cho tên lạ/vai trò chung
+// chung — ĐẢM BẢO nhất quán, không "sinh hàng loạt sẽ bị lỗi ngược lại" như Minh lo (nếu chỉ vá
+// tạm 1 chiều nam/nữ mà không sửa đúng logic gốc).
+const FEMALE_NAMES = new Set([
+  "anna", "mary", "emma", "sarah", "lisa", "laura", "emily", "jessica", "jennifer", "amanda",
+  "michelle", "kelly", "nancy", "susan", "karen", "linda", "patricia", "barbara", "elizabeth",
+  "maria", "helen", "sandra", "donna", "carol", "ruth", "sharon", "cynthia", "kathleen", "amy",
+  "angela", "brenda", "pamela", "nicole", "samantha", "katherine", "christine", "debra", "rachel",
+  "catherine", "carolyn", "janet", "virginia", "olivia", "sophia", "ava", "isabella", "mia",
+  "charlotte", "amelia", "harper", "evelyn", "abigail", "rose", "grace", "chloe", "victoria",
+  "hannah", "alice", "julia", "natalie", "diana", "claire", "megan", "waitress", "mom", "mother",
+]);
+const MALE_NAMES = new Set([
+  "steve", "tim", "john", "james", "robert", "michael", "william", "david", "richard", "joseph",
+  "thomas", "charles", "christopher", "daniel", "matthew", "anthony", "mark", "donald", "paul",
+  "george", "kenneth", "andrew", "joshua", "kevin", "brian", "edward", "ronald", "timothy",
+  "jason", "jeffrey", "ryan", "jacob", "gary", "nicholas", "eric", "jonathan", "stephen", "larry",
+  "justin", "scott", "brandon", "benjamin", "samuel", "frank", "raymond", "alexander", "patrick",
+  "jack", "dennis", "jerry", "tyler", "aaron", "peter", "henry", "adam", "nathan", "waiter",
+  "dad", "father",
+]);
+function guessGenderFromName(name) {
+  const n = (name || "").toLowerCase().trim();
+  if (FEMALE_NAMES.has(n)) return "female";
+  if (MALE_NAMES.has(n)) return "male";
+  return null;
+}
+function computeGenderHints(content, characters) {
+  const items = content || [];
+  const hasSpeakers = items.some((item) => item?.speaker);
+  if (!hasSpeakers) return items.map(() => "male"); // bài đọc không cần giọng theo nhân vật, xem ensureAudioComplete()
+
+  const declaredGenderMap = new Map();
+  (Array.isArray(characters) ? characters : []).forEach((c) => {
+    if (c?.name && (c.gender === "male" || c.gender === "female")) declaredGenderMap.set(c.name, c.gender);
+  });
+
+  const speakerGenderMap = new Map();
+  let maleCount = 0;
+  let femaleCount = 0;
+  function assignBalanced() {
+    if (maleCount <= femaleCount) {
+      maleCount += 1;
+      return "male";
+    }
+    femaleCount += 1;
+    return "female";
+  }
+  return items.map((item) => {
+    if (!item?.speaker) return assignBalanced();
+    if (speakerGenderMap.has(item.speaker)) return speakerGenderMap.get(item.speaker);
+    let g = declaredGenderMap.get(item.speaker) || guessGenderFromName(item.speaker);
+    if (g === "male") maleCount += 1;
+    else if (g === "female") femaleCount += 1;
+    else g = assignBalanced();
+    speakerGenderMap.set(item.speaker, g);
+    return g;
+  });
+}
+
 async function ensureAudioComplete(token, lessonId, genderHints, { maxAttempts = 4 } = {}) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const res = await callChat(token, "generate_lesson_full_audio", { lesson_id: lessonId, gender_hints: genderHints || [] });
@@ -272,6 +338,10 @@ async function stageContent(token, samples) {
       lesson.contentType = data.content_type;
       lesson.grammar = data.grammar || [];
       lesson.sentencePatterns = data.sentence_patterns || [];
+      // Cần cho STAGE 5 (audio) tính đúng gender_hints cho hội thoại — xem computeGenderHints()
+      // bên dưới, PHẢI khớp lesson.characters đã sinh, không phải mảng rỗng.
+      lesson.content = data.content || [];
+      lesson.characters = data.characters || [];
       lesson.totalWords = (data.content || []).reduce((sum, it) => sum + (it.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
       lesson.ok = true;
 
@@ -338,9 +408,10 @@ async function stageAudio(token, lessons) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue;
     try {
-      // đơn giản hoá — bài đọc không cần giọng theo nhân vật; hội thoại thật cần genderHints tính
-      // từ characters, xem computeGenderHints (app/js/views/lessons/lesson.js) nếu dùng cho hội thoại.
-      const genderHints = [];
+      // 2026-08-14 — SỬA bug thật "nhân vật nữ nhưng giọng nam": trước đây luôn truyền mảng
+      // RỖNG, giờ tính đúng từ lesson.content/lesson.characters (đã capture ở stageContent()),
+      // xem computeGenderHints() ở trên.
+      const genderHints = computeGenderHints(lesson.content, lesson.characters);
       lesson.audio = await ensureAudioComplete(token, lesson.lessonId, genderHints);
       console.log(`  ${lesson.tag}: audio — ${lesson.audio.ok ? "OK" : "CHƯA ĐỦ"} (${JSON.stringify(lesson.audio)})`);
     } catch (err) {
