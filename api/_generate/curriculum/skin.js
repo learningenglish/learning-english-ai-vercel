@@ -287,6 +287,18 @@ ngoài thật tự nhiên) để đa dạng — dùng "interlocutors" của châ
 và nhà cung cấp, Ngân hàng...), XOAY VÒNG qua các chuỗi để đa dạng CHỨC VỤ/VAI TRÒ, không lặp lại
 "đồng nghiệp nói với đồng nghiệp" ở mọi chuỗi.
 
+RÀNG BUỘC CỨNG VỀ ĐA DẠNG NGƯỜI ĐỐI THOẠI (2026-08-15, Minh bắt lỗi thật: lượt sinh trước đó gần
+như MỌI chuỗi hội thoại đều chỉ có "đồng nghiệp" nói chuyện chung chung, dù rule ở trên đã yêu cầu
+đa dạng — chỉ NÊU rule suông không đủ, phải có tiêu chí ĐẾM ĐƯỢC): trong TOÀN BỘ các chuỗi có ít
+nhất 1 vị trí "[dialogue]" (xem loại bài trong mục THỨ TỰ BÀI HỌC), tính trên các chuỗi đó:
+- TỐI ĐA 60% được phép có counterpart_role thuộc nhóm "đồng nghiệp" (đồng nghiệp/đồng nghiệp phòng
+  ban) — nghĩa là ÍT NHẤT 40% (làm tròn lên) phải dùng vai KHÁC: khách hàng, kiểm toán viên, cấp
+  trên/ban giám đốc, cơ quan thuế, ngân hàng, đối tác, nhà cung cấp... tuỳ đúng "interlocutors".
+- Nếu chuỗi hội thoại trong chunk này có từ 4 chuỗi trở lên: BẮT BUỘC ít nhất 1 chuỗi có người đối
+  thoại là NGƯỜI NƯỚC NGOÀI (đặt tên nước ngoài thật tự nhiên, vd John, Sarah, Tanaka, Kim...) —
+  ghi rõ "(nước ngoài)" ngay trong "counterpart_role" của chuỗi đó, vd "khách hàng (nước ngoài)".
+Nếu chunk này KHÔNG có chuỗi hội thoại nào (toàn bài đọc), bỏ qua 2 điều trên.
+
 BƯỚC 1 — DỰNG "story_chains" (khung câu chuyện) TRƯỚC, cho TỪNG chuỗi: chia danh sách vị trí
 thành các chuỗi VỊ TRÍ LIÊN TIẾP (thường 2-3 vị trí, có thể dao động, không bắt buộc bằng nhau —
 dù cùng khung hay khác khung đều gộp được, mỗi khung trong chuỗi vẫn phải đúng chức năng giao
@@ -297,6 +309,10 @@ tiếp riêng của nó, KHÔNG đổi khung để hợp câu chuyện). Với M
   danh sách này, có thể đặt tên khác nếu hợp lý hơn.
 - "setting": bối cảnh/không gian cụ thể (địa điểm + tình huống nền, vd "quầy pha chế của quán cà
   phê vào ca sáng") — PHẢI GIỮ NGUYÊN, không đổi, ở MỌI vị trí trong chuỗi đó.
+- "counterpart_role": vai trò người đối thoại CÙNG chuỗi (vd "đồng nghiệp", "khách hàng", "kiểm
+  toán viên", "cấp trên/ban giám đốc", "ngân hàng"...) — nếu là người nước ngoài, ghi thêm "(nước
+  ngoài)" (vd "khách hàng (nước ngoài)"). Bài đọc thuần không có người đối thoại thì để chuỗi rỗng
+  "" — PHẢI tuân thủ đúng RÀNG BUỘC CỨNG VỀ ĐA DẠNG NGƯỜI ĐỐI THOẠI ở trên.
 - "arc": 1-2 câu mô tả mạch diễn biến CỦA CẢ CHUỖI — vị trí đầu MỞ ĐẦU câu chuyện, vị trí giữa
   (nếu có) PHÁT TRIỂN TIẾP NỐI TRỰC TIẾP (không phải chuyện mới), vị trí cuối có KẾT QUẢ/KẾT
   THÚC rõ ràng. Đây PHẢI là 1 CÂU CHUYỆN DUY NHẤT chảy xuyên suốt cả chuỗi, KHÔNG PHẢI 2-3 câu
@@ -332,6 +348,7 @@ markdown code fence:
       "end_position": <số thứ tự vị trí cuối chuỗi>,
       "character": "<nhân vật chính, cụ thể>",
       "setting": "<bối cảnh/không gian, cụ thể>",
+      "counterpart_role": "<vai trò người đối thoại, hoặc rỗng nếu bài đọc thuần>",
       "arc": "<mạch diễn biến mở đầu -> phát triển -> kết thúc>"
     }
   ],
@@ -373,16 +390,54 @@ function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts
   // level này, dùng để model (a) biết vị trí nào liền kề vị trí nào mà nhóm chủ đề lớn, (b)
   // biết đúng thứ tự phải xếp mảng biến thể của mỗi frame_key (xem cuối LEVEL_SYSTEM_PROMPT).
   if (spineSlots?.length) {
-    lines.push("", `THỨ TỰ BÀI HỌC của cấp độ ${level} (vị trí | frame_key | tên khung | chức năng giao tiếp):`, "");
+    lines.push("", `THỨ TỰ BÀI HỌC của cấp độ ${level} (vị trí | loại bài | frame_key | tên khung | chức năng giao tiếp):`, "");
     spineSlots.forEach((s, i) => {
-      lines.push(`${i + 1}. ${s.situation_frame_key} | ${s.situation_frame} | ${s.function_name_vi}`);
+      lines.push(`${i + 1}. [${s.content_type}] ${s.situation_frame_key} | ${s.situation_frame} | ${s.function_name_vi}`);
     });
   }
   lines.push("", "Sinh chủ đề cho TẤT CẢ frame_key liệt kê ở trên, đúng khuôn JSON đã mô tả trong system prompt.");
   return lines.join("\n");
 }
 
-function validateLevelPayload(level, data, frames, requiredCounts) {
+function isColleagueRole(role) {
+  const r = String(role || "").trim().toLowerCase();
+  return !r || r.includes("đồng nghiệp");
+}
+
+// Đếm được bằng code (2026-08-15) — thay cho chỉ NÊU rule đa dạng suông trong prompt, vốn đã
+// không đủ (xem RÀNG BUỘC CỨNG VỀ ĐA DẠNG NGƯỜI ĐỐI THOẠI trong LEVEL_SYSTEM_PROMPT): 1 chuỗi
+// được coi là "chuỗi hội thoại" nếu có ÍT NHẤT 1 vị trí content_type "dialogue" trong phạm vi
+// start_position..end_position của nó (position 1-based, khớp thứ tự spineSlots truyền vào).
+function validateCounterpartDiversity(chains, spineSlots) {
+  if (!spineSlots?.length) return [];
+  const dialogueChains = chains.filter((c) => {
+    const start = Number(c?.start_position);
+    const end = Number(c?.end_position) || start;
+    if (!start) return false;
+    for (let pos = start; pos <= end; pos++) {
+      if (spineSlots[pos - 1]?.content_type === "dialogue") return true;
+    }
+    return false;
+  });
+  if (!dialogueChains.length) return [];
+
+  const problems = [];
+  const colleagueCount = dialogueChains.filter((c) => isColleagueRole(c.counterpart_role)).length;
+  const nonColleagueCount = dialogueChains.length - colleagueCount;
+  const minNonColleague = Math.ceil(dialogueChains.length * 0.4);
+  if (nonColleagueCount < minNonColleague) {
+    problems.push(
+      `đa dạng người đối thoại chưa đủ: ${nonColleagueCount}/${dialogueChains.length} chuỗi hội thoại dùng vai khác "đồng nghiệp", cần tối thiểu ${minNonColleague}`
+    );
+  }
+  if (dialogueChains.length >= 4) {
+    const hasForeign = dialogueChains.some((c) => String(c.counterpart_role || "").toLowerCase().includes("nước ngoài"));
+    if (!hasForeign) problems.push('thiếu chuỗi hội thoại có người đối thoại "(nước ngoài)" (bắt buộc khi có ≥4 chuỗi hội thoại)');
+  }
+  return problems;
+}
+
+function validateLevelPayload(level, data, frames, requiredCounts, spineSlots) {
   const problems = [];
   if (!data || data.level !== level) problems.push(`level trả về không khớp (kỳ vọng ${level})`);
   const frameKeys = frames.map((f) => f.key);
@@ -416,6 +471,7 @@ function validateLevelPayload(level, data, frames, requiredCounts) {
   } else {
     const badChain = chains.find((c) => !c || !String(c.character || "").trim() || !String(c.setting || "").trim() || !String(c.arc || "").trim());
     if (badChain) problems.push("story_chains có mục thiếu character/setting/arc");
+    problems.push(...validateCounterpartDiversity(chains, spineSlots));
   }
   return problems;
 }
@@ -492,7 +548,7 @@ export async function generateSkinChunk({ occupationProfile, level, spineLevelSl
       lastProblems = ["gọi API hoặc parse JSON thất bại"];
       continue;
     }
-    const problems = validateLevelPayload(level, result.data, frames, requiredCounts);
+    const problems = validateLevelPayload(level, result.data, frames, requiredCounts, chunkSlots);
     if (!problems.length) {
       return {
         ok: true,
