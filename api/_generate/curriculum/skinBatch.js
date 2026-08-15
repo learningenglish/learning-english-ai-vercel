@@ -46,11 +46,16 @@ async function getOrCreateIndustrySkin(occupationProfile) {
   return retry?.[0] || null;
 }
 
-// Đọc cache CHUNK cụ thể nếu có, CHỈ gọi AI khi thiếu — lưu lại vĩnh viễn. Cấu trúc lưu:
-// levels[level].chunks[chunkIndex] = {frames, story_chains} — ĐÚNG hệt bản archive.
-async function ensureSkinChunkCached(skinRow, level, occupationProfile, chunkIndex, spineLevelSlots) {
+// "force" (2026-08-14) — cần thiết vì industry_skins cache VĨNH VIỄN: sau khi sửa
+// LEVEL_SYSTEM_PROMPT (vd thêm dàn nhân vật cố định), chunk ĐÃ sinh trước đó vẫn còn nguyên
+// TOPIC/STORY_CHAINS CŨ (không theo rule mới) nếu không có cách bỏ qua cache — đúng lớp vấn đề
+// đã gặp và sửa ở generate_lesson_full_audio (audio.js), áp dụng lại y hệt ở đây.
+// Đọc cache CHUNK cụ thể nếu có, CHỈ gọi AI khi thiếu HOẶC force=true — lưu lại vĩnh viễn (ghi
+// đè nếu force). Cấu trúc lưu: levels[level].chunks[chunkIndex] = {frames, story_chains} — ĐÚNG
+// hệt bản archive.
+async function ensureSkinChunkCached(skinRow, level, occupationProfile, chunkIndex, spineLevelSlots, force) {
   const stored = skinRow.levels?.[level]?.chunks?.[chunkIndex];
-  if (stored) return { ok: true, fromCache: true, frames: stored.frames, storyChains: stored.story_chains || [] };
+  if (stored && !force) return { ok: true, fromCache: true, frames: stored.frames, storyChains: stored.story_chains || [] };
 
   const result = await generateSkinChunk({
     occupationProfile,
@@ -98,7 +103,7 @@ export async function ensure_skin_chunk(data, ctx) {
   const spineLevelSlots = spineLevels[level];
   if (!Array.isArray(spineLevelSlots)) return { error: `Level "${level}" không tồn tại trong curriculum_spine.json.`, status: 400 };
 
-  const result = await ensureSkinChunkCached(skinRow, level, occupationProfile, chunkIndex, spineLevelSlots);
+  const result = await ensureSkinChunkCached(skinRow, level, occupationProfile, chunkIndex, spineLevelSlots, data.force === true);
   if (!result.ok) return { error: "Sinh da lĩnh vực cho chunk này thất bại: " + JSON.stringify(result.problems), status: 502 };
 
   return {

@@ -609,7 +609,16 @@ async function ensureSkinForLevel(token, occupationProfile, level, slotCount) {
   let skinId = null;
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     console.log(`  Đang chuẩn bị da lĩnh vực: level ${level}, chunk ${chunkIndex + 1}/${totalChunks}...`);
-    const res = await callChat(token, "ensure_skin_chunk", { occupation_profile: occupationProfile, level, chunk_index: chunkIndex });
+    // FORCE_SKIN=1 — bỏ qua cache industry_skins, sinh lại chunk (cần sau khi sửa
+    // LEVEL_SYSTEM_PROMPT, ví dụ thêm dàn nhân vật cố định 2026-08-14, để chunk cũ không còn
+    // giữ dữ liệu sinh theo prompt cũ). Mặc định KHÔNG bật (tốn tiền sinh lại nếu bật tràn lan).
+    const forceSkin = process.env.FORCE_SKIN === "1";
+    const res = await callChat(token, "ensure_skin_chunk", {
+      occupation_profile: occupationProfile,
+      level,
+      chunk_index: chunkIndex,
+      force: forceSkin,
+    });
     if (res.status !== 200) {
       throw new Error(`ensure_skin_chunk thất bại (level ${level}, chunk ${chunkIndex}): ${res.status} ${JSON.stringify(res.data)}`);
     }
