@@ -58,6 +58,8 @@ const SUPABASE_ANON_KEY = "sb_publishable_D6NUatDu3ZapsLRwjKiBJw_Uh0ku3An";
 const APP_SECRET = "Learning-English-AI";
 const BASE = "https://learning-english-ai-vercel-git-feature-8ef108-learningenglishai.vercel.app";
 
+const CREDS = { email: "kimchinamvn+studentpro1@gmail.com", password: "StudentPro2026!" };
+
 async function login(email, password) {
   const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
@@ -69,26 +71,62 @@ async function login(email, password) {
   return data.access_token;
 }
 
-async function callChat(token, action, payload) {
-  const r = await fetch(`${BASE}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-App-Secret": APP_SECRET, "X-Auth-Token": token, Origin: BASE },
-    body: JSON.stringify({ action, ...payload }),
-  });
-  const text = await r.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
+// TỰ ĐĂNG NHẬP LẠI KHI TOKEN HẾT HẠN (2026-08-15) — LỖI GỐC THẬT phát hiện sau khi cả lô 89 bài
+// đều "ok:false" ở audio/ảnh bìa (gần 100%) dù test tay lại từng action NGAY SAU ĐÓ đều chạy tốt:
+// Supabase access_token hết hạn sau ĐÚNG 3600s (đo thật bằng field "expires_in"), nhưng
+// publishBatch() chỉ login() 1 LẦN DUY NHẤT ở đầu và dùng lại y hệt token đó suốt TOÀN BỘ 7 stage
+// — cả lô 89 bài × tới 4 lượt thử/field dễ dàng vượt quá 60 phút thật. api/chat.js trả 401 "Vui
+// lòng đăng nhập..." khi token hết hạn, nhưng ensureFieldComplete/ensureAudioComplete/
+// ensureCoverImageComplete chỉ kiểm tra "status===200", KHÔNG có nhánh nào phân biệt 401 (hết hạn,
+// cần đăng nhập lại) với lỗi tạm thời khác — cứ lặng lẽ tính là 1 lượt thử thất bại, hết
+// maxAttempts thì báo "CHƯA ĐỦ" mà không hề lộ ra lý do THẬT là token chết. Sửa TẬN GỐC bằng cách
+// đưa token vào 1 "session" object dùng CHUNG cho mọi lời gọi (session.token) — callChat() tự
+// phát hiện 401, đăng nhập lại, cập nhật session.token, rồi thử lại ĐÚNG request đó 1 lần trước
+// khi trả kết quả — không cần sửa gì ở các stage gọi nó.
+async function callChat(session, action, payload) {
+  async function attempt() {
+    const r = await fetch(`${BASE}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-App-Secret": APP_SECRET, "X-Auth-Token": session.token, Origin: BASE },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const text = await r.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+    return { status: r.status, data };
   }
-  return { status: r.status, data };
+  let res = await attempt();
+  if (res.status === 401) {
+    console.log("  (token hết hạn giữa chừng — tự đăng nhập lại...)");
+    session.token = await login(CREDS.email, CREDS.password);
+    res = await attempt();
+  }
+  return res;
 }
 
-async function fetchLessonContent(token, lessonId) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=content,industry,audio_full_url`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
-  });
+// Đúng logic refresh-401 như callChat(), áp dụng cho các truy vấn REST thẳng vào Supabase (không
+// qua /api/chat) — JWT hết hạn cũng khiến PostgREST trả 401 y hệt.
+async function restFetch(session, url, options = {}) {
+  async function attempt() {
+    return fetch(url, { ...options, headers: { ...(options.headers || {}), apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.token}` } });
+  }
+  let r = await attempt();
+  if (r.status === 401) {
+    session.token = await login(CREDS.email, CREDS.password);
+    r = await attempt();
+  }
+  return r;
+}
+
+async function fetchLessonContent(session, lessonId) {
+  const r = await restFetch(
+    session,
+    `${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=content,industry,audio_full_url,cover_image_url`
+  );
   const rows = await r.json();
   return rows?.[0] || null;
 }
@@ -139,10 +177,17 @@ function isFullyCovered(content, field) {
 // ích quá nhiều lần cho 1 câu không tự khỏi được bằng cách gọi lại y hệt) — câu vẫn lỗi sau 4 lượt
 // cần SỬA RULE (như contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may
 // mắn thêm nữa.
-async function ensureFieldComplete(token, lessonId, action, field, { maxAttempts = 4 } = {}) {
+async function ensureFieldComplete(session, lessonId, action, field, { maxAttempts = 4 } = {}) {
+  // Kiểm tra ĐÃ ĐỦ trước khi gọi AI (2026-08-15) — cần thiết cho resume sau khi token hết hạn
+  // giữa chừng: rất nhiều bài ĐÃ CÓ field này đủ 100% từ lượt chạy trước, gọi lại vẫn tốn tiền
+  // dù không cần — xem ghi chú token-refresh ở callChat().
+  const existing = await fetchLessonContent(session, lessonId);
+  if (existing && isFullyCovered(existing.content, field)) {
+    return { ok: true, attempts: 0, alreadyDone: true };
+  }
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    await callChat(token, action, { lesson_id: lessonId, is_news: false }).catch(() => null);
-    const lesson = await fetchLessonContent(token, lessonId);
+    await callChat(session, action, { lesson_id: lessonId, is_news: false }).catch(() => null);
+    const lesson = await fetchLessonContent(session, lessonId);
     if (lesson && isFullyCovered(lesson.content, field)) {
       return { ok: true, attempts: attempt };
     }
@@ -178,9 +223,9 @@ function coverImageBaseUrl(url) {
 // lessonId) dù dùng chung 1 ảnh gốc bên ngoài -> so 2 cột đó KHÔNG còn phát hiện được trùng
 // ảnh. Đổi sang so "cover_source_url" (base URL ảnh GỐC bên ngoài, lưu riêng CHỈ để chống
 // trùng, không hiển thị) — đây mới là tín hiệu ổn định giữa các lần chạy.
-async function fetchExistingCoverBaseUrls(token) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/lessons?cover_source_url=not.is.null&select=cover_source_url&limit=20000`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, Prefer: "count=exact" },
+async function fetchExistingCoverBaseUrls(session) {
+  const r = await restFetch(session, `${SUPABASE_URL}/rest/v1/lessons?cover_source_url=not.is.null&select=cover_source_url&limit=20000`, {
+    headers: { Prefer: "count=exact" },
   });
   const rows = await r.json();
   const range = r.headers.get("content-range") || "";
@@ -190,12 +235,16 @@ async function fetchExistingCoverBaseUrls(token) {
   }
   return new Set((rows || []).map((r) => coverImageBaseUrl(r.cover_source_url)));
 }
-async function ensureCoverImageComplete(token, lessonId, title, contentType, usedBaseUrls, { maxAttempts = 4 } = {}) {
+async function ensureCoverImageComplete(session, lessonId, title, contentType, usedBaseUrls, { maxAttempts = 4 } = {}) {
+  // Bỏ qua nếu ĐÃ CÓ ảnh (2026-08-15, cùng lý do resume ở ensureFieldComplete) — tránh tốn tiền
+  // tìm/tải lại ảnh cho bài đã xong từ lượt chạy trước.
+  const existing = await fetchLessonContent(session, lessonId);
+  if (existing?.cover_image_url) return { ok: true, url: existing.cover_image_url, attempts: 0, alreadyDone: true };
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // Từ lượt 2 trở đi, thêm hậu tố để đổi query — Unsplash/Pexels/Wikimedia đều tìm theo CHUỖI
     // TEXT, đổi 1 chữ đủ để ra kết quả khác.
     const queryTitle = attempt === 1 ? title : `${title} ${["details", "workplace", "concept", "closeup"][attempt - 2] || attempt}`;
-    const searchRes = await callChat(token, "search_lesson_cover_image", { title: queryTitle, content_type: contentType });
+    const searchRes = await callChat(session, "search_lesson_cover_image", { title: queryTitle, content_type: contentType });
     if (searchRes.status === 200) {
       const parsed = typeof searchRes.data === "string" ? JSON.parse(searchRes.data) : searchRes.data;
       const content = JSON.parse(parsed.content);
@@ -204,7 +253,7 @@ async function ensureCoverImageComplete(token, lessonId, title, contentType, use
       if (image?.thumbUrl && image?.detailUrl && !usedBaseUrls.has(base)) {
         // set_lesson_cover_image giờ TỰ tải bytes 2 URL nguồn về + đẩy lên kho riêng của app,
         // trả về link nội bộ đã lưu (không còn là link ngoài vừa search).
-        const setRes = await callChat(token, "set_lesson_cover_image", {
+        const setRes = await callChat(session, "set_lesson_cover_image", {
           lesson_id: lessonId,
           thumb_url: image.thumbUrl,
           detail_url: image.detailUrl,
@@ -288,9 +337,13 @@ function computeGenderHints(content, characters) {
   });
 }
 
-async function ensureAudioComplete(token, lessonId, genderHints, { maxAttempts = 4 } = {}) {
+async function ensureAudioComplete(session, lessonId, genderHints, { maxAttempts = 4 } = {}) {
+  // Bỏ qua nếu ĐÃ CÓ audio (2026-08-15, cùng lý do resume) — tránh sinh lại audio (tốn tiền TTS
+  // thật) cho bài đã xong từ lượt chạy trước.
+  const existing = await fetchLessonContent(session, lessonId);
+  if (existing?.audio_full_url) return { ok: true, eligible: true, url: existing.audio_full_url, attempts: 0, alreadyDone: true };
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await callChat(token, "generate_lesson_full_audio", { lesson_id: lessonId, gender_hints: genderHints || [] });
+    const res = await callChat(session, "generate_lesson_full_audio", { lesson_id: lessonId, gender_hints: genderHints || [] });
     if (res.status === 200) {
       const parsed = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
       const content = JSON.parse(parsed.content);
@@ -315,9 +368,9 @@ function isQuotaExceeded(data) {
 // lại các bài "ai_generated" ĐÃ CÓ của ĐÚNG level này, khớp theo tiền tố "#tag " trong title (do
 // set_lesson_title_tag gắn ngay sau khi tạo) — bài nào đã có thì TÁI SỬ DỤNG (bỏ qua generate_
 // lesson), chỉ sinh mới cho bài CHƯA có.
-async function fetchExistingLessonsByTag(token, level) {
+async function fetchExistingLessonsByTag(session, level) {
   const url = `${SUPABASE_URL}/rest/v1/lessons?select=id,title,content_type,grammar,sentence_patterns,content,characters&source=eq.ai_generated&level=eq.${encodeURIComponent(level)}`;
-  const rows = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } }).then((r) => r.json());
+  const rows = await restFetch(session, url).then((r) => r.json());
   const byTag = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
     const m = String(row.title || "").match(/^(#\S+)\s/);
@@ -327,9 +380,9 @@ async function fetchExistingLessonsByTag(token, level) {
 }
 
 // ====== STAGE 1: Nội dung (generate_lesson), cho TOÀN BỘ lô ======
-async function stageContent(token, samples) {
+async function stageContent(session, samples) {
   const lessons = [];
-  const existingByTag = samples.length ? await fetchExistingLessonsByTag(token, samples[0].level) : new Map();
+  const existingByTag = samples.length ? await fetchExistingLessonsByTag(session, samples[0].level) : new Map();
   for (const sample of samples) {
     const lesson = { tag: sample.tag, level: sample.level };
     const existing = existingByTag.get(sample.tag);
@@ -348,7 +401,7 @@ async function stageContent(token, samples) {
       continue;
     }
     try {
-      const genRes = await callChat(token, "generate_lesson", sample);
+      const genRes = await callChat(session, "generate_lesson", sample);
       if (genRes.status !== 200) {
         lesson.ok = false;
         lesson.error = `generate_lesson thất bại: ${genRes.status} ${JSON.stringify(genRes.data)}`;
@@ -379,7 +432,7 @@ async function stageContent(token, samples) {
 
       // Đánh số hiệu (vd "#1-A2 ") NGAY sau khi có lesson.id — 2026-08-13, Minh: "tại sao không đánh
       // # để tôi dễ nhận biết" khi duyệt bài test. Không chặn các bước sau nếu lỗi (chỉ để nhận diện).
-      const tagRes = await callChat(token, "set_lesson_title_tag", { lesson_id: data.id, tag: sample.tag });
+      const tagRes = await callChat(session, "set_lesson_title_tag", { lesson_id: data.id, tag: sample.tag });
       if (tagRes.status === 200) {
         const tagParsed = JSON.parse(tagRes.data.content);
         lesson.title = tagParsed.title;
@@ -400,11 +453,11 @@ async function stageContent(token, samples) {
 }
 
 // ====== STAGE 2/3: field (reading_chunks HOẶC phrase_groups), cho TOÀN BỘ lô ======
-async function stageField(token, lessons, action, field, resultKey, label) {
+async function stageField(session, lessons, action, field, resultKey, label) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue; // bỏ qua bài đã lỗi từ stage trước, không phí lượt gọi
     try {
-      lesson[resultKey] = await ensureFieldComplete(token, lesson.lessonId, action, field);
+      lesson[resultKey] = await ensureFieldComplete(session, lesson.lessonId, action, field);
       console.log(`  ${lesson.tag}: ${label} — ${lesson[resultKey].ok ? "OK" : "CHƯA ĐỦ"} (${lesson[resultKey].attempts} lượt)`);
     } catch (err) {
       // 1 bài lỗi bất ngờ không được làm chết cả lô — xem lý do ở stageContent().
@@ -466,7 +519,7 @@ function pickJudgeSampleIndexes(lessons) {
   return picked;
 }
 
-async function stageJudge(token, lessons) {
+async function stageJudge(session, lessons) {
   const sampleIndexes = pickJudgeSampleIndexes(lessons);
   console.log(`  Chọn ngẫu nhiên ${sampleIndexes.size}/${lessons.length} bài để giám khảo chấm (1 bài / mỗi ${JUDGE_SAMPLE_GROUP_SIZE} bài).`);
   for (let i = 0; i < lessons.length; i++) {
@@ -477,7 +530,7 @@ async function stageJudge(token, lessons) {
       continue;
     }
     try {
-      const res = await callChat(token, "judge_lesson_quality", { lesson_id: lesson.lessonId });
+      const res = await callChat(session, "judge_lesson_quality", { lesson_id: lesson.lessonId });
       if (res.status !== 200) {
         lesson.judge = { ok: false, error: `judge_lesson_quality lỗi: ${res.status} ${JSON.stringify(res.data)}` };
       } else {
@@ -494,7 +547,7 @@ async function stageJudge(token, lessons) {
 }
 
 // ====== STAGE 5: Audio, cho TOÀN BỘ lô ======
-async function stageAudio(token, lessons) {
+async function stageAudio(session, lessons) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue;
     try {
@@ -502,7 +555,7 @@ async function stageAudio(token, lessons) {
       // RỖNG, giờ tính đúng từ lesson.content/lesson.characters (đã capture ở stageContent()),
       // xem computeGenderHints() ở trên.
       const genderHints = computeGenderHints(lesson.content, lesson.characters);
-      lesson.audio = await ensureAudioComplete(token, lesson.lessonId, genderHints);
+      lesson.audio = await ensureAudioComplete(session, lesson.lessonId, genderHints);
       console.log(`  ${lesson.tag}: audio — ${lesson.audio.ok ? "OK" : "CHƯA ĐỦ"} (${JSON.stringify(lesson.audio)})`);
     } catch (err) {
       lesson.audio = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
@@ -512,11 +565,11 @@ async function stageAudio(token, lessons) {
 }
 
 // ====== STAGE 6: Ảnh bìa, cho TOÀN BỘ lô ======
-async function stageCoverImage(token, lessons, usedBaseUrls) {
+async function stageCoverImage(session, lessons, usedBaseUrls) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue;
     try {
-      lesson.cover = await ensureCoverImageComplete(token, lesson.lessonId, lesson.title, lesson.contentType, usedBaseUrls);
+      lesson.cover = await ensureCoverImageComplete(session, lesson.lessonId, lesson.title, lesson.contentType, usedBaseUrls);
       console.log(`  ${lesson.tag}: ảnh bìa — ${lesson.cover.ok ? "OK" : "CHƯA ĐỦ"}`);
     } catch (err) {
       lesson.cover = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
@@ -529,29 +582,29 @@ async function stageCoverImage(token, lessons, usedBaseUrls) {
 // đầu file). KHÔNG trả "xong" cho bài nào chưa đạt đủ 5 điều kiện sau hết số lượt thử — gọi nơi
 // khác (báo cáo/CI) phải TỰ KIỂM "ok:true" trước khi coi bài đã sẵn sàng public.
 export async function publishBatch(samples) {
-  const token = await login("kimchinamvn+studentpro1@gmail.com", "StudentPro2026!");
-  const usedBaseUrls = await fetchExistingCoverBaseUrls(token);
+  const session = { token: await login(CREDS.email, CREDS.password) };
+  const usedBaseUrls = await fetchExistingCoverBaseUrls(session);
 
   console.log(`\n=== STAGE 1/7: Nội dung (${samples.length} bài) ===`);
-  const lessons = await stageContent(token, samples);
+  const lessons = await stageContent(session, samples);
 
   console.log(`\n=== STAGE 2/7: Giám khảo chất lượng ===`);
-  await stageJudge(token, lessons);
+  await stageJudge(session, lessons);
 
   console.log(`\n=== STAGE 3/7: Tách câu (reading_chunks) ===`);
-  await stageField(token, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
+  await stageField(session, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
 
   console.log(`\n=== STAGE 4/7: Tra từ (phrase_groups) ===`);
-  await stageField(token, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ");
+  await stageField(session, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ");
 
   console.log(`\n=== STAGE 5/7: Ngữ pháp (verify, không gọi thêm AI) ===`);
   stageGrammarVerify(lessons);
 
   console.log(`\n=== STAGE 6/7: Audio ===`);
-  await stageAudio(token, lessons);
+  await stageAudio(session, lessons);
 
   console.log(`\n=== STAGE 7/7: Ảnh bìa ===`);
-  await stageCoverImage(token, lessons, usedBaseUrls);
+  await stageCoverImage(session, lessons, usedBaseUrls);
 
   for (const lesson of lessons) {
     lesson.ok =
@@ -646,10 +699,10 @@ function topicFromFrames(frames, frameKey, occurrenceIndex) {
 // Lấy occupation_profile CỦA GOAL "Kế toán" đang active của tài khoản test — TÁI DÙNG (không
 // gọi lại generateOccupationProfile, đã có sẵn confidence "cao" từ trước, tốn tiền vô ích nếu
 // sinh lại).
-async function fetchOccupationProfile(token, rawKeywordsMatch) {
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/learning_goals?raw_keywords=eq.${encodeURIComponent(rawKeywordsMatch)}&status=eq.active&select=occupation_profile&order=created_at.desc&limit=1`,
-    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } }
+async function fetchOccupationProfile(session, rawKeywordsMatch) {
+  const r = await restFetch(
+    session,
+    `${SUPABASE_URL}/rest/v1/learning_goals?raw_keywords=eq.${encodeURIComponent(rawKeywordsMatch)}&status=eq.active&select=occupation_profile&order=created_at.desc&limit=1`
   );
   const rows = await r.json();
   if (!rows?.[0]?.occupation_profile) throw new Error(`Không tìm thấy learning_goals active có raw_keywords="${rawKeywordsMatch}" cho tài khoản test.`);
@@ -660,7 +713,7 @@ async function fetchOccupationProfile(token, rawKeywordsMatch) {
 // phía server — chunk đã có rồi thì action trả ngay, không tốn AI lại) — trả về map
 // chunkIndex -> {frames, story_chains} dùng để tra topic cho từng slot, + skin_id để gắn vào
 // từng lesson.
-async function ensureSkinForLevel(token, occupationProfile, level, slotCount) {
+async function ensureSkinForLevel(session, occupationProfile, level, slotCount) {
   const totalChunks = Math.ceil(slotCount / SKIN_CHUNK_SIZE);
   const chunksByIndex = {};
   // 2026-08-14 — Minh: "tôi không thấy phục hồi phần story" — trước đây CHỈ giữ "frames", VỨT
@@ -675,7 +728,7 @@ async function ensureSkinForLevel(token, occupationProfile, level, slotCount) {
     // LEVEL_SYSTEM_PROMPT, ví dụ thêm dàn nhân vật cố định 2026-08-14, để chunk cũ không còn
     // giữ dữ liệu sinh theo prompt cũ). Mặc định KHÔNG bật (tốn tiền sinh lại nếu bật tràn lan).
     const forceSkin = process.env.FORCE_SKIN === "1";
-    const res = await callChat(token, "ensure_skin_chunk", {
+    const res = await callChat(session, "ensure_skin_chunk", {
       occupation_profile: occupationProfile,
       level,
       chunk_index: chunkIndex,
@@ -710,13 +763,13 @@ function printStoryChains(level, storyChainsByChunk) {
   }
 }
 
-async function buildSpineSamples(token, level, { industry, field, rawKeywordsMatch } = {}) {
+async function buildSpineSamples(session, level, { industry, field, rawKeywordsMatch } = {}) {
   const spineLevels = loadCurriculumSpine();
   const slots = spineLevels[level];
   if (!Array.isArray(slots)) throw new Error(`Không tìm thấy level "${level}" trong curriculum_spine.json`);
 
-  const occupationProfile = await fetchOccupationProfile(token, rawKeywordsMatch);
-  const { chunksByIndex, storyChainsByChunk, skinId } = await ensureSkinForLevel(token, occupationProfile, level, slots.length);
+  const occupationProfile = await fetchOccupationProfile(session, rawKeywordsMatch);
+  const { chunksByIndex, storyChainsByChunk, skinId } = await ensureSkinForLevel(session, occupationProfile, level, slots.length);
   printStoryChains(level, storyChainsByChunk);
 
   const samples = [];
@@ -757,8 +810,8 @@ async function buildSpineSamples(token, level, { industry, field, rawKeywordsMat
 // NGAY SAU khi in chủ đề/story_chains, KHÔNG gọi publishBatch (không tốn tiền sinh bài thật) —
 // dùng khi chỉ cần soát bằng mắt trước.
 async function main() {
-  const token = await login("kimchinamvn+studentpro1@gmail.com", "StudentPro2026!");
-  let samples = await buildSpineSamples(token, "A1", { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
+  const session = { token: await login(CREDS.email, CREDS.password) };
+  let samples = await buildSpineSamples(session, "A1", { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
   const slotLimit = Number(process.env.SLOT_LIMIT) || null;
   if (slotLimit) samples = samples.slice(0, slotLimit);
   console.log(`\nChuẩn bị sinh ${samples.length} bài (level A1, Kế toán) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
