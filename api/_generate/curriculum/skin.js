@@ -294,9 +294,13 @@ nhất 1 vị trí "[dialogue]" (xem loại bài trong mục THỨ TỰ BÀI H�
 - TỐI ĐA 60% được phép có counterpart_role thuộc nhóm "đồng nghiệp" (đồng nghiệp/đồng nghiệp phòng
   ban) — nghĩa là ÍT NHẤT 40% (làm tròn lên) phải dùng vai KHÁC: khách hàng, kiểm toán viên, cấp
   trên/ban giám đốc, cơ quan thuế, ngân hàng, đối tác, nhà cung cấp... tuỳ đúng "interlocutors".
-- Nếu chuỗi hội thoại trong chunk này có từ 4 chuỗi trở lên: BẮT BUỘC ít nhất 1 chuỗi có người đối
+- Nếu chuỗi hội thoại trong chunk này có từ 8 chuỗi trở lên: BẮT BUỘC ít nhất 1 chuỗi có người đối
   thoại là NGƯỜI NƯỚC NGOÀI (đặt tên nước ngoài thật tự nhiên, vd John, Sarah, Tanaka, Kim...) —
   ghi rõ "(nước ngoài)" ngay trong "counterpart_role" của chuỗi đó, vd "khách hàng (nước ngoài)".
+  Ngay cả ở A1 (chức năng đơn giản: giới thiệu bản thân, hỏi tuổi, hỏi sở thích, hỏi đường, hỏi
+  giờ...) vẫn CHÈN ĐƯỢC tự nhiên, vd "kiểm toán viên nước ngoài mới đến công ty tự giới thiệu và
+  hỏi thăm xã giao", "khách hàng nước ngoài hỏi đường đến phòng kế toán" — KHÔNG cần ngữ pháp/từ
+  vựng phức tạp hơn các chuỗi khác cùng cấp độ.
 Nếu chunk này KHÔNG có chuỗi hội thoại nào (toàn bài đọc), bỏ qua 2 điều trên.
 
 BƯỚC 1 — DỰNG "story_chains" (khung câu chuyện) TRƯỚC, cho TỪNG chuỗi: chia danh sách vị trí
@@ -430,9 +434,13 @@ function validateCounterpartDiversity(chains, spineSlots) {
       `đa dạng người đối thoại chưa đủ: ${nonColleagueCount}/${dialogueChains.length} chuỗi hội thoại dùng vai khác "đồng nghiệp", cần tối thiểu ${minNonColleague}`
     );
   }
-  if (dialogueChains.length >= 4) {
+  // Ngưỡng 8 (không phải 4) — 2026-08-15, đo được thật: ngưỡng 4 khiến 1 chunk fail cả 2 lượt thử
+  // (chunk có ít chuỗi hội thoại, tình huống không tự nhiên để chèn người nước ngoài dù đã đa
+  // dạng đúng CHỨC VỤ khác đồng nghiệp). Giữ hard-gate ở ngưỡng đủ RỘNG để có chỗ tự nhiên chèn,
+  // không phạt oan chunk hợp lệ chỉ vì ít chuỗi hội thoại.
+  if (dialogueChains.length >= 8) {
     const hasForeign = dialogueChains.some((c) => String(c.counterpart_role || "").toLowerCase().includes("nước ngoài"));
-    if (!hasForeign) problems.push('thiếu chuỗi hội thoại có người đối thoại "(nước ngoài)" (bắt buộc khi có ≥4 chuỗi hội thoại)');
+    if (!hasForeign) problems.push('thiếu chuỗi hội thoại có người đối thoại "(nước ngoài)" (bắt buộc khi có ≥8 chuỗi hội thoại)');
   }
   return problems;
 }
