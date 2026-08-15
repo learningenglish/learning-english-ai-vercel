@@ -953,13 +953,42 @@ export async function renderLessonDetail(mount, params, opts = {}) {
     });
   }
 
+  // FALLBACK "reading_chunks" (2026-08-15, Minh: "khi tách câu đã có nghĩa ở phần đó... tách câu
+  // làm việc rất hiệu quả, nghĩa rất tốt... vốn dĩ tra từ chỉ là phần hỗ trợ") — phát hiện thật
+  // qua sinh hàng loạt: phrase_groups thỉnh thoảng bỏ TRẮNG hẳn 1 cụm phản ứng ngắn (vd "That's
+  // fun!", "Sure!") khỏi kết quả — không phải lỗi tokenizer, model thật sự không tạo nhóm nào cho
+  // đoạn đó, khiến CẢ CÂU chứa đoạn đó mất khả năng tra từ (spansFromPhraseGroups() coi cả câu là
+  // KHÔNG khớp nếu có 1 chỗ hụt). "reading_chunks" (tách câu) được tạo ĐỘC LẬP, đã chứng minh phủ
+  // đủ gần như tuyệt đối qua nhiều lô sinh bài thật — dùng nghĩa của khối tách-câu chứa đúng từ đó
+  // làm phương án dự phòng, thay vì báo lỗi. Áp dụng CHUNG cho mọi lý do thiếu entry (dấu câu dính
+  // từ, cụm giới từ, nghĩa bóng...), không chỉ riêng trường hợp cụm phản ứng.
+  function findReadingChunkFallbackMeaning(itemIdx, word) {
+    const chunks = lesson.content?.[itemIdx]?.reading_chunks;
+    if (!Array.isArray(chunks) || !word) return null;
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(^|[^A-Za-z0-9'])${escaped}([^A-Za-z0-9']|$)`, "i");
+    const chunk = chunks.find((c) => re.test(c?.text || ""));
+    return chunk?.meaning || null;
+  }
+
   // "vocabEntry" ĐÃ có nghĩa sẵn trong "phrase_groups" (phân tích XONG lúc tạo bài, xem đầu file)
   // -> dùng THẲNG, hiện NGAY LẬP TỨC, KHÔNG gọi AI. Không còn nhánh chờ/vá nào nữa (2026-08-11) —
-  // nếu không tìm được entry, đó là do thuật toán khớp span (computeInteractiveSpans) chứ không
-  // phải thiếu dữ liệu (bài đã luôn đủ dữ liệu từ lúc tạo) — báo lỗi ngay, kèm console.warn để có
-  // dấu vết debug nếu Minh gặp lại.
+  // nếu không tìm được entry, thử fallback "reading_chunks" (xem trên) trước khi báo lỗi, kèm
+  // console.warn để có dấu vết debug nếu Minh gặp lại.
   function showWordTooltip(anchorEl, word, sentence, genderHint, vocabEntry, itemIdx, tokenIdx) {
     if (!vocabEntry) {
+      const fallbackMeaning = findReadingChunkFallbackMeaning(itemIdx, word);
+      if (fallbackMeaning) {
+        console.warn("[lesson] từ không có entry trong phrase_groups, dùng fallback reading_chunks:", {
+          lessonId: lesson.id,
+          itemIdx,
+          tokenIdx,
+          word,
+          sentence,
+        });
+        showPopoverHtml(anchorEl, `<div class="word-popover-meaning">${escapeHtml(fallbackMeaning)}</div>`);
+        return;
+      }
       console.warn("[lesson] từ không có entry:", { lessonId: lesson.id, itemIdx, tokenIdx, word, sentence });
       showPopoverHtml(anchorEl, `<div class="word-popover-meaning error-text">${t("Không tra được từ.")}</div>`);
       return;
