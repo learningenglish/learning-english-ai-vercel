@@ -1108,12 +1108,21 @@ function endsOnDanglingQuestion(content) {
 // giờ khớp được, coverage-check thất bại DAI DẲNG dù thử lại nhiều lần (không tự khỏi bằng retry
 // vì đây là lỗi tokenizer, không phải AI ngẫu nhiên sai). Nhận dấu gạch nối là 1 phần hợp lệ của
 // từ, cùng cách đã làm cho dấu nháy đơn.
+// BUG THẬT (2026-08-15, phát hiện khi sinh hàng loạt A1 Kế toán với dàn nhân vật cố định
+// Phương Ánh/Thúy Vy/Trang/Giàu/Khang — coverage-check thất bại DAI DẲNG cho MỌI câu có tên nhân
+// vật, không tự khỏi bằng retry): regex CŨ chỉ nhận ký tự ASCII [a-z0-9] — tên "Giàu" (có dấu) bị
+// cắt thành 2 token rời "gi"+"u" (chữ "à" bị coi là dấu câu, cắt đứt từ), trong khi AI viết
+// "Giàu" NGUYÊN VẸN 1 token (đúng, tên riêng không tách được) — 2 bên không bao giờ khớp được.
+// Thêm bảng chữ cái tiếng Việt có dấu vào ký tự hợp lệ của từ, cùng cách đã làm cho gạch nối/số.
+const VN_LOWER = "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ";
+const VN_UPPER = VN_LOWER.toUpperCase();
+const VN_WORD_CHARS = `A-Za-z0-9${VN_LOWER}${VN_UPPER}`;
 function normalizePhraseWord(w) {
   return (w || "")
     .toString()
     .toLowerCase()
     .replace(/[’‘ʼ]/g, "'")
-    .replace(/[^a-z0-9'-]/g, "");
+    .replace(new RegExp(`[^a-z0-9'\\-${VN_LOWER}]`, "g"), "");
 }
 // BUG THẬT (2026-08-12, xác nhận qua dữ liệu sống — bài #5a2 A2 có câu chứa lời trích dẫn trong
 // dấu nháy đơn 'This is...' — coverage-check thất bại LIÊN TỤC dù thử lại 3 lần/9 lượt gọi AI):
@@ -1131,8 +1140,9 @@ function normalizePhraseWord(w) {
 // VẸN 1 phần tử (đúng cách số tiền xuất hiện tự nhiên trong câu) — 2 bên không bao giờ khớp được.
 // Tham khảo file v6 (Minh cung cấp) — thêm hẳn 1 mẫu SỐ (có thể có "$" trước, dấu phẩy phân
 // nhóm nghìn, phần thập phân) làm lựa chọn ĐẦU TIÊN trong regex, thử trước mẫu chữ cái.
+const SENTENCE_WORD_TOKEN_RE = new RegExp(`\\$?\\d[\\d,]*(?:\\.\\d+)?|[${VN_WORD_CHARS}]+(?:['’ʼ-][${VN_WORD_CHARS}]+)*`, "g");
 function sentenceWordTokens(text) {
-  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ-][A-Za-z0-9]+)*/g) || []).map(normalizePhraseWord);
+  return ((text || "").match(SENTENCE_WORD_TOKEN_RE) || []).map(normalizePhraseWord);
 }
 // BUG THẬT (2026-08-13, Minh xem trực tiếp bài #7b2 câu 13 — tooltip "organizations" hiện level
 // "B2" đồng loạt cho MỌI từ trong câu, không phân biệt từng từ): hàm này TRƯỚC ĐÂY chỉ so khớp

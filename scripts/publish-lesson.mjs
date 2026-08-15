@@ -142,15 +142,23 @@ async function fetchLessonContent(session, lessonId) {
 // 2026-08-14 — thêm dấu gạch nối (vd "long-term") vào ký tự hợp lệ của từ, PHẢI khớp ĐÚNG
 // sentenceWordTokens()/normalizePhraseWord() phía server (api/_generate/lesson.js) — lỗi lặp
 // lại 2 lần độc lập ở #a-B2 và #b-B2 ("long-term" bị tách "long"+"term").
+// PHẢI khớp ĐÚNG VN_LOWER/normalizePhraseWord()/sentenceWordTokens() phía server
+// (api/_generate/lesson.js) — 2026-08-15, lỗi thật: tên nhân vật có dấu ("Giàu") bị regex ASCII
+// cắt thành 2 token rời "gi"+"u", coverage-check thất bại DAI DẲNG cho MỌI câu chứa tên nhân vật
+// (dàn nhân vật cố định Phương Ánh/Thúy Vy/Trang/Giàu/Khang đều có dấu) dù thử lại bao nhiêu lần.
+const VN_LOWER = "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ";
+const VN_UPPER = VN_LOWER.toUpperCase();
+const VN_WORD_CHARS = `A-Za-z0-9${VN_LOWER}${VN_UPPER}`;
+const SENTENCE_WORD_TOKEN_RE = new RegExp(`\\$?\\d[\\d,]*(?:\\.\\d+)?|[${VN_WORD_CHARS}]+(?:['’ʼ-][${VN_WORD_CHARS}]+)*`, "g");
 function normalizeToken(w) {
   return (w || "")
     .toString()
     .toLowerCase()
     .replace(/[’‘ʼ]/g, "'")
-    .replace(/[^a-z0-9'-]/g, "");
+    .replace(new RegExp(`[^a-z0-9'\\-${VN_LOWER}]`, "g"), "");
 }
 function realWordTokens(text) {
-  return ((text || "").match(/\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ-][A-Za-z0-9]+)*/g) || []).map(normalizeToken);
+  return ((text || "").match(SENTENCE_WORD_TOKEN_RE) || []).map(normalizeToken);
 }
 function isFullyCovered(content, field) {
   if (!Array.isArray(content) || !content.length) return false;
