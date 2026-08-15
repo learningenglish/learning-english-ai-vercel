@@ -1666,17 +1666,19 @@ async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
     const existingGroups = Array.isArray(existingGroupsList?.[i]) ? existingGroupsList[i] : null;
     let cursorIdx = 0;
-    let reuseOk = !!existingGroups;
     const combinedGroups = [];
     for (const sentence of sentences) {
-      if (reuseOk) {
-        const reused = tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceWordTokens(sentence));
-        if (reused) {
-          combinedGroups.push(...reused.groups);
-          cursorIdx = reused.nextCursorIdx;
-          continue;
-        }
-        reuseOk = false; // câu này thiếu/lệch — từ đây không còn tin cậy để tái dùng phần còn lại
+      // KHÔNG "bỏ cuộc vĩnh viễn" sau 1 câu không khớp được (bug thật tự phát hiện: câu ĐẦU bị
+      // AI bỏ trắng là ca PHỔ BIẾN NHẤT — "That's fun! Maybe we can go together." chỉ câu 1 thiếu,
+      // câu 2 đã đúng SẴN Ở ĐẦU mảng existingGroups vì câu 1 chưa từng đóng góp gì. cursorIdx
+      // KHÔNG bị tiêu tốn khi 1 câu không khớp, nên câu KẾ TIẾP vẫn thử khớp lại đúng từ vị trí
+      // đó — chỉ khi khớp ĐƯỢC mới coi là "đã dùng" (tryReuseSentenceGroups tự xác nhận CHÍNH XÁC
+      // bằng so khớp token, không phải đoán mò) nên thử lại mỗi câu là an toàn.
+      const reused = tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceWordTokens(sentence));
+      if (reused) {
+        combinedGroups.push(...reused.groups);
+        cursorIdx = reused.nextCursorIdx;
+        continue;
       }
       const chunk = [{ text: sentence }];
       // BỎ HẲN LEO THANG "strong" (2026-08-14, Minh xem dashboard OpenAI thật: model mạnh chiếm
