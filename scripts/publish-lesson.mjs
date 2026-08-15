@@ -310,11 +310,43 @@ function isQuotaExceeded(data) {
   return /hạn mức tạo bài|hết.*bài hôm nay/i.test(msg);
 }
 
+// RESUME (2026-08-15) — phát hiện thật: lần chạy trước bị dừng giữa STAGE 1 (18/89 bài đã sinh
+// nội dung thật, tốn tiền thật), KHÔNG được sinh lại từ đầu (lãng phí + tạo bài trùng #tag). Đọc
+// lại các bài "ai_generated" ĐÃ CÓ của ĐÚNG level này, khớp theo tiền tố "#tag " trong title (do
+// set_lesson_title_tag gắn ngay sau khi tạo) — bài nào đã có thì TÁI SỬ DỤNG (bỏ qua generate_
+// lesson), chỉ sinh mới cho bài CHƯA có.
+async function fetchExistingLessonsByTag(token, level) {
+  const url = `${SUPABASE_URL}/rest/v1/lessons?select=id,title,content_type,grammar,sentence_patterns,content,characters&source=eq.ai_generated&level=eq.${encodeURIComponent(level)}`;
+  const rows = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } }).then((r) => r.json());
+  const byTag = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const m = String(row.title || "").match(/^(#\S+)\s/);
+    if (m) byTag.set(m[1], row);
+  }
+  return byTag;
+}
+
 // ====== STAGE 1: Nội dung (generate_lesson), cho TOÀN BỘ lô ======
 async function stageContent(token, samples) {
   const lessons = [];
+  const existingByTag = samples.length ? await fetchExistingLessonsByTag(token, samples[0].level) : new Map();
   for (const sample of samples) {
     const lesson = { tag: sample.tag, level: sample.level };
+    const existing = existingByTag.get(sample.tag);
+    if (existing) {
+      lesson.lessonId = existing.id;
+      lesson.title = existing.title;
+      lesson.contentType = existing.content_type;
+      lesson.grammar = existing.grammar || [];
+      lesson.sentencePatterns = existing.sentence_patterns || [];
+      lesson.content = existing.content || [];
+      lesson.characters = existing.characters || [];
+      lesson.totalWords = (existing.content || []).reduce((sum, it) => sum + (it.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
+      lesson.ok = true;
+      console.log(`  ${sample.tag}: ĐÃ CÓ SẴN (resume, không sinh lại) — "${lesson.title}" (id ${lesson.lessonId})`);
+      lessons.push(lesson);
+      continue;
+    }
     try {
       const genRes = await callChat(token, "generate_lesson", sample);
       if (genRes.status !== 200) {
@@ -411,9 +443,39 @@ function stageGrammarVerify(lessons) {
 // KHÔNG tự động sinh lại bài KHÔNG ĐẠT (rủi ro lặp lại đúng bẫy retry-loop tốn tiền đã gặp ở
 // phrase_groups trước đó) — chỉ đánh dấu để loại khỏi "sẵn sàng public", Minh tự xem lý do rồi
 // quyết định sinh lại tay cho ĐÚNG bài đó nếu cần.
+//
+// LẤY MẪU NGẪU NHIÊN 1/10 (2026-08-15, Minh: "đã có skin và spine cho phần khung lẫn nội dung...
+// Bước giám khảo kiểm tra chỉ là một bước kiểm tra chất lượng" + "chỉ là bước giữa sinh nội dung
+// và trước khi tách câu, tra từ, audio, hình ảnh") — do khung (spine) và nội dung theo ngành
+// (skin) đã đảm bảo cấu trúc/chủ đề đúng, giám khảo AI cho MỌI bài là dư thừa + tốn kém. Chia lô
+// thành từng NHÓM 10 bài liên tiếp (đúng thứ tự spine), mỗi nhóm chỉ chọn NGẪU NHIÊN 1 bài để
+// giám khảo chấm thật — các bài còn lại coi là "ok" (không chặn), không gọi AI. Vị trí GIÁM KHẢO
+// vẫn giữ nguyên giữa STAGE 1 (nội dung) và STAGE 3-7 (tách câu/tra từ/ngữ pháp/audio/ảnh bìa) —
+// không đổi.
+const JUDGE_SAMPLE_GROUP_SIZE = 10;
+
+function pickJudgeSampleIndexes(lessons) {
+  const picked = new Set();
+  for (let start = 0; start < lessons.length; start += JUDGE_SAMPLE_GROUP_SIZE) {
+    const group = [];
+    for (let i = start; i < Math.min(start + JUDGE_SAMPLE_GROUP_SIZE, lessons.length); i++) {
+      if (lessons[i].ok) group.push(i);
+    }
+    if (group.length) picked.add(group[Math.floor(Math.random() * group.length)]);
+  }
+  return picked;
+}
+
 async function stageJudge(token, lessons) {
-  for (const lesson of lessons) {
+  const sampleIndexes = pickJudgeSampleIndexes(lessons);
+  console.log(`  Chọn ngẫu nhiên ${sampleIndexes.size}/${lessons.length} bài để giám khảo chấm (1 bài / mỗi ${JUDGE_SAMPLE_GROUP_SIZE} bài).`);
+  for (let i = 0; i < lessons.length; i++) {
+    const lesson = lessons[i];
     if (!lesson.ok) continue;
+    if (!sampleIndexes.has(i)) {
+      lesson.judge = { ok: true, skipped: true };
+      continue;
+    }
     try {
       const res = await callChat(token, "judge_lesson_quality", { lesson_id: lesson.lessonId });
       if (res.status !== 200) {
