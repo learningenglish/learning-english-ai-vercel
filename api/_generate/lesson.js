@@ -1631,12 +1631,53 @@ function splitEnglishSentencesForPhraseGroups(text) {
 // đánh đổi so với rủi ro chất lượng — quay lại ĐÚNG 1 câu/lượt gọi (đã verify ổn định qua nhiều
 // vòng trước đó). Tiết kiệm chi phí giờ CHỈ còn dựa vào 2 việc đã làm ổn (rút gọn prompt ~40%,
 // bỏ leo thang model đắt) — không đánh đổi thêm bằng chất lượng.
-async function analyzePhraseGroupsInChunks(toAnalyze) {
+// TÁI SỬ DỤNG kết quả CÂU ĐÃ ĐÚNG khi retry (2026-08-15, Minh: "thiếu từ nào tra từ đó là ok...
+// hiện tại việc giao tiếp như vậy đang rất tốn token") — phát hiện thật: analyze_lesson_phrase_
+// groups gọi lại NGUYÊN 1 "item" (có thể 2-3 câu) mỗi khi item đó chưa đủ coverage, làm
+// analyzePhraseGroupsInChunks PHÂN TÍCH LẠI TỪ ĐẦU MỌI CÂU trong item đó — kể cả câu ĐÃ ĐÚNG từ
+// lượt trước (vd "That's fun! Maybe we can go together." — "Maybe we can go together." đã đúng,
+// chỉ "That's fun!" bị AI bỏ trắng, nhưng lượt sau vẫn hỏi lại CẢ 2 câu). Đọc "phrase_groups" ĐÃ
+// LƯU của item đó, thử khớp PREFIX các nhóm đã có với đúng câu đang xét (theo thứ tự) — khớp
+// đúng thì DÙNG LẠI, không tốn lượt gọi AI; ngay khi gặp câu KHÔNG khớp được (thiếu/lệch), NGỪNG
+// tái sử dụng cho các câu còn lại (an toàn hơn đoán mò, dù có thể bỏ lỡ vài câu đúng phía sau).
+function tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceRealTokens) {
+  if (!Array.isArray(existingGroups) || !sentenceRealTokens.length) return null;
+  let idx = cursorIdx;
+  let collected = 0;
+  const groups = [];
+  while (idx < existingGroups.length && collected < sentenceRealTokens.length) {
+    const words = Array.isArray(existingGroups[idx]?.words) ? existingGroups[idx].words : [];
+    if (!words.length) return null;
+    groups.push(existingGroups[idx]);
+    collected += words.length;
+    idx++;
+  }
+  if (collected !== sentenceRealTokens.length) return null;
+  const gotTokens = groups.flatMap((g) => g.words).map(normalizePhraseWord);
+  for (let i = 0; i < sentenceRealTokens.length; i++) {
+    if (gotTokens[i] !== sentenceRealTokens[i]) return null;
+  }
+  return { groups, nextCursorIdx: idx };
+}
+
+async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
+    const existingGroups = Array.isArray(existingGroupsList?.[i]) ? existingGroupsList[i] : null;
+    let cursorIdx = 0;
+    let reuseOk = !!existingGroups;
     const combinedGroups = [];
     for (const sentence of sentences) {
+      if (reuseOk) {
+        const reused = tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceWordTokens(sentence));
+        if (reused) {
+          combinedGroups.push(...reused.groups);
+          cursorIdx = reused.nextCursorIdx;
+          continue;
+        }
+        reuseOk = false; // câu này thiếu/lệch — từ đây không còn tin cậy để tái dùng phần còn lại
+      }
       const chunk = [{ text: sentence }];
       // BỎ HẲN LEO THANG "strong" (2026-08-14, Minh xem dashboard OpenAI thật: model mạnh chiếm
       // $0.19/$0.29 = 65% chi tiêu 1 ngày — ĐÚNG lỗi CŨ đã bị bắt và sửa 1 lần trước đó (xem ghi
@@ -1970,7 +2011,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // gọi lại action này (missingIdx tự lọc lại item còn thiếu) sẽ tiếp tục đúng chỗ dang dở, không
   // làm lại từ đầu.
   for (const origIdx of missingIdx) {
-    const result = await analyzePhraseGroupsInChunks([{ text: content[origIdx].text }]);
+    const result = await analyzePhraseGroupsInChunks([{ text: content[origIdx].text }], [content[origIdx].phrase_groups]);
     if (!result.ok) {
       console.error("[analyze_lesson_phrase_groups] thất bại tại item", origIdx, result.reason);
       continue;
