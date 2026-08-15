@@ -269,21 +269,41 @@ sẽ diễn ra trong cấp độ này (mục "THỨ TỰ BÀI HỌC"), mỗi dò
 huống của vị trí đó — TUYỆT ĐỐI KHÔNG được viết bất kỳ "topic" nào trước khi hoàn thành BƯỚC 1
 dưới đây.
 
+DÀN NHÂN VẬT CỐ ĐỊNH (2026-08-14, Minh chốt — áp dụng cho MỌI chuỗi có ít nhất 1 vị trí "hội
+thoại"): nhân vật NHÂN VIÊN PHÍA CÔNG TY/NGÀNH (vai chính lặp lại xuyên suốt, khác với người đối
+thoại/khách/đối tác thay đổi theo từng chuỗi) PHẢI lấy tên từ ĐÚNG danh sách sau, KHÔNG tự đặt
+tên khác cho vai này:
+- Nữ: Phương Ánh, Thúy Vy, Trang
+- Nam: Giàu, Khang
+Xoay vòng ĐỀU cả 5 tên qua các chuỗi khác nhau (không dồn phần lớn chuỗi cho đúng 1-2 tên quen
+thuộc) — MỘT tên CÓ THỂ xuất hiện lại ở chuỗi khác sau này trong CÙNG level (đây là dàn nhân vật
+cố định của cả giáo trình, KHÔNG phải nhân vật dùng 1 lần rồi bỏ), miễn ở chuỗi mới đó nhân vật
+gặp TÌNH HUỐNG/VAI TRÒ ĐỐI THOẠI/BỐI CẢNH khác hẳn chuỗi trước để không lặp cảm giác.
+NGƯỜI ĐỐI THOẠI CÙNG chuỗi (khách hàng, kiểm toán viên, đối tác ngân hàng, cấp trên, đối tác
+nước ngoài...) — KHÔNG bị giới hạn vào danh sách trên, tự đặt tên phù hợp vai trò, XEN KẼ người
+Việt và người nước ngoài tuỳ tình huống (vd đối tác/khách hàng/kiểm toán quốc tế dùng tên nước
+ngoài thật tự nhiên) để đa dạng — dùng "interlocutors" của chân dung nghề làm nguồn vai trò
+(Kế toán trưởng/Ban giám đốc, Đồng nghiệp phòng kế toán, Cơ quan thuế/Kiểm toán viên, Khách hàng
+và nhà cung cấp, Ngân hàng...), XOAY VÒNG qua các chuỗi để đa dạng CHỨC VỤ/VAI TRÒ, không lặp lại
+"đồng nghiệp nói với đồng nghiệp" ở mọi chuỗi.
+
 BƯỚC 1 — DỰNG "story_chains" (khung câu chuyện) TRƯỚC, cho TỪNG chuỗi: chia danh sách vị trí
 thành các chuỗi VỊ TRÍ LIÊN TIẾP (thường 2-3 vị trí, có thể dao động, không bắt buộc bằng nhau —
 dù cùng khung hay khác khung đều gộp được, mỗi khung trong chuỗi vẫn phải đúng chức năng giao
 tiếp riêng của nó, KHÔNG đổi khung để hợp câu chuyện). Với MỖI chuỗi, viết ra ĐỦ 3 phần, CỤ THỂ
 (không viết chung chung):
-- "character": nhân vật chính của chuỗi — TÊN RIÊNG hoặc VAI TRÒ CỤ THỂ (vd "một khách hàng tên
-  Lan", "đồng nghiệp mới tên Minh") — PHẢI GIỮ NGUYÊN, không đổi, ở MỌI vị trí trong chuỗi đó.
+- "character": nhân vật chính của chuỗi — TÊN RIÊNG theo ĐÚNG "DÀN NHÂN VẬT CỐ ĐỊNH" ở trên nếu
+  chuỗi có vị trí hội thoại (vd "nhân viên kế toán tên Trang"); bài đọc thuần không bắt buộc theo
+  danh sách này, có thể đặt tên khác nếu hợp lý hơn.
 - "setting": bối cảnh/không gian cụ thể (địa điểm + tình huống nền, vd "quầy pha chế của quán cà
   phê vào ca sáng") — PHẢI GIỮ NGUYÊN, không đổi, ở MỌI vị trí trong chuỗi đó.
 - "arc": 1-2 câu mô tả mạch diễn biến CỦA CẢ CHUỖI — vị trí đầu MỞ ĐẦU câu chuyện, vị trí giữa
   (nếu có) PHÁT TRIỂN TIẾP NỐI TRỰC TIẾP (không phải chuyện mới), vị trí cuối có KẾT QUẢ/KẾT
   THÚC rõ ràng. Đây PHẢI là 1 CÂU CHUYỆN DUY NHẤT chảy xuyên suốt cả chuỗi, KHÔNG PHẢI 2-3 câu
   chuyện tách rời chỉ tình cờ cùng 1 chủ đề chung chung.
-Hết 1 chuỗi thì CHUYỂN HẲN sang nhân vật/bối cảnh khác cho chuỗi tiếp theo (không dùng lại nhân
-vật/bối cảnh của chuỗi trước — tránh cảm giác 1 series bất tận xuyên suốt cả level).
+Hết 1 chuỗi thì đổi SETTING/TÌNH HUỐNG/NGƯỜI ĐỐI THOẠI cho chuỗi tiếp theo (tránh cảm giác 1
+series bất tận xuyên suốt cả level) — nhân vật chính CÓ THỂ lặp lại (đúng dàn cố định ở trên),
+chỉ KHÔNG lặp lại NGUYÊN VẸN cùng 1 bối cảnh/tình huống/người đối thoại của chuỗi ngay trước đó.
 
 BƯỚC 2 — SAU KHI ĐÃ CÓ story_chains, MỚI viết "topic" cho từng vị trí: mỗi topic PHẢI nhắc TRỰC
 TIẾP đến ĐÚNG "character" + "setting" của đúng chuỗi chứa vị trí đó (gắn kèm "chain_id" của chuỗi

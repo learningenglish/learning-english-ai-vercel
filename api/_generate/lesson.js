@@ -580,13 +580,26 @@ như ĐỘ DÀI, cấp độ ngữ pháp, hay bám sát TÌNH HUỐNG):
 - Vẫn PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như đã quy định) — hài hước/sinh động
   không có nghĩa là dùng từ lóng hay cấu trúc vượt cấp độ.
 
+QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI (2026-08-14, Minh chốt — CHỈ áp dụng khi loại nội dung là "hội
+thoại"): nếu "Chủ đề"/"Tình huống" đã cho ở trên NÊU RÕ tên 1 nhân vật cụ thể (thường là nhân
+viên phía công ty/ngành, do bước chọn chủ đề đã gán sẵn) — dùng ĐÚNG NGUYÊN VĂN tên đó, không
+đổi. Nếu KHÔNG có tên nào được nêu rõ (bài tự chọn hoàn toàn), chọn tên nhân vật NHÂN VIÊN chính
+từ ĐÚNG danh sách sau, xoay vòng qua nhiều bài khác nhau (không lặp mãi 1-2 tên quen):
+- Nữ: Phương Ánh, Thúy Vy, Trang
+- Nam: Giàu, Khang
+Nhân vật ĐỐI DIỆN (khách hàng, đối tác, kiểm toán viên, ngân hàng, cấp trên...) KHÔNG bị giới
+hạn vào danh sách trên — tự đặt tên phù hợp vai trò, XEN KẼ người Việt và người nước ngoài tuỳ
+tình huống cho đa dạng (đối tác/khách hàng/kiểm toán quốc tế dùng tên nước ngoài tự nhiên).
+
 QUY TẮC VỀ GIỚI TÍNH NHÂN VẬT (2026-08-08, CHỈ áp dụng khi loại nội dung là "hội thoại" — bỏ
 qua hoàn toàn với "bài đọc"): hệ thống dùng "characters" để chọn ĐÚNG giọng đọc nam/nữ cho từng
 nhân vật — liệt kê MỌI tên/vai trò xuất hiện ở trường "speaker" trong "content" (đúng NGUYÊN VĂN
 từng giá trị "speaker" đã dùng, không đổi cách viết), kèm giới tính THẬT của nhân vật đó theo
 đúng tên/vai trò/ngữ cảnh bạn vừa viết (vd "CEO"/"CFO"/"Staff" vẫn phải xác định rõ nam hay nữ
 dựa vào cách bạn đã mô tả nhân vật đó trong bài, không được bỏ trống hay đoán ngẫu nhiên) — mỗi
-nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lượt trong bài.
+nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lượt trong bài. Tên trong danh sách
+"QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI" ở trên đã CÓ SẴN giới tính đúng (Phương Ánh/Thúy Vy/Trang =
+nữ, Giàu/Khang = nam) — không cần suy luận lại riêng cho các tên đó.
 
 QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
