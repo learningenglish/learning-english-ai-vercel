@@ -461,11 +461,11 @@ async function stageContent(session, samples) {
 }
 
 // ====== STAGE 2/3: field (reading_chunks HOẶC phrase_groups), cho TOÀN BỘ lô ======
-async function stageField(session, lessons, action, field, resultKey, label) {
+async function stageField(session, lessons, action, field, resultKey, label, maxAttempts) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue; // bỏ qua bài đã lỗi từ stage trước, không phí lượt gọi
     try {
-      lesson[resultKey] = await ensureFieldComplete(session, lesson.lessonId, action, field);
+      lesson[resultKey] = await ensureFieldComplete(session, lesson.lessonId, action, field, { maxAttempts });
       console.log(`  ${lesson.tag}: ${label} — ${lesson[resultKey].ok ? "OK" : "CHƯA ĐỦ"} (${lesson[resultKey].attempts} lượt)`);
     } catch (err) {
       // 1 bài lỗi bất ngờ không được làm chết cả lô — xem lý do ở stageContent().
@@ -602,8 +602,16 @@ export async function publishBatch(samples) {
   console.log(`\n=== STAGE 3/7: Tách câu (reading_chunks) ===`);
   await stageField(session, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
 
+  // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
+  // tốt hơn là 4 lần tra từ") — xác nhận thật qua batch: phrase_groups đòi hỏi cấu trúc chặt hơn
+  // hẳn reading_chunks (word_meanings/word_types/word_levels cho TỪNG từ, không chỉ 1 nghĩa cho cả
+  // khối) nên tỉ lệ đạt thấp hơn nhiều — thử thêm 2 lượt nữa (3-4) hiếm khi cứu được câu đã lỗi 2
+  // lần đầu (cùng nguyên tắc đã áp dụng: câu lỗi lặp lại là do RULE, không phải may rủi), chỉ tốn
+  // thêm tiền/thời gian mà không đổi kết quả. reading_chunks (đã ổn định, đạt 1-2 lượt hầu hết
+  // trường hợp) là phương án dự phòng SẴN CÓ phía app khi phrase_groups còn thiếu — chấp nhận
+  // "chưa phủ 100% từng từ nhưng tách câu đã bù đủ" thay vì trả tiền thử lại thêm.
   console.log(`\n=== STAGE 4/7: Tra từ (phrase_groups) ===`);
-  await stageField(session, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ");
+  await stageField(session, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2);
 
   console.log(`\n=== STAGE 5/7: Ngữ pháp (verify, không gọi thêm AI) ===`);
   stageGrammarVerify(lessons);
