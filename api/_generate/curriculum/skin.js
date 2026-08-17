@@ -272,6 +272,32 @@ cấp làm nguồn. Quy tắc thích nghi:
   "situation_type" ở khuôn JSON cuối prompt này, giá trị "general_communication" là ĐÚNG cho các
   chủ đề dạng này, và bị giới hạn tỉ lệ bằng code, không được lạm dụng chỉ vì dễ nghĩ hơn.
 
+  "CHỨC NĂNG GIAO TIẾP" (function_name_vi, hiện trong mục THỨ TỰ BÀI HỌC) LÀ KỸ NĂNG NGÔN NGỮ,
+  KHÔNG PHẢI ĐỀ TÀI (2026-08-17, TÌM RA NGUYÊN NHÂN GỐC thật của phần lớn topic chung chung lặp
+  lại nhiều lần dù đã có bài test thực chất ngành ở trên — Minh chỉ đúng hướng: "trong yêu cầu về
+  nội dung có ghi sở thích gì đó, ràng buộc đó khiến sinh bài có vấn đề"). Xác nhận qua dữ liệu
+  thật: các vị trí liên tục ra chủ đề chung chung (hobby/hỏi giờ/chỉ đường) đều có
+  function_name_vi là "Nói về sở thích", "Nói giờ giấc, lịch trình", hoặc "Yêu cầu đơn giản" — đây
+  là NHÃN CỦA XƯƠNG (curriculum_spine.json), mô tả 1 KỸ NĂNG NGỮ PHÁP/NGÔN NGỮ mà vị trí đó phải
+  luyện (vd cấu trúc "like/don't like", cách nói giờ giấc, cách đưa ra yêu cầu) — KHÔNG phải chỉ
+  thị "chủ đề bài phải là sở thích cá nhân/hỏi giờ mở cửa/chỉ đường". Model đọc thấy nhãn này rồi
+  hiểu NHẦM thành đề tài văn chương ("Nói về sở thích" -> viết bài về sở thích cá nhân), dẫn tới
+  đúng loại lỗi Minh liên tục bắt được. QUY TẮC ĐÚNG: LUÔN áp dụng function_name_vi vào 1 nội dung
+  CÓ THỰC CHẤT NGÀNH (xem bài test ở trên), KHÔNG áp vào chủ đề đời sống chung:
+  - "Nói về sở thích" -> luyện cấu trúc thích/không thích BẰNG CÁCH nói về 1 công việc/công cụ/
+    phương pháp trong ngành (vd "Trang thích dùng phần mềm kế toán X hơn vì lý do Y", "Khang không
+    thích quy trình nhập liệu thủ công vì mất thời gian") — KHÔNG PHẢI sở thích cá nhân ngoài công
+    việc (đọc sách, xem phim, thể thao, nấu ăn).
+  - "Nói giờ giấc, lịch trình" -> luyện cách nói giờ/lịch BẰNG CÁCH nói về 1 deadline/lịch công
+    việc CỤ THỂ của ngành (vd "báo cáo phải nộp trước 5 giờ chiều", "lịch kiểm toán tuần tới") —
+    KHÔNG PHẢI hỏi giờ mở/đóng cửa chung chung của 1 địa điểm bất kỳ.
+  - "Yêu cầu đơn giản" -> luyện cách đưa ra yêu cầu BẰNG CÁCH yêu cầu 1 việc/tài liệu/công cụ THẬT
+    của ngành (vd "yêu cầu đồng nghiệp gửi lại hoá đơn bị thiếu") — KHÔNG PHẢI mượn đồ dùng chung
+    chung (bút, giấy, máy tính cầm tay) không gắn với công việc cụ thể nào.
+  Nguyên tắc chung cho MỌI function_name_vi khác nếu gặp tình huống tương tự: tên chức năng mô tả
+  CÁCH NÓI (ngữ pháp/mẫu câu), chủ đề/nội dung ĐI KÈM cách nói đó vẫn phải qua đúng bài test thực
+  chất ngành ở trên.
+
   CẢNH BÁO TỰ GẮN NHÃN "situation_type" SAI ĐỂ NÉ TRẦN TỈ LỆ (2026-08-17, bắt được thật qua test:
   topic "Trang hỏi nhân viên ngân hàng về giờ làm việc của quầy giao dịch" bị gắn
   "situation_type": "client_interaction" dù nội dung THẬT chỉ là hỏi giờ mở cửa — bất kỳ khách hàng
