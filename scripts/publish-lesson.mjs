@@ -593,10 +593,9 @@ export async function publishBatch(samples) {
   const session = { token: await login(CREDS.email, CREDS.password) };
   const usedBaseUrls = await fetchExistingCoverBaseUrls(session);
 
-  // QUY TRÌNH 8 BƯỚC (2026-08-17, Minh chốt): 1.Nội dung 2.Claude đọc TOÀN BỘ + xác nhận (NGOÀI
-  // script này, không phải lệnh code) 3.Tách câu 4.Tra từ 5.Ngữ pháp 6.Audio 7.Ảnh bìa 8.Giám khảo
-  // (duyệt ngẫu nhiên, tham khảo, không chặn).
-  console.log(`\n=== BƯỚC 1/8: Nội dung (${samples.length} bài) ===`);
+  // QUY TRÌNH 7 BƯỚC (2026-08-17, Minh chốt): 1.Nội dung 2.Claude đọc TOÀN BỘ + xác nhận (NGOÀI
+  // script này, không phải lệnh code) 3.Tách câu 4.Tra từ 5.Ngữ pháp 6.Audio 7.Ảnh bìa.
+  console.log(`\n=== BƯỚC 1/7: Nội dung (${samples.length} bài) ===`);
   const lessons = await stageContent(session, samples);
 
   // MẶC ĐỊNH dừng sau khi có nội dung, chờ ĐÚNG BƯỚC 2 (Claude đọc TOÀN BỘ nội dung level này bên
@@ -611,7 +610,7 @@ export async function publishBatch(samples) {
     return lessons;
   }
 
-  console.log(`\n=== BƯỚC 3/8: Tách câu (reading_chunks) ===`);
+  console.log(`\n=== BƯỚC 3/7: Tách câu (reading_chunks) ===`);
   await stageField(session, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
 
   // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
@@ -622,30 +621,27 @@ export async function publishBatch(samples) {
   // thêm tiền/thời gian mà không đổi kết quả. reading_chunks (đã ổn định, đạt 1-2 lượt hầu hết
   // trường hợp) là phương án dự phòng SẴN CÓ phía app khi phrase_groups còn thiếu — chấp nhận
   // "chưa phủ 100% từng từ nhưng tách câu đã bù đủ" thay vì trả tiền thử lại thêm.
-  console.log(`\n=== BƯỚC 4/8: Tra từ (phrase_groups) ===`);
+  console.log(`\n=== BƯỚC 4/7: Tra từ (phrase_groups) ===`);
   await stageField(session, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2);
 
-  console.log(`\n=== BƯỚC 5/8: Ngữ pháp (verify, không gọi thêm AI) ===`);
+  console.log(`\n=== BƯỚC 5/7: Ngữ pháp (verify, không gọi thêm AI) ===`);
   stageGrammarVerify(lessons);
 
-  console.log(`\n=== BƯỚC 6/8: Audio ===`);
+  console.log(`\n=== BƯỚC 6/7: Audio ===`);
   await stageAudio(session, lessons);
 
-  console.log(`\n=== BƯỚC 7/8: Ảnh bìa ===`);
+  console.log(`\n=== BƯỚC 7/7: Ảnh bìa ===`);
   await stageCoverImage(session, lessons, usedBaseUrls);
 
-  // GIÁM KHẢO chuyển xuống CUỐI CÙNG (2026-08-17, Minh: "Tách riêng phần giám khảo duyệt ngẫu
-  // nhiên sau 7 bước") — trước đây đứng NGAY SAU nội dung, tạo cảm giác là 1 cổng chặn nội dung
-  // trong khi thực chất KHÔNG chặn gì (chỉ chấm mẫu 1/10, không tự sinh lại bài KHÔNG ĐẠT) — dời
-  // xuống cuối để đúng vai trò thật: 1 lượt duyệt ngẫu nhiên bổ sung SAU khi mọi thứ khác (tách
-  // câu/tra từ/audio/ảnh bìa) đã xong, không phải điều kiện tiên quyết.
-  console.log(`\n=== BƯỚC 8/8: Giám khảo chất lượng (duyệt ngẫu nhiên, tham khảo) ===`);
-  await stageJudge(session, lessons);
-
+  // BỎ HẲN giám khảo AI chấm mẫu ngẫu nhiên (2026-08-17, Minh: "nếu Claude code đã làm chức năng
+  // giám khảo ở bước 2 [đọc toàn bộ + xác nhận] có nghĩa là bước cuối giám khảo chấm ngẫu nhiên là
+  // không cần thiết nữa... tôi tin tưởng bước 2 Claude code sẽ chấm kỹ nội dung") — BƯỚC 2 (Claude
+  // đọc TOÀN BỘ nội dung, không phải mẫu 1/10) đã thay thế vai trò của stageJudge(). Giữ nguyên
+  // stageJudge() trong file (không xoá code) phòng khi cần dùng lại, nhưng KHÔNG gọi trong luồng
+  // mặc định nữa — tránh tốn thêm tiền cho 1 bước đã dư thừa.
   for (const lesson of lessons) {
     lesson.ok =
       lesson.ok &&
-      (lesson.judge?.ok ?? false) &&
       (lesson.readingChunks?.ok ?? false) &&
       (lesson.phraseGroups?.ok ?? false) &&
       (lesson.grammarCheck?.ok ?? false) &&
