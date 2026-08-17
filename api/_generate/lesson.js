@@ -474,7 +474,15 @@ Mỗi khối có cấu trúc:
     "meaning": "nghĩa tiếng Việt tự nhiên, SẠCH, của ĐÚNG khối này (không lẫn tiếng Anh)"
   }`;
 
-const GENERATE_LESSON_SYSTEM_PROMPT = `Bạn là chuyên gia soạn giáo trình tiếng Anh cho người Việt, bám sát khung CEFR.
+// TÁCH RIÊNG PROMPT THEO content_type (2026-08-17, Minh: "quy tắc về bài đọc và hội thoại đã set
+// riêng chưa" — TRƯỚC ĐÂY 1 PROMPT DUY NHẤT chứa cả 2 nhánh "hội thoại"/"bài đọc" cùng lúc, model
+// phải tự đọc qua đoạn KHÔNG liên quan tới content_type đang sinh rồi tự lọc đúng nhánh — ĐÚNG
+// NGUYÊN LÝ đã xác nhận 2 lần trong dự án (reading_chunks, phrase_groups): prompt gộp nhiều mục
+// đích làm giảm độ tuân thủ, tách theo ĐÚNG 1 mục đích cải thiện rõ rệt). Ghép 3 mảnh
+// PREFIX + (RULES riêng theo content_type) + SUFFIX thay vì nhân đôi TOÀN BỘ prompt (phần chung
+// độ dài/CEFR/schema JSON dài ~250 dòng, nhân đôi sẽ khó bảo trì — sửa 1 quy tắc chung phải nhớ
+// sửa 2 chỗ).
+const GENERATE_LESSON_SYSTEM_PROMPT_PREFIX = `Bạn là chuyên gia soạn giáo trình tiếng Anh cho người Việt, bám sát khung CEFR.
 
 NHIỆM VỤ: Tạo một bài học tiếng Anh hoàn chỉnh theo yêu cầu của người dùng.
 
@@ -566,86 +574,93 @@ QUY TẮC VỀ TÌNH HUỐNG:
 - Dù tình huống do người dùng nhập hay bạn tự tạo, luôn ghi tóm tắt tình huống (1-2 câu
   tiếng Việt) vào trường "situation" trong JSON kết quả.
 
-QUY TẮC VỀ LOẠI NỘI DUNG (2026-08-17, viết lại sau khi xác nhận thật qua batch A1: "bài đọc" bị
-kéo thành bản tóm tắt/nhật ký cá nhân của "hội thoại" — SAI GỐC vì trước đây không quy định 2 loại
-phải có MỤC ĐÍCH GIAO TIẾP khác nhau):
-Mỗi bài chỉ 1 trong 2 loại ("dialogue" hoặc "reading"), nhưng PHẢI hiểu 2 loại này ĐỘC LẬP hoàn
-toàn, không phải 2 CÁCH TRÌNH BÀY của cùng 1 nội dung.
-- "hội thoại": mô phỏng 1 cuộc trao đổi tự nhiên giữa các nhân vật có vai trò rõ ràng — tập trung
-  vào giao tiếp, phản hồi, hỏi-đáp, trao đổi thông tin, giải quyết tình huống. Viết dạng hội thoại
-  2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói.
-- "bài đọc": PHẢI là 1 bài viết CUNG CẤP THÔNG TIN hoàn chỉnh, có giá trị nội dung ĐỘC LẬP — phát
-  triển chủ đề theo hướng kiến thức/kinh nghiệm/quan sát/giải thích/góc nhìn thực tế. TUYỆT ĐỐI
-  KHÔNG được: kể lại nội dung 1 cuộc hội thoại; tóm tắt điều nhân vật đã nói; chuyển lượt thoại
-  thành 1 đoạn văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ chỉ đổi cách diễn đạt. "Bài đọc" phải
-  TỰ ĐỨNG ĐỘC LẬP được, trả lời đúng câu hỏi "người học hiểu thêm/học được ĐIỀU GÌ từ bài đọc
-  này?" — không phải "làm sao kể lại 1 tình huống giao tiếp bằng văn xuôi?".
-  CẤU TRÚC BẮT BUỘC: chia thành NHIỀU đoạn văn RÕ RÀNG, mỗi đoạn là 1 phần tử RIÊNG trong mảng,
-  mỗi đoạn ĐÚNG 2-4 câu — TUYỆT ĐỐI KHÔNG được gộp cả bài thành 1 phần tử duy nhất dù bài ngắn
-  (hệ thống sẽ TỰ ĐỘNG KIỂM TRA VÀ BẮT LỖI bằng code nếu 1 phần tử có hơn 5 câu). Mỗi đoạn nên có
-  1 chức năng rõ ràng (mở đầu chủ đề/tình huống → phát triển ý chính → ví dụ/trải nghiệm/giải
-  thích → kết luận hoặc mở rộng ý nghĩa thực tế) — không bắt buộc đúng 4 đoạn, nhưng phải phân
-  đoạn hợp lý.
+`;
 
-QUY TẮC VỀ GIỌNG VĂN:
-- "hội thoại" (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần sinh động
-  hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng ràng buộc khác như ĐỘ DÀI/cấp độ ngữ pháp/TÌNH
-  HUỐNG): đề cao HÀI HƯỚC, THÔNG MINH, DÍ DỎM, SINH ĐỘNG — nhân vật có cá tính riêng (không nói
-  kiểu trả lời máy móc, đúng chuẩn), thỉnh thoảng chêm phản ứng bất ngờ nhẹ, câu đùa/nhận xét dí
-  dỏm phù hợp ngữ cảnh (kể cả trong tình huống công việc — người thật vẫn đùa vui khi làm việc),
-  "nhiều chuyện" theo nghĩa tự nhiên bàn tán/hỏi han thêm ngoài lề chứ không chỉ hỏi-đáp cụt lủn
-  đúng mục đích. Ưu tiên để nhân vật CHIA SẺ một điều hay/kinh nghiệm/mẹo thật cụ thể qua lời
-  thoại tự nhiên (không phải giảng giải khô khan) — người đọc học được điều gì đó thú vị, không
-  chỉ theo dõi một giao dịch/tác vụ khô cứng.
-- "bài đọc" (2026-08-17, viết lại — bản CŨ dùng cụm "viết như người có kinh nghiệm thật đang chia
-  sẻ" CHÍNH LÀ NGUYÊN NHÂN GỐC khiến model tự đẩy sang ngôi thứ nhất mơ hồ kiểu "We have a
-  desk..."): giọng văn phải TỰ NHIÊN, CỤ THỂ, CÓ THÔNG TIN THỰC TẾ, đúng cấp độ CEFR — "giọng
-  người viết am hiểu thực tế" KHÔNG có nghĩa BẮT BUỘC dùng ngôi thứ nhất, KHÔNG tự ý dùng
-  I/we/my/our/me chỉ để tạo cảm giác chân thực. Tránh văn phong giáo khoa khô cứng, tránh tuyên bố
-  chung chung không nội dung, tránh "giả vờ là 1 người cụ thể đang kể chuyện" nếu nội dung không
-  yêu cầu — "thật" nghĩa là THÔNG TIN cụ thể/có giá trị, không phải AI phải đóng vai 1 nhân vật.
-- Vẫn PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như đã quy định) — hài hước/sinh động
-  không có nghĩa là dùng từ lóng hay cấu trúc vượt cấp độ.
+// PHẦN RIÊNG "hội thoại" — CHỈ nối vào prompt khi content_type === "dialogue", "bài đọc" KHÔNG
+// hề thấy đoạn này.
+const DIALOGUE_ONLY_RULES = `
+QUY TẮC VỀ NỘI DUNG HỘI THOẠI: mô phỏng 1 cuộc trao đổi tự nhiên giữa các nhân vật có vai trò rõ
+ràng — tập trung vào giao tiếp, phản hồi, hỏi-đáp, trao đổi thông tin, giải quyết tình huống. Viết
+dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói.
 
-QUY TẮC VỀ NGÔI KỂ (2026-08-17, CHỈ áp dụng "bài đọc" — "hội thoại" luôn có tên người nói rõ ràng
-nên không cần quy tắc này): mặc định dùng NGÔI THỨ BA, khách quan, trình bày trực tiếp về chủ đề
-(vd "The desk is usually placed near the window." / "Many small teams prefer to place a shared
-desk near the window."). CHỈ dùng ngôi thứ nhất ("I"/"we") khi nội dung THỰC SỰ phù hợp với 1
-người kể chuyện cụ thể — nếu dùng, câu ĐẦU TIÊN của bài PHẢI xác lập rõ: người kể là ai, quan hệ
-của người kể với chủ đề, vì sao người kể có kinh nghiệm/góc nhìn này (vd "As an accountant with
-five years of experience, I..."). TUYỆT ĐỐI KHÔNG dùng ngôi thứ nhất với narrator không xác định
-— cấm các câu mở đầu kiểu "We have a desk near the window."/"We usually do this."/"Our team
-often..." khi người đọc CHƯA biết "we"/"our" là ai.
+QUY TẮC VỀ GIỌNG VĂN (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần
+sinh động hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng ràng buộc khác như ĐỘ DÀI/cấp độ ngữ
+pháp/TÌNH HUỐNG): đề cao HÀI HƯỚC, THÔNG MINH, DÍ DỎM, SINH ĐỘNG — nhân vật có cá tính riêng
+(không nói kiểu trả lời máy móc, đúng chuẩn), thỉnh thoảng chêm phản ứng bất ngờ nhẹ, câu đùa/nhận
+xét dí dỏm phù hợp ngữ cảnh (kể cả trong tình huống công việc — người thật vẫn đùa vui khi làm
+việc), "nhiều chuyện" theo nghĩa tự nhiên bàn tán/hỏi han thêm ngoài lề chứ không chỉ hỏi-đáp cụt
+lủn đúng mục đích. Ưu tiên để nhân vật CHIA SẺ một điều hay/kinh nghiệm/mẹo thật cụ thể qua lời
+thoại tự nhiên (không phải giảng giải khô khan) — người đọc học được điều gì đó thú vị, không chỉ
+theo dõi một giao dịch/tác vụ khô cứng. Vẫn PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như
+đã quy định) — hài hước/sinh động không có nghĩa là dùng từ lóng hay cấu trúc vượt cấp độ.
 
-QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI (2026-08-14, Minh chốt — CHỈ áp dụng khi loại nội dung là "hội
-thoại"): nếu "Chủ đề"/"Tình huống" đã cho ở trên NÊU RÕ tên 1 nhân vật cụ thể (thường là nhân
-viên phía công ty/ngành, do bước chọn chủ đề đã gán sẵn) — dùng ĐÚNG NGUYÊN VĂN tên đó, không
-đổi. Nếu KHÔNG có tên nào được nêu rõ (bài tự chọn hoàn toàn), chọn tên nhân vật NHÂN VIÊN chính
-từ ĐÚNG danh sách sau, xoay vòng qua nhiều bài khác nhau (không lặp mãi 1-2 tên quen):
+QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI (2026-08-14, Minh chốt): nếu "Chủ đề"/"Tình huống" đã cho ở
+trên NÊU RÕ tên 1 nhân vật cụ thể (thường là nhân viên phía công ty/ngành, do bước chọn chủ đề đã
+gán sẵn) — dùng ĐÚNG NGUYÊN VĂN tên đó, không đổi. Nếu KHÔNG có tên nào được nêu rõ (bài tự chọn
+hoàn toàn), chọn tên nhân vật NHÂN VIÊN chính từ ĐÚNG danh sách sau, xoay vòng qua nhiều bài khác
+nhau (không lặp mãi 1-2 tên quen):
 - Nữ: Phương Ánh, Thúy Vy, Trang
 - Nam: Giàu, Khang
 Nhân vật ĐỐI DIỆN (khách hàng, đối tác, kiểm toán viên, ngân hàng, cấp trên...) KHÔNG bị giới
 hạn vào danh sách trên — tự đặt tên phù hợp vai trò, XEN KẼ người Việt và người nước ngoài tuỳ
 tình huống cho đa dạng (đối tác/khách hàng/kiểm toán quốc tế dùng tên nước ngoài tự nhiên).
 
-QUY TẮC VỀ GIỚI TÍNH NHÂN VẬT (2026-08-08, CHỈ áp dụng khi loại nội dung là "hội thoại" — bỏ
-qua hoàn toàn với "bài đọc"): hệ thống dùng "characters" để chọn ĐÚNG giọng đọc nam/nữ cho từng
-nhân vật — liệt kê MỌI tên/vai trò xuất hiện ở trường "speaker" trong "content" (đúng NGUYÊN VĂN
-từng giá trị "speaker" đã dùng, không đổi cách viết), kèm giới tính THẬT của nhân vật đó theo
-đúng tên/vai trò/ngữ cảnh bạn vừa viết (vd "CEO"/"CFO"/"Staff" vẫn phải xác định rõ nam hay nữ
-dựa vào cách bạn đã mô tả nhân vật đó trong bài, không được bỏ trống hay đoán ngẫu nhiên) — mỗi
-nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lượt trong bài. Tên trong danh sách
-"QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI" ở trên đã CÓ SẴN giới tính đúng (Phương Ánh/Thúy Vy/Trang =
-nữ, Giàu/Khang = nam) — không cần suy luận lại riêng cho các tên đó.
+QUY TẮC VỀ GIỚI TÍNH NHÂN VẬT (2026-08-08): hệ thống dùng "characters" để chọn ĐÚNG giọng đọc
+nam/nữ cho từng nhân vật — liệt kê MỌI tên/vai trò xuất hiện ở trường "speaker" trong "content"
+(đúng NGUYÊN VĂN từng giá trị "speaker" đã dùng, không đổi cách viết), kèm giới tính THẬT của
+nhân vật đó theo đúng tên/vai trò/ngữ cảnh bạn vừa viết (vd "CEO"/"CFO"/"Staff" vẫn phải xác định
+rõ nam hay nữ dựa vào cách bạn đã mô tả nhân vật đó trong bài, không được bỏ trống hay đoán ngẫu
+nhiên) — mỗi nhân vật xuất hiện ĐÚNG 1 lần trong mảng này dù nói nhiều lượt trong bài. Tên trong
+danh sách "QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI" ở trên đã CÓ SẴN giới tính đúng (Phương Ánh/Thúy
+Vy/Trang = nữ, Giàu/Khang = nam) — không cần suy luận lại riêng cho các tên đó.
 
-QUY TẮC HỘI THOẠI TỰ NHIÊN (CHỈ áp dụng khi loại nội dung là "hội thoại"):
+QUY TẮC HỘI THOẠI TỰ NHIÊN:
 - Độ dài lượt thoại PHẢI biến thiên rõ rệt: có lượt chỉ 1-4 từ (Sure. / Of course. / How many? / That's right.), có lượt dài 2-3 câu khi nhân vật giải thích, kể, hoặc phàn nàn. CẤM chuỗi 3 lượt liên tiếp có độ dài tương đương nhau.
 - Vai không đối xứng: xác định ai là người CẦN gì trong tình huống (khách phàn nàn nói nhiều, nhân viên xác nhận ngắn; người hỏi đường nói ngắn, người chỉ đường nói dài) và phân bổ lời thoại theo đó.
 - Dùng phản hồi ngắn tự nhiên đúng cấp độ: A1-A2 (Yes, sure / Oh no / Thank you so much), B1+ thêm (Actually... / I see what you mean / Well, the thing is...). Không nhồi vào mọi lượt — rải tự nhiên.
 - Ít nhất 1 lần trong bài: một nhân vật hỏi lại để làm rõ hoặc xác nhận thông tin (Sorry, did you say 3 PM? / So that's two boxes, right?) — đây là kỹ năng giao tiếp thật cần dạy.
 - Tổng số từ toàn bài vẫn theo length_words; biến thiên nằm ở phân bổ giữa các lượt, không phải kéo dài bài.
 - BẮT BUỘC hội thoại TRỌN VẸN: có mở đầu — diễn biến — chốt lại tự nhiên (vd cảm ơn/tạm biệt/xác nhận đã xong việc). LƯỢT THOẠI CUỐI CÙNG TUYỆT ĐỐI KHÔNG ĐƯỢC LÀ CÂU HỎI CHƯA CÓ LỜI ĐÁP (lỗi thật đã gặp: bài kết ở "Will I get paid for this delivery?" rồi hết, không nhân vật nào trả lời) — nếu gần hết length_words mà diễn biến chưa xong, RÚT NGẮN phần giữa để dành chỗ chốt lại cho trọn, KHÔNG được cắt ngang khi câu chuyện còn dở.
+`;
 
+// PHẦN RIÊNG "bài đọc" — CHỈ nối vào prompt khi content_type === "reading", "hội thoại" KHÔNG hề
+// thấy đoạn này (2026-08-17, viết lại sau khi xác nhận thật qua batch A1: "bài đọc" bị kéo thành
+// bản tóm tắt/nhật ký cá nhân của "hội thoại" — SAI GỐC vì trước đây không quy định 2 loại phải
+// có MỤC ĐÍCH GIAO TIẾP khác nhau, và bản CŨ dùng cụm "viết như người có kinh nghiệm thật đang
+// chia sẻ" CHÍNH LÀ NGUYÊN NHÂN GỐC khiến model tự đẩy sang ngôi thứ nhất mơ hồ "We have a
+// desk...").
+const READING_ONLY_RULES = `
+QUY TẮC VỀ NỘI DUNG BÀI ĐỌC: PHẢI là 1 bài viết CUNG CẤP THÔNG TIN hoàn chỉnh, có giá trị nội
+dung ĐỘC LẬP — phát triển chủ đề theo hướng kiến thức/kinh nghiệm/quan sát/giải thích/góc nhìn
+thực tế. TUYỆT ĐỐI KHÔNG được: kể lại nội dung 1 cuộc hội thoại; tóm tắt điều nhân vật đã nói;
+chuyển lượt thoại thành 1 đoạn văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ chỉ đổi cách diễn đạt.
+Phải TỰ ĐỨNG ĐỘC LẬP được, trả lời đúng câu hỏi "người học hiểu thêm/học được ĐIỀU GÌ từ bài đọc
+này?" — không phải "làm sao kể lại 1 tình huống giao tiếp bằng văn xuôi?".
+CẤU TRÚC BẮT BUỘC: chia thành NHIỀU đoạn văn RÕ RÀNG, mỗi đoạn là 1 phần tử RIÊNG trong mảng, mỗi
+đoạn ĐÚNG 2-4 câu — TUYỆT ĐỐI KHÔNG được gộp cả bài thành 1 phần tử duy nhất dù bài ngắn, CŨNG
+KHÔNG được chẻ vụn mỗi phần tử chỉ 1 câu (hệ thống sẽ TỰ ĐỘNG KIỂM TRA VÀ BẮT LỖI bằng code cả 2
+chiều). Mỗi đoạn nên có 1 chức năng rõ ràng (mở đầu chủ đề/tình huống → phát triển ý chính → ví
+dụ/trải nghiệm/giải thích → kết luận hoặc mở rộng ý nghĩa thực tế) — không bắt buộc đúng 4 đoạn,
+nhưng phải phân đoạn hợp lý.
+
+QUY TẮC VỀ GIỌNG VĂN: giọng văn phải TỰ NHIÊN, CỤ THỂ, CÓ THÔNG TIN THỰC TẾ, đúng cấp độ CEFR —
+"giọng người viết am hiểu thực tế" KHÔNG có nghĩa BẮT BUỘC dùng ngôi thứ nhất, KHÔNG tự ý dùng
+I/we/my/our/me chỉ để tạo cảm giác chân thực. Tránh văn phong giáo khoa khô cứng, tránh tuyên bố
+chung chung không nội dung, tránh "giả vờ là 1 người cụ thể đang kể chuyện" nếu nội dung không yêu
+cầu — "thật" nghĩa là THÔNG TIN cụ thể/có giá trị, không phải AI phải đóng vai 1 nhân vật. Vẫn
+PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như đã quy định).
+
+QUY TẮC VỀ NGÔI KỂ: mặc định dùng NGÔI THỨ BA, khách quan, trình bày trực tiếp về chủ đề (vd "The
+desk is usually placed near the window." / "Many small teams prefer to place a shared desk near
+the window."). CHỈ dùng ngôi thứ nhất ("I"/"we") khi nội dung THỰC SỰ phù hợp với 1 người kể
+chuyện cụ thể — nếu dùng, câu ĐẦU TIÊN của bài PHẢI xác lập rõ: người kể là ai, quan hệ của người
+kể với chủ đề, vì sao người kể có kinh nghiệm/góc nhìn này (vd "As an accountant with five years
+of experience, I..."). TUYỆT ĐỐI KHÔNG dùng ngôi thứ nhất với narrator không xác định — cấm các
+câu mở đầu kiểu "We have a desk near the window."/"We usually do this."/"Our team often..." khi
+người đọc CHƯA biết "we"/"our" là ai.
+`;
+
+const GENERATE_LESSON_SYSTEM_PROMPT_SUFFIX = `
 QUY TẮC VỀ ĐỘ DÀI (BẮT BUỘC TỰ ĐẠT, KHÔNG PHẢI GỢI Ý):
 - Tổng số từ tiếng Anh trong TOÀN BỘ mảng "content" (đếm cả text của mọi phần tử cộng lại) phải nằm trong khoảng ±25% của length_words yêu cầu. KHÔNG CÓ bước máy nào đếm lại và bắt sinh lại nếu lệch (2026-08-14, đã gỡ hẳn — xem lý do ở "YÊU CẦU HÀNG ĐẦU — ĐỘ DÀI" phía trên) — bạn PHẢI tự đếm và tự đạt đúng khoảng này trước khi trả JSON, không có lượt kiểm lại nào khác. Bài chỉ yêu cầu ~100 từ mà chỉ viết 40-50 từ là KHÔNG ĐẠT, phải viết đủ.
 - LỖI THẬT HAY GẶP Ở HỘI THOẠI MỌI CẤP ĐỘ (không riêng A1/A2): quy tắc "lượt ngắn 1-4 từ xen giữa lượt dài" (QUY TẮC HỘI THOẠI TỰ NHIÊN) khiến độ dài trung bình MỖI LƯỢT THỰC TẾ thấp hơn nhiều so với cảm giác khi viết — đo được thật: hội thoại B1 yêu cầu 200 từ chỉ đạt ~110-140 từ (thiếu 30-45%) khi dừng theo cảm giác "đã đủ ý" thay vì đếm số lượt. Cách DUY NHẤT để đạt đủ length_words khi có nhiều lượt ngắn là TĂNG TỔNG SỐ LƯỢT THOẠI (hội thoại) hoặc SỐ CÂU/ĐOẠN (bài đọc) — KHÔNG PHẢI viết từng lượt dài hơn trần cấp độ cho phép. User prompt đã tính SẴN số lượt/đoạn tối thiểu cần có (công thức đã cộng biên an toàn cho đúng thực tế lượt ngắn) — coi đó là SỐ CỨNG phải đạt hoặc vượt, không phải gợi ý tham khảo. Diễn biến câu chuyện phải đủ phong phú để tự nhiên cần nhiều lượt thoại đó (chẻ tình huống thành nhiều bước nhỏ, xem ví dụ ở đầu prompt) — không lặp ý, không rề rà giả tạo.
@@ -775,6 +790,11 @@ SỐ LƯỢNG:
 - grammar: NẾU user prompt có "Điểm ngữ pháp trọng tâm BẮT BUỘC" — mảng này PHẢI có đúng 1 mục dùng CHÍNH XÁC tên đã cho (xem quy tắc riêng ở trên), được thêm tối đa 1 điểm phụ khác cùng cấp nếu thật sự xuất hiện. NẾU KHÔNG có mục bắt buộc nào (form tự do): CHỈ chọn điểm ngữ pháp ĐÚNG CẤP ĐỘ của bài (bài B1 → chỉ điểm B1), là trọng tâm bài này dạy. KHÔNG liệt kê cấu trúc thuộc cấp thấp hơn dù chúng xuất hiện trong bài. Nếu bài không có điểm ngữ pháp nào đúng cấp, trả mảng rỗng.
 - sentence_patterns: quét TOÀN BỘ "content" (không giới hạn ở câu có điểm ngữ pháp trọng tâm), CHỈ chọn khuôn câu THỰC SỰ đáng học lại để dùng trong giao tiếp (câu hỏi thông dụng, cấu trúc tái dùng được ở nhiều tình huống khác) — bỏ qua câu quá đơn giản không có gì đáng nêu (vd "I like coffee"). Đây là phép thử NĂNG LỰC PHÁN ĐOÁN, không phải bài liệt kê — việc khó không phải "tìm cấu trúc" (câu nào cũng có cấu trúc) mà là biết cái nào ĐÁNG chọn, cái nào KHÔNG. Bắt buộc: (1) khuôn phải VỪA TẦM cấp độ của bài — không chọn khuôn quá cơ bản mà cấp độ đó chắc chắn đã thấm từ lâu, cũng không chọn khuôn vượt quá xa khiến người học chưa dùng được ngay; (2) "why_worth_it" phải là lý do THẬT — nếu không nghĩ ra lý do thuyết phục cho 1 khuôn, ĐỪNG đưa khuôn đó vào, KHÔNG hạ chuẩn để đủ số lượng. KHÔNG trùng với "grammar" (góc nhìn khác nhau: "grammar" là quy tắc ngữ pháp trọng tâm, "sentence_patterns" là khuôn câu thực dụng — được phép dùng chung 1 câu nguồn nhưng góc nhìn phải khác, không liệt kê lại y hệt). Số lượng: tối thiểu 5, tối đa 8 (2026-08-12, nâng sàn từ 3 — Minh: "phần Ngữ pháp thường quá sơ sài", đo được thật hầu hết bài chỉ có "grammar" rỗng + "sentence_patterns" dừng đúng ở mức sàn cũ 3, tab chỉ còn 3 mục — trường này CHÍNH LÀ nơi bù đắp khi "grammar" ít điểm, không phải phần phụ có thể để tối thiểu) — vẫn GIỮ ĐÚNG yêu cầu chất lượng ở trên (why_worth_it phải thật, không hạ chuẩn), chỉ đổi mức sàn để bài THÔNG THƯỜNG (không phải mọi bài) đủ khuôn câu đáng học, quét kỹ hơn TOÀN BỘ "content" trước khi kết luận không đủ khuôn để đạt sàn 5.
 - exercises: tối thiểu 3 câu trắc nghiệm + 2 câu điền từ. Câu hỏi phải kiểm tra nội dung và từ vựng CỦA CHÍNH BÀI NÀY, không hỏi kiến thức bên ngoài. "grammar_tag" dùng để hệ thống gợi ý ôn tập sau này — không ảnh hưởng nội dung câu hỏi, chỉ gắn nhãn ĐÚNG với điểm ngữ pháp câu đó thực sự kiểm tra. BẮT BUỘC mọi object trong "exercises" PHẢI có key "grammar_tag" — KHÔNG được bỏ qua key này dưới bất kỳ trường hợp nào (lỗi thật đã gặp: model bỏ hẳn key thay vì ghi null). Giá trị CHỈ có 2 dạng hợp lệ: string khớp NGUYÊN VĂN 1 "name" trong "grammar", HOẶC chính xác giá trị null (không phải chuỗi rỗng, không phải thiếu key) khi câu không gắn điểm ngữ pháp nào.`;
+
+function buildGenerateLessonSystemPrompt(contentType) {
+  const middle = contentType === "dialogue" ? DIALOGUE_ONLY_RULES : READING_ONLY_RULES;
+  return GENERATE_LESSON_SYSTEM_PROMPT_PREFIX + middle + GENERATE_LESSON_SYSTEM_PROMPT_SUFFIX;
+}
 
 // Độ dài trung bình 1 lượt thoại/1 câu-đoạn (từ) theo cấp độ — dùng để TÍNH SẴN một con số
 // lượt/đoạn cụ thể đưa vào user prompt, thay vì bắt model tự ước lượng (thử nghiệm thật:
@@ -1444,7 +1464,7 @@ export async function callAndValidateLesson(data, targetLengthWords, minWords, m
     // C1 "long" (500-600 từ, xem LEVEL_LENGTH_TABLE) bị cắt giữa JSON ở 4000, parse fail.
     temperature: 0.7,
     messages: [
-      { role: "system", content: GENERATE_LESSON_SYSTEM_PROMPT },
+      { role: "system", content: buildGenerateLessonSystemPrompt(data.content_type) },
       { role: "user", content: buildGenerateLessonUserPrompt(genData) },
     ],
   });
