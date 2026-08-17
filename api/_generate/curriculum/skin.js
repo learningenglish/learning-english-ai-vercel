@@ -534,6 +534,13 @@ function validateCounterpartDiversity(chains, spineSlots) {
 const MAX_GENERAL_COMMUNICATION_RATIO = 0.3;
 const MAX_SINGLE_SPECIALIZED_TYPE_RATIO = 0.45;
 
+// BUG THẬT tự phát hiện (2026-08-18, A2 81 slot = 4 chunk 20 + 1 chunk DƯ ĐÚNG 1 slot — chunk
+// cuối luôn có total=1, Math.floor(1*0.45)=0 khiến BẤT KỲ situation_type nào cũng "vượt trần 0"
+// -> 502 chặn cứng, sinh da lĩnh vực A2 KHÔNG BAO GIỜ qua được chunk cuối): tỉ lệ % vô nghĩa khi
+// mẫu quá nhỏ (chunk lẻ cuối level, hoặc slot_limit nhỏ lúc test) — CHỈ áp dụng 2 ràng buộc tỉ lệ
+// khi chunk đủ lớn để tỉ lệ có ý nghĩa thật (tối thiểu 5 topic), tránh chặn oan chunk nhỏ.
+const MIN_TOPICS_FOR_RATIO_CHECK = 5;
+
 function validateSituationTypeDistribution(gotFrames) {
   const allTopics = Object.values(gotFrames || {}).flat();
   const total = allTopics.length;
@@ -550,6 +557,7 @@ function validateSituationTypeDistribution(gotFrames) {
     counts[st] = (counts[st] || 0) + 1;
   }
   if (missingType) problems.push(`${missingType}/${total} topic thiếu trường "situation_type" bắt buộc`);
+  if (total < MIN_TOPICS_FOR_RATIO_CHECK) return problems;
 
   const generalCount = counts["general_communication"] || 0;
   const maxGeneral = Math.floor(total * MAX_GENERAL_COMMUNICATION_RATIO);
