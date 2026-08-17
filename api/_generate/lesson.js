@@ -1292,6 +1292,25 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
   if (parsed.content_type === "reading" && Array.isArray(parsed.content)) {
     const oversizedIdx = parsed.content.findIndex((item) => (String(item?.text || "").match(/[.!?]+/g) || []).length > 5);
     if (oversizedIdx >= 0) return { valid: false, reason: "reading_paragraph_too_long", itemIndex: oversizedIdx };
+
+    // BUG THẬT (2026-08-17, xác nhận NGAY SAU KHI THÊM check trên — model né "quá dài" bằng cách
+    // chẻ vụn CẢ BÀI thành 1-câu/phần tử, vd 16 phần tử đều đúng 1 câu, không đạt "2-4 câu/đoạn"
+    // yêu cầu): nếu ĐA SỐ phần tử (>50%, bài có ≥3 phần tử) chỉ có ĐÚNG 1 câu, coi là chẻ vụn sai.
+    if (parsed.content.length >= 3) {
+      const oneSentenceCount = parsed.content.filter((item) => (String(item?.text || "").match(/[.!?]+/g) || []).length <= 1).length;
+      if (oneSentenceCount / parsed.content.length > 0.5) {
+        return { valid: false, reason: "reading_paragraph_too_fragmented" };
+      }
+    }
+
+    // BUG THẬT (2026-08-17, Minh: "We have a desk..." không rõ ai kể — vẫn lặp lại ngay sau khi
+    // thêm QUY TẮC VỀ NGÔI KỂ bằng văn xuôi): câu ĐẦU TIÊN mở đầu bằng I/We/My/Our mà KHÔNG có
+    // cụm xác lập danh tính điển hình — coi là ngôi thứ nhất bị bỏ ngỏ, bắt lỗi bằng CODE.
+    const firstText = String(parsed.content[0]?.text || "").trim();
+    if (/^(I|We|My|Our)\b/.test(firstText)) {
+      const hasIdentityIntro = /\b(as an?|as the|i am an?|i'm an?|i work as|my name is|i have been|our team of|we are an?)\b/i.test(firstText);
+      if (!hasIdentityIntro) return { valid: false, reason: "reading_narrator_not_established" };
+    }
   }
 
   // expectedWords±% — CHỈ analyze_user_text dùng (kiểm ĐỘ TRUNG THỰC với văn bản GỐC, xem ghi
