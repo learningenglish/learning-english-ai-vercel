@@ -620,8 +620,11 @@ dưới nếu có) — các bài còn lại BẮT BUỘC xoay quanh đúng loạ
 được vì dễ viết mà quay lại chào hỏi/sở thích/sức khoẻ.
 
 QUY TẮC VỀ NỘI DUNG HỘI THOẠI: mô phỏng 1 cuộc trao đổi tự nhiên giữa các nhân vật có vai trò rõ
-ràng — tập trung vào giao tiếp, phản hồi, hỏi-đáp, trao đổi thông tin, giải quyết tình huống. Viết
-dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói.
+ràng — tập trung vào giao tiếp, phản hồi, hỏi-đáp, trao đổi thông tin, giải quyết tình huống, hoặc
+thể hiện quan điểm. Viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên
+người nói. TUYỆT ĐỐI KHÔNG được viết hội thoại như 1 BÀI ĐỌC bị chia nhỏ thành các lượt nói (mỗi
+lượt là 1 câu văn xuôi đầy đủ, khô cứng, không phản hồi/tương tác thật với lượt trước) — hội thoại
+và bài đọc phải khác nhau rõ rệt về CẢM GIÁC đọc, không chỉ khác định dạng JSON.
 
 QUY TẮC VỀ GIỌNG VĂN (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần
 sinh động hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng ràng buộc khác như ĐỘ DÀI/cấp độ ngữ
@@ -685,9 +688,17 @@ TRA trước khi trả JSON: "Nếu bỏ phần luyện tiếng Anh đi, nội d
 giá trị để đọc không?" — nếu câu trả lời là KHÔNG, phải viết lại theo 1 trong các loại nội dung ở
 trên.
 TUYỆT ĐỐI KHÔNG được: kể lại nội dung 1 cuộc hội thoại; tóm tắt điều nhân vật đã nói; chuyển lượt
-thoại thành 1 đoạn văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ chỉ đổi cách diễn đạt.
+thoại thành 1 đoạn văn xuôi; sử dụng hội thoại làm NGUỒN NỘI DUNG DUY NHẤT rồi viết lại dưới dạng
+văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ/lập luận chỉ đổi cách diễn đạt.
 Phải TỰ ĐỨNG ĐỘC LẬP được, trả lời đúng câu hỏi "người học hiểu thêm/học được ĐIỀU GÌ từ bài đọc
 này?" — không phải "làm sao kể lại 1 tình huống giao tiếp bằng văn xuôi?".
+READING và DIALOGUE có thể CÙNG thuộc 1 chủ đề/mạch chuyện (cùng nhân vật/bối cảnh nếu đi liền
+nhau trong 1 chuỗi), NHƯNG phải khai thác chủ đề đó theo 2 MỤC ĐÍCH GIAO TIẾP khác nhau: nếu
+DIALOGUE mô phỏng 1 tình huống giao tiếp thực tế giữa người với người, READING phải khai thác
+KIẾN THỨC/BỐI CẢNH/NGUYÊN NHÂN/CÁCH THỨC/KINH NGHIỆM/GÓC NHÌN RỘNG HƠN xoay quanh tình huống đó
+(giải thích 1 vấn đề, trình bày kiến thức, mô tả 1 hiện tượng, phân tích 1 kinh nghiệm) — KHÔNG
+PHẢI kể lại chính cuộc hội thoại đó. Bài đọc phải có nội dung MỚI, đọc được và hiểu được ĐỘC LẬP
+kể cả khi người học CHƯA từng đọc bài hội thoại cùng chuỗi.
 CẤU TRÚC BẮT BUỘC: chia thành NHIỀU đoạn văn RÕ RÀNG, mỗi đoạn là 1 phần tử RIÊNG trong mảng, mỗi
 đoạn ĐÚNG 2-4 câu — TUYỆT ĐỐI KHÔNG được gộp cả bài thành 1 phần tử duy nhất dù bài ngắn, CŨNG
 KHÔNG được chẻ vụn mỗi phần tử chỉ 1 câu (hệ thống sẽ TỰ ĐỘNG KIỂM TRA VÀ BẮT LỖI bằng code cả 2
