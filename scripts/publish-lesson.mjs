@@ -593,24 +593,25 @@ export async function publishBatch(samples) {
   const session = { token: await login(CREDS.email, CREDS.password) };
   const usedBaseUrls = await fetchExistingCoverBaseUrls(session);
 
-  console.log(`\n=== STAGE 1/7: Nội dung (${samples.length} bài) ===`);
+  // QUY TRÌNH 8 BƯỚC (2026-08-17, Minh chốt): 1.Nội dung 2.Claude đọc TOÀN BỘ + xác nhận (NGOÀI
+  // script này, không phải lệnh code) 3.Tách câu 4.Tra từ 5.Ngữ pháp 6.Audio 7.Ảnh bìa 8.Giám khảo
+  // (duyệt ngẫu nhiên, tham khảo, không chặn).
+  console.log(`\n=== BƯỚC 1/8: Nội dung (${samples.length} bài) ===`);
   const lessons = await stageContent(session, samples);
 
-  // MẶC ĐỊNH dừng sau khi có nội dung (2026-08-17, Minh: "Nội dung sinh trước, giám khảo kiểm tra
-  // nội dung đủ điều kiện mới chạy tiếp các khoảng khác... Claude code đọc toàn bộ, đồng ý phần
-  // nội dung trọn bộ level đó mới tiếp tục Bước 2") — BUG QUY TRÌNH THẬT tự phát hiện: trước đây
-  // LUÔN chạy đủ cả 7 stage (kể cả audio/ảnh bìa, tốn tiền thật) rồi MỚI đọc lại nội dung để lọc
-  // bài không đạt chuyên ngành — audio/ảnh bìa của các bài SAU ĐÓ BỊ XOÁ vì nội dung không đạt coi
-  // như tốn tiền vô ích. Dừng NGAY sau khi có nội dung theo MẶC ĐỊNH — CONTENT_APPROVED=1 PHẢI
-  // được đặt THỦ CÔNG, đại diện đúng cho việc Claude (hoặc người) đã đọc TOÀN BỘ nội dung level
-  // này và xác nhận đạt, không phải chỉ 1 phần hay đoán từ số liệu gián tiếp.
+  // MẶC ĐỊNH dừng sau khi có nội dung, chờ ĐÚNG BƯỚC 2 (Claude đọc TOÀN BỘ nội dung level này bên
+  // ngoài script, tự xác nhận đạt) — BUG QUY TRÌNH THẬT tự phát hiện: trước đây LUÔN chạy đủ cả 7
+  // stage cũ (kể cả audio/ảnh bìa, tốn tiền thật) rồi MỚI đọc lại nội dung để lọc bài không đạt
+  // chuyên ngành — audio/ảnh bìa của các bài SAU ĐÓ BỊ XOÁ vì nội dung không đạt coi như tốn tiền
+  // vô ích. CONTENT_APPROVED=1 PHẢI được đặt THỦ CÔNG, đại diện đúng cho việc BƯỚC 2 đã xong (đọc
+  // TOÀN BỘ, không phải 1 phần hay đoán từ số liệu gián tiếp) — mới cho chạy tiếp BƯỚC 3 trở đi.
   if (process.env.CONTENT_APPROVED !== "1") {
-    console.log("\nMẶC ĐỊNH dừng sau STAGE 1 — CHƯA chạy tách câu/tra từ/audio/ảnh bìa/giám khảo.");
-    console.log("Đặt CONTENT_APPROVED=1 SAU KHI đã đọc toàn bộ nội dung level này và xác nhận đạt.");
+    console.log("\nMẶC ĐỊNH dừng sau BƯỚC 1 — chờ BƯỚC 2 (Claude đọc TOÀN BỘ nội dung + xác nhận).");
+    console.log("Đặt CONTENT_APPROVED=1 SAU KHI đã đọc toàn bộ nội dung level này và xác nhận đạt để chạy tiếp BƯỚC 3.");
     return lessons;
   }
 
-  console.log(`\n=== STAGE 2/7: Tách câu (reading_chunks) ===`);
+  console.log(`\n=== BƯỚC 3/8: Tách câu (reading_chunks) ===`);
   await stageField(session, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
 
   // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
@@ -621,24 +622,24 @@ export async function publishBatch(samples) {
   // thêm tiền/thời gian mà không đổi kết quả. reading_chunks (đã ổn định, đạt 1-2 lượt hầu hết
   // trường hợp) là phương án dự phòng SẴN CÓ phía app khi phrase_groups còn thiếu — chấp nhận
   // "chưa phủ 100% từng từ nhưng tách câu đã bù đủ" thay vì trả tiền thử lại thêm.
-  console.log(`\n=== STAGE 3/7: Tra từ (phrase_groups) ===`);
+  console.log(`\n=== BƯỚC 4/8: Tra từ (phrase_groups) ===`);
   await stageField(session, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2);
 
-  console.log(`\n=== STAGE 4/7: Ngữ pháp (verify, không gọi thêm AI) ===`);
+  console.log(`\n=== BƯỚC 5/8: Ngữ pháp (verify, không gọi thêm AI) ===`);
   stageGrammarVerify(lessons);
 
-  console.log(`\n=== STAGE 5/7: Audio ===`);
+  console.log(`\n=== BƯỚC 6/8: Audio ===`);
   await stageAudio(session, lessons);
 
-  console.log(`\n=== STAGE 6/7: Ảnh bìa ===`);
+  console.log(`\n=== BƯỚC 7/8: Ảnh bìa ===`);
   await stageCoverImage(session, lessons, usedBaseUrls);
 
   // GIÁM KHẢO chuyển xuống CUỐI CÙNG (2026-08-17, Minh: "Tách riêng phần giám khảo duyệt ngẫu
-  // nhiên sau 7 bước") — trước đây đứng NGAY SAU nội dung (stage 2 cũ), tạo cảm giác là 1 cổng
-  // chặn nội dung trong khi thực chất KHÔNG chặn gì (chỉ chấm mẫu 1/10, không tự sinh lại bài
-  // KHÔNG ĐẠT) — dời xuống cuối để đúng vai trò thật: 1 lượt duyệt ngẫu nhiên bổ sung SAU khi mọi
-  // thứ khác (tách câu/tra từ/audio/ảnh bìa) đã xong, không phải điều kiện tiên quyết.
-  console.log(`\n=== STAGE 7/7: Giám khảo chất lượng (duyệt ngẫu nhiên, tham khảo) ===`);
+  // nhiên sau 7 bước") — trước đây đứng NGAY SAU nội dung, tạo cảm giác là 1 cổng chặn nội dung
+  // trong khi thực chất KHÔNG chặn gì (chỉ chấm mẫu 1/10, không tự sinh lại bài KHÔNG ĐẠT) — dời
+  // xuống cuối để đúng vai trò thật: 1 lượt duyệt ngẫu nhiên bổ sung SAU khi mọi thứ khác (tách
+  // câu/tra từ/audio/ảnh bìa) đã xong, không phải điều kiện tiên quyết.
+  console.log(`\n=== BƯỚC 8/8: Giám khảo chất lượng (duyệt ngẫu nhiên, tham khảo) ===`);
   await stageJudge(session, lessons);
 
   for (const lesson of lessons) {
