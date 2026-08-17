@@ -2276,23 +2276,62 @@ async function callAnalyzeReadingChunks(items, tier) {
   return { ok: true, items: resultItems };
 }
 
-// Gửi TỪNG CÂU MỘT + tự thử lại tối đa 3 lần (lượt cuối leo thang model mạnh) — ĐÚNG PATTERN
-// analyzePhraseGroupsInChunks() ở trên, xem ghi chú đầy đủ tại đó.
-// SỬA 2026-08-13 — cùng lý do/thay đổi đã áp dụng cho analyzePhraseGroupsInChunks() phía trên
-// (Minh: "chi phí OpenAI quá cao"): bỏ lượt leo thang model "strong" (đắt, không đáng cho tính
-// năng phụ "Tách câu"), 1 đoạn thất bại chỉ bỏ qua RIÊNG đoạn đó, không huỷ cả lượt vá.
-async function analyzeReadingChunksInChunks(toAnalyze) {
+// TÁI SỬ DỤNG kết quả CÂU ĐÃ ĐÚNG khi retry — bản sao ĐÚNG logic tryReuseSentenceGroups() (dòng
+// ~1814) áp cho "reading_chunks" thay vì "phrase_groups". Xem ghi chú đầy đủ ở bản gốc.
+function tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceRealTokens) {
+  if (!Array.isArray(existingChunks) || !sentenceRealTokens.length) return null;
+  let idx = cursorIdx;
+  let collected = 0;
+  const chunks = [];
+  while (idx < existingChunks.length && collected < sentenceRealTokens.length) {
+    const chunkTokens = sentenceWordTokens(existingChunks[idx]?.text);
+    if (!chunkTokens.length) return null;
+    chunks.push(existingChunks[idx]);
+    collected += chunkTokens.length;
+    idx++;
+  }
+  if (collected !== sentenceRealTokens.length) return null;
+  const gotTokens = chunks.flatMap((c) => sentenceWordTokens(c.text));
+  for (let i = 0; i < sentenceRealTokens.length; i++) {
+    if (gotTokens[i] !== sentenceRealTokens[i]) return null;
+  }
+  return { chunks, nextCursorIdx: idx };
+}
+
+// Gửi TỪNG CÂU MỘT (2026-08-17, nâng lên ĐÚNG mức robust của analyzePhraseGroupsInChunks() ở
+// trên — BUG THẬT đã xác nhận: bản CŨ gửi NGUYÊN CẢ PHẦN TỬ (có thể nhiều câu), thất bại 2 lượt là
+// MẤT TRẮNG reading_chunks của CẢ PHẦN TỬ, khiến fallback tra-từ phía client
+// (findReadingChunkFallbackMeaning) không còn gì để dùng cho BẤT KỲ từ nào trong phần tử đó, dù
+// phrase_groups CŨNG thiếu đúng 1-2 từ trong đó — cả câu/đoạn báo "Không tra được từ." oan).
+// TÁCH THẬT theo câu (tái dùng đúng splitEnglishSentencesForPhraseGroups(), hàm này trung tính,
+// không riêng cho phrase_groups) + tái dùng kết quả câu ĐÃ ĐÚNG khi "vá" lại (existingChunksList),
+// ĐÚNG kiến trúc đã verify ổn định cho phrase_groups — không leo thang model "strong" (đắt, không
+// đáng cho tính năng phụ), 1 câu thất bại cả 2 lượt thì bỏ qua RIÊNG câu đó.
+async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
-    const chunk = [toAnalyze[i]];
-    let result = await callAnalyzeReadingChunks(chunk);
-    if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
-    if (!result.ok) {
-      console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 đoạn thất bại cả 2 lượt:", result.reason);
-      allItems.push({ index: i, reading_chunks: [] });
-      continue;
+    const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
+    const existingChunks = Array.isArray(existingChunksList?.[i]) ? existingChunksList[i] : null;
+    let cursorIdx = 0;
+    const combinedChunks = [];
+    for (const sentence of sentences) {
+      const reused = tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceWordTokens(sentence));
+      if (reused) {
+        combinedChunks.push(...reused.chunks);
+        cursorIdx = reused.nextCursorIdx;
+        continue;
+      }
+      const chunk = [{ text: sentence }];
+      let result = await callAnalyzeReadingChunks(chunk);
+      if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
+      if (!result.ok) {
+        console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
+        continue;
+      }
+      const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+      combinedChunks.push(...(sentenceItem?.reading_chunks || []));
     }
-    allItems.push(...result.items);
+    allItems.push({ index: i, reading_chunks: combinedChunks });
   }
   return { ok: true, items: allItems };
 }
@@ -2313,7 +2352,7 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
   // (bài dài nhiều lượt thoại có thể vượt trần thời gian 1 lượt gọi Vercel; PATCH 1 lần duy nhất ở
   // cuối làm timeout giữa chừng mất hết việc đã làm, retry lại từ đầu lặp lại đúng lỗi).
   for (const origIdx of missingIdx) {
-    const result = await analyzeReadingChunksInChunks([{ text: content[origIdx].text }]);
+    const result = await analyzeReadingChunksInChunks([{ text: content[origIdx].text }], [content[origIdx].reading_chunks]);
     if (!result.ok) {
       console.error("[analyze_lesson_reading_chunks] thất bại tại item", origIdx, result.reason);
       continue;

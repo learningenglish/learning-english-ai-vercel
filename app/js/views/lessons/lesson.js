@@ -620,7 +620,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
               // hoàn toàn không bấm được, không phải do dữ liệu AI thiếu. Dùng lại đúng
               // renderInteractiveHtml() với "buckets[sIdx]" (phrase_groups CHỈ của câu này, đã
               // tách sẵn ở trên) để câu trong từng khối cũng tra từ được như đoạn gốc.
-              `<div class="content-text" data-item-idx="${itemIdx}" data-sentence-idx="${sIdx}">${renderInteractiveHtml(sentence, lesson.vocabulary || [], buckets[sIdx] || [])}</div>`
+              `<div class="content-text" data-item-idx="${itemIdx}" data-sentence-idx="${sIdx}">${renderInteractiveHtml(sentence, lesson.vocabulary || [], buckets[sIdx] || [], item?.reading_chunks)}</div>`
             : ""
         }
         ${state.showTranslation && viMatch ? `<div class="content-translation">${escapeHtml(viSentences[sIdx])}</div>` : ""}
@@ -671,7 +671,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
                 <span class="speaker-name">${item?.speaker ? escapeHtml(item.speaker) : ""}</span>
                 ${contentActionsHtml(i)}
               </div>
-              ${state.showOriginal || forceOriginal ? `<div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups)}</div>` : ""}
+              ${state.showOriginal || forceOriginal ? `<div class="content-text" data-item-idx="${i}">${renderInteractiveHtml(item?.text || "", lesson.vocabulary || [], item?.phrase_groups, item?.reading_chunks)}</div>` : ""}
               ${state.showTranslation ? `<div class="content-translation">${escapeHtml(item?.translation || "")}</div>` : ""}
               ${state.showChunks ? readingChunksLinesHtml(item?.reading_chunks || []) : ""}
             `
@@ -916,7 +916,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
           sentenceIdx === null
             ? itemPhraseGroups
             : bucketPhraseGroupsBySentence(splitIntoSentences(lesson.content?.[itemIdx]?.text || ""), itemPhraseGroups)[sentenceIdx];
-        const spans = computeInteractiveSpans(sentence, lesson.vocabulary || [], phraseGroups);
+        const spans = computeInteractiveSpans(sentence, lesson.vocabulary || [], phraseGroups, lesson.content?.[itemIdx]?.reading_chunks);
         const entry = spans[idx]?.entry || null;
         showWordTooltip(span, word, sentence, genderHint, entry, itemIdx, idx);
       });
@@ -963,12 +963,7 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // làm phương án dự phòng, thay vì báo lỗi. Áp dụng CHUNG cho mọi lý do thiếu entry (dấu câu dính
   // từ, cụm giới từ, nghĩa bóng...), không chỉ riêng trường hợp cụm phản ứng.
   function findReadingChunkFallbackMeaning(itemIdx, word) {
-    const chunks = lesson.content?.[itemIdx]?.reading_chunks;
-    if (!Array.isArray(chunks) || !word) return null;
-    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(^|[^A-Za-z0-9'])${escaped}([^A-Za-z0-9']|$)`, "i");
-    const chunk = chunks.find((c) => re.test(c?.text || ""));
-    return chunk?.meaning || null;
+    return readingChunkMeaningForWord(lesson.content?.[itemIdx]?.reading_chunks, word);
   }
 
   // "vocabEntry" ĐÃ có nghĩa sẵn trong "phrase_groups" (phân tích XONG lúc tạo bài, xem đầu file)
@@ -976,7 +971,12 @@ export async function renderLessonDetail(mount, params, opts = {}) {
   // nếu không tìm được entry, thử fallback "reading_chunks" (xem trên) trước khi báo lỗi, kèm
   // console.warn để có dấu vết debug nếu Minh gặp lại.
   function showWordTooltip(anchorEl, word, sentence, genderHint, vocabEntry, itemIdx, tokenIdx) {
-    if (!vocabEntry) {
+    // "!vocabEntry.meaning" (2026-08-17, Minh: cần tra từ đạt ~99,99% tin cậy) — BUG THẬT phát
+    // hiện khi rà lại: wordEntryFromPhraseGroup() LUÔN trả về 1 object (không bao giờ undefined)
+    // ngay cả khi không tìm được nghĩa nào (meaning: "") — nhánh "!vocabEntry" phía dưới trước đây
+    // KHÔNG BAO GIỜ bắt được ca này, khiến tooltip hiện TRỐNG RỖNG thay vì thử fallback
+    // reading_chunks. Coi "có entry nhưng meaning rỗng" là CÙNG 1 loại thiếu như "không có entry".
+    if (!vocabEntry || !vocabEntry.meaning) {
       const fallbackMeaning = findReadingChunkFallbackMeaning(itemIdx, word);
       if (fallbackMeaning) {
         console.warn("[lesson] từ không có entry trong phrase_groups, dùng fallback reading_chunks:", {
@@ -1411,6 +1411,18 @@ function normalizeMatchWord(w) {
 // liền kề của CÙNG 1 nhóm vẫn tô CÙNG 1 class màu (renderInteractiveHtml() đọc entry.highlight),
 // khoảng trắng giữa 2 từ nằm NGOÀI mọi span (không tô màu) — không cần span "cha" bọc ngoài,
 // nhìn vẫn liền mạch vì không có viền/margin chen giữa.
+// Hàm THUẦN (2026-08-17, tách khỏi findReadingChunkFallbackMeaning() bên trong closure component
+// để computeInteractiveSpans()/renderInteractiveHtml() — vốn là hàm THUẦN không có "lesson" trong
+// closure — cũng gọi được, phục vụ mục "ẩn interactivity cho từ KHÔNG có nghĩa ở bất kỳ đâu" thay
+// vì hiện span bấm được rồi báo lỗi lúc bấm). Nhận thẳng mảng "reading_chunks" thay vì itemIdx.
+function readingChunkMeaningForWord(chunks, word) {
+  if (!Array.isArray(chunks) || !word) return null;
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(^|[^A-Za-z0-9'])${escaped}([^A-Za-z0-9']|$)`, "i");
+  const chunk = chunks.find((c) => re.test(c?.text || ""));
+  return chunk?.meaning || null;
+}
+
 function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap, specializedWordSet) {
   const spans = [];
   let tIdx = 0;
@@ -1439,15 +1451,24 @@ function spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap, specialized
 // VÀ phủ đúng đủ toàn câu (validate lại ở client cho chắc, phòng ca B2/C1 sót từ) — CHÍNH XÁC
 // tuyệt đối, không suy đoán. Bài CŨ (trước khi có trường này, hoặc lệch) rơi về cách khớp
 // "vocabulary" cũ phía dưới, hành vi giữ nguyên y hệt trước đây.
-function computeInteractiveSpans(text, vocabulary, phraseGroups) {
+// "readingChunks" (2026-08-17, tuỳ chọn) — dùng làm PHƯƠNG ÁN DỰ PHÒNG để đánh giá 1 span có
+// "hasAnyMeaning" hay không (xem renderInteractiveHtml()) — KHÔNG đổi cách chọn entry chính, chỉ
+// thêm cờ để nơi render biết từ nào thật sự có nghĩa đâu đó (phrase_groups HOẶC reading_chunks)
+// và từ nào thì KHÔNG, để hiện đúng thành chữ thường không bấm được thay vì span bấm ra lỗi.
+function computeInteractiveSpans(text, vocabulary, phraseGroups, readingChunks) {
   const { tokens } = tokenizeWords(text);
   if (!tokens.length) return [];
   const vocabMap = buildVocabMap(vocabulary);
   const specializedWordSet = buildSpecializedWordSet(vocabulary);
+  const withFallbackFlag = (spans) =>
+    spans.map((s) => ({
+      ...s,
+      hasAnyMeaning: !!(s.entry && s.entry.meaning) || !!readingChunkMeaningForWord(readingChunks, s.text),
+    }));
 
   if (Array.isArray(phraseGroups) && phraseGroups.length) {
     const spansFromGroups = spansFromPhraseGroups(tokens, text, phraseGroups, vocabMap, specializedWordSet);
-    if (spansFromGroups) return spansFromGroups;
+    if (spansFromGroups) return withFallbackFlag(spansFromGroups);
   }
 
   const phraseEntries = (vocabulary || [])
@@ -1491,7 +1512,7 @@ function computeInteractiveSpans(text, vocabulary, phraseGroups) {
       i += 1;
     }
   }
-  return spans;
+  return withFallbackFlag(spans);
 }
 
 // Bọc TẤT CẢ từ/cụm trong "text" thành span rê/chạm được — không chỉ riêng từ trong
@@ -1501,17 +1522,29 @@ function computeInteractiveSpans(text, vocabulary, phraseGroups) {
 // entry": từ đơn không đáng chú ý vẫn CÓ entry (để tra được nghĩa/cụm ngay không cần gọi AI)
 // nhưng KHÔNG tô màu — khác "undefined" (nhánh vocabulary cũ, mọi entry tồn tại đều tô màu như
 // trước, không đổi hành vi bài cũ).
-function renderInteractiveHtml(text, vocabulary, phraseGroups) {
+// "readingChunks" (2026-08-17, Minh: cần tra từ đạt ~99,99% tin cậy) — truyền vào để
+// computeInteractiveSpans() tính được "hasAnyMeaning" cho từng span. Từ KHÔNG có nghĩa ở BẤT KỲ
+// đâu (phrase_groups rỗng/thiếu VÀ reading_chunks cũng không có) không còn được bọc span bấm
+// được nữa — hiện như CHỮ THƯỜNG, không mời bấm — thay vì trước đây vẫn bấm được rồi hiện lỗi
+// "Không tra được từ.". Người dùng không còn thấy trạng thái hỏng, chỉ đơn giản từ đó không có
+// gạch chân mời bấm. KHÔNG đổi cách đánh số "data-token-idx" (vẫn dùng đúng index "i" trong mảng
+// "spans" đầy đủ) — wireInteractiveWords() tính lại CHÍNH XÁC cùng mảng "spans" lúc bấm (cùng
+// input), nên chỉ mục vẫn khớp dù 1 số span không được bọc <span>.
+function renderInteractiveHtml(text, vocabulary, phraseGroups, readingChunks) {
   if (!text) return "";
-  const spans = computeInteractiveSpans(text, vocabulary, phraseGroups);
+  const spans = computeInteractiveSpans(text, vocabulary, phraseGroups, readingChunks);
   if (!spans.length) return escapeHtml(text);
 
   let html = "";
   let cursor = 0;
   spans.forEach((s, i) => {
     html += escapeHtml(text.slice(cursor, s.start));
-    const cls = s.entry && s.entry.highlight !== false ? (s.entry.is_specialized ? "vocab-highlight-specialized" : "vocab-highlight") : "hover-word";
-    html += `<span class="${cls}" data-token-idx="${i}">${escapeHtml(s.text)}</span>`;
+    if (!s.hasAnyMeaning) {
+      html += escapeHtml(s.text);
+    } else {
+      const cls = s.entry && s.entry.highlight !== false ? (s.entry.is_specialized ? "vocab-highlight-specialized" : "vocab-highlight") : "hover-word";
+      html += `<span class="${cls}" data-token-idx="${i}">${escapeHtml(s.text)}</span>`;
+    }
     cursor = s.end;
   });
   html += escapeHtml(text.slice(cursor));
