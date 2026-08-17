@@ -566,35 +566,56 @@ QUY TẮC VỀ TÌNH HUỐNG:
 - Dù tình huống do người dùng nhập hay bạn tự tạo, luôn ghi tóm tắt tình huống (1-2 câu
   tiếng Việt) vào trường "situation" trong JSON kết quả.
 
-QUY TẮC VỀ LOẠI NỘI DUNG:
-- "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
-- "bài đọc": viết thành các đoạn văn, mỗi đoạn là MỘT phần tử RIÊNG trong mảng — BẮT BUỘC mỗi
-  đoạn ĐÚNG 2-4 câu, KHÔNG được gộp cả bài thành 1 phần tử duy nhất dù bài ngắn (A1/A2 vẫn phải
-  chia ít nhất 3-4 phần tử/đoạn, không viết liền 10+ câu vào 1 "text"). CHỦ THỂ/NGÔI KỂ phải RÕ
-  RÀNG ngay từ đoạn đầu tiên — nếu dùng ngôi thứ nhất ("I"/"we"), câu đầu PHẢI xác lập rõ người
-  kể là ai (vd "As an accountant, I..."/"Our accounting team..."), KHÔNG được mở đầu bằng "We
-  have a desk..."/"I am in the break room..." mà không biết "chúng tôi"/"tôi" là ai — nếu không
-  cần thiết phải dùng ngôi thứ nhất, ƯU TIÊN ngôi thứ ba rõ chủ ngữ (tên người/vai trò cụ thể,
-  vd "Trang checks invoices every morning.") để tránh mơ hồ.
+QUY TẮC VỀ LOẠI NỘI DUNG (2026-08-17, viết lại sau khi xác nhận thật qua batch A1: "bài đọc" bị
+kéo thành bản tóm tắt/nhật ký cá nhân của "hội thoại" — SAI GỐC vì trước đây không quy định 2 loại
+phải có MỤC ĐÍCH GIAO TIẾP khác nhau):
+Mỗi bài chỉ 1 trong 2 loại ("dialogue" hoặc "reading"), nhưng PHẢI hiểu 2 loại này ĐỘC LẬP hoàn
+toàn, không phải 2 CÁCH TRÌNH BÀY của cùng 1 nội dung.
+- "hội thoại": mô phỏng 1 cuộc trao đổi tự nhiên giữa các nhân vật có vai trò rõ ràng — tập trung
+  vào giao tiếp, phản hồi, hỏi-đáp, trao đổi thông tin, giải quyết tình huống. Viết dạng hội thoại
+  2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói.
+- "bài đọc": PHẢI là 1 bài viết CUNG CẤP THÔNG TIN hoàn chỉnh, có giá trị nội dung ĐỘC LẬP — phát
+  triển chủ đề theo hướng kiến thức/kinh nghiệm/quan sát/giải thích/góc nhìn thực tế. TUYỆT ĐỐI
+  KHÔNG được: kể lại nội dung 1 cuộc hội thoại; tóm tắt điều nhân vật đã nói; chuyển lượt thoại
+  thành 1 đoạn văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ chỉ đổi cách diễn đạt. "Bài đọc" phải
+  TỰ ĐỨNG ĐỘC LẬP được, trả lời đúng câu hỏi "người học hiểu thêm/học được ĐIỀU GÌ từ bài đọc
+  này?" — không phải "làm sao kể lại 1 tình huống giao tiếp bằng văn xuôi?".
+  CẤU TRÚC BẮT BUỘC: chia thành NHIỀU đoạn văn RÕ RÀNG, mỗi đoạn là 1 phần tử RIÊNG trong mảng,
+  mỗi đoạn ĐÚNG 2-4 câu — TUYỆT ĐỐI KHÔNG được gộp cả bài thành 1 phần tử duy nhất dù bài ngắn
+  (hệ thống sẽ TỰ ĐỘNG KIỂM TRA VÀ BẮT LỖI bằng code nếu 1 phần tử có hơn 5 câu). Mỗi đoạn nên có
+  1 chức năng rõ ràng (mở đầu chủ đề/tình huống → phát triển ý chính → ví dụ/trải nghiệm/giải
+  thích → kết luận hoặc mở rộng ý nghĩa thực tế) — không bắt buộc đúng 4 đoạn, nhưng phải phân
+  đoạn hợp lý.
 
-QUY TẮC VỀ GIỌNG VĂN (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần
-sinh động hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng bất kỳ ràng buộc nào khác đã nêu ở trên
-như ĐỘ DÀI, cấp độ ngữ pháp, hay bám sát TÌNH HUỐNG):
-- "hội thoại": đề cao HÀI HƯỚC, THÔNG MINH, DÍ DỎM, SINH ĐỘNG — nhân vật có cá tính riêng (không
-  nói kiểu trả lời máy móc, đúng chuẩn), thỉnh thoảng chêm phản ứng bất ngờ nhẹ, câu đùa/nhận xét
-  dí dỏm phù hợp ngữ cảnh (kể cả trong tình huống công việc — người thật vẫn đùa vui khi làm
-  việc), "nhiều chuyện" theo nghĩa tự nhiên bàn tán/hỏi han thêm ngoài lề chứ không chỉ hỏi-đáp
-  cụt lủn đúng mục đích. Ưu tiên để nhân vật CHIA SẺ một điều hay/kinh nghiệm/mẹo thật cụ thể qua
-  lời thoại tự nhiên (không phải giảng giải khô khan) — người đọc học được điều gì đó thú vị,
-  không chỉ theo dõi một giao dịch/tác vụ khô cứng.
-- "bài đọc": cung cấp KIẾN THỨC/THÔNG TIN HỮU ÍCH/KINH NGHIỆM THẬT về đúng chuyên ngành — PHẢI có
-  GIÁ TRỊ THỰC TẾ (mẹo hay, bài học rút ra, góc nhìn cụ thể), KHÔNG liệt kê định nghĩa/thông tin
-  chung chung kiểu tài liệu tra cứu khô khan. ĐÂY LÀ BÀI VIẾT CUNG CẤP THÔNG TIN — KHÁC HẲN "hội
-  thoại" (giao tiếp qua lại giữa 2 người): không viết theo kiểu nhật ký cá nhân lan man ("hôm nay
-  tôi cảm thấy...", liệt kê hoạt động cả ngày) — mỗi đoạn phải mang MỘT Ý/KIẾN THỨC CỤ THỂ, đúng
-  chủ đề đã cho, không lạc sang kể lể sinh hoạt không liên quan.
+QUY TẮC VỀ GIỌNG VĂN:
+- "hội thoại" (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần sinh động
+  hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng ràng buộc khác như ĐỘ DÀI/cấp độ ngữ pháp/TÌNH
+  HUỐNG): đề cao HÀI HƯỚC, THÔNG MINH, DÍ DỎM, SINH ĐỘNG — nhân vật có cá tính riêng (không nói
+  kiểu trả lời máy móc, đúng chuẩn), thỉnh thoảng chêm phản ứng bất ngờ nhẹ, câu đùa/nhận xét dí
+  dỏm phù hợp ngữ cảnh (kể cả trong tình huống công việc — người thật vẫn đùa vui khi làm việc),
+  "nhiều chuyện" theo nghĩa tự nhiên bàn tán/hỏi han thêm ngoài lề chứ không chỉ hỏi-đáp cụt lủn
+  đúng mục đích. Ưu tiên để nhân vật CHIA SẺ một điều hay/kinh nghiệm/mẹo thật cụ thể qua lời
+  thoại tự nhiên (không phải giảng giải khô khan) — người đọc học được điều gì đó thú vị, không
+  chỉ theo dõi một giao dịch/tác vụ khô cứng.
+- "bài đọc" (2026-08-17, viết lại — bản CŨ dùng cụm "viết như người có kinh nghiệm thật đang chia
+  sẻ" CHÍNH LÀ NGUYÊN NHÂN GỐC khiến model tự đẩy sang ngôi thứ nhất mơ hồ kiểu "We have a
+  desk..."): giọng văn phải TỰ NHIÊN, CỤ THỂ, CÓ THÔNG TIN THỰC TẾ, đúng cấp độ CEFR — "giọng
+  người viết am hiểu thực tế" KHÔNG có nghĩa BẮT BUỘC dùng ngôi thứ nhất, KHÔNG tự ý dùng
+  I/we/my/our/me chỉ để tạo cảm giác chân thực. Tránh văn phong giáo khoa khô cứng, tránh tuyên bố
+  chung chung không nội dung, tránh "giả vờ là 1 người cụ thể đang kể chuyện" nếu nội dung không
+  yêu cầu — "thật" nghĩa là THÔNG TIN cụ thể/có giá trị, không phải AI phải đóng vai 1 nhân vật.
 - Vẫn PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như đã quy định) — hài hước/sinh động
   không có nghĩa là dùng từ lóng hay cấu trúc vượt cấp độ.
+
+QUY TẮC VỀ NGÔI KỂ (2026-08-17, CHỈ áp dụng "bài đọc" — "hội thoại" luôn có tên người nói rõ ràng
+nên không cần quy tắc này): mặc định dùng NGÔI THỨ BA, khách quan, trình bày trực tiếp về chủ đề
+(vd "The desk is usually placed near the window." / "Many small teams prefer to place a shared
+desk near the window."). CHỈ dùng ngôi thứ nhất ("I"/"we") khi nội dung THỰC SỰ phù hợp với 1
+người kể chuyện cụ thể — nếu dùng, câu ĐẦU TIÊN của bài PHẢI xác lập rõ: người kể là ai, quan hệ
+của người kể với chủ đề, vì sao người kể có kinh nghiệm/góc nhìn này (vd "As an accountant with
+five years of experience, I..."). TUYỆT ĐỐI KHÔNG dùng ngôi thứ nhất với narrator không xác định
+— cấm các câu mở đầu kiểu "We have a desk near the window."/"We usually do this."/"Our team
+often..." khi người đọc CHƯA biết "we"/"our" là ai.
 
 QUY TẮC VỀ TÊN NHÂN VẬT HỘI THOẠI (2026-08-14, Minh chốt — CHỈ áp dụng khi loại nội dung là "hội
 thoại"): nếu "Chủ đề"/"Tình huống" đã cho ở trên NÊU RÕ tên 1 nhân vật cụ thể (thường là nhân
@@ -1263,6 +1284,15 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
   // AI hỏng) — đây là nguyên nhân trực tiếp của báo cáo "không tạo được bài học".
   if (!Array.isArray(parsed.grammar)) return { valid: false, reason: "grammar_not_array" };
   if (!Array.isArray(parsed.exercises) || !parsed.exercises.length) return { valid: false, reason: "empty_exercises" };
+
+  // BUG THẬT (2026-08-17, xác nhận qua batch A1 #53/#85 VÀ lặp lại ngay sau khi sửa PROMPT bằng
+  // văn xuôi — chỉ nêu quy tắc "2-4 câu/đoạn" KHÔNG đủ, model vẫn gộp cả bài đọc thành 1 phần tử
+  // 13-17 câu): kiểm bằng CODE, không chỉ trông cậy prompt — 1 phần tử "bài đọc" quá dài (>5 câu)
+  // là dấu hiệu chắc chắn model gộp cả bài, bắt lỗi để kích hoạt đúng cơ chế retry-1-lần đã có.
+  if (parsed.content_type === "reading" && Array.isArray(parsed.content)) {
+    const oversizedIdx = parsed.content.findIndex((item) => (String(item?.text || "").match(/[.!?]+/g) || []).length > 5);
+    if (oversizedIdx >= 0) return { valid: false, reason: "reading_paragraph_too_long", itemIndex: oversizedIdx };
+  }
 
   // expectedWords±% — CHỈ analyze_user_text dùng (kiểm ĐỘ TRUNG THỰC với văn bản GỐC, xem ghi
   // chú khối "GỠ BỎ VALIDATOR..." phía trên) — generate_lesson KHÔNG còn truyền tham số này.
