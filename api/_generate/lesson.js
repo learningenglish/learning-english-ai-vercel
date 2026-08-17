@@ -350,7 +350,14 @@ Mỗi nhóm có cấu trúc:
     "word_meanings": {"từ": "nghĩa riêng của từ đó bên trong cụm"} — BẮT BUỘC PHỦ ĐỦ 100% MỌI TỪ
       trong "words" của nhóm khi nhóm có >1 từ (không thiếu bất kỳ từ nào — từ nào không có trong
       "word_meanings" thì phía hiển thị phải hiện nghĩa CẢ CỤM thay thế, trộn 2 ngôn ngữ nếu ghép
-      nhiều nguồn — YÊU CẦU CỨNG, không phải tuỳ chọn),
+      nhiều nguồn — YÊU CẦU CỨNG, không phải tuỳ chọn). NGHĨA PHẢI THEO ĐÚNG NGỮ CẢNH CỦA CÂU/CỤM
+      NÀY, TUYỆT ĐỐI KHÔNG lấy nghĩa mặc định/phổ biến nhất của từ điển nếu ngữ cảnh chỉ ra nghĩa
+      khác — cùng 1 từ ở 2 câu khác nhau PHẢI cho nghĩa khác nhau nếu ngữ cảnh khác nhau. Ví dụ:
+      "She works at a bank." → "works" = "làm việc" (chủ ngữ là người); "The machine works." →
+      "works" = "hoạt động" (chủ ngữ là máy móc) — KHÔNG được dùng chung 1 nghĩa cho cả 2 câu.
+      "I take a break." thuộc cụm cố định "take a break" → "take" KHÔNG được dịch "lấy" (nghĩa mặc
+      định sai ở đây), phải ghi nghĩa theo đúng vai trò trong cụm (vd "take"="nghỉ/thực hiện",
+      "break"="giải lao") — nếu tách riêng "take" hay "break" ra dịch độc lập sẽ SAI Ý CẢ CỤM.
     "word_types": {"từ": "chức năng NGỮ PHÁP RIÊNG của chính từ đó (noun/verb/adjective/adverb/
       pronoun/preposition/conjunction/determiner/auxiliary/particle/interjection...) — KHÁC "type"
       của CẢ NHÓM (vd "Cụm động từ"): loại từ của TỪNG TỪ, hiện trong tooltip khi bấm đúng từ đó.
