@@ -272,6 +272,17 @@ cấp làm nguồn. Quy tắc thích nghi:
   "situation_type" ở khuôn JSON cuối prompt này, giá trị "general_communication" là ĐÚNG cho các
   chủ đề dạng này, và bị giới hạn tỉ lệ bằng code, không được lạm dụng chỉ vì dễ nghĩ hơn.
 
+  CẢNH BÁO TỰ GẮN NHÃN "situation_type" SAI ĐỂ NÉ TRẦN TỈ LỆ (2026-08-17, bắt được thật qua test:
+  topic "Trang hỏi nhân viên ngân hàng về giờ làm việc của quầy giao dịch" bị gắn
+  "situation_type": "client_interaction" dù nội dung THẬT chỉ là hỏi giờ mở cửa — bất kỳ khách hàng
+  nào ở BẤT KỲ ngành nào cũng hỏi y hệt câu này, không cần biết gì về kế toán). "situation_type"
+  PHẢI phản ánh ĐÚNG nội dung giao tiếp thật của topic, KHÔNG được chọn 1 giá trị "nghe có vẻ
+  chuyên ngành" chỉ để tránh bị tính vào trần "general_communication". Câu hỏi tự kiểm trước khi
+  gắn nhãn: "Nếu tình huống này xảy ra ở BẤT KỲ ngành/cửa hàng/công ty nào khác, câu chuyện có y hệt
+  không?" — nếu CÓ (như hỏi giờ mở cửa, hỏi giờ nghỉ trưa, hỏi đường), PHẢI gắn
+  "general_communication" dù nhân vật đang đứng ở đâu, KHÔNG được gắn "client_interaction" hay bất
+  kỳ loại chuyên biệt nào khác chỉ vì bối cảnh là quầy ngân hàng/văn phòng kế toán.
+
   CẢNH BÁO "ĐỔI TIÊU ĐỀ" KHÔNG PHẢI "ĐỔI CHỦ ĐỀ": xét trùng lặp topic theo Ý CHÍNH + tình huống
   giao tiếp thực chất, KHÔNG phải theo câu chữ khác nhau. Ví dụ SAI (những câu sau tưởng khác nhau
   nhưng cùng 1 chủ đề, đều là "hỏi thăm sức khoẻ"): "Hỏi thăm sức khoẻ đồng nghiệp", "Trò chuyện về
