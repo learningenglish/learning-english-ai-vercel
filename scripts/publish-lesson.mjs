@@ -596,6 +596,17 @@ export async function publishBatch(samples) {
   console.log(`\n=== STAGE 1/7: Nội dung (${samples.length} bài) ===`);
   const lessons = await stageContent(session, samples);
 
+  // CONTENT_ONLY=1 (2026-08-17, Minh: "Nội dung sinh trước, giám khảo kiểm tra nội dung đủ điều
+  // kiện mới chạy tiếp các khoảng khác... Không phải đủ 7 giai đoạn mới kiểm tra") — BUG QUY TRÌNH
+  // THẬT tự phát hiện: trước đây LUÔN chạy đủ cả 7 stage (kể cả audio/ảnh bìa, tốn tiền thật) rồi
+  // MỚI đọc lại nội dung để lọc bài không đạt chuyên ngành — audio/ảnh bìa của các bài SAU ĐÓ BỊ
+  // XOÁ vì nội dung không đạt coi như tốn tiền vô ích. Dừng NGAY sau khi có nội dung, để người/AI
+  // đọc và lọc TRƯỚC, chỉ chạy tiếp stage 3-7 (tốn tiền) cho ĐÚNG những bài đã xác nhận đạt.
+  if (process.env.CONTENT_ONLY === "1") {
+    console.log("\nCONTENT_ONLY=1 — dừng sau STAGE 1, CHƯA chạy giám khảo/tách câu/tra từ/audio/ảnh bìa.");
+    return lessons;
+  }
+
   console.log(`\n=== STAGE 2/7: Giám khảo chất lượng ===`);
   await stageJudge(session, lessons);
 
