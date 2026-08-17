@@ -254,6 +254,30 @@ cấp làm nguồn. Quy tắc thích nghi:
   đồng/thương lượng" thì KHÔNG cần fallback: "Thương lượng giá đánh giày trọn gói với khách quen
   lâu năm" là tình huống THẬT của riêng nghề này (khách quen, giá trọn gói là chi tiết đặc thù),
   không phải nhãn dán chung chung.
+
+  BÀI TEST THỰC CHẤT NGÀNH (2026-08-17, Minh bắt lỗi thật khác với bài test fallback ở trên — bài
+  test trên chỉ bắt được kiểu "gắn nhãn ngành lên cảnh chung chung", KHÔNG bắt được kiểu "cảnh
+  ĐÚNG vai/bối cảnh ngành nhưng nội dung giao tiếp thực chất vẫn là chuyện phiếm đời sống chung"):
+  Specialization phải QUYẾT ĐỊNH nội dung (Specialization → Topic → Situation → Vocabulary →
+  Grammar → Communication), KHÔNG được làm ngược (nghĩ chủ đề đời sống chung trước rồi mới gắn vai
+  ngành vào). 1 topic chỉ ĐẠT khi nội dung giao tiếp CHÍNH của nó cần hiểu kiến thức/thuật
+  ngữ/quy trình/vai trò trách nhiệm THẬT của ngành mới trả lời/tham gia đúng được — không phải chỉ
+  mượn bối cảnh ngành làm phông nền cho 1 chủ đề đời sống chung (sở thích, sức khoẻ, gia đình, hỏi
+  thăm xã giao). Ví dụ (ngành Kế toán): ❌ "Trang chia sẻ sở thích đọc sách trong giờ nghỉ trưa tại
+  văn phòng kế toán" — dù bối cảnh đúng là văn phòng kế toán, đây VẪN là bài "sở thích", không cần
+  biết gì về kế toán để hiểu/tham gia. ✅ "Trang giải thích cho đồng nghiệp mới quy trình đối chiếu
+  công nợ cuối tháng" — bắt buộc phải có nội dung/khái niệm THẬT của nghề kế toán mới viết/hiểu
+  đúng được. Chủ đề giao tiếp tổng quát (chào hỏi, sở thích, sức khoẻ nhẹ, gia đình, hỏi thăm xã
+  giao...) KHÔNG bị cấm, nhưng CHỈ được là THIỂU SỐ bổ sung cho đa dạng — xem trường bắt buộc
+  "situation_type" ở khuôn JSON cuối prompt này, giá trị "general_communication" là ĐÚNG cho các
+  chủ đề dạng này, và bị giới hạn tỉ lệ bằng code, không được lạm dụng chỉ vì dễ nghĩ hơn.
+
+  CẢNH BÁO "ĐỔI TIÊU ĐỀ" KHÔNG PHẢI "ĐỔI CHỦ ĐỀ": xét trùng lặp topic theo Ý CHÍNH + tình huống
+  giao tiếp thực chất, KHÔNG phải theo câu chữ khác nhau. Ví dụ SAI (những câu sau tưởng khác nhau
+  nhưng cùng 1 chủ đề, đều là "hỏi thăm sức khoẻ"): "Hỏi thăm sức khoẻ đồng nghiệp", "Trò chuyện về
+  việc cảm thấy không khoẻ", "Hỏi đồng nghiệp có ổn không". Sinh NHIỀU biến thể khác NGHĨA THẬT
+  (khác kiến thức/quy trình/tình huống ngành), không phải chỉ diễn đạt lại cùng 1 ý bằng câu chữ
+  khác.
 - Mỗi khung cần ÍT NHẤT số biến thể ghi trong "required_count" của khung đó (có thể sinh dư 1-2
   cho an toàn, không được ít hơn). CÁC BIẾN THỂ TRONG CÙNG 1 KHUNG PHẢI KHÁC NHAU RÕ RỆT — không
   lặp lại cùng 1 câu chuyện/bối cảnh dưới cách diễn đạt khác, để học viên không thấy 2 bài liền
@@ -371,9 +395,15 @@ markdown code fence:
     }
   ],
   "frames": {
-    "<frame_key>": [ { "topic": "<chủ đề cụ thể đúng ngành, tiếng Việt, ngắn gọn kiểu tên chủ đề bài học, PHẢI nhắc tới character+setting của chain_id tương ứng>", "fallback": false, "chain_id": <đúng chain_id của chuỗi chứa vị trí này> } ]
+    "<frame_key>": [ { "topic": "<chủ đề cụ thể đúng ngành, tiếng Việt, ngắn gọn kiểu tên chủ đề bài học, PHẢI nhắc tới character+setting của chain_id tương ứng>", "fallback": false, "chain_id": <đúng chain_id của chuỗi chứa vị trí này>, "situation_type": "<1 trong các giá trị: concept, procedure, problem, solution, case_study, workplace_situation, client_interaction, team_communication, professional_explanation, instruction, report, decision_making, troubleshooting, planning, evaluation, general_communication>" } ]
   }
 }
+
+"situation_type" BẮT BUỘC cho MỖI topic — chọn ĐÚNG loại tình huống giao tiếp/nội dung thực chất
+của topic đó (không phải chọn ngẫu nhiên hay luôn chọn 1 loại quen tay). CHỈ dùng
+"general_communication" khi topic THẬT SỰ là chủ đề đời sống chung không cần kiến thức ngành
+(xem "BÀI TEST THỰC CHẤT NGÀNH" ở trên) — giá trị này bị giới hạn tỉ lệ tối đa qua kiểm tra tự
+động, sinh quá nhiều "general_communication" sẽ bị coi là KHÔNG ĐẠT phải sinh lại.
 
 "<frame_key>" phải khớp CHÍNH XÁC danh sách frame key được cung cấp trong user prompt cho level
 này — không tự thêm/bớt/đổi tên key, không lẫn frame_key của level khác. Mảng biến thể của MỖI
@@ -459,6 +489,48 @@ function validateCounterpartDiversity(chains, spineSlots) {
   return problems;
 }
 
+// Đếm được bằng code (2026-08-17, theo đúng mẫu validateCounterpartDiversity ở trên) — ép đa
+// dạng LOẠI TÌNH HUỐNG (situation_type), không chỉ đa dạng câu chữ. "general_communication" là
+// giá trị thoát hiểm hợp lệ (chủ đề đời sống chung, không cần kiến thức ngành) nhưng PHẢI là
+// thiểu số — Minh yêu cầu rõ: "General communication chỉ là thành phần bổ sung", không phải trục
+// chính của giáo trình chuyên ngành.
+const MAX_GENERAL_COMMUNICATION_RATIO = 0.3;
+const MAX_SINGLE_SPECIALIZED_TYPE_RATIO = 0.45;
+
+function validateSituationTypeDistribution(gotFrames) {
+  const allTopics = Object.values(gotFrames || {}).flat();
+  const total = allTopics.length;
+  if (!total) return [];
+  const problems = [];
+  const counts = {};
+  let missingType = 0;
+  for (const t of allTopics) {
+    const st = String(t?.situation_type || "").trim();
+    if (!st) {
+      missingType++;
+      continue;
+    }
+    counts[st] = (counts[st] || 0) + 1;
+  }
+  if (missingType) problems.push(`${missingType}/${total} topic thiếu trường "situation_type" bắt buộc`);
+
+  const generalCount = counts["general_communication"] || 0;
+  const maxGeneral = Math.floor(total * MAX_GENERAL_COMMUNICATION_RATIO);
+  if (generalCount > maxGeneral) {
+    problems.push(
+      `"general_communication" chiếm ${generalCount}/${total} topic, vượt trần ${maxGeneral} (tối đa ${Math.round(MAX_GENERAL_COMMUNICATION_RATIO * 100)}%) — chuyên ngành phải là trục chính, general communication chỉ là phần bổ sung`
+    );
+  }
+  const maxSpecialized = Math.floor(total * MAX_SINGLE_SPECIALIZED_TYPE_RATIO);
+  for (const [st, count] of Object.entries(counts)) {
+    if (st === "general_communication") continue;
+    if (count > maxSpecialized) {
+      problems.push(`situation_type "${st}" chiếm ${count}/${total} topic, vượt trần ${maxSpecialized} (tối đa ${Math.round(MAX_SINGLE_SPECIALIZED_TYPE_RATIO * 100)}%) — cần đa dạng LOẠI tình huống, không dồn vào 1 loại`);
+    }
+  }
+  return problems;
+}
+
 function validateLevelPayload(level, data, frames, requiredCounts, spineSlots) {
   const problems = [];
   if (!data || data.level !== level) problems.push(`level trả về không khớp (kỳ vọng ${level})`);
@@ -482,6 +554,7 @@ function validateLevelPayload(level, data, frames, requiredCounts, spineSlots) {
       seen.add(t);
     }
   }
+  problems.push(...validateSituationTypeDistribution(gotFrames));
   // "story_chains" (2026-07-28, "mạch chủ đề" bước 1 bắt buộc) — CHỈ kiểm cấu trúc tối thiểu
   // (mảng không rỗng, đủ 3 trường cốt lõi mỗi chuỗi), KHÔNG kiểm nội dung topic có THẬT SỰ nhắc
   // đúng character/setting hay không (việc đó cần đọc hiểu tự nhiên, không kiểm bằng code được

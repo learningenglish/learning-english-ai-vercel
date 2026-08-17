@@ -142,6 +142,30 @@ function orNone(v) {
   return s ? s : "không có";
 }
 
+// Việt hoá + gợi ý viết cho từng "situation_type" (2026-08-17, truyền từ skin_chunk qua
+// publish-lesson.mjs — xem "situation_type" bắt buộc trong skin.js LEVEL_SYSTEM_PROMPT). Chỉ
+// hiện dòng "Loại tình huống" trong prompt khi có giá trị hợp lệ — KHÔNG bắt buộc, để tương thích
+// ngược cho lượt gọi generate_lesson không qua batch script (vd analyze_user_text không có field
+// này).
+const SITUATION_TYPE_GUIDE_VI = {
+  concept: "Khái niệm — giải thích 1 khái niệm/kiến thức nền tảng cụ thể của ngành",
+  procedure: "Quy trình — trình bày các bước/cách thực hiện 1 việc cụ thể trong ngành",
+  problem: "Vấn đề — nêu 1 vấn đề/khó khăn thường gặp thật của ngành",
+  solution: "Giải pháp — trình bày cách xử lý/giải quyết 1 vấn đề cụ thể của ngành",
+  case_study: "Case study — phân tích 1 tình huống/ca cụ thể đã xảy ra trong ngành",
+  workplace_situation: "Tình huống công sở — mô tả 1 tình huống thực tế tại nơi làm việc",
+  client_interaction: "Giao tiếp khách hàng/đối tác — trao đổi công việc với khách hàng/đối tác",
+  team_communication: "Giao tiếp nhóm — phối hợp/trao đổi công việc với đồng nghiệp",
+  professional_explanation: "Giải thích chuyên môn — giải thích kiến thức ngành cho người khác",
+  instruction: "Hướng dẫn — chỉ dẫn cách làm/cách dùng 1 công cụ, phương pháp cụ thể",
+  report: "Báo cáo — trình bày/báo cáo lại thông tin, kết quả công việc",
+  decision_making: "Ra quyết định — cân nhắc và đưa ra quyết định trong tình huống công việc",
+  troubleshooting: "Xử lý sự cố — phát hiện và khắc phục 1 sự cố cụ thể của ngành",
+  planning: "Lên kế hoạch — lập kế hoạch cho 1 công việc/dự án cụ thể",
+  evaluation: "Đánh giá — nhận xét/đánh giá 1 công việc, kết quả, hoặc phương án",
+  general_communication: "Giao tiếp tổng quát — chủ đề đời sống chung (không cần kiến thức ngành)",
+};
+
 // ====== PROMPT 1: generate_lesson — nguyên văn docs/prompt-ai-tao-bai-hoc.md, KHÔNG sửa. ======
 // TÁCH RIÊNG (2026-08-05, "sửa gốc tính năng tra từ" — Minh) — khối luật GOM CỤM TỪ này TRƯỚC
 // ĐÂY nằm thẳng trong GENERATE_LESSON_SYSTEM_PROMPT (không tái dùng được) — giờ dùng CHUNG cho
@@ -579,6 +603,22 @@ QUY TẮC VỀ TÌNH HUỐNG:
 // PHẦN RIÊNG "hội thoại" — CHỈ nối vào prompt khi content_type === "dialogue", "bài đọc" KHÔNG
 // hề thấy đoạn này.
 const DIALOGUE_ONLY_RULES = `
+QUY TẮC HÀNG ĐẦU — HỘI THOẠI PHẢI LÀ GIAO TIẾP TRONG CHUYÊN NGÀNH (2026-08-17, Minh yêu cầu rõ:
+DIALOGUE không phải General English conversation đặt vào 1 giáo trình chuyên ngành): cuộc hội
+thoại phải mô phỏng tình huống giao tiếp người học THỰC SỰ có thể gặp trong chuyên ngành/môi
+trường làm việc liên quan — không phải chuyện phiếm đời sống chung được gắn tên nhân vật ngành
+vào. Các LOẠI tình huống phù hợp (áp dụng cho MỌI ngành, chọn loại hợp với chủ đề đã cho): trao
+đổi khái niệm/kiến thức chuyên môn; hướng dẫn quy trình/cách làm; xử lý sự cố/vấn đề; đề xuất giải
+pháp; trao đổi với khách hàng/đối tác; phối hợp trong nhóm; báo cáo/giải trình công việc; ra quyết
+định; lên kế hoạch; đánh giá/nhận xét công việc; giải thích chuyên môn cho người không rành ngành.
+Ví dụ minh hoạ (Hospitality): hotel check-in, xử lý phàn nàn của khách, giới thiệu tiện nghi
+phòng, nhận đặt phòng, xử lý trễ trả phòng — KHÔNG liên tục sinh: hỏi thăm sức khoẻ, sở thích,
+cuối tuần làm gì, gia đình, món ăn yêu thích. Chủ đề giao tiếp tổng quát (hỏi thăm sức khoẻ, sở
+thích, gia đình, tin tức xã giao...) KHÔNG bị cấm nhưng CHỈ được dùng khi bài này thuộc loại
+"general_communication" (do bước chọn chủ đề gán, xem "Loại tình huống" trong yêu cầu bài học ở
+dưới nếu có) — các bài còn lại BẮT BUỘC xoay quanh đúng loại tình huống nghiệp vụ đã chọn, không
+được vì dễ viết mà quay lại chào hỏi/sở thích/sức khoẻ.
+
 QUY TẮC VỀ NỘI DUNG HỘI THOẠI: mô phỏng 1 cuộc trao đổi tự nhiên giữa các nhân vật có vai trò rõ
 ràng — tập trung vào giao tiếp, phản hồi, hỏi-đáp, trao đổi thông tin, giải quyết tình huống. Viết
 dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói.
@@ -630,10 +670,22 @@ QUY TẮC HỘI THOẠI TỰ NHIÊN:
 // chia sẻ" CHÍNH LÀ NGUYÊN NHÂN GỐC khiến model tự đẩy sang ngôi thứ nhất mơ hồ "We have a
 // desk...").
 const READING_ONLY_RULES = `
-QUY TẮC VỀ NỘI DUNG BÀI ĐỌC: PHẢI là 1 bài viết CUNG CẤP THÔNG TIN hoàn chỉnh, có giá trị nội
-dung ĐỘC LẬP — phát triển chủ đề theo hướng kiến thức/kinh nghiệm/quan sát/giải thích/góc nhìn
-thực tế. TUYỆT ĐỐI KHÔNG được: kể lại nội dung 1 cuộc hội thoại; tóm tắt điều nhân vật đã nói;
-chuyển lượt thoại thành 1 đoạn văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ chỉ đổi cách diễn đạt.
+QUY TẮC VỀ NỘI DUNG BÀI ĐỌC (2026-08-17, Minh yêu cầu rõ: READING không chỉ để luyện đọc tiếng
+Anh — phải CUNG CẤP KIẾN THỨC CHUYÊN NGÀNH THẬT mà người học chuyên ngành đó có lý do thực tế để
+đọc): nội dung PHẢI thuộc ít nhất 1 trong các loại sau (chọn loại phù hợp nhất với chủ đề đã cho,
+không cần đủ hết): kiến thức nền tảng của chuyên ngành; quy trình làm việc; khái niệm chuyên môn;
+công cụ và phương pháp; kỹ thuật; vấn đề thường gặp và cách xử lý; tiêu chuẩn hoặc nguyên tắc;
+kinh nghiệm nghề nghiệp; phân tích một vấn đề; case study; xu hướng trong ngành; vai trò và trách
+nhiệm nghề nghiệp; workplace practices; bài học thực tế trong chuyên ngành. Người học phải VỪA
+học tiếng Anh VỪA hiểu thêm về chuyên ngành.
+BÀI KHÔNG ĐẠT nếu chỉ có nội dung kiểu: "A person talks about their daily routine." / "Someone
+describes their favorite hobby." / "Two people discuss how they feel today." — TRỪ KHI nội dung
+đó có mối liên hệ THỰC CHẤT với chuyên ngành (không phải chỉ đổi bối cảnh/tên nhân vật). TỰ KIỂM
+TRA trước khi trả JSON: "Nếu bỏ phần luyện tiếng Anh đi, nội dung chuyên ngành của bài này có còn
+giá trị để đọc không?" — nếu câu trả lời là KHÔNG, phải viết lại theo 1 trong các loại nội dung ở
+trên.
+TUYỆT ĐỐI KHÔNG được: kể lại nội dung 1 cuộc hội thoại; tóm tắt điều nhân vật đã nói; chuyển lượt
+thoại thành 1 đoạn văn xuôi; lặp lại đúng chuỗi thông tin/ví dụ chỉ đổi cách diễn đạt.
 Phải TỰ ĐỨNG ĐỘC LẬP được, trả lời đúng câu hỏi "người học hiểu thêm/học được ĐIỀU GÌ từ bài đọc
 này?" — không phải "làm sao kể lại 1 tình huống giao tiếp bằng văn xuôi?".
 CẤU TRÚC BẮT BUỘC: chia thành NHIỀU đoạn văn RÕ RÀNG, mỗi đoạn là 1 phần tử RIÊNG trong mảng, mỗi
@@ -977,6 +1029,20 @@ function buildGenerateLessonUserPrompt(data) {
   // model để tự đoán "hiện tại" là năm nào.
   const todayVi = new Date().toLocaleDateString("vi-VN", { year: "numeric", month: "long", day: "numeric" });
 
+  // "situation_type"/"core_terms" (2026-08-17) — truyền từ skin_chunk (xem skin.js LEVEL_SYSTEM_
+  // PROMPT + publish-lesson.mjs topicFromFrames/buildSpineSamples) để bước VIẾT NỘI DUNG cũng biết
+  // đúng LOẠI tình huống + có thuật ngữ ngành thật để dùng, không chỉ dựa vào "Chủ đề" (1 câu
+  // ngắn) suy luận lại — hoàn thiện chuỗi Specialization -> Topic -> Situation -> Vocabulary ->
+  // Grammar -> Communication mà Minh yêu cầu. TÙY CHỌN — bỏ qua nếu không có (tương thích ngược
+  // cho analyze_user_text/lượt gọi không qua batch script).
+  const situationTypeLine = data.situation_type && SITUATION_TYPE_GUIDE_VI[data.situation_type]
+    ? `\n- Loại tình huống: ${SITUATION_TYPE_GUIDE_VI[data.situation_type]}`
+    : "";
+  const coreTermsLine =
+    Array.isArray(data.core_terms) && data.core_terms.length
+      ? `\n- Thuật ngữ chuyên ngành gợi ý (dùng tự nhiên nếu hợp ngữ cảnh, không ép nhồi hết): ${data.core_terms.join(", ")}`
+      : "";
+
   return `Tạo bài học theo yêu cầu sau:
 
 - Ngày hiện tại: ${todayVi}
@@ -989,7 +1055,7 @@ ${lengthInstruction}
 - Ngành nghề: ${orNone(data.industry)}
 - Sản phẩm / Dịch vụ liên quan: ${orNone(data.product)}
 - Tình huống cụ thể: ${orNone(data.situation)}
-- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}${grammarFocusInstruction}${newsGroundingInstruction}
+- Lượng từ chuyên ngành: ${termDensity === 0 ? "không có" : `khoảng ${termDensity} lượt từ/cụm từ chuyên ngành trong bài`}${situationTypeLine}${coreTermsLine}${grammarFocusInstruction}${newsGroundingInstruction}
 
 Nếu mô tả của người học mâu thuẫn với các trường còn lại (ví dụ mô tả đòi thì quá khứ
 nhưng cấp độ là A1), ưu tiên CẤP ĐỘ, điều chỉnh mô tả cho vừa cấp độ.`;

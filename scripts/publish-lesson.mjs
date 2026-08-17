@@ -704,6 +704,17 @@ function topicFromFrames(frames, frameKey, occurrenceIndex) {
   return typeof variant === "string" ? variant : variant?.topic || null;
 }
 
+// "situation_type" (2026-08-17) — bắt buộc trong skin.js LEVEL_SYSTEM_PROMPT từ giờ, đi kèm
+// "topic" trong CÙNG 1 variant object — đọc riêng vì variant có thể là string thuần (data cũ sinh
+// trước khi thêm field này, chưa force-regenerate) nên không có situation_type, trả về null thay
+// vì lỗi.
+function situationTypeFromFrames(frames, frameKey, occurrenceIndex) {
+  const variants = frames?.[frameKey];
+  if (!variants?.length) return null;
+  const variant = variants[occurrenceIndex % variants.length];
+  return (variant && typeof variant === "object" && variant.situation_type) || null;
+}
+
 // Lấy occupation_profile CỦA GOAL "Kế toán" đang active của tài khoản test — TÁI DÙNG (không
 // gọi lại generateOccupationProfile, đã có sẵn confidence "cao" từ trước, tốn tiền vô ích nếu
 // sinh lại).
@@ -789,6 +800,7 @@ async function buildSpineSamples(session, level, { industry, field, rawKeywordsM
     if (!topic) {
       console.warn(`  CẢNH BÁO: slot ${slot.slot} (${slot.situation_frame_key}) không có topic từ da lĩnh vực — bỏ trống, generate_lesson sẽ tự chọn theo Lĩnh vực.`);
     }
+    const situationType = situationTypeFromFrames(frames, slot.situation_frame_key, occurrenceIndex);
     const baseSample = {
       tag: `#${slot.slot}-${level}`,
       level,
@@ -796,6 +808,8 @@ async function buildSpineSamples(session, level, { industry, field, rawKeywordsM
       field,
       industry,
       topic: topic || undefined,
+      situation_type: situationType || undefined,
+      core_terms: occupationProfile.core_terms,
       term_density: computeTermDensity(level),
       spine_slot: slot.slot,
       skin_id: skinId,
