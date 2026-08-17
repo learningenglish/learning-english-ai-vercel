@@ -136,9 +136,15 @@ export async function listAiGeneratedLessons({ filter = "all", industryFilter } 
   // generate_lesson, xem spine_slot trong api/_generate/lesson.js) mới có giá trị (vị trí 1-based
   // TRONG ĐÚNG level đó, theo curriculum_spine.json) — bài tự nhập/phân tích văn bản có
   // spine_slot=null, lessonCard.js tự ẩn số khi null.
+  // ORDER (2026-08-17, Minh: "khi làm xong 1 level hãy sắp xếp lại bài học theo đúng thứ tự từ
+  // trên xuống") — TRƯỚC ĐÂY sắp theo created_at.desc (mới nhất trước), nhưng sau nhiều vòng
+  // xoá/sinh lại để sửa chất lượng, created_at KHÔNG còn phản ánh đúng thứ tự #1,#2...#89 của
+  // giáo trình nữa (bài #80 có thể tạo SAU bài #14 do phải sinh lại). Sắp theo level rồi tới
+  // spine_slot (vị trí thật trong khung giáo trình, xem ghi chú spine_slot dưới đây) mới ĐÚNG thứ
+  // tự học — created_at.desc chỉ còn dùng làm tiêu chí phụ cho bài KHÔNG có spine_slot (hiếm).
   let q =
     `select=id,title,title_vi,level,situation,content,content_type,cover_image_url,cover_thumb_url,is_favorite,created_at,industry,goal_id,spine_slot,${PROGRESS_EMBED}` +
-    "&source=eq.ai_generated&order=created_at.desc";
+    "&source=eq.ai_generated&order=level.asc,spine_slot.asc.nullslast,created_at.desc";
   if (filter === "favorite") q += "&is_favorite=eq.true";
   if (filter === "dialogue" || filter === "reading") q += `&content_type=eq.${filter}`;
   if (industryFilter === null) q += "&industry=is.null";
