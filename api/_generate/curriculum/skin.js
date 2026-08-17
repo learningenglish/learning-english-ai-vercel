@@ -340,6 +340,20 @@ hỏi thông tin cơ bản về Minh, vị trí 2 tiếp tục nói về sở th
   trong CÙNG 1 chuỗi (cùng "chain_id") — lúc đó KHÔNG cần khác nhau rõ rệt, PHẢI cùng 1 nhân
   vật/bối cảnh như quy định ở trên, chỉ khác góc nhìn/khoảnh khắc trong câu chuyện.
 
+QUY TẮC RIÊNG CHO TOPIC CỦA VỊ TRÍ "[reading]" (2026-08-17, xác nhận thật qua test A1 Kế toán:
+topic dạng "liệt kê hoạt động thường ngày tại bàn làm việc" hoặc "cảm xúc giờ nghỉ trưa của nhân
+viên" khiến bước sinh bài đọc sau này LUÔN viết thành chuỗi câu ngắn rời rạc kiểu liệt kê từng hành
+động/cảm xúc riêng lẻ — 1 câu = 1 ý, không gộp được thành đoạn văn liền mạch dù đã yêu cầu — lỗi
+này lặp lại 100% các lần thử, không phải ngẫu nhiên). Khi viết "topic" cho 1 vị trí "[reading]":
+KHÔNG phrase theo kiểu liệt kê ("các hoạt động...", "những việc thường làm...", "cảm xúc/tâm trạng
+lúc...") — thay vào đó phrase theo hướng GIẢI THÍCH/THÔNG TIN có 1 Ý CHÍNH DUY NHẤT xuyên suốt (vì
+sao, cách thức, vai trò, lợi ích, so sánh, ảnh hưởng...), vẫn giữ nguyên character+setting của
+"chain_id" như BƯỚC 2 yêu cầu. Ví dụ SAI (cấm): "Các hoạt động thường ngày của Trang tại bàn làm
+việc kế toán", "Cảm xúc của Giàu trong giờ nghỉ trưa". Ví dụ ĐÚNG (cùng nhân vật/bối cảnh, đổi
+hướng triển khai): "Vì sao Trang luôn sắp xếp bàn làm việc gọn gàng trước khi rời ca", "Giờ nghỉ
+trưa giúp Giàu lấy lại tinh thần cho buổi làm việc chiều thế nào". Quy tắc này CHỈ áp dụng cho vị
+trí "[reading]", KHÔNG áp dụng cho "[dialogue]".
+
 ĐẦU RA: CHỈ trả JSON hợp lệ theo đúng khuôn dưới đây, không thêm chữ nào ngoài JSON, không bọc
 markdown code fence:
 
