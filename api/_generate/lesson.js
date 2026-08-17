@@ -1524,6 +1524,26 @@ export async function generate_lesson(data, ctx) {
     console.log("[generate_lesson] retry 1x sau lỗi:", result.reason, `target=${firstTarget}`, `tier=${tier}`);
     result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
   }
+  // THÊM 1 LƯỢT THỬ RIÊNG cho "bài đọc" (2026-08-17, xác nhận thật: chủ đề mang tính "hoạt động/
+  // cảm xúc cá nhân" — vd "Cảm xúc giờ nghỉ trưa" — khiến model lệch ngôi kể/cấu trúc đoạn 2 LẦN
+  // LIÊN TIẾP, hết cả 2 lượt mặc định vẫn fail đúng 1 trong 3 lỗi mới thêm — 502 cho người dùng
+  // dù nội dung KHÔNG hề khó, chỉ là chủ đề dễ kéo lệch giọng văn). CHỈ áp dụng đúng 3 lý do lỗi
+  // MỚI (cấu trúc/ngôi kể), KHÔNG áp dụng cho lỗi khác (call_or_parse_failed...) để không kéo dài
+  // thời gian chờ vô ích khi lỗi là do mạng/JSON hỏng (đã thử đủ 2 lượt là hợp lý cho ca đó).
+  const READING_STRUCTURE_RETRY_REASONS = new Set([
+    "reading_paragraph_too_long",
+    "reading_paragraph_too_fragmented",
+    "reading_narrator_not_established",
+  ]);
+  if (
+    !result.ok &&
+    data.content_type === "reading" &&
+    READING_STRUCTURE_RETRY_REASONS.has(result.reason) &&
+    Date.now() - attemptStartedAt < 45000
+  ) {
+    console.log("[generate_lesson] retry 2x (riêng bài đọc, lỗi cấu trúc/ngôi kể):", result.reason);
+    result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
+  }
 
   if (!result.ok) {
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
