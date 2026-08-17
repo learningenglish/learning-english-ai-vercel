@@ -855,12 +855,19 @@ async function buildSpineSamples(session, level, { industry, field, rawKeywordsM
 // khi cam kết chạy hết level, mà không cần sửa code mỗi lần muốn test nhỏ. DRY_RUN=1 dừng
 // NGAY SAU khi in chủ đề/story_chains, KHÔNG gọi publishBatch (không tốn tiền sinh bài thật) —
 // dùng khi chỉ cần soát bằng mắt trước.
+// LEVEL (biến môi trường, TÙY CHỌN, mặc định "A1") — 2026-08-17, Minh: "làm luôn A2 chuyên ngành
+// kế toán" — cho phép chạy level khác mà không cần sửa code mỗi lần (vd LEVEL=A2 node scripts/
+// publish-lesson.mjs). occupation_profile TÁI DÙNG nguyên (fetchOccupationProfile khớp theo
+// raw_keywords="Kế toán", không phụ thuộc level) — chỉ industry_skins.levels[LEVEL] và
+// curriculum_spine.json levels[LEVEL] là khác nhau giữa các level, đã tự xử lý đúng trong
+// buildSpineSamples()/ensureSkinForLevel().
 async function main() {
+  const level = process.env.LEVEL || "A1";
   const session = { token: await login(CREDS.email, CREDS.password) };
-  let samples = await buildSpineSamples(session, "A1", { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
+  let samples = await buildSpineSamples(session, level, { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
   const slotLimit = Number(process.env.SLOT_LIMIT) || null;
   if (slotLimit) samples = samples.slice(0, slotLimit);
-  console.log(`\nChuẩn bị sinh ${samples.length} bài (level A1, Kế toán) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
+  console.log(`\nChuẩn bị sinh ${samples.length} bài (level ${level}, Kế toán) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
   console.log("\n--- Danh sách chủ đề (soát trùng lặp bằng mắt) ---");
   samples.forEach((s) => console.log(`  ${s.tag}: ${s.topic || "(không có topic, generate_lesson tự chọn)"}`));
   if (process.env.DRY_RUN === "1") {
