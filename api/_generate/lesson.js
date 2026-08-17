@@ -568,7 +568,14 @@ QUY TẮC VỀ TÌNH HUỐNG:
 
 QUY TẮC VỀ LOẠI NỘI DUNG:
 - "hội thoại": viết dạng hội thoại 2 người, mỗi lượt thoại là một phần tử trong mảng, có tên người nói (dùng tên tiếng Anh phổ biến hoặc vai như "Staff", "Customer" tùy ngữ cảnh).
-- "bài đọc": viết thành các đoạn văn, mỗi đoạn là một phần tử trong mảng, mỗi đoạn 2-4 câu.
+- "bài đọc": viết thành các đoạn văn, mỗi đoạn là MỘT phần tử RIÊNG trong mảng — BẮT BUỘC mỗi
+  đoạn ĐÚNG 2-4 câu, KHÔNG được gộp cả bài thành 1 phần tử duy nhất dù bài ngắn (A1/A2 vẫn phải
+  chia ít nhất 3-4 phần tử/đoạn, không viết liền 10+ câu vào 1 "text"). CHỦ THỂ/NGÔI KỂ phải RÕ
+  RÀNG ngay từ đoạn đầu tiên — nếu dùng ngôi thứ nhất ("I"/"we"), câu đầu PHẢI xác lập rõ người
+  kể là ai (vd "As an accountant, I..."/"Our accounting team..."), KHÔNG được mở đầu bằng "We
+  have a desk..."/"I am in the break room..." mà không biết "chúng tôi"/"tôi" là ai — nếu không
+  cần thiết phải dùng ngôi thứ nhất, ƯU TIÊN ngôi thứ ba rõ chủ ngữ (tên người/vai trò cụ thể,
+  vd "Trang checks invoices every morning.") để tránh mơ hồ.
 
 QUY TẮC VỀ GIỌNG VĂN (2026-08-14, Minh phản hồi thật: nội dung sinh ra hiện khá khô khan, cần
 sinh động hơn — CHỈ đổi CÁCH VIẾT, không đổi/nới lỏng bất kỳ ràng buộc nào khác đã nêu ở trên
@@ -580,10 +587,12 @@ như ĐỘ DÀI, cấp độ ngữ pháp, hay bám sát TÌNH HUỐNG):
   cụt lủn đúng mục đích. Ưu tiên để nhân vật CHIA SẺ một điều hay/kinh nghiệm/mẹo thật cụ thể qua
   lời thoại tự nhiên (không phải giảng giải khô khan) — người đọc học được điều gì đó thú vị,
   không chỉ theo dõi một giao dịch/tác vụ khô cứng.
-- "bài đọc": ngoài cung cấp đúng kiến thức chủ đề, PHẢI có GIÁ TRỊ THỰC TẾ — chia sẻ kinh nghiệm
-  thực chiến, mẹo hay, bài học rút ra, hoặc góc nhìn cụ thể — viết như một người có kinh nghiệm
-  thật đang chia sẻ lại, KHÔNG liệt kê định nghĩa/thông tin chung chung kiểu tài liệu tra cứu khô
-  khan.
+- "bài đọc": cung cấp KIẾN THỨC/THÔNG TIN HỮU ÍCH/KINH NGHIỆM THẬT về đúng chuyên ngành — PHẢI có
+  GIÁ TRỊ THỰC TẾ (mẹo hay, bài học rút ra, góc nhìn cụ thể), KHÔNG liệt kê định nghĩa/thông tin
+  chung chung kiểu tài liệu tra cứu khô khan. ĐÂY LÀ BÀI VIẾT CUNG CẤP THÔNG TIN — KHÁC HẲN "hội
+  thoại" (giao tiếp qua lại giữa 2 người): không viết theo kiểu nhật ký cá nhân lan man ("hôm nay
+  tôi cảm thấy...", liệt kê hoạt động cả ngày) — mỗi đoạn phải mang MỘT Ý/KIẾN THỨC CỤ THỂ, đúng
+  chủ đề đã cho, không lạc sang kể lể sinh hoạt không liên quan.
 - Vẫn PHẢI đúng cấp độ CEFR (từ vựng/ngữ pháp/độ dài câu như đã quy định) — hài hước/sinh động
   không có nghĩa là dùng từ lóng hay cấu trúc vượt cấp độ.
 
