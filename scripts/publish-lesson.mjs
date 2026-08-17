@@ -596,14 +596,17 @@ export async function publishBatch(samples) {
   console.log(`\n=== STAGE 1/7: Nội dung (${samples.length} bài) ===`);
   const lessons = await stageContent(session, samples);
 
-  // CONTENT_ONLY=1 (2026-08-17, Minh: "Nội dung sinh trước, giám khảo kiểm tra nội dung đủ điều
-  // kiện mới chạy tiếp các khoảng khác... Không phải đủ 7 giai đoạn mới kiểm tra") — BUG QUY TRÌNH
-  // THẬT tự phát hiện: trước đây LUÔN chạy đủ cả 7 stage (kể cả audio/ảnh bìa, tốn tiền thật) rồi
-  // MỚI đọc lại nội dung để lọc bài không đạt chuyên ngành — audio/ảnh bìa của các bài SAU ĐÓ BỊ
-  // XOÁ vì nội dung không đạt coi như tốn tiền vô ích. Dừng NGAY sau khi có nội dung, để người/AI
-  // đọc và lọc TRƯỚC, chỉ chạy tiếp stage 3-7 (tốn tiền) cho ĐÚNG những bài đã xác nhận đạt.
-  if (process.env.CONTENT_ONLY === "1") {
-    console.log("\nCONTENT_ONLY=1 — dừng sau STAGE 1, CHƯA chạy giám khảo/tách câu/tra từ/audio/ảnh bìa.");
+  // MẶC ĐỊNH dừng sau khi có nội dung (2026-08-17, Minh: "Nội dung sinh trước, giám khảo kiểm tra
+  // nội dung đủ điều kiện mới chạy tiếp các khoảng khác... Không phải đủ 7 giai đoạn mới kiểm
+  // tra"; đổi từ tuỳ chọn CONTENT_ONLY=1 sang MẶC ĐỊNH — Minh: "không phụ thuộc vào việc nhớ bật
+  // cờ") — BUG QUY TRÌNH THẬT tự phát hiện: trước đây LUÔN chạy đủ cả 7 stage (kể cả audio/ảnh
+  // bìa, tốn tiền thật) rồi MỚI đọc lại nội dung để lọc bài không đạt chuyên ngành — audio/ảnh bìa
+  // của các bài SAU ĐÓ BỊ XOÁ vì nội dung không đạt coi như tốn tiền vô ích. Dừng NGAY sau khi có
+  // nội dung theo MẶC ĐỊNH, để người/AI đọc và lọc TRƯỚC — PHẢI CHỦ ĐỘNG đặt RUN_ALL_STAGES=1 mới
+  // cho chạy tiếp stage 2-7 (tốn tiền), đúng cho ĐÚNG những bài đã xác nhận đạt.
+  if (process.env.RUN_ALL_STAGES !== "1") {
+    console.log("\nMẶC ĐỊNH dừng sau STAGE 1 — CHƯA chạy giám khảo/tách câu/tra từ/audio/ảnh bìa.");
+    console.log("Đặt RUN_ALL_STAGES=1 khi đã xác nhận nội dung đạt để chạy tiếp 6 stage còn lại.");
     return lessons;
   }
 
