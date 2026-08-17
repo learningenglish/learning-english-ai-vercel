@@ -1715,6 +1715,16 @@ NHIỆM VỤ: Với DANH SÁCH câu/đoạn tiếng Anh ĐỘC LẬP được đ
 mạch — CHỈ phân tích cụm từ theo quy tắc trên, TUYỆT ĐỐI KHÔNG viết lại/sửa/rút gọn nội dung câu),
 trả về "phrase_groups" cho ĐÚNG MỖI câu.
 
+BẮT BUỘC PHỦ HẾT CÂU DÙ CÂU ĐÓ RẤT NGẮN/CHỈ LÀ PHẢN ỨNG-CẢM THÁN (2026-08-17, lỗi thật lặp lại
+NHIỀU LẦN ĐỘC LẬP qua nhiều bài, đã xác nhận qua đọc lại dữ liệu thật): mỗi lượt gọi CHỈ nhận ĐÚNG
+1 câu (đã được tách riêng trước khi gửi cho bạn) — khi câu đó là 1 câu cảm thán/phản ứng ngắn 2-4
+từ đứng MỘT MÌNH (vd "Oh, I see!", "Sure!", "Thank you, Giàu!", "Sounds good!", "That's very
+convenient!", "And when do you close?", "Is there a lunch break?") thì TUYỆT ĐỐI KHÔNG được trả về
+mảng "phrase_groups" RỖNG chỉ vì thấy câu "quá đơn giản/không có gì đáng phân tích" — lỗi thật đã
+gặp CHÍNH XÁC kiểu này khiến người học bấm vào các từ này báo "không tra được từ". MỌI từ trong câu
+— kể cả thán từ đứng riêng ("Oh", "Sure", "Well"), lời đưa đẩy ("Thank you", "Sounds good") — ĐỀU
+PHẢI được gán vào ĐÚNG 1 nhóm nào đó, không có ngoại lệ "câu quá ngắn nên bỏ qua".
+
 QUY TẮC ĐẦU RA:
 - Trả về DUY NHẤT 1 JSON hợp lệ, không chữ nào khác, không bọc \`\`\`.
 - Schema: {"items": [{"index": <số thứ tự câu, ĐÚNG như đề bài>, "phrase_groups": [...]}]} — PHẢI
