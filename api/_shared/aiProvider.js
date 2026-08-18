@@ -75,7 +75,7 @@ async function callOpenAIChat({ messages, model, maxTokens, temperature, webSear
     body: JSON.stringify(body),
   });
   const data = await response.json();
-  if (!response.ok) return { ok: false, status: response.status, raw: data };
+  if (!response.ok) return { ok: false, status: response.status, raw: data, retryAfter: Number(response.headers.get("retry-after")) || null };
   return {
     ok: true,
     text: data?.choices?.[0]?.message?.content || "",
@@ -137,16 +137,35 @@ function mapProviderError(result) {
 
 // generateText — hàm nghiệp vụ cấp thấp nhất: gửi messages (khuôn OpenAI-style, role
 // system/user/assistant — chuẩn dùng chung trong toàn bộ codebase), nhận về text thô. Đầu ra
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // LUÔN cùng 1 khuôn { ok, text, usage, provider, model, durationMs, status } bất kể provider.
+// CHỜ-RỒI-THỬ-LẠI cho lỗi 429 (2026-08-18, xác nhận thật khi chạy batch B1 song song 6 bài: hàng
+// loạt câu nhận "Hệ thống đang quá tải" — đúng OpenAI trả 429 do vượt hạn mức request/phút thật
+// của tài khoản, KHÔNG phải bug code). Trước đây caller (analyzeReadingChunksInChunks/
+// analyzePhraseGroupsInChunks) thử lại NGAY LẬP TỨC không chờ — dính đúng cửa sổ giới hạn phút đó
+// nên lượt thử lại 2 gần như CHẮC CHẮN thất bại y hệt lượt 1 (đo thật: cả 2 lượt cùng 1 lỗi 429).
+// Thêm 1 lượt chờ CHỈ RIÊNG cho 429, đọc "Retry-After" (giây) nếu OpenAI có trả, không thì mặc
+// định 3s — đủ để thoát khỏi đúng cửa sổ giới hạn trước khi thử lại, KHÔNG đổi số lượt thử ở tầng
+// caller (vẫn 2 lượt như cũ, chỉ là lượt 2 giờ có cơ hội thành công thật thay vì lặp lại vô ích).
 export async function generateText({ messages, model, tier = "default", maxTokens, temperature, webSearch = false, responseFormat } = {}) {
   const start = Date.now();
   const resolvedModel = resolveModel(tier, model);
   const cappedMaxTokens = Math.min(maxTokens || 2000, MAX_TOKENS_CAP);
 
-  const result =
+  const attempt = () =>
     PROVIDER === "gemini"
-      ? await callGeminiChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch, responseFormat })
-      : await callOpenAIChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch, responseFormat });
+      ? callGeminiChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch, responseFormat })
+      : callOpenAIChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch, responseFormat });
+
+  let result = await attempt();
+  if (!result.ok && result.status === 429) {
+    const retryAfterSec = Number(result.raw?.error?.retry_after) || Number(result.retryAfter) || 3;
+    await sleep(Math.min(retryAfterSec, 10) * 1000);
+    result = await attempt();
+  }
 
   const durationMs = Date.now() - start;
   if (!result.ok) {
