@@ -537,6 +537,22 @@ QUY TẮC BẮT BUỘC VỀ CẤP ĐỘ (CEFR):
 - B2: câu phức tự nhiên (không giới hạn cứng số từ), bị động, câu điều kiện loại 2-3, mệnh đề quan hệ; từ vựng học thuật nhẹ.
 - C1: văn phong tự nhiên như người bản xứ, thành ngữ, cấu trúc đảo ngữ.
 Tuyệt đối không dùng ngữ pháp hoặc từ vựng vượt cấp độ được yêu cầu, trừ các TỪ CHUYÊN NGÀNH được chỉ định.
+LỖI THẬT ĐÃ GẶP (2026-08-18, Minh đọc bài A1 bắt được "How long have you worked here?"/"I have
+worked here for two years." — THÌ HIỆN TẠI HOÀN THÀNH, vượt cấp A1 dù không phải điểm ngữ pháp
+trọng tâm được giao, chỉ lỡ dùng ở 1 câu phụ): rủi ro CAO NHẤT là VÔ Ý dùng cấu trúc cấp cao hơn ở
+những câu KHÔNG liên quan trực tiếp tới điểm ngữ pháp trọng tâm (câu hỏi thăm/câu đưa đẩy/câu phụ
+— vd hỏi "đã làm ở đây bao lâu" rất dễ bật ra "have you worked" theo phản xạ tiếng Anh tự nhiên,
+nhưng đây là cấu trúc B1, TUYỆT ĐỐI cấm ở A1/A2). Danh sách cấu trúc CẤM CỤ THỂ theo từng cấp (kể
+cả trong câu phụ/câu đưa đẩy không liên quan điểm ngữ pháp trọng tâm):
+- A1 KHÔNG được dùng: thì hiện tại hoàn thành ("have/has + V3", vd "have worked", "has been"),
+  quá khứ đơn, quá khứ tiếp diễn, thì tương lai, bị động, câu điều kiện, mệnh đề quan hệ. Nếu cần
+  hỏi "đã làm việc bao lâu", dùng cấu trúc A1 thay thế (vd "How long do you work here?" hoặc tránh
+  hẳn câu hỏi đó, chọn hướng khác trong phạm vi thì hiện tại đơn/tiếp diễn).
+- A2 KHÔNG được dùng: thì hiện tại hoàn thành, quá khứ tiếp diễn, bị động, câu điều kiện, mệnh đề
+  quan hệ.
+- B1 KHÔNG được dùng: bị động phức tạp, câu điều kiện loại 2-3, mệnh đề quan hệ rút gọn.
+Trước khi trả JSON, TỰ RÀ LẠI từng câu KHÔNG liên quan điểm ngữ pháp trọng tâm — đây là nơi cấu
+trúc vượt cấp dễ lọt qua nhất, không chỉ rà câu chứa điểm ngữ pháp trọng tâm.
 RIÊNG A1 (chốt 2026-07-22): length_words của bài A1 CỐ Ý ngắn hơn hẳn các cấp khác — KHÔNG phải
 lỗi, đừng cố "kéo dài cho đủ nghĩa". Bản chất A1 là câu và cấu trúc ĐƠN GIẢN, DỄ NHỚ, DÙNG LẠI
 ĐƯỢC trong nhiều tình huống khác nhau, không phải đoạn văn/hội thoại dài. Ưu tiên vài câu/lượt
@@ -1382,6 +1398,20 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
   if (!Array.isArray(parsed.grammar)) return { valid: false, reason: "grammar_not_array" };
   if (!Array.isArray(parsed.exercises) || !parsed.exercises.length) return { valid: false, reason: "empty_exercises" };
 
+  // BUG THẬT (2026-08-18, Minh đọc #2-A1 bắt được: "How long have you worked here?"/"I have
+  // worked here for two years." — THÌ HIỆN TẠI HOÀN THÀNH trong 1 bài A1, dù prompt ĐÃ CÓ SẴN
+  // "A1: ... chỉ thì hiện tại đơn và hiện tại tiếp diễn" — quy tắc văn xuôi KHÔNG đủ, giống ĐÚNG
+  // 3 lần trước (cấu trúc đoạn/ngôi kể/câu cảm thán) — cần bắt bằng CODE. Chỉ regex chính xác
+  // được 1 cấu trúc CỤ THỂ đã xác nhận lỗi thật (have/has + quá khứ phân từ) — không cố dựng bộ
+  // phát hiện MỌI cấu trúc vượt cấp độ (bị động, câu điều kiện...) vì rủi ro báo sai (false
+  // positive) cao hơn nhiều so với lợi ích, xem thêm quy tắc văn xuôi đã tăng cường ở PREFIX.
+  if (parsed.level === "A1" && Array.isArray(parsed.content)) {
+    const PRESENT_PERFECT_RE =
+      /\b(have|has|haven't|hasn't|have not|has not)\b[^.!?]{0,20}?\b(been|done|gone|seen|written|worked|finished|checked|prepared|completed|received|sent|made|had|given|taken|come|started|helped|used|learned|learnt|met|had)\b/i;
+    const badIdx = parsed.content.findIndex((item) => PRESENT_PERFECT_RE.test(String(item?.text || "")));
+    if (badIdx >= 0) return { valid: false, reason: "grammar_beyond_a1_present_perfect", itemIndex: badIdx };
+  }
+
   // BUG THẬT (2026-08-17, xác nhận qua batch A1 #53/#85 VÀ lặp lại ngay sau khi sửa PROMPT bằng
   // văn xuôi — chỉ nêu quy tắc "2-4 câu/đoạn" KHÔNG đủ, model vẫn gộp cả bài đọc thành 1 phần tử
   // 13-17 câu): kiểm bằng CODE, không chỉ trông cậy prompt — 1 phần tử "bài đọc" quá dài (>5 câu)
@@ -1620,13 +1650,14 @@ export async function generate_lesson(data, ctx) {
     "reading_paragraph_too_fragmented",
     "reading_narrator_not_established",
   ]);
-  if (
-    !result.ok &&
-    data.content_type === "reading" &&
-    READING_STRUCTURE_RETRY_REASONS.has(result.reason) &&
-    Date.now() - attemptStartedAt < 45000
-  ) {
-    console.log("[generate_lesson] retry 2x (riêng bài đọc, lỗi cấu trúc/ngôi kể):", result.reason);
+  // "grammar_beyond_a1_present_perfect" (2026-08-18) — áp dụng CHO CẢ dialogue lẫn reading (lỗi
+  // thật Minh bắt được nằm ở 1 bài DIALOGUE, không phải reading) — KHÔNG giới hạn content_type
+  // như 3 lý do cấu trúc/ngôi kể ở trên (3 lý do đó CHỈ có ý nghĩa với "reading").
+  const structureRetryOk =
+    READING_STRUCTURE_RETRY_REASONS.has(result.reason) && data.content_type === "reading";
+  const grammarRetryOk = result.reason === "grammar_beyond_a1_present_perfect";
+  if (!result.ok && (structureRetryOk || grammarRetryOk) && Date.now() - attemptStartedAt < 45000) {
+    console.log("[generate_lesson] retry 2x (cấu trúc/ngôi kể/ngữ pháp vượt cấp):", result.reason);
     result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
   }
 
