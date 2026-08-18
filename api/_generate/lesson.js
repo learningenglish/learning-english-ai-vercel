@@ -1911,13 +1911,14 @@ function buildPhraseGroupsUserPrompt(items) {
   return items.map((it, i) => `[${i}] "${it.text}"`).join("\n");
 }
 
-async function callAnalyzePhraseGroups(items, tier) {
+async function callAnalyzePhraseGroups(items, tier, dictionaryHint) {
+  const systemPrompt = dictionaryHint ? `${PHRASE_GROUPS_ANALYZE_SYSTEM_PROMPT}\n\n${dictionaryHint}` : PHRASE_GROUPS_ANALYZE_SYSTEM_PROMPT;
   const r = await generateStructuredJSON({
     tier: tier || "default",
     maxTokens: 6000,
     temperature: 0.3,
     messages: [
-      { role: "system", content: PHRASE_GROUPS_ANALYZE_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       { role: "user", content: buildPhraseGroupsUserPrompt(items) },
     ],
   });
@@ -2035,11 +2036,95 @@ function tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceRealTokens) {
   return { groups, nextCursorIdx: idx };
 }
 
+// TỪ ĐIỂN DÙNG CHUNG (2026-08-18, Minh: "lưu các từ cũ lại đem ra sử dụng cho bài khác khi có từ
+// đó" — tránh hỏi AI lại từ đầu cho những từ ĐÃ gặp ở bài khác, vd "accounting"/"invoice"/
+// "meeting" lặp lại rất nhiều giữa các bài cùng chuyên ngành). Khoá theo (word, word_type) — KHÔNG
+// theo mỗi "word" — vì cùng 1 từ có thể khác nghĩa theo loại từ (vd "check" = "kiểm tra" khi là
+// động từ, "tờ séc" khi là danh từ tài chính) — nếu chỉ khoá theo word sẽ trộn lẫn nghĩa sai ngữ
+// cảnh. Bảng "vocab_dictionary" — xem migration SQL đã gửi Minh chạy tay (đúng quy trình đã thống
+// nhất: sandbox không có kết nối DB, xem feedback_supabase_migration_workflow trong memory).
+async function lookupVocabDictionary(words) {
+  const uniqueWords = [...new Set((words || []).map((w) => normalizePhraseWord(w)).filter(Boolean))];
+  if (!uniqueWords.length) return {};
+  try {
+    const orFilter = uniqueWords.map((w) => `word.eq.${encodeURIComponent(w)}`).join(",");
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/vocab_dictionary?or=(${orFilter})&select=word,word_type,meaning,level`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!r.ok) return {};
+    const rows = await r.json();
+    const map = {};
+    for (const row of rows) (map[row.word] ||= []).push({ type: row.word_type, meaning: row.meaning, level: row.level });
+    return map;
+  } catch (e) {
+    console.error("lookupVocabDictionary error:", e);
+    return {};
+  }
+}
+
+// Ghi lại từ MỚI học được sau mỗi lượt phân tích thành công — KHÔNG chặn luồng chính nếu lỗi (từ
+// điển là tối ưu thêm, không phải điều kiện bắt buộc để bài học hợp lệ). "on_conflict=word,
+// word_type" khớp UNIQUE constraint đã tạo trong migration — từ đã có thì cập nhật nghĩa mới nhất
+// thay vì tạo trùng.
+async function upsertVocabDictionary(phraseGroups) {
+  const rows = [];
+  const seen = new Set();
+  for (const g of phraseGroups || []) {
+    const words = Array.isArray(g?.words) ? g.words : [];
+    const wm = g.word_meanings || {}, wt = g.word_types || {}, wl = g.word_levels || {};
+    for (const w of words) {
+      const norm = normalizePhraseWord(w);
+      if (!norm || !wm[w] || !wt[w]) continue;
+      const key = norm + "|" + wt[w];
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ word: norm, word_type: wt[w], meaning: wm[w], level: wl[w] || null });
+    }
+  }
+  if (!rows.length) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/vocab_dictionary?on_conflict=word,word_type`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(rows),
+    });
+  } catch (e) {
+    console.error("upsertVocabDictionary error:", e);
+  }
+}
+
+// "contextTranslation" (2026-08-18, Minh: "từ có thể có nghĩa khác, có thể đối chiếu với nghĩa
+// trong phần tách câu mà lựa chọn từ đó") — khi 1 từ có NHIỀU lựa chọn (word, type) trong từ điển
+// (đa nghĩa), đưa THÊM bản dịch tổng quát của câu (đã có sẵn từ bước "tách câu" chạy TRƯỚC tra từ)
+// làm ngữ cảnh — để AI tự chọn ĐÚNG nghĩa phù hợp thay vì đoán mò hoặc luôn lấy lựa chọn đầu tiên.
+function buildDictionaryHint(dictMap, contextTranslation) {
+  const entries = Object.entries(dictMap).filter(([, opts]) => opts.length);
+  if (!entries.length) return "";
+  const lines = entries.map(([word, options]) => {
+    const opts = options.map((o) => `${o.type}: "${o.meaning}"${o.level ? ` (cấp ${o.level})` : ""}`).join(" HOẶC ");
+    return `- "${word}": ${opts}`;
+  });
+  const ambiguityNote = entries.some(([, opts]) => opts.length > 1)
+    ? `\nMột số từ có NHIỀU lựa chọn (đa nghĩa tuỳ loại từ) — dùng bản dịch tổng quát của câu${contextTranslation ? ` ("${contextTranslation}")` : ""} để chọn ĐÚNG nghĩa phù hợp ngữ cảnh, không lấy bừa lựa chọn đầu tiên.`
+    : "";
+  return `TỪ ĐIỂN THAM KHẢO (đã xác định từ các bài trước — DÙNG LẠI ĐÚNG các giá trị này nếu từ xuất hiện với ĐÚNG loại từ tương ứng, không tự sáng tạo nghĩa/cấp độ khác cho các từ này):
+${lines.join("\n")}${ambiguityNote}`;
+}
+
 async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
     const existingGroups = Array.isArray(existingGroupsList?.[i]) ? existingGroupsList[i] : null;
+    // Bản dịch tổng quát của CẢ ITEM (đã có sẵn từ bước "tách câu" chạy TRƯỚC tra từ) — dùng làm
+    // ngữ cảnh gỡ đa nghĩa khi từ điển có nhiều lựa chọn nghĩa cho 1 từ, xem buildDictionaryHint().
+    const readingChunks = Array.isArray(toAnalyze[i]?.reading_chunks) ? toAnalyze[i].reading_chunks : [];
+    const contextTranslation = readingChunks.map((c) => c?.meaning).filter(Boolean).join(" ");
     let cursorIdx = 0;
     const combinedGroups = [];
     for (const sentence of sentences) {
@@ -2065,14 +2150,20 @@ async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
       // mà CUỐI CÙNG VẪN THẤT BẠI (#a-B2 vẫn "chưa đủ" sau 8 lượt) — tiền mất tật mang. Quay lại
       // ĐÚNG 2 lượt cùng tier mặc định rồi bỏ qua — câu khó thật sự cần sửa bằng RULE (như đã làm
       // với contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may mắn.
-      let result = await callAnalyzePhraseGroups(chunk);
-      if (!result.ok) result = await callAnalyzePhraseGroups(chunk);
+      const dictMap = await lookupVocabDictionary(sentenceWordTokens(sentence));
+      const dictionaryHint = buildDictionaryHint(dictMap, contextTranslation);
+      let result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
+      if (!result.ok) result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
       if (!result.ok) {
         console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
         continue;
       }
       const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
       combinedGroups.push(...(sentenceItem?.phrase_groups || []));
+      // Học thêm từ MỚI vào từ điển dùng chung — CHỜ xong (không fire-and-forget) vì hàm serverless
+      // có thể bị dừng ngay khi response chính trả về, promise chưa resolve sẽ mất luôn; lỗi ở đây
+      // không chặn luồng chính (xem try/catch bên trong upsertVocabDictionary()).
+      await upsertVocabDictionary(sentenceItem?.phrase_groups);
     }
     allItems.push({ index: i, phrase_groups: combinedGroups });
   }
@@ -2388,7 +2479,10 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // gọi lại action này (missingIdx tự lọc lại item còn thiếu) sẽ tiếp tục đúng chỗ dang dở, không
   // làm lại từ đầu.
   for (const origIdx of missingIdx) {
-    const result = await analyzePhraseGroupsInChunks([{ text: content[origIdx].text }], [content[origIdx].phrase_groups]);
+    const result = await analyzePhraseGroupsInChunks(
+      [{ text: content[origIdx].text, reading_chunks: content[origIdx].reading_chunks }],
+      [content[origIdx].phrase_groups]
+    );
     if (!result.ok) {
       console.error("[analyze_lesson_phrase_groups] thất bại tại item", origIdx, result.reason);
       continue;
