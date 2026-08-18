@@ -1623,7 +1623,13 @@ export async function generate_lesson(data, ctx) {
   }
 
   if (!result.ok) {
-    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
+    // "reason" (2026-08-18) — trước đây CHỈ log console.error phía server, publish-lesson.mjs
+    // (chạy từ máy Minh, không truy cập được log Vercel) chỉ thấy đúng thông báo chung chung
+    // "AI trả về dữ liệu không hợp lệ" — không biết validator NÀO chặn (reading_paragraph_too_
+    // long/too_fragmented/reading_narrator_not_established/call_or_parse_failed...) để biết có
+    // đáng nới hay không. Trả thẳng "reason" trong response — publish-lesson.mjs ĐÃ SẴN in
+    // nguyên "genRes.data" khi lỗi (xem stageContent()), không cần sửa gì thêm phía script.
+    return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502, reason: result.reason };
   }
   const parsed = result.parsed;
 
