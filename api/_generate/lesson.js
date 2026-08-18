@@ -1469,9 +1469,13 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
   // ("was made", "I found...", "How was your day?"). CHỈ dùng trợ động từ/động từ bất quy tắc
   // KHÔNG trùng chính tả với dạng hiện tại (loại "read"/"put"/"cut"/"left" — "left" còn trùng nghĩa
   // "bên trái", rủi ro báo sai cao ở bài chỉ đường) để tránh báo sai.
+  // BUG THẬT #3b (2026-08-18, phát hiện khi tự viết tay bài thay thế): "got" trong danh sách trên
+  // khớp NHẦM cả "have/has got" — CHÍNH LÀ have_got, 1 điểm ngữ pháp A1 HỢP LỆ (xem TEACH_ORDER) —
+  // sẽ chặn oan mọi câu dùng đúng cấu trúc này. Dùng negative lookbehind loại "got" khi đứng ngay
+  // sau have/has/'ve/'s, vẫn bắt được "got" đứng RIÊNG (quá khứ của "get", vd "I got 20 invoices").
   if (parsed.level === "A1" && Array.isArray(parsed.content)) {
     const PAST_SIMPLE_RE =
-      /\b(did|didn't|did not|was|were|wasn't|weren't|was not|were not|went|saw|took|made|got|said|came|gave|knew|thought|told|found|brought|bought|wrote|drove|ate|drank|spoke|broke|began|ran|sat|stood|paid|sent|kept|held|heard|met)\b/i;
+      /\b(did|didn't|did not|was|were|wasn't|weren't|was not|were not|went|saw|took|made|said|came|gave|knew|thought|told|found|brought|bought|wrote|drove|ate|drank|spoke|broke|began|ran|sat|stood|paid|sent|kept|held|heard|met)\b|(?<!\b(?:have|has|'ve|'s)\s)\bgot\b/i;
     const badIdx = parsed.content.findIndex((item) => PAST_SIMPLE_RE.test(String(item?.text || "")));
     if (badIdx >= 0) return { valid: false, reason: "grammar_beyond_a1_past_simple", itemIndex: badIdx };
   }
