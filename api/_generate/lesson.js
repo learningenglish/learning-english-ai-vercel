@@ -1427,6 +1427,19 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
     if (badIdx >= 0) return { valid: false, reason: "grammar_beyond_a1_future_will", itemIndex: badIdx };
   }
 
+  // BUG THẬT #3 (2026-08-18, cùng đợt quét — quét TRỰC TIẾP nội dung ĐÃ LƯU bằng regex, đáng tin
+  // hơn hẳn "evidence" do AI tự trích dẫn ở analyze_lesson_grammar_scope vì AI đôi khi trích sai/
+  // trích câu vô hại trong khi lỗi thật nằm ở câu KHÁC cùng bài): phát hiện past_simple lọt vào A1
+  // ("was made", "I found...", "How was your day?"). CHỈ dùng trợ động từ/động từ bất quy tắc
+  // KHÔNG trùng chính tả với dạng hiện tại (loại "read"/"put"/"cut"/"left" — "left" còn trùng nghĩa
+  // "bên trái", rủi ro báo sai cao ở bài chỉ đường) để tránh báo sai.
+  if (parsed.level === "A1" && Array.isArray(parsed.content)) {
+    const PAST_SIMPLE_RE =
+      /\b(did|didn't|did not|was|were|wasn't|weren't|was not|were not|went|saw|took|made|got|said|came|gave|knew|thought|told|found|brought|bought|wrote|drove|ate|drank|spoke|broke|began|ran|sat|stood|paid|sent|kept|held|heard|met)\b/i;
+    const badIdx = parsed.content.findIndex((item) => PAST_SIMPLE_RE.test(String(item?.text || "")));
+    if (badIdx >= 0) return { valid: false, reason: "grammar_beyond_a1_past_simple", itemIndex: badIdx };
+  }
+
   // BUG THẬT (2026-08-17, xác nhận qua batch A1 #53/#85 VÀ lặp lại ngay sau khi sửa PROMPT bằng
   // văn xuôi — chỉ nêu quy tắc "2-4 câu/đoạn" KHÔNG đủ, model vẫn gộp cả bài đọc thành 1 phần tử
   // 13-17 câu): kiểm bằng CODE, không chỉ trông cậy prompt — 1 phần tử "bài đọc" quá dài (>5 câu)
@@ -1670,8 +1683,12 @@ export async function generate_lesson(data, ctx) {
   // như 3 lý do cấu trúc/ngôi kể ở trên (3 lý do đó CHỈ có ý nghĩa với "reading").
   const structureRetryOk =
     READING_STRUCTURE_RETRY_REASONS.has(result.reason) && data.content_type === "reading";
-  const grammarRetryOk =
-    result.reason === "grammar_beyond_a1_present_perfect" || result.reason === "grammar_beyond_a1_future_will";
+  const GRAMMAR_RETRY_REASONS = new Set([
+    "grammar_beyond_a1_present_perfect",
+    "grammar_beyond_a1_future_will",
+    "grammar_beyond_a1_past_simple",
+  ]);
+  const grammarRetryOk = GRAMMAR_RETRY_REASONS.has(result.reason);
   if (!result.ok && (structureRetryOk || grammarRetryOk) && Date.now() - attemptStartedAt < 45000) {
     console.log("[generate_lesson] retry 2x (cấu trúc/ngôi kể/ngữ pháp vượt cấp):", result.reason);
     result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
