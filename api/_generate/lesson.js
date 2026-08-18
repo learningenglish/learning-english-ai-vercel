@@ -491,6 +491,16 @@ V. BẮT BUỘC PHỦ ĐỦ 100% (hệ thống TỰ ĐỘNG KIỂM TRA bằng co
 BỘ "text" của MỌI khối theo đúng thứ tự PHẢI tái tạo lại CHÍNH XÁC các từ của "text" phần tử đó
 (chỉ khác dấu câu/khoảng trắng) — không thiếu, không thừa, không đảo thứ tự.
 
+BẮT BUỘC PHỦ HẾT CÂU DÙ CÂU ĐÓ RẤT NGẮN/ĐỨNG MỘT MÌNH KHÔNG CÓ NGỮ CẢNH (2026-08-18, lỗi thật xác
+nhận qua đọc lại dữ liệu: bài B1 có câu ngắn kết đoạn như "It is vital for our business
+operations." bị bỏ SÓT HOÀN TOÀN khỏi "reading_chunks" — mỗi lượt gọi CHỈ nhận ĐÚNG 1 câu đã tách
+riêng, khi câu đó ngắn/mang tính kết luận/chứa đại từ tham chiếu câu trước ("It", "This", "They")
+mà KHÔNG có câu xung quanh đi kèm, TUYỆT ĐỐI KHÔNG được trả về "reading_chunks" rỗng hay bỏ sót vì
+thấy câu "quá đơn giản/không đủ ngữ cảnh để phân tích" — vẫn PHẢI chia câu đó thành khối như mọi
+câu khác, dùng nghĩa hợp lý nhất cho đại từ dù không thấy câu trước. Đây là lỗi thật đã từng gặp
+và sửa cho "phrase_groups" (câu cảm thán/phản ứng ngắn), "reading_chunks" cũng phải tuân quy tắc
+này y hệt, không có ngoại lệ "câu quá ngắn/quá đơn giản nên bỏ qua".
+
 VI. "meaning" của MỖI khối PHẢI là bản dịch tiếng Việt TỰ NHIÊN, SẠCH của ĐÚNG khối đó — TUYỆT ĐỐI
 KHÔNG để lẫn bất kỳ từ tiếng Anh nào chưa dịch trong "meaning".
 
