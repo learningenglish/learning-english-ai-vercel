@@ -2572,13 +2572,21 @@ async function callAnalyzeReadingChunks(items, tier) {
       { role: "user", content: buildReadingChunksUserPrompt(items) },
     ],
   });
-  if (!r.ok) return { ok: false, reason: "call_or_parse_failed" };
+  if (!r.ok) {
+    return {
+      ok: false,
+      reason: "call_or_parse_failed",
+      debugDetail: { status: r.status, parseError: !!r.parseError, error: r.error, rawText: (r.text || "").slice(0, 500) },
+    };
+  }
   const resultItems = Array.isArray(r.data?.items) ? r.data.items : null;
-  if (!resultItems || resultItems.length !== items.length) return { ok: false, reason: "item_count_mismatch" };
+  if (!resultItems || resultItems.length !== items.length) {
+    return { ok: false, reason: "item_count_mismatch", debugDetail: { rawData: r.data } };
+  }
   for (let i = 0; i < items.length; i++) {
     const match = resultItems.find((x) => x.index === i) || resultItems[i];
     if (!itemReadingChunksCoverageOk({ text: items[i].text, reading_chunks: match?.reading_chunks })) {
-      return { ok: false, reason: "reading_chunks_incomplete", itemIndex: i };
+      return { ok: false, reason: "reading_chunks_incomplete", itemIndex: i, debugDetail: { match } };
     }
   }
   return { ok: true, items: resultItems };
@@ -2633,7 +2641,7 @@ async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
       const chunk = [{ text: sentence }];
       let result = await callAnalyzeReadingChunks(chunk);
       const attempt1Reason = result.reason;
-      const attempt1Chunks = result.ok ? result.items?.[0]?.reading_chunks : null;
+      const attempt1Debug = result.debugDetail;
       if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
       if (!result.ok) {
         console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
@@ -2643,9 +2651,9 @@ async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
           itemIndex: i,
           sentence,
           attempt1Reason,
-          attempt1Chunks,
+          attempt1Debug,
           attempt2Reason: result.reason,
-          attempt2Chunks: result.ok ? null : undefined,
+          attempt2Debug: result.debugDetail,
         });
         continue;
       }
