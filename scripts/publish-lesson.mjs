@@ -404,6 +404,11 @@ async function stageContent(session, samples) {
       lesson.characters = existing.characters || [];
       lesson.totalWords = (existing.content || []).reduce((sum, it) => sum + (it.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
       lesson.ok = true;
+      // 2026-08-18 (Minh: "$4.14 nhưng chưa xong... dự đoán sẽ mất $10, không ổn") — đánh dấu bài
+      // RESUME (nội dung KHÔNG đổi so với lần chạy trước) để stageGrammarScopeCheck() bỏ qua,
+      // tránh tính phí lại kiểm tra ngữ pháp cho ĐÚNG những bài không hề thay đổi mỗi lần script
+      // này chạy lại — xác nhận lãng phí thật qua nhiều vòng chạy A1 hôm nay.
+      lesson.resumed = true;
       console.log(`  ${sample.tag}: ĐÃ CÓ SẴN (resume, không sinh lại) — "${lesson.title}" (id ${lesson.lessonId})`);
       lessons.push(lesson);
       continue;
@@ -487,6 +492,15 @@ async function stageField(session, lessons, action, field, resultKey, label, max
 async function stageGrammarScopeCheck(session, lessons) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue;
+    // BỎ QUA bài RESUME (2026-08-18, Minh phát hiện chi phí lặp lại vô ích) — bài này ĐÃ được
+    // kiểm tra ngữ pháp ở (các) lần chạy TRƯỚC của CHÍNH script này trong ngày (nội dung không đổi
+    // — nếu đổi thì đã không nằm trong nhánh "resume"), tính phí lại là trả tiền cho ĐÚNG 1 kết
+    // quả đã biết. Bài MỚI sinh trong lượt chạy này (lesson.resumed !== true) vẫn được kiểm tra
+    // đầy đủ như cũ.
+    if (lesson.resumed) {
+      console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — BỎ QUA (bài resume, đã kiểm tra ở lượt trước)`);
+      continue;
+    }
     try {
       const res = await callChat(session, "analyze_lesson_grammar_scope", { lesson_id: lesson.lessonId });
       if (res.status !== 200) {
