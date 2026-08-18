@@ -1416,6 +1416,17 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
     if (badIdx >= 0) return { valid: false, reason: "grammar_beyond_a1_present_perfect", itemIndex: badIdx };
   }
 
+  // BUG THẬT #2 (2026-08-18, phát hiện qua quét toàn bộ 165 bài A1/A2 bằng analyze_lesson_
+  // grammar_scope sau bug #1 ở trên): 19/89 bài A1 dùng "will" tương lai đơn ("I will check...",
+  // "It will be ready...") — future_will theo TEACH_ORDER CHỈ dạy từ A2, KHÔNG phải A1. Tần suất
+  // quá cao (21% số bài) để chỉ dựa quy tắc văn xuôi — chặn cứng bằng CODE, CHỈ áp dụng A1 (future_
+  // will HỢP LỆ ở A2 trở lên, không chặn nhầm).
+  if (parsed.level === "A1" && Array.isArray(parsed.content)) {
+    const FUTURE_WILL_RE = /\b(will|won't|will not)\b|'ll\b/i;
+    const badIdx = parsed.content.findIndex((item) => FUTURE_WILL_RE.test(String(item?.text || "")));
+    if (badIdx >= 0) return { valid: false, reason: "grammar_beyond_a1_future_will", itemIndex: badIdx };
+  }
+
   // BUG THẬT (2026-08-17, xác nhận qua batch A1 #53/#85 VÀ lặp lại ngay sau khi sửa PROMPT bằng
   // văn xuôi — chỉ nêu quy tắc "2-4 câu/đoạn" KHÔNG đủ, model vẫn gộp cả bài đọc thành 1 phần tử
   // 13-17 câu): kiểm bằng CODE, không chỉ trông cậy prompt — 1 phần tử "bài đọc" quá dài (>5 câu)
@@ -1659,7 +1670,8 @@ export async function generate_lesson(data, ctx) {
   // như 3 lý do cấu trúc/ngôi kể ở trên (3 lý do đó CHỈ có ý nghĩa với "reading").
   const structureRetryOk =
     READING_STRUCTURE_RETRY_REASONS.has(result.reason) && data.content_type === "reading";
-  const grammarRetryOk = result.reason === "grammar_beyond_a1_present_perfect";
+  const grammarRetryOk =
+    result.reason === "grammar_beyond_a1_present_perfect" || result.reason === "grammar_beyond_a1_future_will";
   if (!result.ok && (structureRetryOk || grammarRetryOk) && Date.now() - attemptStartedAt < 45000) {
     console.log("[generate_lesson] retry 2x (cấu trúc/ngôi kể/ngữ pháp vượt cấp):", result.reason);
     result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
