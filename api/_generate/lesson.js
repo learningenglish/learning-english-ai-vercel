@@ -1392,10 +1392,18 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
 
     // BUG THẬT (2026-08-17, xác nhận NGAY SAU KHI THÊM check trên — model né "quá dài" bằng cách
     // chẻ vụn CẢ BÀI thành 1-câu/phần tử, vd 16 phần tử đều đúng 1 câu, không đạt "2-4 câu/đoạn"
-    // yêu cầu): nếu ĐA SỐ phần tử (>50%, bài có ≥3 phần tử) chỉ có ĐÚNG 1 câu, coi là chẻ vụn sai.
+    // yêu cầu): nếu ĐA SỐ phần tử (bài có ≥3 phần tử) chỉ có ĐÚNG 1 câu, coi là chẻ vụn sai.
+    // NGƯỠNG 50%->70% (2026-08-18, Minh: "ràng buộc nào cản trở, không giúp ích cho tiến trình,
+    // có thể điều chỉnh lại" — xác nhận thật qua batch A1+A2: ngưỡng 50% chặn nhầm RẤT NHIỀU bài
+    // đọc chuyên ngành hợp lệ (giải thích nhiều khái niệm/tài liệu ngắn gọn, mỗi ý 1 câu là ĐÚNG
+    // sư phạm ở A1-A2, không phải "chẻ vụn sai") — ~9% TOÀN BỘ lượt sinh bài đọc ở CẢ HAI level
+    // A1/A2 bị chặn bởi đúng lý do này dù nội dung chuyên ngành hoàn toàn ổn, thử lại 3 lần vẫn
+    // fail y hệt (không phải may rủi, model nhất quán tạo câu ngắn cho nội dung liệt kê khái
+    // niệm). Nới lên 70% — vẫn bắt được ca thật sự chẻ vụn cực đoan (gần như MỌI phần tử 1 câu),
+    // không chặn oan nội dung liệt kê khái niệm hợp lệ.
     if (parsed.content.length >= 3) {
       const oneSentenceCount = parsed.content.filter((item) => (String(item?.text || "").match(/[.!?]+/g) || []).length <= 1).length;
-      if (oneSentenceCount / parsed.content.length > 0.5) {
+      if (oneSentenceCount / parsed.content.length > 0.7) {
         return { valid: false, reason: "reading_paragraph_too_fragmented" };
       }
     }
