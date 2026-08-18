@@ -51,13 +51,20 @@ const OPENAI_SEARCH_MODEL_MAP = {
   "gpt-4o": "gpt-4o-search-preview",
 };
 
-async function callOpenAIChat({ messages, model, maxTokens, temperature, webSearch }) {
+async function callOpenAIChat({ messages, model, maxTokens, temperature, webSearch, responseFormat }) {
   const effectiveModel = webSearch ? OPENAI_SEARCH_MODEL_MAP[model] || "gpt-4o-mini-search-preview" : model;
   const body = {
     model: effectiveModel,
     max_tokens: maxTokens,
     messages,
     ...(webSearch ? { web_search_options: {} } : { temperature }),
+    // BUG THẬT (2026-08-18, xác nhận qua debug thật + đối chiếu file v6 của Minh, tool cũ ổn
+    // định): KHÔNG có response_format trước đây khiến model đôi khi tự phát ra finish_reason
+    // "stop" (tự tin đã xong) trong khi JSON CHƯA đóng hết dấu ngoặc — không phải do hết
+    // max_tokens (đo thật: completionTokens=47/48, còn dư rất nhiều so với max_tokens=6000).
+    // v6 luôn đặt response_format:{type:"json_object"} cho MỌI lượt gọi cần JSON và chưa từng
+    // gặp lỗi này. response_format KHÔNG dùng được với model *-search-preview (webSearch).
+    ...(responseFormat && !webSearch ? { response_format: { type: responseFormat } } : {}),
   };
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -80,7 +87,7 @@ async function callOpenAIChat({ messages, model, maxTokens, temperature, webSear
 }
 
 // ====== Gemini — generateContent (CHƯA verify bằng key thật, xem ghi chú đầu file) ======
-function toGeminiRequestBody({ messages, maxTokens, temperature, webSearch }) {
+function toGeminiRequestBody({ messages, maxTokens, temperature, webSearch, responseFormat }) {
   const systemMsg = messages.find((m) => m.role === "system");
   const contents = messages
     .filter((m) => m.role !== "system")
@@ -91,18 +98,19 @@ function toGeminiRequestBody({ messages, maxTokens, temperature, webSearch }) {
     generationConfig: {
       maxOutputTokens: maxTokens,
       ...(temperature != null ? { temperature } : {}),
+      ...(responseFormat === "json_object" && !webSearch ? { responseMimeType: "application/json" } : {}),
     },
     ...(webSearch ? { tools: [{ google_search: {} }] } : {}),
   };
 }
 
-async function callGeminiChat({ messages, model, maxTokens, temperature, webSearch }) {
+async function callGeminiChat({ messages, model, maxTokens, temperature, webSearch, responseFormat }) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(toGeminiRequestBody({ messages, maxTokens, temperature, webSearch })),
+      body: JSON.stringify(toGeminiRequestBody({ messages, maxTokens, temperature, webSearch, responseFormat })),
     }
   );
   const data = await response.json();
@@ -130,15 +138,15 @@ function mapProviderError(result) {
 // generateText — hàm nghiệp vụ cấp thấp nhất: gửi messages (khuôn OpenAI-style, role
 // system/user/assistant — chuẩn dùng chung trong toàn bộ codebase), nhận về text thô. Đầu ra
 // LUÔN cùng 1 khuôn { ok, text, usage, provider, model, durationMs, status } bất kể provider.
-export async function generateText({ messages, model, tier = "default", maxTokens, temperature, webSearch = false } = {}) {
+export async function generateText({ messages, model, tier = "default", maxTokens, temperature, webSearch = false, responseFormat } = {}) {
   const start = Date.now();
   const resolvedModel = resolveModel(tier, model);
   const cappedMaxTokens = Math.min(maxTokens || 2000, MAX_TOKENS_CAP);
 
   const result =
     PROVIDER === "gemini"
-      ? await callGeminiChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch })
-      : await callOpenAIChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch });
+      ? await callGeminiChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch, responseFormat })
+      : await callOpenAIChat({ messages, model: resolvedModel, maxTokens: cappedMaxTokens, temperature, webSearch, responseFormat });
 
   const durationMs = Date.now() - start;
   if (!result.ok) {
@@ -152,7 +160,7 @@ export async function generateText({ messages, model, tier = "default", maxToken
 // KHÔNG throw — trả về { ok: false, parseError: true, text } để caller tự log/báo lỗi, "text"
 // vẫn giữ nguyên để caller log raw output khi cần debug.
 export async function generateStructuredJSON(args = {}) {
-  const r = await generateText(args);
+  const r = await generateText({ ...args, responseFormat: "json_object" });
   if (!r.ok) return { ...r, data: null };
   try {
     return { ...r, data: JSON.parse(stripJsonFence(r.text)) };
