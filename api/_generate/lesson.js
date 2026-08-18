@@ -16,6 +16,8 @@
 // Gọi AI đi qua api/_shared/aiProvider.js (lớp trừu tượng OpenAI/Gemini dùng chung toàn repo).
 import { SUPABASE_URL, PRO_GATE_ENFORCED } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
+import { getGrammarIdsTaughtUpTo } from "./curriculum/grammar-order.js";
+import { GRAMMAR_CATALOG } from "./curriculum/grammar-catalog.js";
 
 // SPEC ghi sổ, CHƯA triển khai (2026-07-19 — xem project_ai_model_routing_spec trong memory):
 // model routing 2 bậc dự kiến — (1) sinh DA LĨNH VỰC (chưa có module, sẽ ở
@@ -2456,6 +2458,81 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
   }
 
   return { content: JSON.stringify({ content }) };
+}
+
+// KIỂM TRA NGỮ PHÁP VƯỢT CẤP (2026-08-18) — Minh bắt được thật: bài A1 dùng "have you worked"
+// (thì hiện tại hoàn thành, thuộc B1 theo TEACH_ORDER) lọt qua mà KHÔNG có bước nào kiểm tra việc
+// này trước đó — hệ thống chỉ từng kiểm tra "điểm ngữ pháp ĐƯỢC GIAO có xuất hiện" (grammar_focus),
+// chưa từng kiểm tra "có điểm ngữ pháp KHÁC, CAO HƠN cấp độ, lỡ lọt vào không". Đây là lớp phòng
+// thủ THỨ HAI, chạy TÁCH RIÊNG khỏi generate_lesson() (không nằm trong cùng 1 request/60s Vercel —
+// xem ghi chú "TỰ ĐỘNG THỬ LẠI" ở generate_lesson(): B1 đã ~65-75% thất bại, B2/C1 gần như luôn
+// thất bại vì hết ngân sách 60s cho 1 lượt gọi DUY NHẤT, nên KHÔNG thể nhét thêm 1 lượt AI đồng bộ
+// vào chính request đó mà không làm tỷ lệ thành công tệ hơn nữa ở đúng những cấp đã yếu nhất).
+// Thay vào đó: gọi như 1 STAGE riêng ngay sau khi có nội dung (xem publish-lesson.mjs, chạy cho
+// MỌI bài, không phải giám khảo lấy mẫu ngẫu nhiên) — kết quả dùng làm tín hiệu cho đúng BƯỚC 2
+// (Claude đọc toàn bộ + xác nhận) thay vì chỉ dựa vào mắt đọc thủ công.
+// Regex ở validateLessonShape() (chỉ bắt ĐÚNG 1 mẫu câu cụ thể đã xác nhận lỗi thật) và lượt AI
+// này KHÔNG thay thế nhau — regex chặn CỨNG, tức thì, miễn phí gần như 0đ, ngay lúc sinh; lượt AI
+// này TỔNG QUÁT hơn (bắt được cấu trúc chưa từng biết trước: bị động, câu điều kiện, mệnh đề quan
+// hệ...) nhưng không chắc chắn 100% (vẫn là phán đoán của AI, không phải quy tắc cứng).
+async function checkGrammarScopeViolation(level, content) {
+  const allowedIds = getGrammarIdsTaughtUpTo(level);
+  const allowedNames = allowedIds.map((id) => GRAMMAR_CATALOG[id]?.name_vi).filter(Boolean);
+  const lines = (content || []).map((it, i) => `${i + 1}. ${it?.text || ""}`).join("\n");
+
+  const system = `Bạn là chuyên gia ngữ pháp tiếng Anh theo khung CEFR. Nhiệm vụ DUY NHẤT: kiểm tra bài học cấp ${level} dưới đây có dùng cấu trúc ngữ pháp NÀO CHƯA ĐƯỢC DẠY ĐẾN cấp này không.
+
+DANH SÁCH cấu trúc ngữ pháp ĐÃ ĐƯỢC DẠY (tính đến hết cấp ${level}), được phép dùng tự do:
+${allowedNames.map((n) => `- ${n}`).join("\n")}
+
+QUY TẮC:
+- CHỈ xét cấu trúc ngữ pháp CHÍNH (thì của động từ, câu điều kiện, câu bị động, mệnh đề quan hệ, so sánh...). KHÔNG xét từ vựng khó/thuật ngữ chuyên ngành — không thuộc phạm vi kiểm tra này.
+- CỤM CỐ ĐỊNH thông dụng (vd "What's your name?", "I'd like...", "Nice to meet you", "Thank you for...") được PHÉP dùng dù về mặt kỹ thuật thuộc cấu trúc cao hơn, MIỄN LÀ dùng NGUYÊN CỤM cố định, không chia động từ/biến đổi tự do theo đúng cấu trúc đó ở câu khác.
+- Nếu có ít nhất 1 câu dùng THẬT SỰ (không phải cụm cố định) 1 cấu trúc ngữ pháp KHÔNG có trong danh sách trên — đó là VI PHẠM.
+- Nếu không phát hiện gì — KHÔNG VI PHẠM.
+
+Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc false, "grammar_name": "<tên cấu trúc vi phạm bằng tiếng Việt, hoặc null nếu không vi phạm>", "evidence": "<câu gốc chứa vi phạm, hoặc null>"}`;
+
+  const r = await generateStructuredJSON({
+    tier: "default",
+    temperature: 0,
+    maxTokens: 300,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: lines },
+    ],
+  });
+  if (!r.ok || !r.data) return { ok: false, error: "grammar_scope_check_call_or_parse_failed" };
+  return {
+    ok: true,
+    violation: !!r.data.violation,
+    grammar_name: r.data.grammar_name || null,
+    evidence: r.data.evidence || null,
+  };
+}
+
+// Action CÔNG KHAI (đăng ký trong chat.js) — dùng cho STAGE riêng trong publish-lesson.mjs, chạy
+// cho MỌI bài ngay sau khi có nội dung (không phải giám khảo lấy mẫu ngẫu nhiên đã bỏ, xem ghi chú
+// ở checkGrammarScopeViolation() bên trên).
+export async function analyze_lesson_grammar_scope(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
+
+  const table = data.is_news ? "news_lessons" : "lessons";
+  const selectRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}&select=content,level,source,user_id`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+  );
+  if (!selectRes.ok) return { error: "Không đọc được bài học.", status: 502 };
+  const row = (await selectRes.json())?.[0];
+  if (!row || !Array.isArray(row.content)) return { error: "Không tìm thấy bài học.", status: 404 };
+  if (!data.is_news && row.source === "user_text" && row.user_id !== ctx.studentId) {
+    return { error: "Không tìm thấy bài học.", status: 404 };
+  }
+
+  const result = await checkGrammarScopeViolation(row.level, row.content);
+  if (!result.ok) return { error: "Kiểm tra ngữ pháp lỗi: " + result.error, status: 502 };
+  return { content: JSON.stringify(result) };
 }
 
 // Đặt tiền tố số hiệu (vd "#1-A2 ") cho bài mẫu — 2026-08-13, Minh: "tại sao không đánh # để tôi

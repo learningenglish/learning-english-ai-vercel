@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, set_lesson_title_tag } from "./_generate/lesson.js";
+import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, analyze_lesson_grammar_scope, set_lesson_title_tag } from "./_generate/lesson.js";
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
 import { ensure_skin_chunk } from "./_generate/curriculum/skinBatch.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
@@ -1277,6 +1277,10 @@ const ACTIONS = {
   // "Vá" reading_chunks (Đợt 14) — field RIÊNG cho "Tách câu", cùng kiến trúc "vá 1 lần"
   // như phrase_groups ở trên, xem READING_CHUNKS_RULES trong lesson.js.
   analyze_lesson_reading_chunks,
+  // Kiểm tra ngữ pháp VƯỢT CẤP (2026-08-18) — lớp phòng thủ thứ 2, chạy TÁCH RIÊNG khỏi
+  // generate_lesson() cho MỌI bài (không phải giám khảo lấy mẫu ngẫu nhiên), xem
+  // checkGrammarScopeViolation() trong lesson.js + STAGE riêng trong publish-lesson.mjs.
+  analyze_lesson_grammar_scope,
   // Đặt tiền tố số hiệu bài mẫu (vd "#1-A2 ") — 2026-08-13, Minh cần dễ nhận biết bài test khi
   // duyệt chất lượng, xem ghi chú tại set_lesson_title_tag() trong lesson.js.
   set_lesson_title_tag,

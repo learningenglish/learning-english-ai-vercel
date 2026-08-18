@@ -104,3 +104,22 @@ export const TEACH_ORDER = {
     "complex_discourse_markers",
   ],
 };
+
+export const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1"];
+
+// Tất cả điểm ngữ pháp đã dạy tính đến HẾT `level` (bao gồm chính level đó), theo đúng TEACH_ORDER
+// đã chốt ở trên — dùng để phát hiện ngữ pháp VƯỢT CẤP trong nội dung đã sinh (2026-08-18, sau khi
+// Minh bắt được "have you worked" lọt vào 1 bài A1 — xem checkGrammarScopeViolation() trong
+// api/_generate/lesson.js, action "analyze_lesson_grammar_scope").
+// TEACH_ORDER dùng khoá GỘP kiểu "articles+plural_nouns" cho 1 cặp dạy cùng lúc (xem
+// GROUP_TEACH_PAIRS trong build-spine.mjs) — GRAMMAR_CATALOG lại lưu 2 điểm ĐỘC LẬP ("articles",
+// "plural_nouns"), không có khoá gộp. Phải TÁCH khoá gộp ra từng điểm atomic trước khi đối chiếu
+// catalog, nếu không "articles"/"plural_nouns" sẽ bị coi là CHƯA dạy ở mọi cấp (bug thật phát hiện
+// khi test: filter(Boolean) ở nơi gọi âm thầm loại bỏ khoá gộp không khớp catalog).
+export function getGrammarIdsTaughtUpTo(level) {
+  const idx = LEVEL_ORDER.indexOf(level);
+  if (idx < 0) return [];
+  return LEVEL_ORDER.slice(0, idx + 1)
+    .flatMap((lv) => TEACH_ORDER[lv] || [])
+    .flatMap((id) => id.split("+"));
+}

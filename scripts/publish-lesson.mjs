@@ -475,6 +475,39 @@ async function stageField(session, lessons, action, field, resultKey, label, max
   }
 }
 
+// ====== STAGE: Kiểm tra ngữ pháp VƯỢT CẤP — chạy cho MỌI bài NGAY SAU stage 1 (2026-08-18, Minh
+// bắt được thật: 1 bài A1 dùng "have you worked" — thì hiện tại hoàn thành, thuộc B1 theo
+// TEACH_ORDER — lọt qua vì KHÔNG có bước nào kiểm tra việc này trước đó). Gọi action
+// analyze_lesson_grammar_scope (xem checkGrammarScopeViolation() trong lesson.js) — TÁCH RIÊNG
+// khỏi generate_lesson() (không chung 1 request/60s Vercel, xem lý do ở ghi chú action đó: B1 đã
+// ~65-75% thất bại, B2/C1 gần như luôn thất bại vì hết ngân sách 60s, không thể nhét thêm 1 lượt
+// AI đồng bộ vào request đó). Kết quả in ra để Claude/Minh dùng làm tín hiệu cho ĐÚNG BƯỚC 2 (đọc
+// toàn bộ + xác nhận), KHÔNG tự động xoá/sinh lại — cùng nguyên tắc "không tự sinh lại" đã áp dụng
+// cho stageJudge() (tránh lặp bẫy retry-loop tốn tiền).
+async function stageGrammarScopeCheck(session, lessons) {
+  for (const lesson of lessons) {
+    if (!lesson.ok) continue;
+    try {
+      const res = await callChat(session, "analyze_lesson_grammar_scope", { lesson_id: lesson.lessonId });
+      if (res.status !== 200) {
+        lesson.grammarScope = { ok: false, error: `${res.status} ${JSON.stringify(res.data)}` };
+        console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — LỖI (${lesson.grammarScope.error})`);
+        continue;
+      }
+      const parsed = JSON.parse(res.data.content);
+      lesson.grammarScope = parsed;
+      if (parsed.violation) {
+        console.log(`  ${lesson.tag}: >>> NGHI NGỜ VƯỢT CẤP — "${parsed.grammar_name}" — "${parsed.evidence}"`);
+      } else {
+        console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — OK (không phát hiện)`);
+      }
+    } catch (err) {
+      lesson.grammarScope = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+      console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — LỖI BẤT NGỜ (${lesson.grammarScope.error})`);
+    }
+  }
+}
+
 // ====== STAGE 4: Ngữ pháp — CHỈ verify dữ liệu ĐÃ CÓ từ stage 1, KHÔNG gọi thêm AI ======
 // "grammar"/"sentence_patterns" không có action riêng để "sinh lại" — cả 2 field đã ra cùng lúc
 // với "content" ở generate_lesson. Bước này chỉ kiểm tra: (a) có mặt và không rỗng, (b) ở B1 trở
@@ -597,6 +630,17 @@ export async function publishBatch(samples) {
   // script này, không phải lệnh code) 3.Tách câu 4.Tra từ 5.Ngữ pháp 6.Audio 7.Ảnh bìa.
   console.log(`\n=== BƯỚC 1/7: Nội dung (${samples.length} bài) ===`);
   const lessons = await stageContent(session, samples);
+
+  // Kiểm tra ngữ pháp vượt cấp NGAY sau khi có nội dung, TRƯỚC cổng chờ BƯỚC 2 — 2026-08-18, để
+  // BƯỚC 2 (đọc toàn bộ + xác nhận) có tín hiệu tự động thay vì chỉ dựa vào mắt đọc thủ công, xem
+  // ghi chú đầy đủ ở stageGrammarScopeCheck().
+  console.log(`\n=== Kiểm tra ngữ pháp vượt cấp (mọi bài, trước khi chờ BƯỚC 2) ===`);
+  await stageGrammarScopeCheck(session, lessons);
+  const grammarFlags = lessons.filter((l) => l.grammarScope?.violation);
+  if (grammarFlags.length) {
+    console.log(`\n>>> ${grammarFlags.length} BÀI NGHI NGỜ NGỮ PHÁP VƯỢT CẤP — đọc kỹ trước khi duyệt BƯỚC 2:`);
+    for (const l of grammarFlags) console.log(`  ${l.tag}: "${l.grammarScope.grammar_name}" — "${l.grammarScope.evidence}"`);
+  }
 
   // MẶC ĐỊNH dừng sau khi có nội dung, chờ ĐÚNG BƯỚC 2 (Claude đọc TOÀN BỘ nội dung level này bên
   // ngoài script, tự xác nhận đạt) — BUG QUY TRÌNH THẬT tự phát hiện: trước đây LUÔN chạy đủ cả 7
