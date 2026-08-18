@@ -2576,7 +2576,14 @@ async function callAnalyzeReadingChunks(items, tier) {
     return {
       ok: false,
       reason: "call_or_parse_failed",
-      debugDetail: { status: r.status, parseError: !!r.parseError, error: r.error, rawText: (r.text || "").slice(0, 500) },
+      debugDetail: {
+        status: r.status,
+        parseError: !!r.parseError,
+        error: r.error,
+        finishReason: r.finishReason,
+        usage: r.usage,
+        rawText: (r.text || "").slice(0, 500),
+      },
     };
   }
   const resultItems = Array.isArray(r.data?.items) ? r.data.items : null;

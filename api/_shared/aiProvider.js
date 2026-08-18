@@ -72,6 +72,7 @@ async function callOpenAIChat({ messages, model, maxTokens, temperature, webSear
   return {
     ok: true,
     text: data?.choices?.[0]?.message?.content || "",
+    finishReason: data?.choices?.[0]?.finish_reason || null,
     usage: data?.usage
       ? { promptTokens: data.usage.prompt_tokens, completionTokens: data.usage.completion_tokens, totalTokens: data.usage.total_tokens }
       : null,
@@ -143,7 +144,7 @@ export async function generateText({ messages, model, tier = "default", maxToken
   if (!result.ok) {
     return { ok: false, ...mapProviderError(result), provider: PROVIDER, model: resolvedModel, durationMs };
   }
-  return { ok: true, status: 200, text: result.text, usage: result.usage, provider: PROVIDER, model: resolvedModel, durationMs };
+  return { ok: true, status: 200, text: result.text, finishReason: result.finishReason, usage: result.usage, provider: PROVIDER, model: resolvedModel, durationMs };
 }
 
 // generateStructuredJSON — dùng cho MỌI prompt yêu cầu AI trả JSON thuần (đa số action hiện
