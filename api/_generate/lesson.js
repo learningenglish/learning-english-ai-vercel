@@ -553,6 +553,21 @@ cả trong câu phụ/câu đưa đẩy không liên quan điểm ngữ pháp tr
 - A2 KHÔNG được dùng: thì hiện tại hoàn thành, quá khứ tiếp diễn, bị động, câu điều kiện, mệnh đề
   quan hệ.
 - B1 KHÔNG được dùng: bị động phức tạp, câu điều kiện loại 2-3, mệnh đề quan hệ rút gọn.
+VÍ DỤ SAI THẬT ĐÃ GẶP Ở A1 (2026-08-18, quét toàn bộ lô đã sinh phát hiện — quy tắc trên bằng LỜI
+KHÔNG đủ, model vẫn lặp lại các mẫu câu này rất nhiều lần, đặc biệt ở chủ đề lịch làm việc/kế
+hoạch/kể lại trải nghiệm — PHẢI tránh CHÍNH XÁC các mẫu câu sau, không chỉ hiểu quy tắc chung
+chung):
+- SAI (thì tương lai "will"): "I will check the invoices.", "We will discuss the report.", "It
+  will be ready tomorrow.", "How long will it take?" — ĐÚNG thay bằng thì hiện tại đơn/tiếp diễn:
+  "I check the invoices.", "We discuss the report now.", "It is ready tomorrow." (hoặc đổi hẳn
+  hướng câu để không cần nói tới việc trong tương lai).
+- SAI (quá khứ đơn): "I did many tasks.", "I found 20 invoices.", "How was your day?", "It was
+  made correctly." — ĐÚNG thay bằng hiện tại đơn: "I do many tasks.", "I find 20 invoices.", "How
+  is your day?".
+- Chủ đề "lịch làm việc tuần này/kế hoạch cuộc họp/kể lại trải nghiệm đầu tiên" RẤT DỄ kéo model
+  dùng "will"/quá khứ đơn theo phản xạ tự nhiên — nếu chủ đề bài buộc phải nói tới việc trong tương
+  lai hoặc đã xảy ra, hãy diễn đạt lại toàn bộ theo hiện tại đơn/tiếp diễn (như thông báo lịch cố
+  định hàng ngày, không phải dự định tương lai; như mô tả thói quen, không phải 1 sự kiện đã qua).
 Trước khi trả JSON, TỰ RÀ LẠI từng câu KHÔNG liên quan điểm ngữ pháp trọng tâm — đây là nơi cấu
 trúc vượt cấp dễ lọt qua nhất, không chỉ rà câu chứa điểm ngữ pháp trọng tâm.
 RIÊNG A1 (chốt 2026-07-22): length_words của bài A1 CỐ Ý ngắn hơn hẳn các cấp khác — KHÔNG phải
@@ -1691,6 +1706,14 @@ export async function generate_lesson(data, ctx) {
   const grammarRetryOk = GRAMMAR_RETRY_REASONS.has(result.reason);
   if (!result.ok && (structureRetryOk || grammarRetryOk) && Date.now() - attemptStartedAt < 45000) {
     console.log("[generate_lesson] retry 2x (cấu trúc/ngôi kể/ngữ pháp vượt cấp):", result.reason);
+    result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
+  }
+  // THÊM 1 LƯỢT NỮA (2026-08-18) CHỈ cho lý do ngữ pháp vượt cấp Ở A1/A2 — Minh: "việc sinh bài
+  // lỗi làm mất quá nhiều thời gian". A1/A2 mỗi lượt gọi RẤT NHANH (không như B1+/B2/C1 sát trần
+  // 60s Vercel, xem ghi chú TỰ ĐỘNG THỬ LẠI ở đầu hàm) nên còn dư ngân sách thời gian thật — tăng
+  // số lượt thử trong CÙNG 1 request giảm hẳn số bài phải chờ script chạy lại nhiều vòng.
+  if (!result.ok && grammarRetryOk && Date.now() - attemptStartedAt < 55000) {
+    console.log("[generate_lesson] retry 3x (ngữ pháp vượt cấp, A1/A2 còn dư ngân sách thời gian):", result.reason);
     result = await callAndValidateLesson(data, firstTarget, minWords, maxWords, tier);
   }
 
