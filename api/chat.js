@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, analyze_lesson_grammar_scope, set_lesson_title_tag } from "./_generate/lesson.js";
+import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, analyze_lesson_grammar_scope, insert_manual_lesson, set_lesson_title_tag } from "./_generate/lesson.js";
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
 import { ensure_skin_chunk } from "./_generate/curriculum/skinBatch.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
@@ -1281,6 +1281,10 @@ const ACTIONS = {
   // generate_lesson() cho MỌI bài (không phải giám khảo lấy mẫu ngẫu nhiên), xem
   // checkGrammarScopeViolation() trong lesson.js + STAGE riêng trong publish-lesson.mjs.
   analyze_lesson_grammar_scope,
+  // Chèn bài học VIẾT TAY khi generate_lesson() cứ lỗi lặp lại cho 1 slot cụ thể (2026-08-18,
+  // Minh: "thay thế bước 1 dùng API sinh bài bị lỗi quá nhiều, sinh lại là không thể chấp nhận")
+  // — vẫn qua ĐÚNG validateLessonShape(), không tự chấm điểm chính mình, xem lesson.js.
+  insert_manual_lesson,
   // Đặt tiền tố số hiệu bài mẫu (vd "#1-A2 ") — 2026-08-13, Minh cần dễ nhận biết bài test khi
   // duyệt chất lượng, xem ghi chú tại set_lesson_title_tag() trong lesson.js.
   set_lesson_title_tag,

@@ -1627,6 +1627,46 @@ async function insertLesson(row) {
   }
 }
 
+// Chèn bài học VIẾT TAY (2026-08-18, Minh: "khi API sinh bài lỗi... Claude Code tự sinh bài, tự
+// kiểm duyệt nội dung, tự đối chiếu quy tắc, đảm bảo chất lượng... thay thế bước 1 dùng API sinh
+// bài bị lỗi quá nhiều, sinh lại là không thể chấp nhận") — dùng khi generate_lesson() cứ lỗi lặp
+// lại cho ĐÚNG 1 slot (thường do model cứ bật lại đúng 1 cấu trúc vượt cấp với 1 chủ đề cụ thể,
+// xác nhận qua log: cùng slot lỗi ở NHIỀU lý do khác nhau qua nhiều lượt, không phải may rủi).
+// Nhận THẲNG 1 lesson JSON đã viết tay hoàn chỉnh, chạy qua ĐÚNG validateLessonShape() (cùng bộ
+// quy tắc cấm ngữ pháp vượt cấp/cấu trúc bài đọc đã áp dụng cho AI) rồi lưu bằng ĐÚNG
+// buildLessonInsertRow()/insertLesson() như generate_lesson() — KHÔNG gọi AI (0 chi phí thêm),
+// nhưng vẫn qua 1 lớp kiểm tra khách quan giống hệt AI phải qua, không tự chấm điểm chính mình.
+export async function insert_manual_lesson(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const lesson = data.lesson;
+  if (!lesson || typeof lesson !== "object") return { error: "Thiếu 'lesson'.", status: 400 };
+  if (!VALID_LEVELS.includes(lesson.level)) return { error: "Thiếu hoặc sai 'level'.", status: 400 };
+  if (!VALID_CONTENT_TYPES.includes(lesson.content_type)) return { error: "Thiếu hoặc sai 'content_type'.", status: 400 };
+
+  capLessonArrays(lesson);
+  const validation = validateLessonShape(lesson);
+  if (!validation.valid) {
+    return { error: "Bài viết tay không đạt quy tắc: " + validation.reason, status: 422, reason: validation.reason };
+  }
+
+  const [goalId, skinId] = await Promise.all([
+    resolveOwnedGoalId(data.goal_id, ctx.studentId),
+    resolveSkinId(data.skin_id),
+  ]);
+  const saved = await insertLesson(
+    buildLessonInsertRow(lesson, {
+      userId: ctx.studentId,
+      source: "ai_generated",
+      goalId,
+      skinId,
+      spineSlot: data.spine_slot,
+      industry: data.industry,
+    })
+  );
+  if (!saved) return { error: "Lưu bài thất bại.", status: 502 };
+  return { content: JSON.stringify({ lesson: saved }) };
+}
+
 // ====== ACTIONS xuất ra cho chat.js đăng ký vào ACTIONS map ======
 // Chỉ Student mới được dùng — Mentor có mô hình credit khác (cột "credits" riêng ở bảng
 // mentors) nên không mở action này cho Mentor ở MVP.
