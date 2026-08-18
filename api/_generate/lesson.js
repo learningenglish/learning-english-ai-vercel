@@ -1405,7 +1405,9 @@ function validateLessonShape(parsed, { expectedWords } = {}) {
   // được 1 cấu trúc CỤ THỂ đã xác nhận lỗi thật (have/has + quá khứ phân từ) — không cố dựng bộ
   // phát hiện MỌI cấu trúc vượt cấp độ (bị động, câu điều kiện...) vì rủi ro báo sai (false
   // positive) cao hơn nhiều so với lợi ích, xem thêm quy tắc văn xuôi đã tăng cường ở PREFIX.
-  if (parsed.level === "A1" && Array.isArray(parsed.content)) {
+  // present_perfect chỉ bắt đầu từ B1 trong TEACH_ORDER (grammar-order.js) — A1 VÀ A2 đều
+  // chưa được dạy, nên chặn cứng cho CẢ HAI cấp (không chỉ A1) để tránh đúng lỗi lọt qua ở A2.
+  if ((parsed.level === "A1" || parsed.level === "A2") && Array.isArray(parsed.content)) {
     const PRESENT_PERFECT_RE =
       /\b(have|has|haven't|hasn't|have not|has not)\b[^.!?]{0,20}?\b(been|done|gone|seen|written|worked|finished|checked|prepared|completed|received|sent|made|had|given|taken|come|started|helped|used|learned|learnt|met|had)\b/i;
     const badIdx = parsed.content.findIndex((item) => PRESENT_PERFECT_RE.test(String(item?.text || "")));
