@@ -591,16 +591,28 @@ async function stageJudge(session, lessons) {
 async function stageAudio(session, lessons) {
   for (const lesson of lessons) {
     if (!lesson.ok) continue;
-    try {
-      // 2026-08-14 — SỬA bug thật "nhân vật nữ nhưng giọng nam": trước đây luôn truyền mảng
-      // RỖNG, giờ tính đúng từ lesson.content/lesson.characters (đã capture ở stageContent()),
-      // xem computeGenderHints() ở trên.
-      const genderHints = computeGenderHints(lesson.content, lesson.characters);
-      lesson.audio = await ensureAudioComplete(session, lesson.lessonId, genderHints);
-      console.log(`  ${lesson.tag}: audio — ${lesson.audio.ok ? "OK" : "CHƯA ĐỦ"} (${JSON.stringify(lesson.audio)})`);
-    } catch (err) {
-      lesson.audio = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
-      console.log(`  ${lesson.tag}: audio — LỖI BẤT NGỜ (${lesson.audio.error})`);
+    // 2026-08-18 (Minh: "có giải pháp nào tốt hơn không") — TRƯỚC ĐÂY 1 lỗi mạng thoáng qua
+    // ("fetch failed", DNS/kết nối chập chờn — KHÔNG liên quan nội dung) làm cả bài bị đánh dấu
+    // "LỖI BẤT NGỜ" ngay lập tức, không có lượt thử lại nào, phải chạy lại CẢ SCRIPT mới cứu được
+    // đúng 1 bài đó. Thêm ĐÚNG 1 lượt thử lại khi gặp exception (network-level), không thử lại khi
+    // ensureAudioComplete() TRẢ VỀ ok:false bình thường (đã tự thử đủ maxAttempts bên trong rồi).
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        // 2026-08-14 — SỬA bug thật "nhân vật nữ nhưng giọng nam": trước đây luôn truyền mảng
+        // RỖNG, giờ tính đúng từ lesson.content/lesson.characters (đã capture ở stageContent()),
+        // xem computeGenderHints() ở trên.
+        const genderHints = computeGenderHints(lesson.content, lesson.characters);
+        lesson.audio = await ensureAudioComplete(session, lesson.lessonId, genderHints);
+        console.log(`  ${lesson.tag}: audio — ${lesson.audio.ok ? "OK" : "CHƯA ĐỦ"} (${JSON.stringify(lesson.audio)})`);
+        break;
+      } catch (err) {
+        lesson.audio = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+        if (attempt === 0) {
+          console.log(`  ${lesson.tag}: audio — lỗi mạng thoáng qua, thử lại 1 lần (${lesson.audio.error})`);
+          continue;
+        }
+        console.log(`  ${lesson.tag}: audio — LỖI BẤT NGỜ (${lesson.audio.error})`);
+      }
     }
   }
 }
@@ -815,14 +827,25 @@ async function ensureSkinForLevel(session, occupationProfile, level, slotCount) 
     // LEVEL_SYSTEM_PROMPT, ví dụ thêm dàn nhân vật cố định 2026-08-14, để chunk cũ không còn
     // giữ dữ liệu sinh theo prompt cũ). Mặc định KHÔNG bật (tốn tiền sinh lại nếu bật tràn lan).
     const forceSkin = process.env.FORCE_SKIN === "1";
-    const res = await callChat(session, "ensure_skin_chunk", {
-      occupation_profile: occupationProfile,
-      level,
-      chunk_index: chunkIndex,
-      force: forceSkin,
-    });
+    // THỬ LẠI TỰ ĐỘNG (2026-08-18, Minh: "có giải pháp nào tốt hơn không") — validator "thiếu
+    // chuỗi hội thoại có người đối thoại (nước ngoài)" xác nhận thật là lỗi NGẪU NHIÊN (model đôi
+    // khi quên chèn 1 nhân vật nước ngoài dù đã dặn trong prompt) — TRƯỚC ĐÂY 0 lượt thử lại nội
+    // bộ, hỏng là dừng NGAY, phải chạy lại CẢ SCRIPT thủ công mới thử lại được. Thử tối đa 3 lần
+    // trước khi báo lỗi ra ngoài — mỗi lần model có cơ hội khác để tự sửa, đúng bản chất cấu trúc
+    // hội thoại là model tự chọn ngẫu nhiên nhân vật, không phải lỗi cố định cần sửa prompt thêm.
+    let res;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await callChat(session, "ensure_skin_chunk", {
+        occupation_profile: occupationProfile,
+        level,
+        chunk_index: chunkIndex,
+        force: forceSkin,
+      });
+      if (res.status === 200) break;
+      if (attempt < 2) console.log(`    (chunk ${chunkIndex + 1} lỗi validator, thử lại lượt ${attempt + 2}/3...)`);
+    }
     if (res.status !== 200) {
-      throw new Error(`ensure_skin_chunk thất bại (level ${level}, chunk ${chunkIndex}): ${res.status} ${JSON.stringify(res.data)}`);
+      throw new Error(`ensure_skin_chunk thất bại sau 3 lượt (level ${level}, chunk ${chunkIndex}): ${res.status} ${JSON.stringify(res.data)}`);
     }
     const parsed = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
     const content = JSON.parse(parsed.content);

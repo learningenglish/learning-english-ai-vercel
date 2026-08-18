@@ -2015,6 +2015,23 @@ function tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceRealTokens) {
   for (let i = 0; i < sentenceRealTokens.length; i++) {
     if (gotTokens[i] !== sentenceRealTokens[i]) return null;
   }
+  // BUG THẬT (2026-08-18, Minh: "tra từ tại sao tệ nhất... có giải pháp nào tốt hơn không"): hàm
+  // này TRƯỚC ĐÂY chỉ so khớp "words" (đúng từ, đúng thứ tự) mà KHÔNG kiểm tra word_meanings/
+  // word_types/word_levels có ĐẦY ĐỦ cho từng từ hay không — 1 câu được AI trả về ĐÚNG từ nhưng
+  // THIẾU metadata 1-2 từ (lý do THẬT khiến itemPhraseCoverageOk() từ chối cả item) vẫn bị coi là
+  // "đã xong" và TÁI SỬ DỤNG NGUYÊN VẸN ở lượt thử lại — không bao giờ hỏi lại AI để bổ sung đúng
+  // phần thiếu đó, khiến "CHƯA ĐỦ" lặp lại vô ích qua các lượt dù còn ngân sách thử lại. Thêm kiểm
+  // tra: NẾU có bất kỳ từ nào thiếu word_meanings/word_types/word_levels, KHÔNG tái sử dụng câu đó
+  // — để lượt gọi AI tiếp theo xử lý LẠI ĐÚNG câu này (thay vì lặp lại chính lỗi cũ vô thời hạn).
+  for (const g of groups) {
+    const gWords = Array.isArray(g?.words) ? g.words : [];
+    const wm = g.word_meanings || {};
+    const wt = g.word_types || {};
+    const wl = g.word_levels || {};
+    for (const w of gWords) {
+      if (!wm[w] || !wt[w] || !wl[w]) return null;
+    }
+  }
   return { groups, nextCursorIdx: idx };
 }
 
@@ -2620,11 +2637,31 @@ Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc 
     ],
   });
   if (!r.ok || !r.data) return { ok: false, error: "grammar_scope_check_call_or_parse_failed" };
+
+  // LỌC EVIDENCE BỊA (2026-08-18, Minh: "có giải pháp nào tốt hơn... để Claude đọc duyệt bớt
+  // nhiễu không" — xác nhận thật qua rà soát 165 bài: AI hay tự "trích dẫn" 1 câu KHÔNG tồn tại
+  // trong bài, hoặc trích đúng câu vô hại trong khi câu lỗi thật nằm ở chỗ khác — Claude phải tự
+  // đọc lại toàn bộ bài để lọc, tốn thời gian không cần thiết). Xác minh "evidence" PHẢI là 1
+  // CHUỖI CON THẬT của ĐÚNG 1 câu trong bài (so khớp sau khi chuẩn hoá khoảng trắng/dấu nháy) —
+  // nếu không khớp câu nào, coi là bịa, HẠ THÀNH "không xác nhận" thay vì báo vi phạm (tránh báo
+  // sai đè thêm việc đọc tay), nhưng vẫn giữ manh mối (raw_evidence) để tiện tra cứu nếu cần.
+  const violationRaw = !!r.data.violation;
+  const evidenceRaw = r.data.evidence || null;
+  const normalize = (s) => String(s || "").toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, " ").trim();
+  const evidenceNorm = normalize(evidenceRaw);
+  const evidenceVerified = violationRaw && evidenceNorm
+    ? (content || []).some((it) => normalize(it?.text).includes(evidenceNorm))
+    : false;
+
   return {
     ok: true,
-    violation: !!r.data.violation,
+    violation: violationRaw && evidenceVerified,
     grammar_name: r.data.grammar_name || null,
-    evidence: r.data.evidence || null,
+    evidence: evidenceRaw,
+    evidence_verified: evidenceVerified,
+    // Giữ lại phán đoán GỐC của AI (trước khi lọc) để không mất hẳn manh mối khi cần tra cứu thủ
+    // công — chỉ KHÔNG dùng để tự động chặn/báo động nếu evidence không xác minh được.
+    raw_violation: violationRaw,
   };
 }
 
