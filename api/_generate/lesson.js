@@ -2617,6 +2617,7 @@ function tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceRealTokens) {
 // đáng cho tính năng phụ), 1 câu thất bại cả 2 lượt thì bỏ qua RIÊNG câu đó.
 async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
   const allItems = [];
+  const debugSkips = [];
   for (let i = 0; i < toAnalyze.length; i++) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
     const existingChunks = Array.isArray(existingChunksList?.[i]) ? existingChunksList[i] : null;
@@ -2631,9 +2632,21 @@ async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
       }
       const chunk = [{ text: sentence }];
       let result = await callAnalyzeReadingChunks(chunk);
+      const attempt1Reason = result.reason;
+      const attempt1Chunks = result.ok ? result.items?.[0]?.reading_chunks : null;
       if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
       if (!result.ok) {
         console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
+        // TẠM THỜI (2026-08-18, chẩn đoán lỗi B1 tách câu sót câu) — ghi lại lý do THẬT của CẢ 2
+        // lượt thử để trả về ngoài response, vì `vercel logs` không đọc được trong sandbox này.
+        debugSkips.push({
+          itemIndex: i,
+          sentence,
+          attempt1Reason,
+          attempt1Chunks,
+          attempt2Reason: result.reason,
+          attempt2Chunks: result.ok ? null : undefined,
+        });
         continue;
       }
       const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
@@ -2641,7 +2654,7 @@ async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
     }
     allItems.push({ index: i, reading_chunks: combinedChunks });
   }
-  return { ok: true, items: allItems };
+  return { ok: true, items: allItems, debugSkips };
 }
 
 export async function analyze_lesson_reading_chunks(data, ctx) {
@@ -2656,6 +2669,7 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
   if (!missingIdx.length) {
     return { content: JSON.stringify({ content }) };
   }
+  const allDebugSkips = [];
   // LƯU NGAY SAU MỖI ITEM (2026-08-13) — cùng lý do/fix đã áp dụng ở analyze_lesson_phrase_groups
   // (bài dài nhiều lượt thoại có thể vượt trần thời gian 1 lượt gọi Vercel; PATCH 1 lần duy nhất ở
   // cuối làm timeout giữa chừng mất hết việc đã làm, retry lại từ đầu lặp lại đúng lỗi).
@@ -2665,6 +2679,7 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
       console.error("[analyze_lesson_reading_chunks] thất bại tại item", origIdx, result.reason);
       continue;
     }
+    if (Array.isArray(result.debugSkips) && result.debugSkips.length) allDebugSkips.push(...result.debugSkips);
     const match = result.items.find((x) => x.index === 0) || result.items[0];
     content[origIdx] = { ...content[origIdx], reading_chunks: match.reading_chunks };
     const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
@@ -2695,7 +2710,7 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
     return { error: "Phân tích xong nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
   }
 
-  return { content: JSON.stringify({ content }) };
+  return { content: JSON.stringify({ content, _debug_skips: allDebugSkips.length ? allDebugSkips : undefined }) };
 }
 
 // KIỂM TRA NGỮ PHÁP VƯỢT CẤP (2026-08-18) — Minh bắt được thật: bài A1 dùng "have you worked"
