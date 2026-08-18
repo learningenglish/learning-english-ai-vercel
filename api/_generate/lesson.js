@@ -570,6 +570,27 @@ chung):
   định hàng ngày, không phải dự định tương lai; như mô tả thói quen, không phải 1 sự kiện đã qua).
 Trước khi trả JSON, TỰ RÀ LẠI từng câu KHÔNG liên quan điểm ngữ pháp trọng tâm — đây là nơi cấu
 trúc vượt cấp dễ lọt qua nhất, không chỉ rà câu chứa điểm ngữ pháp trọng tâm.
+
+NGUYÊN TẮC ƯU TIÊN (2026-08-18, Minh chốt sau khi rà soát A1/A2 Kế toán — ÁP DỤNG CHO MỌI CHUYÊN
+NGÀNH VỀ SAU, không chỉ Kế toán): "content_type" (dialogue/reading) và "topic" nhận được trong yêu
+cầu bên dưới là GỢI Ý THAM KHẢO từ khung chương trình (spine/da lĩnh vực), KHÔNG PHẢI luật bắt
+buộc tuyệt đối. Điều BẮT BUỘC THẬT SỰ, ưu tiên cao hơn việc bám sát gợi ý, là: (1) ngữ pháp đúng
+CHUẨN CEFR của cấp độ (không vượt cấp — xem danh sách cấm ở trên), (2) từ vựng chuyên ngành phân
+bổ đúng mật độ/đúng cấp độ. Nếu bám sát ĐÚNG content_type/topic được gợi ý sẽ buộc phải dùng ngữ
+pháp vượt cấp hoặc tạo ra hình thức không tự nhiên (vd được gợi ý "reading" nhưng bản chất nội
+dung thật là hỏi-đáp qua lại giữa 2 người — như hỏi tên/nơi làm việc/giờ giấc — khiến "reading"
+biến thành liệt kê câu hỏi-câu trả lời trần trụi, đúng bản chất là MỘT ĐOẠN HỘI THOẠI): ĐƯỢC PHÉP
+tự đổi "content_type" trong JSON trả về cho đúng bản chất thật (trả "dialogue" nếu nội dung là
+trao đổi qua lại, "reading" nếu là văn xuôi tường thuật liền mạch), và/hoặc điều chỉnh lại góc
+nhìn của chủ đề (vẫn giữ đúng lĩnh vực/tình huống chung, chỉ đổi cách diễn đạt — vd đổi "kể lại
+lịch làm việc tuần tới" thành "mô tả lịch làm việc CỐ ĐỊNH hàng ngày" để tránh ép dùng thì tương
+lai) — miễn là "content_type" trả về ĐÚNG với hình thức thật của nội dung đã viết. LƯU Ý: phần quy
+tắc chi tiết bên dưới (READING_ONLY_RULES hoặc DIALOGUE_ONLY_RULES) chỉ khớp với content_type ĐƯỢC
+GỢI Ý ban đầu — nếu bạn đổi sang content_type KHÁC, vẫn áp dụng ĐÚNG bản chất hình thức đó dù
+không có quy tắc chi tiết tương ứng ở dưới: "dialogue" = các lượt thoại ngắn, tự nhiên, có phản
+ứng qua lại giữa ít nhất 2 người (câu hỏi ĐI KÈM câu trả lời trong CÙNG 1 bài, xưng hô trực tiếp);
+"reading" = văn xuôi tường thuật liền mạch (ngôi thứ nhất hoặc thứ ba nhất quán), KHÔNG phải liệt
+kê câu hỏi-câu trả lời trần trụi.
 RIÊNG A1 (chốt 2026-07-22): length_words của bài A1 CỐ Ý ngắn hơn hẳn các cấp khác — KHÔNG phải
 lỗi, đừng cố "kéo dài cho đủ nghĩa". Bản chất A1 là câu và cấu trúc ĐƠN GIẢN, DỄ NHỚ, DÙNG LẠI
 ĐƯỢC trong nhiều tình huống khác nhau, không phải đoạn văn/hội thoại dài. Ưu tiên vài câu/lượt
