@@ -108,6 +108,29 @@ async function callChat(session, action, payload) {
   return res;
 }
 
+// CHẠY SONG SONG có giới hạn (2026-08-18, Minh: "Khởi động chạy song song" — sau khi thấy tổng
+// thời gian hôm nay vượt 10 tiếng vì các bước tách câu/tra từ/audio/ảnh bìa xử lý TỪNG BÀI MỘT,
+// TUẦN TỰ, dù các bài không phụ thuộc nhau) — xử lý tối đa "limit" bài CÙNG LÚC thay vì đợi bài
+// trước xong mới sang bài sau. KHÔNG giảm tổng chi phí (vẫn đúng số lượt gọi AI như cũ, xem giải
+// thích đã trao đổi: song song chỉ giảm THỜI GIAN CHỜ, không giảm SỐ TIỀN) — chỉ giảm thời gian
+// chạy thực tế. Giới hạn "limit" (mặc định 6) để tránh dồn quá nhiều request cùng lúc vào OpenAI/
+// Vercel (rủi ro rate-limit ngược lại làm chậm hơn hoặc gây lỗi 429 hàng loạt).
+// CONCURRENCY (biến môi trường, TÙY CHỌN, mặc định 6) — cho phép chỉnh mức song song mà không
+// cần sửa code, phòng khi 6 gây rate-limit (429) nhiều thì giảm xuống, hoặc muốn thử nhanh hơn.
+const STAGE_CONCURRENCY = Number(process.env.CONCURRENCY) || 6;
+
+async function mapWithConcurrency(items, limit, fn) {
+  let cursor = 0;
+  async function worker() {
+    while (cursor < items.length) {
+      const i = cursor++;
+      await fn(items[i], i);
+    }
+  }
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+}
+
 // Đúng logic refresh-401 như callChat(), áp dụng cho các truy vấn REST thẳng vào Supabase (không
 // qua /api/chat) — JWT hết hạn cũng khiến PostgREST trả 401 y hệt.
 async function restFetch(session, url, options = {}) {
@@ -243,6 +266,10 @@ async function fetchExistingCoverBaseUrls(session) {
   }
   return new Set((rows || []).map((r) => coverImageBaseUrl(r.cover_source_url)));
 }
+// LƯU Ý (2026-08-18, sau khi chuyển các stage sang chạy SONG SONG): "usedBaseUrls" chỉ là best-
+// effort chống trùng ảnh bìa (không phải khoá đồng bộ thật) — chạy song song có rủi ro RẤT NHỎ 2
+// bài cùng lúc chọn trùng 1 ảnh nguồn (kiểm tra "has" trước khi bài kia kịp "add"). Chấp nhận được
+// vì đây chỉ là thẩm mỹ (tránh trùng ảnh), không phải lỗi đúng/sai nội dung.
 async function ensureCoverImageComplete(session, lessonId, title, contentType, usedBaseUrls, { maxAttempts = 4 } = {}) {
   // Bỏ qua nếu ĐÃ CÓ ảnh (2026-08-15, cùng lý do resume ở ensureFieldComplete) — tránh tốn tiền
   // tìm/tải lại ảnh cho bài đã xong từ lượt chạy trước.
@@ -467,8 +494,8 @@ async function stageContent(session, samples) {
 
 // ====== STAGE 2/3: field (reading_chunks HOẶC phrase_groups), cho TOÀN BỘ lô ======
 async function stageField(session, lessons, action, field, resultKey, label, maxAttempts) {
-  for (const lesson of lessons) {
-    if (!lesson.ok) continue; // bỏ qua bài đã lỗi từ stage trước, không phí lượt gọi
+  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
+    if (!lesson.ok) return; // bỏ qua bài đã lỗi từ stage trước, không phí lượt gọi
     try {
       lesson[resultKey] = await ensureFieldComplete(session, lesson.lessonId, action, field, { maxAttempts });
       console.log(`  ${lesson.tag}: ${label} — ${lesson[resultKey].ok ? "OK" : "CHƯA ĐỦ"} (${lesson[resultKey].attempts} lượt)`);
@@ -477,7 +504,7 @@ async function stageField(session, lessons, action, field, resultKey, label, max
       lesson[resultKey] = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
       console.log(`  ${lesson.tag}: ${label} — LỖI BẤT NGỜ (${lesson[resultKey].error})`);
     }
-  }
+  });
 }
 
 // ====== STAGE: Kiểm tra ngữ pháp VƯỢT CẤP — chạy cho MỌI bài NGAY SAU stage 1 (2026-08-18, Minh
@@ -490,8 +517,8 @@ async function stageField(session, lessons, action, field, resultKey, label, max
 // toàn bộ + xác nhận), KHÔNG tự động xoá/sinh lại — cùng nguyên tắc "không tự sinh lại" đã áp dụng
 // cho stageJudge() (tránh lặp bẫy retry-loop tốn tiền).
 async function stageGrammarScopeCheck(session, lessons) {
-  for (const lesson of lessons) {
-    if (!lesson.ok) continue;
+  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
+    if (!lesson.ok) return;
     // BỎ QUA bài RESUME (2026-08-18, Minh phát hiện chi phí lặp lại vô ích) — bài này ĐÃ được
     // kiểm tra ngữ pháp ở (các) lần chạy TRƯỚC của CHÍNH script này trong ngày (nội dung không đổi
     // — nếu đổi thì đã không nằm trong nhánh "resume"), tính phí lại là trả tiền cho ĐÚNG 1 kết
@@ -499,14 +526,14 @@ async function stageGrammarScopeCheck(session, lessons) {
     // đầy đủ như cũ.
     if (lesson.resumed) {
       console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — BỎ QUA (bài resume, đã kiểm tra ở lượt trước)`);
-      continue;
+      return;
     }
     try {
       const res = await callChat(session, "analyze_lesson_grammar_scope", { lesson_id: lesson.lessonId });
       if (res.status !== 200) {
         lesson.grammarScope = { ok: false, error: `${res.status} ${JSON.stringify(res.data)}` };
         console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — LỖI (${lesson.grammarScope.error})`);
-        continue;
+        return;
       }
       const parsed = JSON.parse(res.data.content);
       lesson.grammarScope = parsed;
@@ -519,7 +546,7 @@ async function stageGrammarScopeCheck(session, lessons) {
       lesson.grammarScope = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
       console.log(`  ${lesson.tag}: ngữ pháp vượt cấp — LỖI BẤT NGỜ (${lesson.grammarScope.error})`);
     }
-  }
+  });
 }
 
 // ====== STAGE 4: Ngữ pháp — CHỈ verify dữ liệu ĐÃ CÓ từ stage 1, KHÔNG gọi thêm AI ======
@@ -603,8 +630,8 @@ async function stageJudge(session, lessons) {
 
 // ====== STAGE 5: Audio, cho TOÀN BỘ lô ======
 async function stageAudio(session, lessons) {
-  for (const lesson of lessons) {
-    if (!lesson.ok) continue;
+  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
+    if (!lesson.ok) return;
     // 2026-08-18 (Minh: "có giải pháp nào tốt hơn không") — TRƯỚC ĐÂY 1 lỗi mạng thoáng qua
     // ("fetch failed", DNS/kết nối chập chờn — KHÔNG liên quan nội dung) làm cả bài bị đánh dấu
     // "LỖI BẤT NGỜ" ngay lập tức, không có lượt thử lại nào, phải chạy lại CẢ SCRIPT mới cứu được
@@ -628,13 +655,13 @@ async function stageAudio(session, lessons) {
         console.log(`  ${lesson.tag}: audio — LỖI BẤT NGỜ (${lesson.audio.error})`);
       }
     }
-  }
+  });
 }
 
 // ====== STAGE 6: Ảnh bìa, cho TOÀN BỘ lô ======
 async function stageCoverImage(session, lessons, usedBaseUrls) {
-  for (const lesson of lessons) {
-    if (!lesson.ok) continue;
+  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
+    if (!lesson.ok) return;
     try {
       lesson.cover = await ensureCoverImageComplete(session, lesson.lessonId, lesson.title, lesson.contentType, usedBaseUrls);
       console.log(`  ${lesson.tag}: ảnh bìa — ${lesson.cover.ok ? "OK" : "CHƯA ĐỦ"}`);
@@ -642,7 +669,7 @@ async function stageCoverImage(session, lessons, usedBaseUrls) {
       lesson.cover = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
       console.log(`  ${lesson.tag}: ảnh bìa — LỖI BẤT NGỜ (${lesson.cover.error})`);
     }
-  }
+  });
 }
 
 // Hàm chính — chạy TỪNG STAGE cho TOÀN BỘ lô rồi mới qua stage sau (xem lý do đổi kiến trúc ở
