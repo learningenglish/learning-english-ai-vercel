@@ -34,6 +34,7 @@ registerTranslations({
   "Giao Tiếp Tổng Quát": "General English",
   "Anh văn chuyên ngành": "English for",
   "Kế toán": "Accounting",
+  "Làm Đẹp": "Beauty",
   // Nhãn OTHER_INDUSTRIES (2026-08-12, dịch từ tiếng Anh sang tiếng Việt tự nhiên — Minh: "giao
   // diện tiếng Việt không lẫn tiếng Anh trừ từ mượn thông dụng").
   "Công nghệ thông tin": "Information Technology",
@@ -92,6 +93,44 @@ const ACCOUNTING_PROFILE = occupationProfile(
   ]
 );
 
+// "Làm Đẹp" (2026-08-19, thứ tự triển khai chốt: Kế toán -> Làm Đẹp -> Điều Dưỡng -> Giao Tiếp
+// Tổng Quát — xem project_industry_rollout_roadmap trong bộ nhớ) — GỘP 5 mảng dịch vụ phổ biến
+// (mỹ phẩm, spa, trang điểm, làm móng, tóc) thành 1 profile duy nhất, giống cách "Kế toán" gộp 8
+// vị trí cũ — core_terms CỐ Ý ưu tiên DANH TỪ VẬT DỤNG/SẢN PHẨM CỤ THỂ của từng mảng (Minh: "xây
+// dựng bộ giáo trình có từ chuyên ngành về các vật dụng, sản phẩm của ngành đó thật hay"), không
+// dùng từ dịch vụ chung chung ("beauty service", "treatment").
+const BEAUTY_PROFILE = occupationProfile(
+  "Làm Đẹp",
+  "Tư vấn và phục vụ khách hàng trong ngành làm đẹp: mỹ phẩm, chăm sóc da/spa, trang điểm, làm móng và chăm sóc tóc — giới thiệu sản phẩm, thực hiện quy trình dịch vụ, xử lý yêu cầu và phản hồi của khách",
+  [
+    { role: "Khách hàng", register: "lịch sự, tư vấn, xác nhận nhu cầu" },
+    { role: "Khách hàng nước ngoài", register: "lịch sự, giải thích rõ ràng, chậm rãi" },
+    { role: "Đồng nghiệp/kỹ thuật viên khác", register: "thân thiện, phối hợp ca làm" },
+    { role: "Quản lý spa/salon", register: "trang trọng, báo cáo, xin phép" },
+    { role: "Nhà cung cấp mỹ phẩm/dụng cụ", register: "trao đổi đặt hàng, xác nhận số lượng" },
+  ],
+  [
+    "moisturizer",
+    "serum",
+    "sunscreen",
+    "exfoliating scrub",
+    "essential oil",
+    "massage therapy",
+    "facial treatment",
+    "foundation",
+    "eyeliner",
+    "makeup brush",
+    "acrylic nails",
+    "nail polish",
+    "cuticle care",
+    "hair dye",
+    "flat iron",
+    "conditioner",
+    "hair treatment",
+    "skin type",
+  ]
+);
+
 // Chuyên ngành KHÁC — chỉ trưng bày đúng khung ảnh mẫu, KHÔNG chọn được (Minh: "ghi ra và cho
 // toggle... để sắp ra mắt").
 const OTHER_INDUSTRIES = [
@@ -130,6 +169,7 @@ const GENERAL_PROFILE = {
 const INDUSTRIES = [
   { key: "general", label: "Giao Tiếp Tổng Quát", icon: "message-circle", chip: "blue", real: true },
   { key: "accounting", label: "Kế toán", icon: "dollar-sign", chip: "orange", real: true, profile: ACCOUNTING_PROFILE },
+  { key: "beauty", label: "Làm Đẹp", icon: "sparkles", chip: "purple", real: true, profile: BEAUTY_PROFILE },
   ...OTHER_INDUSTRIES.map((ind) => ({ ...ind, real: false })),
 ];
 
