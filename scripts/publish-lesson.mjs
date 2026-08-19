@@ -403,8 +403,14 @@ function isQuotaExceeded(data) {
 // lại các bài "ai_generated" ĐÃ CÓ của ĐÚNG level này, khớp theo tiền tố "#tag " trong title (do
 // set_lesson_title_tag gắn ngay sau khi tạo) — bài nào đã có thì TÁI SỬ DỤNG (bỏ qua generate_
 // lesson), chỉ sinh mới cho bài CHƯA có.
-async function fetchExistingLessonsByTag(session, level) {
-  const url = `${SUPABASE_URL}/rest/v1/lessons?select=id,title,content_type,grammar,sentence_patterns,content,characters&source=eq.ai_generated&level=eq.${encodeURIComponent(level)}`;
+// BUG THẬT bắt được 2026-08-19 (đa ngành, xem 024_lessons_industry.sql): trước đây CHỈ lọc theo
+// level, không lọc theo "industry" — 2 ngành khác nhau (Kế toán/Làm Đẹp) DÙNG CHUNG số thứ tự
+// "#N-LEVEL" (đánh số lại từ #1 cho mỗi ngành), nên khi chạy batch Làm Đẹp, script tưởng nhầm các
+// bài Kế toán CŨ đã có sẵn ở "#29-A1"..."#36-A1" là bài Làm Đẹp "đã xong", bỏ qua sinh thật —
+// suýt phục vụ NHẦM nội dung Kế toán cho học viên chọn Làm Đẹp. PHẢI lọc thêm industry để tách
+// đúng namespace #tag của từng ngành.
+async function fetchExistingLessonsByTag(session, level, industry) {
+  const url = `${SUPABASE_URL}/rest/v1/lessons?select=id,title,content_type,grammar,sentence_patterns,content,characters&source=eq.ai_generated&level=eq.${encodeURIComponent(level)}&industry=eq.${encodeURIComponent(industry || "")}`;
   const rows = await restFetch(session, url).then((r) => r.json());
   const byTag = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -427,7 +433,7 @@ async function fetchExistingLessonsByTag(session, level) {
 // tự — mọi stage sau (stageField, stageAudio...) đều dựa vào thứ tự này để đối chiếu #tag.
 async function stageContent(session, samples) {
   const lessons = new Array(samples.length);
-  const existingByTag = samples.length ? await fetchExistingLessonsByTag(session, samples[0].level) : new Map();
+  const existingByTag = samples.length ? await fetchExistingLessonsByTag(session, samples[0].level, samples[0].industry) : new Map();
   let quotaHit = false;
 
   await mapWithConcurrency(samples, STAGE_CONCURRENCY, async (sample, idx) => {
