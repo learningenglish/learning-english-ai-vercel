@@ -1312,6 +1312,18 @@ function findVocabEntry(matchedText, vocabMap) {
 // SỬA 2026-08-12 — regex PHẢI khớp chính xác sentenceWordTokens() phía server (đã sửa cùng
 // ngày: dấu nháy đơn MỞ ĐẦU 1 từ, dùng để trích lời nói ('This is...'), không còn bị coi là 1
 // phần của từ liền sau — chỉ dấu nháy đứng GIỮA 2 ký tự chữ/số như "don't" mới được giữ).
+// Ký tự tiếng Việt có dấu — PHẢI khớp ĐÚNG VN_LOWER/VN_WORD_CHARS phía server (api/_generate/
+// lesson.js) — BUG THẬT (2026-08-19, Minh bắt được: "#88-A1" câu đầu "Hi, Phương Ánh! ..." báo
+// lỗi tra từ dù server ĐÃ xác nhận phrase_groups đủ 100%): regex tokenize phía CLIENT trước đây
+// chỉ nhận [A-Za-z0-9] — tên riêng có dấu tiếng Việt chèn trong câu tiếng Anh (rất phổ biến, tên
+// nhân vật) bị CẮT VỤN thành các mảnh vô nghĩa ("Phương" -> "Ph"+"ng", mất hẳn "ư"/"ơ" vì không
+// khớp ký tự nào) — khiến spansFromPhraseGroups() so khớp token-theo-token với "words" đã lưu
+// LỆCH NGAY TỪ ĐÂY, trả về null cho CẢ CÂU, rơi về cách khớp "vocabulary" cũ (không có các từ
+// này) — toàn câu báo "không tra được từ" dù dữ liệu gốc hoàn toàn đúng.
+const VN_LOWER_CHARS = "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ";
+const VN_UPPER_CHARS = VN_LOWER_CHARS.toUpperCase();
+const VN_WORD_CHARS = `A-Za-z0-9${VN_LOWER_CHARS}${VN_UPPER_CHARS}`;
+
 function tokenizeWords(text) {
   const tokens = [];
   // Nhận cả dấu nháy đơn CONG "’" (U+2019, "smart quote" — model hay tự sinh trong văn xuôi,
@@ -1320,8 +1332,9 @@ function tokenizeWords(text) {
   // 2026-08-13, bài #1-B2). Nhận cả SỐ có "$" trước/dấu phẩy phân nhóm nghìn (vd "$10,000") làm
   // 1 token DUY NHẤT (bug thật 2026-08-14, bài #a-B2 — "$10,000" bị tách "10"+"000"). Nhận cả
   // dấu gạch nối trong từ ghép (vd "long-term") làm 1 token DUY NHẤT (bug thật 2026-08-14, LẶP
-  // LẠI 2 LẦN độc lập ở #a-B2 và #b-B2 — "long-term" bị tách "long"+"term").
-  const re = /\$?\d[\d,]*(?:\.\d+)?|[A-Za-z0-9]+(?:['’ʼ-][A-Za-z0-9]+)*/g;
+  // LẠI 2 LẦN độc lập ở #a-B2 và #b-B2 — "long-term" bị tách "long"+"term"). Nhận cả ký tự tiếng
+  // Việt có dấu (xem VN_WORD_CHARS ở trên, bug thật 2026-08-19).
+  const re = new RegExp(`\\$?\\d[\\d,]*(?:\\.\\d+)?|[${VN_WORD_CHARS}]+(?:['’ʼ-][${VN_WORD_CHARS}]+)*`, "g");
   let m;
   while ((m = re.exec(text || ""))) {
     tokens.push({ word: m[0], start: m.index, end: m.index + m[0].length });
@@ -1403,7 +1416,9 @@ function normalizeMatchWord(w) {
     .toString()
     .toLowerCase()
     .replace(/[’‘ʼ]/g, "'")
-    .replace(/[^a-z0-9'-]/g, "");
+    // GIỮ LẠI ký tự tiếng Việt có dấu (bug thật 2026-08-19, xem VN_WORD_CHARS ở tokenizeWords())
+    // — trước đây strip hết, làm "phương" khác "phng" sau chuẩn hoá, lệch so khớp.
+    .replace(new RegExp(`[^a-z0-9'\\-${VN_LOWER_CHARS}]`, "g"), "");
 }
 
 // SỬA 2026-08-10 (Đợt 13 mục 4) — mỗi TỪ giờ là 1 span RIÊNG (trước đây cả cụm là 1 span DUY
