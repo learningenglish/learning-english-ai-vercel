@@ -2988,20 +2988,24 @@ async function checkVocabularyScopeViolation(level, vocabulary) {
 
   const wordLines = generalWords.map((v) => `- "${v.word}" (${v.type || "?"}): ${v.meaning || ""}`).join("\n");
 
-  const system = `Bạn là chuyên gia từ vựng tiếng Anh theo khung CEFR. Nhiệm vụ DUY NHẤT: kiểm tra danh sách từ vựng THƯỜNG (không phải từ chuyên ngành) dưới đây của 1 bài học cấp ${level} có từ nào THỰC SỰ vượt cấp không.
+  // SIẾT LẠI NGƯỠNG (2026-08-19, Minh soát 86 bài thật: 23/86 bị gắn cờ, phần lớn là từ A2 thông
+  // thường như "appointment"/"schedule"/"customers" bị gắn cờ SAI dù chỉ cách 1 CẤP LIỀN KỀ — đúng
+  // trường hợp quy tắc "không phải biên giới 2 cấp liền kề" đã cấm nhưng model vẫn báo; còn có 1
+  // lỗi rõ ràng: gắn cờ "PM" dù giờ giấc là chủ đề CƠ BẢN của A1). Thêm NGƯỠNG SỐ CỤ THỂ (cách ÍT
+  // NHẤT 2 cấp, không phải "rõ ràng" chung chung — model tự đánh giá "rõ ràng" quá lỏng) + DANH
+  // SÁCH LOẠI TRỪ CỨNG cho các nhóm từ hay bị gắn cờ oan.
+  const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1"];
+  const levelIdx = LEVEL_ORDER.indexOf(level);
+  const minFlagLevel = LEVEL_ORDER[Math.min(levelIdx + 2, LEVEL_ORDER.length - 1)] || "C1";
+  const system = `Bạn là chuyên gia từ vựng tiếng Anh theo khung CEFR. Nhiệm vụ DUY NHẤT: kiểm tra danh sách từ vựng THƯỜNG (không phải từ chuyên ngành) dưới đây của 1 bài học cấp ${level} có từ nào THỰC SỰ vượt cấp RÕ RỆT không.
 
 QUY TẮC:
 - CHỈ xét từ vựng PHỔ THÔNG (không phải thuật ngữ chuyên ngành — danh sách dưới đây ĐÃ được lọc bỏ hết từ chuyên ngành, coi như KHÔNG có từ chuyên ngành nào trong danh sách này).
-- Đánh giá THEO ĐÚNG CHUẨN CEFR thông dụng (Oxford/Cambridge 3000-5000 hoặc tương đương) cho từng cấp:
-  A1: ~500-800 từ cơ bản nhất (gia đình, số đếm, màu sắc, hoạt động hàng ngày, đồ vật quen thuộc).
-  A2: mở rộng thêm các chủ đề đời sống quen thuộc (mua sắm, du lịch, sở thích).
-  B1: từ trừu tượng vừa phải, ý kiến/cảm xúc phức tạp hơn.
-  B2: từ học thuật nhẹ, sắc thái nghĩa.
-  C1: từ vựng nâng cao, ít thông dụng.
-- CHỈ báo vi phạm nếu có từ RÕ RÀNG cao hơn hẳn cấp đã cho (không phải trường hợp mơ hồ, biên giới giữa 2 cấp liền kề) — nghi ngờ nhẹ thì KHÔNG báo.
-- Nếu không có từ nào vượt cấp rõ rệt — KHÔNG VI PHẠM.
+- NGƯỠNG SỐ CỤ THỂ (BẮT BUỘC, không suy diễn theo cảm tính): bài này cấp ${level} — CHỈ được báo vi phạm nếu từ đó ở mức ${minFlagLevel} TRỞ LÊN (tức cách ÍT NHẤT 2 cấp). Từ chỉ cao hơn ĐÚNG 1 cấp liền kề (vd bài A1 mà từ là A2, bài A2 mà từ là B1) TUYỆT ĐỐI KHÔNG được báo vi phạm, dù có "nghe hơi khó" — đây là vùng chấp nhận được, không phải lỗi.
+- LOẠI TRỪ CỨNG (KHÔNG BAO GIỜ báo vi phạm cho các nhóm sau, bất kể cấp độ, vì đây LÀ chủ đề CƠ BẢN dạy ngay từ A1): số đếm, giờ giấc (o'clock, AM, PM, half past...), ngày/tháng/thứ trong tuần, đại từ, giới từ cơ bản (in, on, at, to, from...), động từ "to be/have/do" và biến thể, từ chào hỏi/lịch sự cơ bản (please, thank you, sorry, excuse me), tên riêng người/địa điểm.
+- Nếu không có từ nào đạt ngưỡng ${minFlagLevel} trở lên — KHÔNG VI PHẠM, kể cả khi có vài từ hơi cao hơn 1 cấp.
 
-Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc false, "word": "<từ vi phạm rõ nhất, hoặc null>", "reason": "<lý do ngắn gọn bằng tiếng Việt tại sao từ này vượt cấp, hoặc null>"}`;
+Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc false, "word": "<từ vi phạm rõ nhất, hoặc null>", "reason": "<lý do ngắn gọn bằng tiếng Việt tại sao từ này vượt cấp, PHẢI nêu rõ từ này ở mức CEFR nào, hoặc null>"}`;
 
   const r = await generateStructuredJSON({
     tier: "default",
