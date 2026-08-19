@@ -2244,6 +2244,39 @@ async function loadLessonForPatch(lessonId, isNews, studentId) {
   return { ok: true, table, content: row.content };
 }
 
+// GHI 1 FIELD CỦA 1 ITEM, ĐỌC LẠI "content" TƯƠI NGAY TRƯỚC KHI GHI (2026-08-19) — BUG THẬT:
+// analyze_lesson_phrase_groups và analyze_lesson_reading_chunks TRƯỚC ĐÂY đều đọc "content" MỘT
+// LẦN lúc bắt đầu hàm (qua loadLessonForPatch), giữ nguyên bản đó suốt cả hàm, rồi PATCH ĐÈ CẢ
+// CỘT "content" mỗi lần lưu. Từ khi processLessonFully() (publish-lesson.mjs) gọi 2 action này
+// ĐỒNG THỜI cho CÙNG 1 bài (Promise.all, yêu cầu chạy song song thật), action nào ghi SAU CÙNG sẽ
+// dùng bản "content" cũ (không có field action kia vừa lưu) đè mất kết quả ĐÚNG của action kia —
+// xác nhận thật: 48/85 bài B1 Làm Đẹp có "phrase_groups" đúng nhưng "reading_chunks" TRẮNG HOÀN
+// TOÀN dù log báo "OK" (AI đã trả đúng, dữ liệu bị xoá SAU ĐÓ, không phải AI sai). Sửa: mỗi lần
+// ghi, ĐỌC LẠI "content" TƯƠI từ DB ngay trước khi ghi, chỉ merge ĐÚNG field/item của action này
+// lên bản tươi đó rồi ghi lại — thu hẹp cửa sổ race từ "suốt cả hàm phân tích" xuống còn "1 lượt
+// đọc+ghi", loại bỏ hẳn kiểu ghi đè nguyên khối bằng bản cũ đã gây mất dữ liệu thật ở trên.
+async function patchLessonItemFieldFresh(table, lessonId, index, field, value) {
+  const freshRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(lessonId)}&select=content`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!freshRes.ok) return { ok: false, status: freshRes.status };
+  const rows = await freshRes.json();
+  const freshContent = rows?.[0]?.content;
+  if (!Array.isArray(freshContent) || !freshContent[index]) return { ok: false, status: 404 };
+  freshContent[index] = { ...freshContent[index], [field]: value };
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(lessonId)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ content: freshContent }),
+  });
+  return { ok: patchRes.ok, status: patchRes.status, content: freshContent };
+}
+
 // LƯỚI ĐỠ BẰNG CODE (2026-08-13, Minh xem trực tiếp trên bài #5b2 thật: tra từ "might" hiện cụm
 // "They might contact the bank" — nguyên cả mệnh đề, không phải "nhóm từ vài chữ làm rõ nghĩa
 // phạm vi nhỏ" như đúng ý nghĩa "cụm" phải có) — xác nhận đây là ĐÚNG lỗi "QUY TẮC RIÊNG VỀ CHỦ
@@ -2559,28 +2592,28 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
     }
     const match = result.items.find((x) => x.index === 0) || result.items[0];
     if (match.ambiguous) ambiguousIndices.push(origIdx);
-    content[origIdx] = {
-      ...content[origIdx],
-      phrase_groups: mergeStrandedPreposition(mergeFragmentedNounPhrases(mergeKnownMultiWordVerbs(splitLeadingSubjectPronoun(match.phrase_groups)))),
-    };
-    const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
-      method: "PATCH",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({ content }),
-    });
-    if (!stepPatchRes.ok) console.error("analyze_lesson_phrase_groups step-patch error:", stepPatchRes.status, await stepPatchRes.text());
+    const cleanedGroups = mergeStrandedPreposition(mergeFragmentedNounPhrases(mergeKnownMultiWordVerbs(splitLeadingSubjectPronoun(match.phrase_groups))));
+    content[origIdx] = { ...content[origIdx], phrase_groups: cleanedGroups };
+    // Đọc lại "content" TƯƠI + chỉ ghi field "phrase_groups" của ĐÚNG item này (patchLessonItem-
+    // FieldFresh, xem ghi chú ở định nghĩa) — KHÔNG ghi đè "content" cũ giữ từ đầu hàm, tránh xoá
+    // mất "reading_chunks" mà analyze_lesson_reading_chunks có thể đang lưu song song đúng lúc này.
+    const stepRes = await patchLessonItemFieldFresh(table, data.lesson_id, origIdx, "phrase_groups", cleanedGroups);
+    if (!stepRes.ok) console.error("analyze_lesson_phrase_groups step-patch error:", stepRes.status);
   }
 
   // ÁP DỤNG LƯỚI ĐỠ chủ ngữ (splitLeadingSubjectPronoun) cho MỌI item, KỂ CẢ item đã đạt
   // coverage từ trước (bài CŨ, sinh trước khi có lưới đỡ này) — không tốn thêm lượt AI (thuần
   // code), nên lượt gọi action này (dù coverage đã đủ, không cần gọi AI ở trên) vẫn luôn có ích:
   // tự "dọn" lại bài cũ mỗi khi được gọi lại, không cần phân biệt bài mới/cũ.
-  for (const item of content) {
+  // Đọc lại "content" TƯƠI ngay trước bước dọn cuối này (cùng lý do patchLessonItemFieldFresh) —
+  // chỉ sửa "phrase_groups" của từng item trên bản tươi, KHÔNG dùng "content" cũ giữ từ đầu hàm
+  // (có thể thiếu "reading_chunks" action kia vừa lưu song song).
+  const finalFreshRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}&select=content`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  const finalFreshRows = await finalFreshRes.json();
+  const finalContent = Array.isArray(finalFreshRows?.[0]?.content) ? finalFreshRows[0].content : content;
+  for (const item of finalContent) {
     if (Array.isArray(item.phrase_groups)) {
       item.phrase_groups = mergeStrandedPreposition(mergeFragmentedNounPhrases(mergeKnownMultiWordVerbs(splitLeadingSubjectPronoun(item.phrase_groups))));
     }
@@ -2594,7 +2627,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
       "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content: finalContent }),
   });
   if (!patchRes.ok) {
     console.error("analyze_lesson_phrase_groups patch error:", patchRes.status, await patchRes.text());
@@ -2604,7 +2637,7 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // "ambiguous_indices" — publish-lesson.mjs đọc trường này để biết có cần gọi lại action này
   // 1 lần nữa với "force_indices" (đối chiếu với reading_chunks giờ đã xong) hay không. Rỗng nếu
   // không có item nào đa nghĩa (đa số trường hợp), không tốn thêm lượt gọi nào.
-  return { content: JSON.stringify({ content, ambiguous_indices: ambiguousIndices }) };
+  return { content: JSON.stringify({ content: finalContent, ambiguous_indices: ambiguousIndices }) };
 }
 
 // ====== "Vá" reading_chunks cho bài CŨ (2026-08-10, Đợt 14) — CÙNG KIẾN TRÚC "vá 1 lần" đã có
@@ -2822,34 +2855,17 @@ export async function analyze_lesson_reading_chunks(data, ctx) {
     if (Array.isArray(result.debugSkips) && result.debugSkips.length) allDebugSkips.push(...result.debugSkips);
     const match = result.items.find((x) => x.index === 0) || result.items[0];
     content[origIdx] = { ...content[origIdx], reading_chunks: match.reading_chunks };
-    const stepPatchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
-      method: "PATCH",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({ content }),
-    });
-    if (!stepPatchRes.ok) console.error("analyze_lesson_reading_chunks step-patch error:", stepPatchRes.status, await stepPatchRes.text());
+    // Đọc lại "content" TƯƠI + chỉ ghi field "reading_chunks" của ĐÚNG item này
+    // (patchLessonItemFieldFresh, xem ghi chú ở định nghĩa) — KHÔNG ghi đè "content" cũ giữ từ
+    // đầu hàm, tránh xoá mất "phrase_groups" mà analyze_lesson_phrase_groups có thể đang lưu
+    // song song đúng lúc này (bug thật đã gây mất trắng reading_chunks ở 48/85 bài B1 Làm Đẹp).
+    const stepRes = await patchLessonItemFieldFresh(table, data.lesson_id, origIdx, "reading_chunks", match.reading_chunks);
+    if (!stepRes.ok) console.error("analyze_lesson_reading_chunks step-patch error:", stepRes.status);
   }
 
-  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}`, {
-    method: "PATCH",
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({ content }),
-  });
-  if (!patchRes.ok) {
-    console.error("analyze_lesson_reading_chunks patch error:", patchRes.status, await patchRes.text());
-    return { error: "Phân tích xong nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
-  }
-
+  // KHÔNG cần patch lại lần cuối — mỗi item đã được lưu NGAY (đọc-tươi-rồi-ghi) trong vòng lặp
+  // trên, patch cuối kiểu "ghi đè cả content" đã giữ từ đầu hàm chính là bug đã gây mất dữ liệu
+  // (xem ghi chú patchLessonItemFieldFresh) nên bỏ hẳn, không phải rút gọn thiếu sót.
   return { content: JSON.stringify({ content, _debug_skips: allDebugSkips.length ? allDebugSkips : undefined }) };
 }
 

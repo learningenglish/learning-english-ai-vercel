@@ -202,13 +202,11 @@ function isFullyCovered(content, field) {
 // Lặp lại action tra-từ/tách-câu tới khi ĐỦ 100% (đọc lại DB xác nhận thật, không suy đoán từ
 // status HTTP — 1 lượt gọi có thể trả 200 nhưng vẫn còn item lỗi/thiếu bên trong, hoặc 504 nhưng
 // đã lưu được vài item nhờ patch-per-item, xem ghi chú đầu file).
-// GIẢM 8->4 (2026-08-14, Minh xem dashboard OpenAI thật: chi phí model mạnh $0.19/$0.29 hôm nay
-// tới từ việc gọi lại action này QUÁ NHIỀU LẦN cho 1 câu vẫn lỗi, cộng với lượt leo thang "strong"
-// đã BỎ HẲN ở analyzePhraseGroupsInChunks — dù giờ chỉ còn tier mặc định RẺ, vẫn KHÔNG NÊN lặp vô
-// ích quá nhiều lần cho 1 câu không tự khỏi được bằng cách gọi lại y hệt) — câu vẫn lỗi sau 4 lượt
-// cần SỬA RULE (như contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may
-// mắn thêm nữa.
-async function ensureFieldComplete(session, lessonId, action, field, { maxAttempts = 4 } = {}) {
+// GIẢM 8->4 (2026-08-14) rồi 4->2 (2026-08-19, bằng chứng thật: đợt retry A2 round 3 — 10 bài
+// residual vẫn Y NGUYÊN sau đủ 4 lượt/bài, tốn thêm tiền mà không hội tụ) — câu vẫn lỗi sau 2 lượt
+// gọi LẶP LẠI Y HỆT thì lượt 3-4 cũng không tự khỏi, cần SỬA RULE hoặc vá tay (0 chi phí AI), không
+// phải trả tiền hy vọng may mắn thêm nữa.
+async function ensureFieldComplete(session, lessonId, action, field, { maxAttempts = 2 } = {}) {
   // Kiểm tra ĐÃ ĐỦ trước khi gọi AI (2026-08-15) — cần thiết cho resume sau khi token hết hạn
   // giữa chừng: rất nhiều bài ĐÃ CÓ field này đủ 100% từ lượt chạy trước, gọi lại vẫn tốn tiền
   // dù không cần — xem ghi chú token-refresh ở callChat().
