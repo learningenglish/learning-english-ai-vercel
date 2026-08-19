@@ -577,6 +577,40 @@ async function stageGrammarScopeCheck(session, lessons) {
   });
 }
 
+// ====== STAGE: Kiểm tra TỪ VỰNG VƯỢT CẤP (2026-08-19) — CÙNG KIẾN TRÚC stageGrammarScopeCheck ở
+// trên, Minh: "Hãy xây thêm, không cần xóa bài" sau khi đọc #2-A1 thấy từ chuyên ngành "nghe như
+// B1" — xác nhận đó là ĐÚNG thiết kế (từ chuyên ngành được phép vượt cấp), nhưng phát hiện KHÔNG
+// có lớp kiểm tra code nào cho từ THƯỜNG như đã có cho ngữ pháp. Gọi analyze_lesson_vocabulary_
+// scope (xem checkVocabularyScopeViolation() trong lesson.js) — chỉ BÁO để soát tay, KHÔNG tự xoá/
+// sinh lại bài.
+async function stageVocabularyScopeCheck(session, lessons) {
+  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
+    if (!lesson.ok) return;
+    if (lesson.resumed) {
+      console.log(`  ${lesson.tag}: từ vựng vượt cấp — BỎ QUA (bài resume, đã kiểm tra ở lượt trước)`);
+      return;
+    }
+    try {
+      const res = await callChat(session, "analyze_lesson_vocabulary_scope", { lesson_id: lesson.lessonId });
+      if (res.status !== 200) {
+        lesson.vocabularyScope = { ok: false, error: `${res.status} ${JSON.stringify(res.data)}` };
+        console.log(`  ${lesson.tag}: từ vựng vượt cấp — LỖI (${lesson.vocabularyScope.error})`);
+        return;
+      }
+      const parsed = JSON.parse(res.data.content);
+      lesson.vocabularyScope = parsed;
+      if (parsed.violation) {
+        console.log(`  ${lesson.tag}: >>> NGHI NGỜ TỪ VỰNG VƯỢT CẤP — "${parsed.word}" — ${parsed.reason}`);
+      } else {
+        console.log(`  ${lesson.tag}: từ vựng vượt cấp — OK (không phát hiện)`);
+      }
+    } catch (err) {
+      lesson.vocabularyScope = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+      console.log(`  ${lesson.tag}: từ vựng vượt cấp — LỖI BẤT NGỜ (${lesson.vocabularyScope.error})`);
+    }
+  });
+}
+
 // ====== STAGE 4: Ngữ pháp — CHỈ verify dữ liệu ĐÃ CÓ từ stage 1, KHÔNG gọi thêm AI ======
 // "grammar"/"sentence_patterns" không có action riêng để "sinh lại" — cả 2 field đã ra cùng lúc
 // với "content" ở generate_lesson. Bước này chỉ kiểm tra: (a) có mặt và không rỗng, (b) ở B1 trở
@@ -767,6 +801,16 @@ export async function publishBatch(samples) {
   if (grammarFlags.length) {
     console.log(`\n>>> ${grammarFlags.length} BÀI NGHI NGỜ NGỮ PHÁP VƯỢT CẤP — đọc kỹ trước khi duyệt BƯỚC 2:`);
     for (const l of grammarFlags) console.log(`  ${l.tag}: "${l.grammarScope.grammar_name}" — "${l.grammarScope.evidence}"`);
+  }
+
+  // Kiểm tra TỪ VỰNG vượt cấp — CÙNG THỜI ĐIỂM, cùng lý do (2026-08-19, Minh: "Hãy xây thêm,
+  // không cần xóa bài" — xem stageVocabularyScopeCheck()).
+  console.log(`\n=== Kiểm tra từ vựng vượt cấp (mọi bài, trước khi chờ BƯỚC 2) ===`);
+  await stageVocabularyScopeCheck(session, lessons);
+  const vocabFlags = lessons.filter((l) => l.vocabularyScope?.violation);
+  if (vocabFlags.length) {
+    console.log(`\n>>> ${vocabFlags.length} BÀI NGHI NGỜ TỪ VỰNG VƯỢT CẤP — đọc kỹ trước khi duyệt BƯỚC 2:`);
+    for (const l of vocabFlags) console.log(`  ${l.tag}: "${l.vocabularyScope.word}" — ${l.vocabularyScope.reason}`);
   }
 
   // MẶC ĐỊNH dừng sau khi có nội dung, chờ ĐÚNG BƯỚC 2 (Claude đọc TOÀN BỘ nội dung level này bên
