@@ -2695,9 +2695,16 @@ function tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceRealTokens) {
 // chỉ script sinh bài đang dùng key này, không có tranh chấp; (b) hạn mức 120s vẫn còn, nhưng
 // nhiều câu chạy CÙNG LÚC (thay vì nhiều ĐỢT nối tiếp ở limit thấp) thực ra RÚT NGẮN tổng thời
 // gian chờ khi KHÔNG bị rate-limit — ít đợt hơn, càng khó chạm trần 120s hơn, không phải ngược
-// lại. Nếu sau này app có traffic thật (nhiều học viên dùng cùng lúc), CẦN đánh giá lại giá trị
-// này — không phải hằng số vĩnh viễn.
-const SENTENCE_PARALLEL_LIMIT = 20;
+// lại.
+// SOÁT LẠI LẦN 2 (2026-08-19, Minh yêu cầu kiểm tra thật kỹ file v6) — đọc trực tiếp TOÀN BỘ
+// vòng lặp gọi callAI() của v6 (quanh dòng 3406-3533): xác nhận KHÔNG có bất kỳ hàng đợi/semaphore
+// nào — biến "completed" chỉ dùng hiển thị tiến trình UI, vòng for bắn TẤT CẢ N câu (20-40) qua
+// callAI() cùng lúc, không giới hạn, chỉ có đúng 1 lớp thử lại khi 429 (giống ta đã có). Cùng 1
+// tài khoản OpenAI, cùng model — không có cơ sở kỹ thuật nào để giữ giới hạn thấp. Đặt mức trần an
+// toàn RẤT CAO (không phải giới hạn thật, chỉ chặn trường hợp bệnh lý — 1 item bị lỗi phân tích
+// nhầm thành hàng trăm "câu") thay vì giới hạn nhân tạo thấp. Nếu sau này app có traffic thật
+// (nhiều học viên dùng cùng lúc CHIA SẺ 1 API key), CẦN đánh giá lại — không phải hằng số vĩnh viễn.
+const SENTENCE_PARALLEL_LIMIT = 50;
 async function mapSentencesWithConcurrency(items, limit, fn) {
   const results = new Array(items.length);
   let cursor = 0;
