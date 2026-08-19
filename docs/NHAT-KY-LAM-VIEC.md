@@ -1877,3 +1877,97 @@ clerk's" + "day" thay vì 1 nhóm); verb+V-ing/verb+object đôi khi vẫn tách
 thay vì 1 VP); type "to-infinitive" hiếm khi tái phát dù đã chặn rõ trong prompt; possessive pronoun
 (their/his/her) đôi khi bị gắn word_types "pronoun" thay vì "determiner" nên lọt khỏi lưới đỡ NP-
 merge. Tất cả đều KHÔNG làm mất dữ liệu/vỡ tooltip, chỉ chưa tối ưu 100% độ mượt của cụm.
+
+## 2026-08-14 đến 2026-08-18 — TÓM TẮT BÙ (nhật ký bị bỏ quên 6 ngày, Minh bắt lỗi 2026-08-19: "tại
+sao không lưu trữ nhật ký làm việc và vừa lưu vừa cải thiện lại quy trình làm việc") — mức chi tiết
+thấp hơn thường lệ vì viết lại hồi tưởng, không phải ngay lúc làm.
+
+- **Đợt 3 Mentor AI** (~08-14 đến 08-21): Bước 4 luồng hội thoại + kho lời thoại (3 vòng audit,
+  1165 dòng) + `decideAction()` + sửa độ dài hội thoại. Sau đó Mentor AI bị **gỡ khỏi UI** (Minh:
+  dùng thật thấy "như spam") — backend/DB giữ nguyên không xoá, chỉ ẩn khỏi luồng người dùng, khôi
+  phục form tự do `createLesson.js`.
+- **Lớp trừu tượng AI provider** (`api/_shared/aiProvider.js`): `generateText`/
+  `generateStructuredJSON`/`generateSpeech`, gọi theo TIER (`default`/`strong`) thay vì tên model
+  cứng — cho phép đổi model qua biến môi trường (`OPENAI_MODEL_DEFAULT`/`OPENAI_MODEL_STRONG`)
+  không phải sửa code rải rác. OpenAI đã verify thật, Gemini viết xong nhưng CHƯA verify thật.
+- **Kiểm thu chất lượng da (skin) 3 vòng**: gpt-4o-mini → gpt-4.1 → gpt-4.1+sửa lỗi câu chữ.
+  `OPENAI_MODEL_STRONG=gpt-4.1` lên production. `core_terms` từng bị lẫn ngôn ngữ, đã sửa.
+- **Nối `next_slot` ↔ `skin.js`**: sửa xong bug độ dài A1 (6/6 bài mẫu đạt).
+- **9 vòng sửa lỗi thiết bị thật** (lock chip, chuỗi chủ đề, độ dài bài) — đổi hẳn thời điểm sinh
+  audio trả phí sang **NGAY LÚC TẠO BÀI** (eager) thay vì lúc mở bài lần đầu (lazy) — Minh từ chối
+  phương án lazy sau khi test thật thấy độ trễ mở bài khó chịu.
+- **5 bug thật (08-29 cũ, ghi bù)**: vòng lặp 502 do timeout chunk-audio, audio giật do thiếu
+  look-ahead prefetch, lẫn giọng đọc, nhảy tab, chip cấp độ mới ở màn tạo bài rút gọn.
+- **4 việc lớn (08-30 cũ, ghi bù)**: loại hẳn fallback-lệch-nghĩa (test thật 0/7 lỗi), sửa phát lại
+  từ đầu, gộp audio thành 1 file DUY NHẤT (cần migration 031), rút lại chip cấp độ, sửa NGUYÊN NHÂN
+  THẬT của lỗi nhảy tab (hiệu ứng chớp hình, không phải do dữ liệu).
+- **Kiến trúc `reading_chunks`** (Đợt 14 mở rộng): tách câu (`reading_chunks`) là trường RIÊNG biệt
+  hẳn với tra từ (`phrase_groups`) — CHỈ sinh qua 1 prompt vá chuyên biệt, gộp chung vào 1 prompt lớn
+  làm model BỎ QUA quy tắc tách câu 3/3 lần thử — đây là ví dụ THẬT của bài học "cô lập prompt" (xem
+  mục dưới).
+- **Roadmap ngành**: chốt thứ tự Kế toán → **Làm Đẹp** → Điều Dưỡng → Giao Tiếp Tổng Quát (đổi từ
+  thứ tự gốc, Giao Tiếp Tổng Quát dời xuống CUỐI, do Minh tự chạy tay ở phiên khác — KHÔNG được
+  đụng vào). Định vị "MOSAIC": Làm Đẹp = trưng bày, Điều Dưỡng = giá trị cao, Giao Tiếp Tổng Quát =
+  đại chúng (cố ý để cuối).
+- **Đặc tả IAP** (Free/Go/Pro/Premium + Google Play In-App Purchase) đã nhận, Minh dặn hoãn ("nhắc
+  tôi sau") — CHƯA bắt đầu, không tự ý làm.
+- **Hoàn thiện Kế toán A1/A2/B1** đến ~100% (tra từ, ảnh bìa, không trùng lặp) — dùng làm NGÀNH MẪU
+  cho toàn bộ kiến trúc pipeline áp dụng lại cho Làm Đẹp hôm nay.
+
+## 2026-08-19 — Xây chuyên ngành Làm Đẹp: 3 tính năng mới cho pipeline + 1 bug thật đa-ngành +
+nhiều lỗi QUY TRÌNH lãng phí tiền thật (Minh bắt lỗi trực tiếp, xem mục "BÀI HỌC" cuối)
+
+**Việc đã làm (chuyên ngành):**
+- Chọn 3 chuyên ngành mới theo yêu cầu Minh (đối chiếu ảnh mẫu tham khảo bên ngoài): Làm Đẹp (mỹ
+  phẩm/spa/trang điểm/nail/tóc, sau thêm "tóc/hair salon" theo yêu cầu).
+- **`sub_domains` + `secondary_sub_domain`** (`skin.js`): chia đều 5 mảng dịch vụ con qua các mạch
+  chuyện (validator đếm được bằng code, trần 30%/mảng) — bug thật xác nhận qua dry-run: không ép sẽ
+  dồn 1 mảng ~31%, bỏ quên mảng khác ~2%. Sau đó thêm cơ chế "chuyển tiếp mượt + ôn lại mảng cũ"
+  theo yêu cầu Minh — vòng đầu bị model "gắn nhãn giả" (tag đúng nhưng "arc" không hề nhắc mảng đó),
+  bắt được qua đọc thật nội dung, thêm cảnh báo cụ thể vào prompt mới sửa được.
+- **`character_pool` theo từng ngành** (`skin.js`): bug thật — dàn nhân vật cố định (Trang/Khang/
+  Thúy Vy/Giàu/Phương Ánh) hardcode DÙNG CHUNG cho MỌI ngành, Làm Đẹp lỡ dùng lại nguyên dàn tên đã
+  gắn riêng cho Kế toán. Sửa: mỗi ngành có dàn tên riêng qua `occupationProfile.character_pool`,
+  fallback về dàn cũ nếu không khai báo (Kế toán không đổi hành vi). Bài Làm Đẹp ĐÃ sinh trước bản
+  sửa giữ nguyên tên cũ (Minh: "lỗi nhỏ, không cần sửa"), áp dụng cho bài chưa sinh.
+- **Bug thật đa-ngành nghiêm trọng**: `fetchExistingLessonsByTag()` (cơ chế "resume") chỉ lọc theo
+  `level`, KHÔNG lọc `industry` — 2 ngành dùng chung số thứ tự "#N-LEVEL", suýt khiến batch Làm Đẹp
+  nhận NHẦM bài Kế toán cũ là "đã xong", bỏ qua sinh thật. Bắt được TRƯỚC KHI duyệt (CONTENT_
+  APPROVED chưa bật lúc phát hiện) — chưa có bài nào bị phục vụ sai. Đã thêm điều kiện lọc.
+- **Kiểm tra TỪ VỰNG vượt cấp** (`analyze_lesson_vocabulary_scope`, lớp phòng thủ mới, tương tự
+  ngữ pháp đã có) — Minh đọc #2-A1 thấy từ "nghe như B1" (moisturizer...), hỏi có ràng buộc từ vựng
+  không. Xác nhận: có quy tắc trong prompt (từ chuyên ngành được phép vượt cấp) nhưng KHÔNG có lớp
+  kiểm tra code. Xây xong nhưng **2 lỗi thiết kế liên tiếp** (xem mục BÀI HỌC).
+- Tăng độ song song: `SENTENCE_PARALLEL_LIMIT` 4→50, `GENERATION_CONCURRENCY` (audio) 4→20,
+  `LESSON_CONCURRENCY` (nhiều bài cùng lúc) mới thêm =4→8 — đối chiếu công cụ tham khảo "v6" xác
+  nhận không có hàng đợi/giới hạn nào ở đó, cùng tài khoản OpenAI — xác nhận qua thực nghiệm 0 lỗi
+  429 ở mức 8 bài song song. Sửa luôn tách câu+tra từ chạy SONG SONG THẬT thay vì nối tiếp (trước
+  đó tra từ chờ tách câu xong để lấy ngữ cảnh gỡ nghĩa đa nghĩa) + thêm bước "đối chiếu nghĩa đa
+  nghĩa" chạy SAU khi cả 2 xong, chỉ cho đúng các câu có từ đa nghĩa.
+- Kết quả A1 Làm Đẹp: 76-80/89 bài đạt đủ 5 điều kiện tuỳ thời điểm, còn ~7-13 bài residual (validator
+  ngữ pháp A1 chặn cứng lúc sinh, hoặc "tra từ chưa đủ sau 2 lượt" cho vài câu khó) — CHƯA xong hẳn.
+  A2 mới sinh nội dung được 63/89 bài thì DỪNG do vượt ngân sách (xem dưới).
+
+**BÀI HỌC QUY TRÌNH (Minh bắt lỗi trực tiếp — ghi lại để KHÔNG lặp lại):**
+1. **Trước khi xây 1 validator/checker MỚI, PHẢI kiểm tra đã có cơ chế lưu trữ/tái sử dụng nào có
+   thể tận dụng chưa** (bug thật: xây `checkVocabularyScopeViolation` gọi AI phán đoán CEFR MỖI LẦN
+   kiểm tra, không tra `vocab_dictionary` — từ điển dùng chung ĐÃ XÂY TRƯỚC ĐÓ cho tra từ — nên cùng
+   1 từ ra 2 kết quả khác nhau ở 2 lần chạy. Sửa: tra từ điển dùng chung TRƯỚC (0 lượt AI), CHỈ gọi
+   AI cho từ thật sự mới, LƯU LẠI ngay để lần sau không hỏi lại — đúng tinh thần "lưu rồi dùng lại"
+   Minh đã yêu cầu từ trước cho tra từ, phải áp dụng NHẤT QUÁN cho MỌI tính năng liên quan tới từ.
+2. **Không dừng/khởi động lại script sinh bài nhiều lần chỉ để thử TỪNG mức tham số một** (hôm nay
+   dừng+chạy lại 3 lần chỉ để thử `LESSON_CONCURRENCY` 4→8, mỗi lần khởi động lại tốn thêm gọi AI
+   dù có resume) — PHẢI gộp các thay đổi cần kiểm chứng lại thành ÍT LẦN chạy nhất, ước lượng trước
+   bằng lý luận/log thay vì chạy thử từng nấc.
+3. **Theo dõi/báo cáo chi phí THEO CỤM VIỆC LỚN, không chỉ khi được hỏi** — hôm nay 1 chuyên ngành
+   mới đã tốn hơn $6 (Minh: "không chấp nhận được") mà không có cảnh báo sớm nào từ phía tôi giữa
+   chừng. Từ nay: sau mỗi cụm việc tốn nhiều lượt AI (sinh da lĩnh vực, sinh 1 level đầy đủ...), chủ
+   động ước lượng + báo số lượt gọi thật đã dùng, không đợi Minh tự phát hiện qua dashboard.
+4. **File nhật ký này PHẢI cập nhật NGAY sau khi xong 1 việc** (đúng dòng đầu file đã ghi rõ) —
+   không để dồn nhiều ngày rồi viết bù hồi tưởng (mất chi tiết thật, như mục 08-14→08-18 ở trên).
+
+**Việc còn dở:** hoàn thiện nốt A1 Làm Đẹp (7-13 bài residual — ưu tiên phần KHÔNG tốn thêm AI
+trước: vá tay câu khó bằng `patch_lesson_content_item_field`/`patch_lesson_vocabulary_word`, chỉ
+sinh lại AI cho phần thật sự cần); A2 Làm Đẹp mới có nội dung 63/89, CHƯA qua tra từ/audio/ảnh bìa;
+CHƯA quyết định có tiếp tục A2/B1 Làm Đẹp ngay hay tạm dừng — đang chờ Minh chỉ đạo sau khi thấy
+báo cáo chi phí.
