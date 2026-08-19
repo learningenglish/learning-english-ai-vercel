@@ -216,14 +216,26 @@ async function ensureFieldComplete(session, lessonId, action, field, { maxAttemp
   if (existing && isFullyCovered(existing.content, field)) {
     return { ok: true, attempts: 0, alreadyDone: true };
   }
+  // "ambiguousIndices" (2026-08-19) — CHỈ analyze_lesson_phrase_groups trả về "ambiguous_indices"
+  // trong content JSON (xem lesson.js); action khác (reading_chunks...) không có field này, bỏ
+  // qua an toàn nếu parse lỗi/thiếu. Dùng cho lượt "đối chiếu" ở processLessonFully() bên dưới.
+  let ambiguousIndices = [];
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    await callChat(session, action, { lesson_id: lessonId, is_news: false }).catch(() => null);
+    const res = await callChat(session, action, { lesson_id: lessonId, is_news: false }).catch(() => null);
+    try {
+      const parsed = JSON.parse(res?.data?.content);
+      if (Array.isArray(parsed?.ambiguous_indices) && parsed.ambiguous_indices.length) {
+        ambiguousIndices = parsed.ambiguous_indices;
+      }
+    } catch {
+      // action không trả "ambiguous_indices" (vd tách câu) hoặc lỗi tạm — bỏ qua, không chặn luồng chính.
+    }
     const lesson = await fetchLessonContent(session, lessonId);
     if (lesson && isFullyCovered(lesson.content, field)) {
-      return { ok: true, attempts: attempt };
+      return { ok: true, attempts: attempt, ambiguousIndices };
     }
   }
-  return { ok: false, attempts: maxAttempts };
+  return { ok: false, attempts: maxAttempts, ambiguousIndices };
 }
 
 // BUG THẬT (2026-08-13, Minh: "bài a2 và c1 chưa có hình ảnh bìa, tại sao lại duyệt lên app?") —
@@ -690,22 +702,33 @@ async function runCoverImageForOneLesson(session, lesson, usedBaseUrls) {
 // KHÔNG hề phụ thuộc tách câu/tra từ (chỉ cần content.text + gender_hints, đã có ngay từ STAGE 1).
 // Đây chính là nguyên nhân thời gian THẬT ("5 tiếng chỉ để dịch và tách câu" — audio còn CHƯA kịp
 // chạy). Đổi sang: BÀI xử lý TUẦN TỰ (không còn N bài cùng lúc — đơn giản hơn, né đúng kiểu 429
-// dồn dập đã gặp khi nhiều bài cùng lúc), nhưng TRONG 1 BÀI: (tách câu -> tra từ, đúng thứ tự vì
-// tra từ CẦN bản dịch của tách câu làm ngữ cảnh) chạy SONG SONG với audio (không phụ thuộc gì
-// nhau) — ảnh bìa LÀ BƯỚC CUỐI, chỉ chạy sau khi bài đã hoàn thiện các phần trên.
+// dồn dập đã gặp khi nhiều bài cùng lúc), TRONG 1 BÀI: tách câu, tra từ, audio CẢ 3 chạy SONG
+// SONG THẬT (2026-08-19, Minh nhắc lại nghiêm: "tôi yêu cầu sửa code để thực hiện chạy song
+// song ở khâu này" — trước đó tra từ CHỜ tách câu xong để lấy bản dịch làm ngữ cảnh gỡ nghĩa từ
+// đa nghĩa, Minh chỉ rõ: "hoàn toàn có thể khắc phục bằng cách đối chiếu với tách câu để gắn
+// nghĩa hợp lý" SAU KHI cả 2 xong, không cần CHỜ nhau lúc gọi). Xem "ambiguousIndices" bên dưới —
+// ảnh bìa LÀ BƯỚC CUỐI, chỉ chạy sau khi bài đã hoàn thiện các phần trên.
 async function processLessonFully(session, lesson, usedBaseUrls) {
   if (!lesson.ok) return lesson;
 
-  const [, audioResult] = await Promise.all([
-    (async () => {
-      await runFieldForOneLesson(session, lesson, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
-      // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
-      // tốt hơn là 4 lần tra từ") — xem ghi chú đầy đủ ở lời gọi cũ trong publishBatch().
-      await runFieldForOneLesson(session, lesson, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2);
-    })(),
+  await Promise.all([
+    runFieldForOneLesson(session, lesson, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu"),
+    // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
+    // tốt hơn là 4 lần tra từ") — xem ghi chú đầy đủ ở lời gọi cũ trong publishBatch().
+    runFieldForOneLesson(session, lesson, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2),
     runAudioForOneLesson(session, lesson),
   ]);
-  void audioResult; // runAudioForOneLesson tự ghi lesson.audio, giá trị trả về không cần dùng ở đây
+
+  // ĐỐI CHIẾU nghĩa đa nghĩa với tách câu (2026-08-19) — lượt tra từ Ở TRÊN chạy song song với
+  // tách câu nên KHÔNG có bản dịch làm ngữ cảnh gỡ nghĩa cho câu có từ đa nghĩa (xem "ambiguous"
+  // trong analyzePhraseGroupsInChunks, lesson.js). "ambiguousIndices" là DANH SÁCH NHỎ (đa số bài
+  // rỗng) các item cần đối chiếu lại — gọi lại action tra từ ĐÚNG các item đó (force_indices),
+  // giờ tách câu đã lưu xong, không tốn thêm AI cho các item không đa nghĩa.
+  const ambiguousIndices = lesson.phraseGroups?.ambiguousIndices || [];
+  if (ambiguousIndices.length && lesson.readingChunks?.ok) {
+    console.log(`  ${lesson.tag}: đối chiếu nghĩa đa nghĩa cho ${ambiguousIndices.length} câu (tách câu đã xong)...`);
+    await callChat(session, "analyze_lesson_phrase_groups", { lesson_id: lesson.lessonId, is_news: false, force_indices: ambiguousIndices }).catch(() => null);
+  }
 
   console.log(`\n=== Ngữ pháp (verify, không gọi thêm AI): ${lesson.tag} ===`);
   stageGrammarVerify([lesson]);

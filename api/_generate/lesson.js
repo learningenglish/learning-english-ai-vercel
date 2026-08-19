@@ -2182,12 +2182,19 @@ async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
         // serverless có thể bị dừng ngay khi response chính trả về, promise chưa resolve sẽ
         // mất luôn; lỗi ở đây không chặn luồng chính (xem try/catch trong upsertVocabDictionary()).
         await upsertVocabDictionary(sentenceItem?.phrase_groups);
-        return { ok: true, groups: sentenceItem?.phrase_groups || [] };
+        // "ambiguous" (2026-08-19, Minh yêu cầu chạy tách câu + tra từ THẬT SỰ song song, không
+        // chờ nhau — trước đây tra từ CHỜ tách câu xong để lấy contextTranslation gỡ nghĩa từ đa
+        // nghĩa, xem buildDictionaryHint()) — đánh dấu câu này có từ đa nghĩa (dictMap có entry
+        // >1 lựa chọn) để action gọi hàm này biết CẦN đối chiếu lại với reading_chunks SAU KHI cả
+        // 2 nhánh song song xong, xem reconcile_lesson_phrase_group_meanings() bên dưới.
+        const isAmbiguous = Object.values(dictMap).some((opts) => Array.isArray(opts) && opts.length > 1);
+        return { ok: true, groups: sentenceItem?.phrase_groups || [], ambiguous: isAmbiguous };
       }
     );
     // BƯỚC 3: ghép lại ĐÚNG THỨ TỰ câu gốc.
     let freshIdx = 0;
     const combinedGroups = [];
+    let itemAmbiguous = false;
     for (const p of plan) {
       if (p.reused) {
         combinedGroups.push(...p.groups);
@@ -2195,8 +2202,9 @@ async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
       }
       const fr = freshResults[freshIdx++];
       if (fr.ok) combinedGroups.push(...fr.groups);
+      if (fr.ambiguous) itemAmbiguous = true;
     }
-    allItems.push({ index: i, phrase_groups: combinedGroups });
+    allItems.push({ index: i, phrase_groups: combinedGroups, ambiguous: itemAmbiguous });
   }
   return { ok: true, items: allItems };
 }
@@ -2498,9 +2506,24 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // CŨ đã có coverage đủ nhưng chunk sai — vd bài trước khi có fix tách câu THẬT ở
   // analyzePhraseGroupsInChunks, coverage-check chỉ so khớp DÃY TỪ, không phát hiện được chunk
   // sai/quá dài) — bỏ qua hẳn bước lọc, coi MỌI item đều cần phân tích lại.
+  // "data.force_indices" (2026-08-19, Minh yêu cầu chạy tách câu + tra từ THẬT SỰ song song —
+  // xem processLessonFully() trong publish-lesson.mjs) — publish-lesson.mjs gọi 2 hành động này
+  // ĐỒNG THỜI (không chờ nhau), nên lượt tra từ ĐẦU TIÊN có thể chưa thấy "reading_chunks" của
+  // CHÍNH bài này (gỡ nghĩa từ đa nghĩa qua buildDictionaryHint() mất tác dụng cho lượt đó, xem
+  // ghi chú "ambiguous" trong analyzePhraseGroupsInChunks). "force_indices" cho phép gọi lại
+  // action này LẦN 2 (SAU khi tách câu đã xong, reading_chunks đã lưu) chỉ với ĐÚNG các item đã bị
+  // đánh dấu "ambiguous" ở lượt 1 — ép phân tích lại CHỈ những item đó (không phải cả bài) để đối
+  // chiếu với reading_chunks giờ đã có, gắn lại đúng nghĩa — không tốn thêm AI cho các item không
+  // đa nghĩa (đã đạt coverage, itemPhraseCoverageOk() vẫn true nên KHÔNG nằm trong "force" toàn
+  // bài, phải liệt kê rõ index cần ép).
+  const forceIndices = new Set(Array.isArray(data.force_indices) ? data.force_indices : []);
   const missingIdx = data.force
     ? content.map((_, i) => i)
-    : content.map((it, i) => (itemPhraseCoverageOk(it) ? -1 : i)).filter((i) => i >= 0);
+    : content.map((it, i) => (forceIndices.has(i) || !itemPhraseCoverageOk(it) ? i : -1)).filter((i) => i >= 0);
+
+  // "ambiguousIndices" — item nào có từ đa nghĩa (dictMap >1 lựa chọn) ở lượt phân tích NÀY, trả
+  // về cho publish-lesson.mjs biết cần gọi lại lượt "đối chiếu" (force_indices) hay không.
+  const ambiguousIndices = [];
 
   // LƯU NGAY SAU MỖI ITEM (2026-08-13, bug thật: bài B1 nhiều lượt thoại -> tổng thời gian phân
   // tích TUẦN TỰ từng câu vượt trần thời gian 1 lượt gọi Vercel -> 504 FUNCTION_INVOCATION_TIMEOUT
@@ -2510,15 +2533,21 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
   // gọi lại action này (missingIdx tự lọc lại item còn thiếu) sẽ tiếp tục đúng chỗ dang dở, không
   // làm lại từ đầu.
   for (const origIdx of missingIdx) {
+    // Item trong "force_indices" (đối chiếu lại nghĩa đa nghĩa) PHẢI ép phân tích LẠI TỪ ĐẦU,
+    // KHÔNG được truyền phrase_groups CŨ làm "existingGroupsList" — nếu truyền, tryReuseSentence-
+    // Groups() sẽ khớp token y hệt rồi TÁI DÙNG NGUYÊN nghĩa CŨ (có thể sai vì thiếu context lúc
+    // đó), không hề gọi AI lại với dictionaryHint MỚI — làm cả bước đối chiếu này vô nghĩa.
+    const isReconcile = forceIndices.has(origIdx);
     const result = await analyzePhraseGroupsInChunks(
       [{ text: content[origIdx].text, reading_chunks: content[origIdx].reading_chunks }],
-      [content[origIdx].phrase_groups]
+      [isReconcile ? null : content[origIdx].phrase_groups]
     );
     if (!result.ok) {
       console.error("[analyze_lesson_phrase_groups] thất bại tại item", origIdx, result.reason);
       continue;
     }
     const match = result.items.find((x) => x.index === 0) || result.items[0];
+    if (match.ambiguous) ambiguousIndices.push(origIdx);
     content[origIdx] = {
       ...content[origIdx],
       phrase_groups: mergeStrandedPreposition(mergeFragmentedNounPhrases(mergeKnownMultiWordVerbs(splitLeadingSubjectPronoun(match.phrase_groups)))),
@@ -2561,7 +2590,10 @@ export async function analyze_lesson_phrase_groups(data, ctx) {
     return { error: "Phân tích xong nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
   }
 
-  return { content: JSON.stringify({ content }) };
+  // "ambiguous_indices" — publish-lesson.mjs đọc trường này để biết có cần gọi lại action này
+  // 1 lần nữa với "force_indices" (đối chiếu với reading_chunks giờ đã xong) hay không. Rỗng nếu
+  // không có item nào đa nghĩa (đa số trường hợp), không tốn thêm lượt gọi nào.
+  return { content: JSON.stringify({ content, ambiguous_indices: ambiguousIndices }) };
 }
 
 // ====== "Vá" reading_chunks cho bài CŨ (2026-08-10, Đợt 14) — CÙNG KIẾN TRÚC "vá 1 lần" đã có
