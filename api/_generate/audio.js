@@ -23,11 +23,15 @@ import { SUPABASE_URL } from "./_shared.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = "lesson-audio";
-// Sinh song song có giới hạn — mỗi đoạn là 1 lượt gọi OpenAI TTS thật (~1-4s cho câu ngắn/vừa),
-// cần đủ nhanh để không chạm trần maxDuration=60s của Vercel (api/chat.js) ngay cả với bài dài
-// (B2/C1 nhiều lượt thoại) — 4 song song đã đủ dư thời gian với độ dài bài hiện tại (xem
-// LEVEL_LENGTH_TABLE/DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL trong lesson.js, tối đa ~15-20 đơn vị).
-const GENERATION_CONCURRENCY = 4;
+// Sinh song song có giới hạn — mỗi đoạn là 1 lượt gọi OpenAI TTS thật (~1-4s cho câu ngắn/vừa).
+// Ghi chú CŨ "trần maxDuration=60s" đã LỖI THỜI — vercel.json thật đang đặt maxDuration=120 cho
+// api/chat.js (đúng 1 endpoint cho MỌI action, kể cả action này). 2026-08-19 (Minh: kiểm tra kỹ
+// công cụ tham khảo "v6" — bắn hàng chục lượt gọi OpenAI song song không giới hạn, cùng 1 tài
+// khoản OpenAI, không lỗi) — cùng lý do đã áp dụng cho SENTENCE_PARALLEL_LIMIT trong lesson.js:
+// hiện KHÔNG có traffic thật cạnh tranh, nhiều đoạn song song hơn = ít đợt hơn = tổng thời gian
+// NGẮN hơn, không phải ngược lại. Nâng lên đủ phủ 1 lượt duy nhất cho bài dài nhất hiện có (tối
+// đa ~15-20 đơn vị, xem LEVEL_LENGTH_TABLE/DIALOGUE_TURN_COUNT_BASIS_BY_LEVEL trong lesson.js).
+const GENERATION_CONCURRENCY = 20;
 // Khoảng lặng chèn giữa 2 đoạn liền kề (mục E) — Minh: "200-400ms, anh tự chọn số nghe tự nhiên
 // nhất". 300ms = điểm giữa, đủ để phân biệt 2 câu/2 lượt thoại khác nhân vật mà không kéo dài
 // cảm giác chờ. Áp dụng ĐỒNG NHẤT cho cả bài đọc lẫn hội thoại (không chỉ riêng hội thoại như
