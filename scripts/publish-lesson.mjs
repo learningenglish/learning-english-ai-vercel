@@ -415,10 +415,22 @@ async function fetchExistingLessonsByTag(session, level) {
 }
 
 // ====== STAGE 1: Nội dung (generate_lesson), cho TOÀN BỘ lô ======
+// CHẠY SONG SONG (2026-08-18, Minh: "cái nào làm song song được phải đưa vào code") — trước đây
+// CỐ Ý để tuần tự vì lý do an toàn hạn mức: phát hiện "hết hạn mức trong ngày" (403, xem
+// isQuotaExceeded) phải DỪNG NGAY, không gọi thêm — chạy tuần tự thì "dừng ngay" rất đơn giản
+// (break vòng for). Chạy song song vẫn PHẢI giữ đúng tính an toàn đó: dùng 1 cờ `quotaHit` DÙNG
+// CHUNG giữa mọi worker — worker nào phát hiện hết hạn mức thì bật cờ, MỌI worker (kể cả đang ở
+// giữa vòng lặp riêng của nó) đều kiểm tra cờ này TRƯỚC khi bắt đầu 1 bài MỚI và dừng ngay nếu đã
+// bật, không chờ đến lượt mình mới biết. Bài ĐANG gọi dở dang khi cờ bật vẫn được cho hoàn tất
+// bình thường (không huỷ giữa chừng một lượt gọi đã tốn tiền). Dùng mảng kết quả có sẵn CHỈ SỐ
+// (thay vì push tuần tự) để giữ đúng thứ tự lessons[i] khớp samples[i] dù hoàn tất không theo thứ
+// tự — mọi stage sau (stageField, stageAudio...) đều dựa vào thứ tự này để đối chiếu #tag.
 async function stageContent(session, samples) {
-  const lessons = [];
+  const lessons = new Array(samples.length);
   const existingByTag = samples.length ? await fetchExistingLessonsByTag(session, samples[0].level) : new Map();
-  for (const sample of samples) {
+  let quotaHit = false;
+
+  await mapWithConcurrency(samples, STAGE_CONCURRENCY, async (sample, idx) => {
     const lesson = { tag: sample.tag, level: sample.level };
     const existing = existingByTag.get(sample.tag);
     if (existing) {
@@ -437,8 +449,12 @@ async function stageContent(session, samples) {
       // này chạy lại — xác nhận lãng phí thật qua nhiều vòng chạy A1 hôm nay.
       lesson.resumed = true;
       console.log(`  ${sample.tag}: ĐÃ CÓ SẴN (resume, không sinh lại) — "${lesson.title}" (id ${lesson.lessonId})`);
-      lessons.push(lesson);
-      continue;
+      lessons[idx] = lesson;
+      return;
+    }
+    if (quotaHit) {
+      lessons[idx] = { tag: sample.tag, level: sample.level, ok: false, error: "Bị chặn hạn mức — chưa sinh, cần chạy lại vào ngày khác." };
+      return;
     }
     try {
       const genRes = await callChat(session, "generate_lesson", sample);
@@ -446,15 +462,12 @@ async function stageContent(session, samples) {
         lesson.ok = false;
         lesson.error = `generate_lesson thất bại: ${genRes.status} ${JSON.stringify(genRes.data)}`;
         console.log(`  ${sample.tag}: LỖI — ${lesson.error}`);
-        lessons.push(lesson);
+        lessons[idx] = lesson;
         if (genRes.status === 403 && isQuotaExceeded(genRes.data)) {
-          console.warn(`\nHẾT HẠN MỨC — dừng STAGE 1, ${samples.length - lessons.length} bài còn lại BỊ CHẶN, không thử tiếp trong ngày hôm nay.`);
-          for (const rest of samples.slice(lessons.length)) {
-            lessons.push({ tag: rest.tag, level: rest.level, ok: false, error: "Bị chặn hạn mức — chưa sinh, cần chạy lại vào ngày khác." });
-          }
-          break;
+          if (!quotaHit) console.warn(`\nHẾT HẠN MỨC — dừng STAGE 1, các bài chưa gọi sẽ BỊ CHẶN, không thử tiếp trong ngày hôm nay.`);
+          quotaHit = true;
         }
-        continue;
+        return;
       }
       const parsed = JSON.parse(genRes.data.content);
       const data = parsed.lesson;
@@ -478,7 +491,7 @@ async function stageContent(session, samples) {
         lesson.title = tagParsed.title;
       }
       console.log(`  ${sample.tag}: OK — "${lesson.title}" (${lesson.totalWords} từ, id ${lesson.lessonId})`);
-      lessons.push(lesson);
+      lessons[idx] = lesson;
     } catch (err) {
       // 1 bài lỗi bất ngờ (JSON hỏng, mất mạng...) KHÔNG được làm chết cả lô 400+ bài — ghi lỗi,
       // qua bài kế (bug-hunt 2026-08-14: bản trước không có try/catch, throw giữa batch = mất
@@ -486,25 +499,22 @@ async function stageContent(session, samples) {
       lesson.ok = false;
       lesson.error = `Lỗi bất ngờ: ${err?.message || err}`;
       console.log(`  ${sample.tag}: LỖI BẤT NGỜ — ${lesson.error}`);
-      lessons.push(lesson);
+      lessons[idx] = lesson;
     }
-  }
+  });
   return lessons;
 }
 
-// ====== STAGE 2/3: field (reading_chunks HOẶC phrase_groups), cho TOÀN BỘ lô ======
-async function stageField(session, lessons, action, field, resultKey, label, maxAttempts) {
-  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
-    if (!lesson.ok) return; // bỏ qua bài đã lỗi từ stage trước, không phí lượt gọi
-    try {
-      lesson[resultKey] = await ensureFieldComplete(session, lesson.lessonId, action, field, { maxAttempts });
-      console.log(`  ${lesson.tag}: ${label} — ${lesson[resultKey].ok ? "OK" : "CHƯA ĐỦ"} (${lesson[resultKey].attempts} lượt)`);
-    } catch (err) {
-      // 1 bài lỗi bất ngờ không được làm chết cả lô — xem lý do ở stageContent().
-      lesson[resultKey] = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
-      console.log(`  ${lesson.tag}: ${label} — LỖI BẤT NGỜ (${lesson[resultKey].error})`);
-    }
-  });
+// ====== field (reading_chunks HOẶC phrase_groups) cho ĐÚNG 1 bài — dùng bởi processLessonFully() ======
+async function runFieldForOneLesson(session, lesson, action, field, resultKey, label, maxAttempts) {
+  try {
+    lesson[resultKey] = await ensureFieldComplete(session, lesson.lessonId, action, field, { maxAttempts });
+    console.log(`  ${lesson.tag}: ${label} — ${lesson[resultKey].ok ? "OK" : "CHƯA ĐỦ"} (${lesson[resultKey].attempts} lượt)`);
+  } catch (err) {
+    // 1 bài lỗi bất ngờ không được làm chết cả lô — xem lý do ở stageContent().
+    lesson[resultKey] = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+    console.log(`  ${lesson.tag}: ${label} — LỖI BẤT NGỜ (${lesson[resultKey].error})`);
+  }
 }
 
 // ====== STAGE: Kiểm tra ngữ pháp VƯỢT CẤP — chạy cho MỌI bài NGAY SAU stage 1 (2026-08-18, Minh
@@ -628,48 +638,83 @@ async function stageJudge(session, lessons) {
   }
 }
 
-// ====== STAGE 5: Audio, cho TOÀN BỘ lô ======
-async function stageAudio(session, lessons) {
-  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
-    if (!lesson.ok) return;
-    // 2026-08-18 (Minh: "có giải pháp nào tốt hơn không") — TRƯỚC ĐÂY 1 lỗi mạng thoáng qua
-    // ("fetch failed", DNS/kết nối chập chờn — KHÔNG liên quan nội dung) làm cả bài bị đánh dấu
-    // "LỖI BẤT NGỜ" ngay lập tức, không có lượt thử lại nào, phải chạy lại CẢ SCRIPT mới cứu được
-    // đúng 1 bài đó. Thêm ĐÚNG 1 lượt thử lại khi gặp exception (network-level), không thử lại khi
-    // ensureAudioComplete() TRẢ VỀ ok:false bình thường (đã tự thử đủ maxAttempts bên trong rồi).
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        // 2026-08-14 — SỬA bug thật "nhân vật nữ nhưng giọng nam": trước đây luôn truyền mảng
-        // RỖNG, giờ tính đúng từ lesson.content/lesson.characters (đã capture ở stageContent()),
-        // xem computeGenderHints() ở trên.
-        const genderHints = computeGenderHints(lesson.content, lesson.characters);
-        lesson.audio = await ensureAudioComplete(session, lesson.lessonId, genderHints);
-        console.log(`  ${lesson.tag}: audio — ${lesson.audio.ok ? "OK" : "CHƯA ĐỦ"} (${JSON.stringify(lesson.audio)})`);
-        break;
-      } catch (err) {
-        lesson.audio = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
-        if (attempt === 0) {
-          console.log(`  ${lesson.tag}: audio — lỗi mạng thoáng qua, thử lại 1 lần (${lesson.audio.error})`);
-          continue;
-        }
-        console.log(`  ${lesson.tag}: audio — LỖI BẤT NGỜ (${lesson.audio.error})`);
+// ====== Audio cho ĐÚNG 1 bài — dùng bởi processLessonFully() ======
+async function runAudioForOneLesson(session, lesson) {
+  // 2026-08-18 (Minh: "có giải pháp nào tốt hơn không") — TRƯỚC ĐÂY 1 lỗi mạng thoáng qua
+  // ("fetch failed", DNS/kết nối chập chờn — KHÔNG liên quan nội dung) làm cả bài bị đánh dấu
+  // "LỖI BẤT NGỜ" ngay lập tức, không có lượt thử lại nào, phải chạy lại CẢ SCRIPT mới cứu được
+  // đúng 1 bài đó. Thêm ĐÚNG 1 lượt thử lại khi gặp exception (network-level), không thử lại khi
+  // ensureAudioComplete() TRẢ VỀ ok:false bình thường (đã tự thử đủ maxAttempts bên trong rồi).
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      // 2026-08-14 — SỬA bug thật "nhân vật nữ nhưng giọng nam": trước đây luôn truyền mảng
+      // RỖNG, giờ tính đúng từ lesson.content/lesson.characters (đã capture ở stageContent()),
+      // xem computeGenderHints() ở trên.
+      const genderHints = computeGenderHints(lesson.content, lesson.characters);
+      lesson.audio = await ensureAudioComplete(session, lesson.lessonId, genderHints);
+      console.log(`  ${lesson.tag}: audio — ${lesson.audio.ok ? "OK" : "CHƯA ĐỦ"} (${JSON.stringify(lesson.audio)})`);
+      return;
+    } catch (err) {
+      lesson.audio = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+      if (attempt === 0) {
+        console.log(`  ${lesson.tag}: audio — lỗi mạng thoáng qua, thử lại 1 lần (${lesson.audio.error})`);
+        continue;
       }
+      console.log(`  ${lesson.tag}: audio — LỖI BẤT NGỜ (${lesson.audio.error})`);
     }
-  });
+  }
 }
 
-// ====== STAGE 6: Ảnh bìa, cho TOÀN BỘ lô ======
-async function stageCoverImage(session, lessons, usedBaseUrls) {
-  await mapWithConcurrency(lessons, STAGE_CONCURRENCY, async (lesson) => {
-    if (!lesson.ok) return;
-    try {
-      lesson.cover = await ensureCoverImageComplete(session, lesson.lessonId, lesson.title, lesson.contentType, usedBaseUrls);
-      console.log(`  ${lesson.tag}: ảnh bìa — ${lesson.cover.ok ? "OK" : "CHƯA ĐỦ"}`);
-    } catch (err) {
-      lesson.cover = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
-      console.log(`  ${lesson.tag}: ảnh bìa — LỖI BẤT NGỜ (${lesson.cover.error})`);
-    }
-  });
+// ====== Ảnh bìa cho ĐÚNG 1 bài — dùng bởi processLessonFully() ======
+async function runCoverImageForOneLesson(session, lesson, usedBaseUrls) {
+  try {
+    lesson.cover = await ensureCoverImageComplete(session, lesson.lessonId, lesson.title, lesson.contentType, usedBaseUrls);
+    console.log(`  ${lesson.tag}: ảnh bìa — ${lesson.cover.ok ? "OK" : "CHƯA ĐỦ"}`);
+  } catch (err) {
+    lesson.cover = { ok: false, error: `Lỗi bất ngờ: ${err?.message || err}` };
+    console.log(`  ${lesson.tag}: ảnh bìa — LỖI BẤT NGỜ (${lesson.cover.error})`);
+  }
+}
+
+// ====== ĐỔI KIẾN TRÚC (2026-08-19, Minh: "B1 mất hơn 5 tiếng chỉ để dịch và tách câu... bất hợp
+// lý về vận hành. Bài xong tuần tự. Phần tách câu chạy song song từng câu cho việc: dịch, tra từ,
+// audio. Bài hoàn thiện rồi mới chọn hình ảnh") — bản CŨ (STAGE 3-7 cho TOÀN BỘ lô rồi mới qua
+// stage sau, xem ghi chú "KIẾN TRÚC THEO STAGE" đầu file) tạo ra "rào chắn" giữa các bước: TOÀN
+// BỘ 85 bài phải xong tách câu mới được bắt đầu tra từ, xong tra từ mới bắt đầu audio — dù audio
+// KHÔNG hề phụ thuộc tách câu/tra từ (chỉ cần content.text + gender_hints, đã có ngay từ STAGE 1).
+// Đây chính là nguyên nhân thời gian THẬT ("5 tiếng chỉ để dịch và tách câu" — audio còn CHƯA kịp
+// chạy). Đổi sang: BÀI xử lý TUẦN TỰ (không còn N bài cùng lúc — đơn giản hơn, né đúng kiểu 429
+// dồn dập đã gặp khi nhiều bài cùng lúc), nhưng TRONG 1 BÀI: (tách câu -> tra từ, đúng thứ tự vì
+// tra từ CẦN bản dịch của tách câu làm ngữ cảnh) chạy SONG SONG với audio (không phụ thuộc gì
+// nhau) — ảnh bìa LÀ BƯỚC CUỐI, chỉ chạy sau khi bài đã hoàn thiện các phần trên.
+async function processLessonFully(session, lesson, usedBaseUrls) {
+  if (!lesson.ok) return lesson;
+
+  const [, audioResult] = await Promise.all([
+    (async () => {
+      await runFieldForOneLesson(session, lesson, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
+      // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
+      // tốt hơn là 4 lần tra từ") — xem ghi chú đầy đủ ở lời gọi cũ trong publishBatch().
+      await runFieldForOneLesson(session, lesson, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2);
+    })(),
+    runAudioForOneLesson(session, lesson),
+  ]);
+  void audioResult; // runAudioForOneLesson tự ghi lesson.audio, giá trị trả về không cần dùng ở đây
+
+  console.log(`\n=== Ngữ pháp (verify, không gọi thêm AI): ${lesson.tag} ===`);
+  stageGrammarVerify([lesson]);
+
+  console.log(`=== Ảnh bìa: ${lesson.tag} ===`);
+  await runCoverImageForOneLesson(session, lesson, usedBaseUrls);
+
+  lesson.ok =
+    lesson.ok &&
+    (lesson.readingChunks?.ok ?? false) &&
+    (lesson.phraseGroups?.ok ?? false) &&
+    (lesson.grammarCheck?.ok ?? false) &&
+    (lesson.audio?.ok ?? false) &&
+    (lesson.cover?.ok ?? false);
+  return lesson;
 }
 
 // Hàm chính — chạy TỪNG STAGE cho TOÀN BỘ lô rồi mới qua stage sau (xem lý do đổi kiến trúc ở
@@ -707,43 +752,18 @@ export async function publishBatch(samples) {
     return lessons;
   }
 
-  console.log(`\n=== BƯỚC 3/7: Tách câu (reading_chunks) ===`);
-  await stageField(session, lessons, "analyze_lesson_reading_chunks", "reading_chunks", "readingChunks", "tách câu");
-
-  // maxAttempts 4->2 (2026-08-17, Minh: "việc tra từ gây ảnh hưởng tiến độ... tốn 1 lần dịch sẽ
-  // tốt hơn là 4 lần tra từ") — xác nhận thật qua batch: phrase_groups đòi hỏi cấu trúc chặt hơn
-  // hẳn reading_chunks (word_meanings/word_types/word_levels cho TỪNG từ, không chỉ 1 nghĩa cho cả
-  // khối) nên tỉ lệ đạt thấp hơn nhiều — thử thêm 2 lượt nữa (3-4) hiếm khi cứu được câu đã lỗi 2
-  // lần đầu (cùng nguyên tắc đã áp dụng: câu lỗi lặp lại là do RULE, không phải may rủi), chỉ tốn
-  // thêm tiền/thời gian mà không đổi kết quả. reading_chunks (đã ổn định, đạt 1-2 lượt hầu hết
-  // trường hợp) là phương án dự phòng SẴN CÓ phía app khi phrase_groups còn thiếu — chấp nhận
-  // "chưa phủ 100% từng từ nhưng tách câu đã bù đủ" thay vì trả tiền thử lại thêm.
-  console.log(`\n=== BƯỚC 4/7: Tra từ (phrase_groups) ===`);
-  await stageField(session, lessons, "analyze_lesson_phrase_groups", "phrase_groups", "phraseGroups", "tra từ", 2);
-
-  console.log(`\n=== BƯỚC 5/7: Ngữ pháp (verify, không gọi thêm AI) ===`);
-  stageGrammarVerify(lessons);
-
-  console.log(`\n=== BƯỚC 6/7: Audio ===`);
-  await stageAudio(session, lessons);
-
-  console.log(`\n=== BƯỚC 7/7: Ảnh bìa ===`);
-  await stageCoverImage(session, lessons, usedBaseUrls);
-
-  // BỎ HẲN giám khảo AI chấm mẫu ngẫu nhiên (2026-08-17, Minh: "nếu Claude code đã làm chức năng
-  // giám khảo ở bước 2 [đọc toàn bộ + xác nhận] có nghĩa là bước cuối giám khảo chấm ngẫu nhiên là
-  // không cần thiết nữa... tôi tin tưởng bước 2 Claude code sẽ chấm kỹ nội dung") — BƯỚC 2 (Claude
-  // đọc TOÀN BỘ nội dung, không phải mẫu 1/10) đã thay thế vai trò của stageJudge(). Giữ nguyên
-  // stageJudge() trong file (không xoá code) phòng khi cần dùng lại, nhưng KHÔNG gọi trong luồng
-  // mặc định nữa — tránh tốn thêm tiền cho 1 bước đã dư thừa.
+  // ĐỔI KIẾN TRÚC (2026-08-19, xem ghi chú đầy đủ ở processLessonFully()) — BÀI xử lý TUẦN TỰ
+  // (không còn "rào chắn" theo bước cho CẢ LÔ), mỗi bài tự chạy (tách câu -> tra từ) SONG SONG với
+  // audio, rồi ảnh bìa là bước cuối. BỎ HẲN giám khảo AI chấm mẫu ngẫu nhiên (2026-08-17, Minh:
+  // "nếu Claude code đã làm chức năng giám khảo ở bước 2 [đọc toàn bộ + xác nhận] có nghĩa là bước
+  // cuối giám khảo chấm ngẫu nhiên là không cần thiết nữa") — BƯỚC 2 (Claude đọc TOÀN BỘ nội dung)
+  // đã thay thế vai trò của stageJudge(). Giữ nguyên stageJudge() trong file (không xoá code)
+  // phòng khi cần dùng lại, nhưng KHÔNG gọi trong luồng mặc định nữa.
+  console.log(`\n=== BƯỚC 3-7/7: Tách câu + Tra từ (song song với Audio) + Ngữ pháp + Ảnh bìa — TỪNG BÀI, TUẦN TỰ ===`);
   for (const lesson of lessons) {
-    lesson.ok =
-      lesson.ok &&
-      (lesson.readingChunks?.ok ?? false) &&
-      (lesson.phraseGroups?.ok ?? false) &&
-      (lesson.grammarCheck?.ok ?? false) &&
-      (lesson.audio?.ok ?? false) &&
-      (lesson.cover?.ok ?? false);
+    if (!lesson.ok) continue;
+    console.log(`\n--- ${lesson.tag} ---`);
+    await processLessonFully(session, lesson, usedBaseUrls);
   }
 
   // "Đảm bảo level đó đủ up lên app" — gộp theo LEVEL: 1 level chỉ ĐỦ khi 100% bài sinh cho level
@@ -779,6 +799,7 @@ export async function publishBatch(samples) {
 // thích nghi đúng ngành + có "story_chains" chống trùng lặp), thay vì tự chế.
 import { fileURLToPath } from "url";
 import path from "path";
+import fs from "fs";
 import { loadCurriculumSpine, localOccurrenceInChunk, chunkIndexForSlot, normalizeOccupationKey, SKIN_CHUNK_SIZE } from "../api/_generate/curriculum/skin.js";
 import { GRAMMAR_CATALOG } from "../api/_generate/curriculum/grammar-catalog.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -914,6 +935,52 @@ function printStoryChains(level, storyChainsByChunk) {
   }
 }
 
+// "Giao Tiếp Tổng Quát" (2026-08-18, Minh: "tại sao lại viết skin mới mà không viết thẳng nội
+// dung, skin/spine chỉ để tham khảo, bám sát CEFR") — KHÔNG qua ensureSkinForLevel/generateSkinChunk
+// (toàn bộ hệ thống "da lĩnh vực" ở trên chỉ tồn tại để THÍCH NGHI 1 khung trừu tượng thành bối
+// cảnh ĐÚNG NGÀNH — với giao tiếp tổng quát thì bối cảnh đời sống chung CHÍNH LÀ khung trừu tượng
+// đó, không cần lượt AI riêng để "dịch" sang ngành nào cả).
+//
+// Chủ đề VIẾT TAY (general_topics.json, Claude tự soạn — KHÔNG gọi AI cho bước này, xem Minh:
+// "tôi yêu cầu Claude code tạo nội dung, không phải chạy API") — thử đầu tiên chỉ ghép thẳng
+// function_name_vi + situation_frame của spine làm topic thì PHÁT HIỆN THẬT: 2 trường này lặp lại
+// y hệt ở nhiều slot cùng frame_key (soát bằng DRY_RUN, vd "Hỏi thông tin cá nhân — bối cảnh: Hỏi
+// & nêu thông tin số lượng cơ bản" lặp lại y hệt ở slot 5/6/27/28/49/50) — không đủ phân biệt cho
+// generate_lesson, rủi ro sinh nội dung na ná nhau. Thay bằng general_topics.json: mỗi slot có 1
+// câu chủ đề CỤ THỂ (nhân vật + bối cảnh + góc nhìn riêng) do Claude viết tay theo ĐÚNG thứ tự
+// xuất hiện của frame_key đó trong level — không cần AI, không tốn phí, đảm bảo không trùng.
+// "-GT" trong tag để KHÔNG trùng với tag "#<slot>-<level>" của Kế toán khi fetchExistingLessonsByTag()
+// so khớp theo tiền tố title (bảng lessons không tách theo ngành ở tầng đó).
+function loadGeneralTopics() {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, "../api/_generate/curriculum/general_topics.json"), "utf8"));
+}
+
+function buildGeneralSpineSamples(level) {
+  const spineLevels = loadCurriculumSpine();
+  const slots = spineLevels[level];
+  if (!Array.isArray(slots)) throw new Error(`Không tìm thấy level "${level}" trong curriculum_spine.json`);
+  const topicsForLevel = loadGeneralTopics()[level] || {};
+  const occurrenceCounter = {};
+  return slots.map((slot) => {
+    const key = slot.situation_frame_key;
+    const idx = occurrenceCounter[key] || 0;
+    occurrenceCounter[key] = idx + 1;
+    const topicList = topicsForLevel[key];
+    const handTopic = topicList && topicList[idx];
+    if (!handTopic) {
+      console.warn(`  CẢNH BÁO: thiếu chủ đề viết tay cho slot ${slot.slot} (${key}, lần xuất hiện thứ ${idx + 1}) — dùng tạm chủ đề chung chung từ spine, CẦN bổ sung general_topics.json trước khi chạy thật.`);
+    }
+    return {
+      tag: `#${slot.slot}-${level}-GT`,
+      level,
+      content_type: slot.content_type,
+      topic: handTopic || `${slot.function_name_vi} — bối cảnh: ${slot.situation_frame}`,
+      spine_slot: slot.slot,
+      grammar_focus: buildGrammarFocus(slot.grammar),
+    };
+  });
+}
+
 async function buildSpineSamples(session, level, { industry, field, rawKeywordsMatch } = {}) {
   const spineLevels = loadCurriculumSpine();
   const slots = spineLevels[level];
@@ -969,13 +1036,26 @@ async function buildSpineSamples(session, level, { industry, field, rawKeywordsM
 // raw_keywords="Kế toán", không phụ thuộc level) — chỉ industry_skins.levels[LEVEL] và
 // curriculum_spine.json levels[LEVEL] là khác nhau giữa các level, đã tự xử lý đúng trong
 // buildSpineSamples()/ensureSkinForLevel().
+// INDUSTRY (biến môi trường, TÙY CHỌN, mặc định "Kế toán") — 2026-08-18, Minh: "tạo thêm skin
+// mới cho chuyên ngành mới" (Giao Tiếp Tổng Quát trước, Điều dưỡng sau) — cho phép chạy ngành khác
+// mà không cần sửa code mỗi lần. industry === "Giao Tiếp Tổng Quát" đi qua buildGeneralSpineSamples
+// (KHÔNG qua da lĩnh vực, xem ghi chú ở hàm đó); mọi giá trị khác giữ NGUYÊN hành vi cũ
+// (buildSpineSamples qua da lĩnh vực thật, y hệt Kế toán trước đây — không đổi gì cho ngành có
+// hồ sơ nghề cụ thể).
 async function main() {
   const level = process.env.LEVEL || "A1";
-  const session = { token: await login(CREDS.email, CREDS.password) };
-  let samples = await buildSpineSamples(session, level, { industry: "Kế toán", field: "Kế toán", rawKeywordsMatch: "Kế toán" });
+  const industry = process.env.INDUSTRY || "Kế toán";
+  let samples;
+  if (industry === "Giao Tiếp Tổng Quát") {
+    samples = buildGeneralSpineSamples(level);
+    console.log(`\nChuẩn bị sinh ${samples.length} bài (level ${level}, Giao Tiếp Tổng Quát) — chủ đề lấy TRỰC TIẾP từ curriculum_spine.json, không qua bước sinh da lĩnh vực.`);
+  } else {
+    const session = { token: await login(CREDS.email, CREDS.password) };
+    samples = await buildSpineSamples(session, level, { industry, field: industry, rawKeywordsMatch: industry });
+    console.log(`\nChuẩn bị sinh ${samples.length} bài (level ${level}, ${industry}) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
+  }
   const slotLimit = Number(process.env.SLOT_LIMIT) || null;
   if (slotLimit) samples = samples.slice(0, slotLimit);
-  console.log(`\nChuẩn bị sinh ${samples.length} bài (level ${level}, Kế toán) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
   console.log("\n--- Danh sách chủ đề (soát trùng lặp bằng mắt) ---");
   samples.forEach((s) => console.log(`  ${s.tag}: ${s.topic || "(không có topic, generate_lesson tự chọn)"}`));
   if (process.env.DRY_RUN === "1") {

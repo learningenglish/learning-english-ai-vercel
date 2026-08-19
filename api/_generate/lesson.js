@@ -2126,6 +2126,10 @@ function buildDictionaryHint(dictMap, contextTranslation) {
 ${lines.join("\n")}${ambiguityNote}`;
 }
 
+// GỌI SONG SONG TỪNG CÂU (2026-08-18, Minh: "cái nào làm song song được phải đưa vào code") —
+// ĐÚNG nguyên tắc đã áp dụng cho analyzeReadingChunksInChunks(): xác định TRƯỚC (tuần tự, không
+// gọi AI) câu nào tái dùng được từ existingGroups, rồi gọi TẤT CẢ câu còn lại (thật sự cần AI)
+// CÙNG LÚC bằng Promise.all — không đổi số lượt gọi AI, chỉ giảm thời gian chờ.
 async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
   const allItems = [];
   for (let i = 0; i < toAnalyze.length; i++) {
@@ -2135,45 +2139,62 @@ async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
     // ngữ cảnh gỡ đa nghĩa khi từ điển có nhiều lựa chọn nghĩa cho 1 từ, xem buildDictionaryHint().
     const readingChunks = Array.isArray(toAnalyze[i]?.reading_chunks) ? toAnalyze[i].reading_chunks : [];
     const contextTranslation = readingChunks.map((c) => c?.meaning).filter(Boolean).join(" ");
+    // BƯỚC 1 (tuần tự, KHÔNG gọi AI): xác định câu nào tái dùng được. KHÔNG "bỏ cuộc vĩnh viễn"
+    // sau 1 câu không khớp được (bug thật tự phát hiện: câu ĐẦU bị AI bỏ trắng là ca PHỔ BIẾN
+    // NHẤT — "That's fun! Maybe we can go together." chỉ câu 1 thiếu, câu 2 đã đúng SẴN Ở ĐẦU
+    // mảng existingGroups vì câu 1 chưa từng đóng góp gì). cursorIdx KHÔNG bị tiêu tốn khi 1 câu
+    // không khớp, nên câu KẾ TIẾP vẫn thử khớp lại đúng từ vị trí đó — chỉ khi khớp ĐƯỢC mới coi
+    // là "đã dùng" (tryReuseSentenceGroups tự xác nhận CHÍNH XÁC bằng so khớp token).
     let cursorIdx = 0;
-    const combinedGroups = [];
-    for (const sentence of sentences) {
-      // KHÔNG "bỏ cuộc vĩnh viễn" sau 1 câu không khớp được (bug thật tự phát hiện: câu ĐẦU bị
-      // AI bỏ trắng là ca PHỔ BIẾN NHẤT — "That's fun! Maybe we can go together." chỉ câu 1 thiếu,
-      // câu 2 đã đúng SẴN Ở ĐẦU mảng existingGroups vì câu 1 chưa từng đóng góp gì. cursorIdx
-      // KHÔNG bị tiêu tốn khi 1 câu không khớp, nên câu KẾ TIẾP vẫn thử khớp lại đúng từ vị trí
-      // đó — chỉ khi khớp ĐƯỢC mới coi là "đã dùng" (tryReuseSentenceGroups tự xác nhận CHÍNH XÁC
-      // bằng so khớp token, không phải đoán mò) nên thử lại mỗi câu là an toàn.
+    const plan = sentences.map((sentence) => {
       const reused = tryReuseSentenceGroups(existingGroups, cursorIdx, sentenceWordTokens(sentence));
       if (reused) {
-        combinedGroups.push(...reused.groups);
         cursorIdx = reused.nextCursorIdx;
+        return { reused: true, groups: reused.groups };
+      }
+      return { reused: false, sentence };
+    });
+    // BƯỚC 2: gọi AI cho MỌI câu "fresh" CÙNG LÚC.
+    // BỎ HẲN LEO THANG "strong" (2026-08-14, Minh xem dashboard OpenAI thật: model mạnh chiếm
+    // $0.19/$0.29 = 65% chi tiêu 1 ngày — ĐÚNG lỗi CŨ đã bị bắt và sửa 1 lần trước đó (xem ghi
+    // chú "BỎ HẲN lượt leo thang model 'strong'" phía trên), rồi VÔ TÌNH thêm lại hôm nay
+    // (2026-08-13) để cố đạt "tooltip 100%" — nhưng KHÔNG lường trước việc script publish-
+    // lesson.mjs gọi lại action này TỚI 8 LẦN cho 1 bài — mỗi lần đều LEO THANG LẠI cho ĐÚNG
+    // CÙNG 1 câu vẫn lỗi (không có bộ nhớ giữa các lượt gọi), tốn tới 8 LƯỢT MODEL ĐẮT cho 1 câu
+    // mà CUỐI CÙNG VẪN THẤT BẠI (#a-B2 vẫn "chưa đủ" sau 8 lượt) — tiền mất tật mang. Quay lại
+    // ĐÚNG 2 lượt cùng tier mặc định rồi bỏ qua — câu khó thật sự cần sửa bằng RULE (như đã làm
+    // với contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may mắn.
+    const freshResults = await Promise.all(
+      plan
+        .filter((p) => !p.reused)
+        .map(async (p) => {
+          const chunk = [{ text: p.sentence }];
+          const dictMap = await lookupVocabDictionary(sentenceWordTokens(p.sentence));
+          const dictionaryHint = buildDictionaryHint(dictMap, contextTranslation);
+          let result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
+          if (!result.ok) result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
+          if (!result.ok) {
+            console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, p.sentence.slice(0, 60));
+            return { ok: false };
+          }
+          const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+          // Học thêm từ MỚI vào từ điển dùng chung — CHỜ xong (không fire-and-forget) vì hàm
+          // serverless có thể bị dừng ngay khi response chính trả về, promise chưa resolve sẽ
+          // mất luôn; lỗi ở đây không chặn luồng chính (xem try/catch trong upsertVocabDictionary()).
+          await upsertVocabDictionary(sentenceItem?.phrase_groups);
+          return { ok: true, groups: sentenceItem?.phrase_groups || [] };
+        })
+    );
+    // BƯỚC 3: ghép lại ĐÚNG THỨ TỰ câu gốc.
+    let freshIdx = 0;
+    const combinedGroups = [];
+    for (const p of plan) {
+      if (p.reused) {
+        combinedGroups.push(...p.groups);
         continue;
       }
-      const chunk = [{ text: sentence }];
-      // BỎ HẲN LEO THANG "strong" (2026-08-14, Minh xem dashboard OpenAI thật: model mạnh chiếm
-      // $0.19/$0.29 = 65% chi tiêu 1 ngày — ĐÚNG lỗi CŨ đã bị bắt và sửa 1 lần trước đó (xem ghi
-      // chú "BỎ HẲN lượt leo thang model 'strong'" phía trên), rồi VÔ TÌNH thêm lại hôm nay
-      // (2026-08-13) để cố đạt "tooltip 100%" — nhưng KHÔNG lường trước việc script publish-
-      // lesson.mjs gọi lại action này TỚI 8 LẦN cho 1 bài — mỗi lần đều LEO THANG LẠI cho ĐÚNG
-      // CÙNG 1 câu vẫn lỗi (không có bộ nhớ giữa các lượt gọi), tốn tới 8 LƯỢT MODEL ĐẮT cho 1 câu
-      // mà CUỐI CÙNG VẪN THẤT BẠI (#a-B2 vẫn "chưa đủ" sau 8 lượt) — tiền mất tật mang. Quay lại
-      // ĐÚNG 2 lượt cùng tier mặc định rồi bỏ qua — câu khó thật sự cần sửa bằng RULE (như đã làm
-      // với contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may mắn.
-      const dictMap = await lookupVocabDictionary(sentenceWordTokens(sentence));
-      const dictionaryHint = buildDictionaryHint(dictMap, contextTranslation);
-      let result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
-      if (!result.ok) result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
-      if (!result.ok) {
-        console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
-        continue;
-      }
-      const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
-      combinedGroups.push(...(sentenceItem?.phrase_groups || []));
-      // Học thêm từ MỚI vào từ điển dùng chung — CHỜ xong (không fire-and-forget) vì hàm serverless
-      // có thể bị dừng ngay khi response chính trả về, promise chưa resolve sẽ mất luôn; lỗi ở đây
-      // không chặn luồng chính (xem try/catch bên trong upsertVocabDictionary()).
-      await upsertVocabDictionary(sentenceItem?.phrase_groups);
+      const fr = freshResults[freshIdx++];
+      if (fr.ok) combinedGroups.push(...fr.groups);
     }
     allItems.push({ index: i, phrase_groups: combinedGroups });
   }
@@ -2630,6 +2651,12 @@ function tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceRealTokens) {
 // không riêng cho phrase_groups) + tái dùng kết quả câu ĐÃ ĐÚNG khi "vá" lại (existingChunksList),
 // ĐÚNG kiến trúc đã verify ổn định cho phrase_groups — không leo thang model "strong" (đắt, không
 // đáng cho tính năng phụ), 1 câu thất bại cả 2 lượt thì bỏ qua RIÊNG câu đó.
+// GỌI SONG SONG TỪNG CÂU (2026-08-18, Minh: "cái nào làm song song được phải đưa vào code" — đối
+// chiếu file v6, tool cũ của Minh cũng gọi mỗi câu 1 lượt AI RIÊNG nhưng KHÔNG đợi câu này xong
+// mới gọi câu sau). Việc xác định câu nào TÁI DÙNG được (tryReuseSentenceChunks) chỉ là phép so
+// khớp mảng có sẵn, không gọi AI — làm phần đó TRƯỚC theo đúng thứ tự (cursorIdx phụ thuộc thứ tự)
+// để BIẾT câu nào thật sự cần hỏi AI, rồi gọi TẤT CẢ các câu đó CÙNG LÚC bằng Promise.all thay vì
+// tuần tự từng câu — không đổi số lượt gọi AI (không tăng chi phí), chỉ giảm THỜI GIAN CHỜ.
 async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
   const allItems = [];
   const debugSkips = [];
@@ -2637,35 +2664,53 @@ async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
     const sentences = splitEnglishSentencesForPhraseGroups(toAnalyze[i].text);
     const existingChunks = Array.isArray(existingChunksList?.[i]) ? existingChunksList[i] : null;
     let cursorIdx = 0;
-    const combinedChunks = [];
-    for (const sentence of sentences) {
+    const plan = sentences.map((sentence) => {
       const reused = tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceWordTokens(sentence));
       if (reused) {
-        combinedChunks.push(...reused.chunks);
         cursorIdx = reused.nextCursorIdx;
+        return { reused: true, chunks: reused.chunks };
+      }
+      return { reused: false, sentence };
+    });
+    const freshResults = await Promise.all(
+      plan
+        .filter((p) => !p.reused)
+        .map(async (p) => {
+          const chunk = [{ text: p.sentence }];
+          let result = await callAnalyzeReadingChunks(chunk);
+          const attempt1Reason = result.reason;
+          const attempt1Debug = result.debugDetail;
+          if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
+          if (!result.ok) {
+            console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, p.sentence.slice(0, 60));
+            return { ok: false, sentence: p.sentence, attempt1Reason, attempt1Debug, attempt2Reason: result.reason, attempt2Debug: result.debugDetail };
+          }
+          const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+          return { ok: true, chunks: sentenceItem?.reading_chunks || [] };
+        })
+    );
+    let freshIdx = 0;
+    const combinedChunks = [];
+    for (const p of plan) {
+      if (p.reused) {
+        combinedChunks.push(...p.chunks);
         continue;
       }
-      const chunk = [{ text: sentence }];
-      let result = await callAnalyzeReadingChunks(chunk);
-      const attempt1Reason = result.reason;
-      const attempt1Debug = result.debugDetail;
-      if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
-      if (!result.ok) {
-        console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, sentence.slice(0, 60));
+      const fr = freshResults[freshIdx++];
+      if (!fr.ok) {
         // TẠM THỜI (2026-08-18, chẩn đoán lỗi B1 tách câu sót câu) — ghi lại lý do THẬT của CẢ 2
         // lượt thử để trả về ngoài response, vì `vercel logs` không đọc được trong sandbox này.
         debugSkips.push({
           itemIndex: i,
-          sentence,
-          attempt1Reason,
-          attempt1Debug,
-          attempt2Reason: result.reason,
-          attempt2Debug: result.debugDetail,
+          sentence: fr.sentence,
+          attempt1Reason: fr.attempt1Reason,
+          attempt1Debug: fr.attempt1Debug,
+          attempt2Reason: fr.attempt2Reason,
+          attempt2Debug: fr.attempt2Debug,
         });
         continue;
       }
-      const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
-      combinedChunks.push(...(sentenceItem?.reading_chunks || []));
+      combinedChunks.push(...fr.chunks);
     }
     allItems.push({ index: i, reading_chunks: combinedChunks });
   }
