@@ -48,7 +48,11 @@ registerTranslations({
   "Marketing": "Marketing",
 });
 
-function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms) {
+// "subDomains" (2026-08-19, TÙY CHỌN — chỉ ngành có nhiều mảng dịch vụ con rõ rệt mới cần, vd
+// Làm Đẹp: mỹ phẩm/spa/trang điểm/nail/tóc) — đọc bởi skin.js để BẮT BUỘC + kiểm tra bằng code
+// việc chia đều chủ đề qua các mảng con, xem validateSubDomainDiversity() trong skin.js. Ngành
+// không có mảng con (vd Kế toán) truyền mảng rỗng/bỏ qua tham số, giữ nguyên hành vi cũ.
+function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms, subDomains) {
   return {
     is_general: false,
     // "is_fixed_catalog" (2026-08-04) — khớp đúng cờ mới thêm ở insertLearningGoal() trong
@@ -59,6 +63,7 @@ function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms) {
     primary_communication_scope: scope,
     interlocutors,
     core_terms: coreTerms,
+    ...(subDomains?.length ? { sub_domains: subDomains } : {}),
     confidence: { merged_occupation: "cao", interlocutors: "cao", core_terms: "cao" },
   };
 }
@@ -128,7 +133,8 @@ const BEAUTY_PROFILE = occupationProfile(
     "conditioner",
     "hair treatment",
     "skin type",
-  ]
+  ],
+  ["Mỹ phẩm", "Spa", "Trang điểm", "Nail", "Tóc"]
 );
 
 // Chuyên ngành KHÁC — chỉ trưng bày đúng khung ảnh mẫu, KHÔNG chọn được (Minh: "ghi ra và cho

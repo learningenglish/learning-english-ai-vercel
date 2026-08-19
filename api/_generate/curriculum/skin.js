@@ -382,6 +382,14 @@ tiếp riêng của nó, KHÔNG đổi khung để hợp câu chuyện). Với M
   (nếu có) PHÁT TRIỂN TIẾP NỐI TRỰC TIẾP (không phải chuyện mới), vị trí cuối có KẾT QUẢ/KẾT
   THÚC rõ ràng. Đây PHẢI là 1 CÂU CHUYỆN DUY NHẤT chảy xuyên suốt cả chuỗi, KHÔNG PHẢI 2-3 câu
   chuyện tách rời chỉ tình cờ cùng 1 chủ đề chung chung.
+- "sub_domain" (2026-08-19, CHỈ bắt buộc khi user prompt liệt kê "CÁC MẢNG DỊCH VỤ CON" của
+  ngành này — bỏ qua mục này nếu ngành không có mảng con): chọn ĐÚNG 1 giá trị trong danh sách
+  mảng dịch vụ con đã cho, khớp với "character"+"setting" của chính chuỗi này (vd nhân vật là kỹ
+  thuật viên nail tại tiệm nail thì "sub_domain" phải là mảng nail, KHÔNG phải mảng khác). BẮT
+  BUỘC CHIA ĐỀU qua các mảng khi xếp TOÀN BỘ story_chains của chunk này — XOAY VÒNG qua từng mảng
+  theo đúng thứ tự liệt kê thay vì lặp lại 1-2 mảng quen thuộc (lỗi thật đã xác nhận: không xoay
+  vòng chủ động sẽ dồn >30% chuỗi vào 1 mảng và gần như bỏ quên mảng khác) — tỉ lệ chia đều này bị
+  kiểm tra bằng code, lệch quá sẽ bị coi KHÔNG ĐẠT phải sinh lại.
 Hết 1 chuỗi thì đổi SETTING/TÌNH HUỐNG/NGƯỜI ĐỐI THOẠI cho chuỗi tiếp theo (tránh cảm giác 1
 series bất tận xuyên suốt cả level) — nhân vật chính CÓ THỂ lặp lại (đúng dàn cố định ở trên),
 chỉ KHÔNG lặp lại NGUYÊN VẸN cùng 1 bối cảnh/tình huống/người đối thoại của chuỗi ngay trước đó.
@@ -428,7 +436,8 @@ markdown code fence:
       "character": "<nhân vật chính, cụ thể>",
       "setting": "<bối cảnh/không gian, cụ thể>",
       "counterpart_role": "<vai trò người đối thoại, hoặc rỗng nếu bài đọc thuần>",
-      "arc": "<mạch diễn biến mở đầu -> phát triển -> kết thúc>"
+      "arc": "<mạch diễn biến mở đầu -> phát triển -> kết thúc>",
+      "sub_domain": "<1 trong các mảng dịch vụ con đã cho trong user prompt — CHỈ điền nếu ngành này có khai báo mảng con, để rỗng "" nếu không có>"
     }
   ],
   "frames": {
@@ -461,6 +470,9 @@ function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts
     `- Phạm vi giao tiếp chính: ${occupationProfile.primary_communication_scope}`,
     `- Người đối thoại: ${interlocutorsLine}`,
     `- Thuật ngữ lõi: ${occupationProfile.core_terms.join(", ")}`,
+    ...(Array.isArray(occupationProfile.sub_domains) && occupationProfile.sub_domains.length
+      ? [`- CÁC MẢNG DỊCH VỤ CON của ngành này (BẮT BUỘC gắn "sub_domain" cho MỖI story_chain, chỉ dùng ĐÚNG các giá trị sau, chia ĐỀU qua các chuỗi, không dồn phần lớn vào 1-2 mảng quen thuộc): ${occupationProfile.sub_domains.join(", ")}`]
+      : []),
     "",
     `Cấp độ cần sinh chủ đề: ${level}`,
     "",
@@ -576,7 +588,44 @@ function validateSituationTypeDistribution(gotFrames) {
   return problems;
 }
 
-function validateLevelPayload(level, data, frames, requiredCounts, spineSlots) {
+// Đếm được bằng code (2026-08-19, theo đúng mẫu validateCounterpartDiversity/
+// validateSituationTypeDistribution ở trên) — CHỈ áp dụng khi occupationProfile khai báo
+// "sub_domains" (ngành có nhiều mảng dịch vụ con rõ rệt, vd Làm Đẹp: mỹ phẩm/spa/trang điểm/
+// nail/tóc). BUG THẬT xác nhận qua dry-run thật (89 slot A1 Làm Đẹp, chưa có validator này): dù
+// chân dung nghề liệt kê đủ 5 mảng trong core_terms, model TỰ NHIÊN dồn phần lớn chuỗi vào 1 mảng
+// quen thuộc (spa ~31%) và gần như bỏ quên 1 mảng khác (trang điểm ~2%) — giống hệt lỗi
+// situation_type đã gặp trước đó, "nêu suông" trong prompt không đủ, phải có tiêu chí ĐẾM ĐƯỢC.
+const MAX_SINGLE_SUBDOMAIN_RATIO = 0.3;
+function validateSubDomainDiversity(chains, subDomains) {
+  if (!Array.isArray(subDomains) || subDomains.length < 2) return [];
+  const problems = [];
+  const missingTag = chains.find((c) => !String(c?.sub_domain || "").trim());
+  if (missingTag) {
+    problems.push(`story_chains có mục thiếu "sub_domain" bắt buộc (ngành này có ${subDomains.length} mảng: ${subDomains.join(", ")})`);
+    return problems; // các kiểm tra tỉ lệ bên dưới vô nghĩa nếu còn thiếu field, tránh spam lỗi
+  }
+  const total = chains.length;
+  const counts = {};
+  for (const c of chains) {
+    const sd = String(c.sub_domain).trim();
+    counts[sd] = (counts[sd] || 0) + 1;
+  }
+  const unknown = Object.keys(counts).filter((sd) => !subDomains.includes(sd));
+  if (unknown.length) problems.push(`sub_domain lạ ngoài danh sách cho phép: ${unknown.join(", ")} (chỉ được dùng: ${subDomains.join(", ")})`);
+  const maxAllowed = Math.max(1, Math.ceil(total * MAX_SINGLE_SUBDOMAIN_RATIO));
+  for (const [sd, count] of Object.entries(counts)) {
+    if (count > maxAllowed) {
+      problems.push(`sub_domain "${sd}" chiếm ${count}/${total} chuỗi, vượt trần ${maxAllowed} (tối đa ${Math.round(MAX_SINGLE_SUBDOMAIN_RATIO * 100)}%) — cần chia đều hơn qua ${subDomains.length} mảng`);
+    }
+  }
+  const missingDomains = subDomains.filter((sd) => !counts[sd] && total >= subDomains.length);
+  if (missingDomains.length) {
+    problems.push(`thiếu hẳn mảng: ${missingDomains.join(", ")} — mỗi mảng trong "${subDomains.join(", ")}" phải xuất hiện ít nhất 1 chuỗi khi đủ số lượng`);
+  }
+  return problems;
+}
+
+function validateLevelPayload(level, data, frames, requiredCounts, spineSlots, occupationProfile) {
   const problems = [];
   if (!data || data.level !== level) problems.push(`level trả về không khớp (kỳ vọng ${level})`);
   const frameKeys = frames.map((f) => f.key);
@@ -612,6 +661,7 @@ function validateLevelPayload(level, data, frames, requiredCounts, spineSlots) {
     const badChain = chains.find((c) => !c || !String(c.character || "").trim() || !String(c.setting || "").trim() || !String(c.arc || "").trim());
     if (badChain) problems.push("story_chains có mục thiếu character/setting/arc");
     problems.push(...validateCounterpartDiversity(chains, spineSlots));
+    problems.push(...validateSubDomainDiversity(chains, occupationProfile?.sub_domains));
   }
   return problems;
 }
@@ -688,7 +738,7 @@ export async function generateSkinChunk({ occupationProfile, level, spineLevelSl
       lastProblems = ["gọi API hoặc parse JSON thất bại"];
       continue;
     }
-    const problems = validateLevelPayload(level, result.data, frames, requiredCounts, chunkSlots);
+    const problems = validateLevelPayload(level, result.data, frames, requiredCounts, chunkSlots, occupationProfile);
     if (!problems.length) {
       return {
         ok: true,
