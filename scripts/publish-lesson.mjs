@@ -788,12 +788,25 @@ export async function publishBatch(samples) {
   // cuối giám khảo chấm ngẫu nhiên là không cần thiết nữa") — BƯỚC 2 (Claude đọc TOÀN BỘ nội dung)
   // đã thay thế vai trò của stageJudge(). Giữ nguyên stageJudge() trong file (không xoá code)
   // phòng khi cần dùng lại, nhưng KHÔNG gọi trong luồng mặc định nữa.
-  console.log(`\n=== BƯỚC 3-7/7: Tách câu + Tra từ (song song với Audio) + Ngữ pháp + Ảnh bìa — TỪNG BÀI, TUẦN TỰ ===`);
-  for (const lesson of lessons) {
-    if (!lesson.ok) continue;
+  // NHIỀU BÀI CÙNG LÚC (2026-08-19, Minh: "như vậy có thể tăng mức triển khai làm nhiều bài song
+  // song" — sau khi xác nhận trong-1-bài đã hết dư địa tăng tốc, vì số câu/lượt thoại thật bị giới
+  // hạn tự nhiên theo cấp độ, Math.min(limit, số câu thật) khiến tăng giới hạn nữa vô nghĩa). Lý
+  // do "bài xong tuần tự" TRƯỚC ĐÂY (429 dồn dập khi nhiều bài cùng lúc, xem ghi chú commit
+  // 0a24720/cdb01ae) dựa trên CÙNG giả định vừa được gỡ bỏ cho SENTENCE_PARALLEL_LIMIT/
+  // GENERATION_CONCURRENCY: hiện chưa có traffic thật cạnh tranh, chỉ script này dùng API key. Mức
+  // 4 bài song song (thận trọng hơn STAGE_CONCURRENCY=6 dùng cho STAGE 1, vì MỖI bài ở bước này tự
+  // tốn tới ~20-30 lượt gọi AI cùng lúc bên trong nó — nhân lên đã là gánh nặng lớn hơn hẳn STAGE
+  // 1) — theo dõi log 429 thật sau khi áp dụng, tăng thêm nếu vẫn sạch. usedBaseUrls (chống trùng
+  // ảnh bìa) có rủi ro race-condition rất nhỏ khi nhiều bài chạy cùng lúc — chấp nhận được, chỉ
+  // ảnh hưởng thẩm mỹ (2 bài trùng ảnh gốc), không phải đúng/sai nội dung (đã đánh giá từ commit
+  // 0a24720).
+  const LESSON_CONCURRENCY = Number(process.env.LESSON_CONCURRENCY) || 4;
+  console.log(`\n=== BƯỚC 3-7/7: Tách câu + Tra từ (song song với Audio) + Ngữ pháp + Ảnh bìa — ${LESSON_CONCURRENCY} BÀI CÙNG LÚC ===`);
+  await mapWithConcurrency(lessons, LESSON_CONCURRENCY, async (lesson) => {
+    if (!lesson.ok) return;
     console.log(`\n--- ${lesson.tag} ---`);
     await processLessonFully(session, lesson, usedBaseUrls);
-  }
+  });
 
   // "Đảm bảo level đó đủ up lên app" — gộp theo LEVEL: 1 level chỉ ĐỦ khi 100% bài sinh cho level
   // đó đạt đủ 5 điều kiện, không xét từng bài đơn lẻ.
