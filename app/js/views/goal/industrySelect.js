@@ -144,12 +144,49 @@ const BEAUTY_PROFILE = occupationProfile(
   { female: ["Ngọc Hân", "Bảo Trâm", "Diễm My"], male: ["Quang Huy", "Minh Tuấn"] }
 );
 
+// "Điều Dưỡng" (2026-08-19, thứ tự triển khai chốt: Kế toán -> Làm Đẹp -> Điều Dưỡng -> Giao Tiếp
+// Tổng Quát) — GỘP 5 khoa phổ biến (Nội khoa, Ngoại khoa, Nhi khoa, Cấp cứu, Sản khoa) thành
+// "sub_domains" giống cách Làm Đẹp gộp 5 mảng dịch vụ — core_terms ưu tiên DỤNG CỤ/THIẾT BỊ y tế cụ
+// thể (giống nguyên tắc "danh từ vật dụng cụ thể" đã áp dụng cho Làm Đẹp), KHÔNG dùng thuật ngữ y
+// khoa chuyên sâu (chẩn đoán/thuật ngữ bệnh lý) vì đối tượng học là điều dưỡng giao tiếp cơ bản,
+// không phải đào tạo y khoa. Dàn tên RIÊNG, KHÔNG trùng Kế toán/Làm Đẹp (đúng bài học đã bắt lỗi ở
+// Làm Đẹp — xem ghi chú "characterPool" ở occupationProfile()).
+const NURSING_PROFILE = occupationProfile(
+  "Điều dưỡng",
+  "Chăm sóc và theo dõi sức khỏe bệnh nhân tại bệnh viện/phòng khám: đo dấu hiệu sinh tồn, hỗ trợ dùng thuốc, thay băng vết thương, ghi hồ sơ bệnh án, hướng dẫn bệnh nhân và người nhà, phối hợp với bác sĩ và điều dưỡng khác",
+  [
+    { role: "Bệnh nhân", register: "ân cần, trấn an, giải thích rõ ràng" },
+    { role: "Người nhà bệnh nhân", register: "lịch sự, giải thích rõ ràng, kiên nhẫn" },
+    { role: "Bác sĩ", register: "trang trọng, báo cáo, xin y lệnh" },
+    { role: "Đồng nghiệp điều dưỡng", register: "thân thiện, phối hợp ca trực" },
+    { role: "Bệnh nhân/người nhà nước ngoài", register: "lịch sự, giải thích chậm rãi, rõ ràng" },
+  ],
+  [
+    "blood pressure",
+    "thermometer",
+    "stethoscope",
+    "IV drip",
+    "syringe",
+    "vital signs",
+    "medication chart",
+    "wheelchair",
+    "bandage",
+    "oxygen mask",
+    "pulse rate",
+    "patient chart",
+    "wound care",
+    "catheter",
+    "nurse call button",
+  ],
+  ["Nội khoa", "Ngoại khoa", "Nhi khoa", "Cấp cứu", "Sản khoa"],
+  { female: ["Hồng Nhung", "Thanh Thảo", "Mỹ Linh"], male: ["Đức Anh", "Tuấn Kiệt"] }
+);
+
 // Chuyên ngành KHÁC — chỉ trưng bày đúng khung ảnh mẫu, KHÔNG chọn được (Minh: "ghi ra và cho
 // toggle... để sắp ra mắt").
 const OTHER_INDUSTRIES = [
   { key: "it", label: "Công nghệ thông tin", icon: "monitor", chip: "blue" },
   { key: "business", label: "Kinh doanh", icon: "briefcase", chip: "green" },
-  { key: "nursing", label: "Điều dưỡng", icon: "flask", chip: "orange" },
   { key: "tourism", label: "Du lịch", icon: "compass", chip: "purple" },
   { key: "logistics", label: "Logistics", icon: "library", chip: "blue" },
   { key: "engineering", label: "Kỹ thuật", icon: "settings", chip: "green" },
@@ -183,6 +220,7 @@ const INDUSTRIES = [
   { key: "general", label: "Giao Tiếp Tổng Quát", icon: "message-circle", chip: "blue", real: true },
   { key: "accounting", label: "Kế toán", icon: "dollar-sign", chip: "orange", real: true, profile: ACCOUNTING_PROFILE },
   { key: "beauty", label: "Làm Đẹp", icon: "sparkles", chip: "purple", real: true, profile: BEAUTY_PROFILE },
+  { key: "nursing", label: "Điều dưỡng", icon: "flask", chip: "orange", real: true, profile: NURSING_PROFILE },
   ...OTHER_INDUSTRIES.map((ind) => ({ ...ind, real: false })),
 ];
 
