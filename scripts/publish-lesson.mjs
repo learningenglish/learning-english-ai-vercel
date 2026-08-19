@@ -1054,8 +1054,9 @@ async function main() {
     samples = await buildSpineSamples(session, level, { industry, field: industry, rawKeywordsMatch: industry });
     console.log(`\nChuẩn bị sinh ${samples.length} bài (level ${level}, ${industry}) — chủ đề lấy từ da lĩnh vực thật, không còn tự chế.`);
   }
+  const slotStart = Number(process.env.SLOT_START) || 0;
   const slotLimit = Number(process.env.SLOT_LIMIT) || null;
-  if (slotLimit) samples = samples.slice(0, slotLimit);
+  if (slotStart || slotLimit) samples = samples.slice(slotStart, slotLimit ? slotStart + slotLimit : undefined);
   console.log("\n--- Danh sách chủ đề (soát trùng lặp bằng mắt) ---");
   samples.forEach((s) => console.log(`  ${s.tag}: ${s.topic || "(không có topic, generate_lesson tự chọn)"}`));
   if (process.env.DRY_RUN === "1") {
