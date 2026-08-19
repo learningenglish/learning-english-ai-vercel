@@ -390,6 +390,24 @@ tiếp riêng của nó, KHÔNG đổi khung để hợp câu chuyện). Với M
   theo đúng thứ tự liệt kê thay vì lặp lại 1-2 mảng quen thuộc (lỗi thật đã xác nhận: không xoay
   vòng chủ động sẽ dồn >30% chuỗi vào 1 mảng và gần như bỏ quên mảng khác) — tỉ lệ chia đều này bị
   kiểm tra bằng code, lệch quá sẽ bị coi KHÔNG ĐẠT phải sinh lại.
+- "secondary_sub_domain" (2026-08-19, Minh yêu cầu: xoay vòng cứng như trên khiến việc chuyển
+  từ mảng này sang mảng khác bị NGẮT ĐỘT NGỘT, và học viên dễ QUÊN từ vựng của mảng đã học trước
+  đó khi level đã chuyển hẳn sang mảng mới — CHỈ áp dụng khi ngành có khai báo mảng con, để rỗng
+  "" ở các chuỗi khác nếu không dùng). Dùng field này cho ĐÚNG 2 mục đích, không dùng tuỳ tiện:
+  (a) CHUYỂN TIẾP MƯỢT: khi 1 chuỗi là chuỗi ĐẦU TIÊN xoay sang 1 mảng khác mảng của chuỗi ngay
+  trước nó, gắn "secondary_sub_domain" = ĐÚNG mảng của chuỗi ngay trước, và để "arc" của chuỗi
+  này đan xen tự nhiên cả 2 mảng (vd nhân vật vừa xong việc thuộc mảng cũ thì mới chuyển sang việc
+  thuộc mảng mới trong CÙNG bối cảnh, hoặc khách hàng hỏi liền cả 2 loại dịch vụ) — KHÔNG cắt đứt
+  đột ngột như đổi chương sách. (b) ÔN LẠI MẢNG CŨ: từ chuỗi nào mà TẤT CẢ các mảng đã từng xuất
+  hiện ít nhất 1 lần trong chunk này trở đi, thỉnh thoảng (không cần mọi chuỗi) gắn
+  "secondary_sub_domain" = 1 mảng ĐÃ xuất hiện trước đó (khác mảng chính "sub_domain" của chính
+  chuỗi này), và lồng 1 chi tiết/từ vựng thuộc mảng cũ đó vào "arc" (vd khách quen từng làm nail
+  nay quay lại hỏi thêm dịch vụ chăm sóc tóc, nhân viên trang điểm nhắc lại 1 sản phẩm mỹ phẩm đã
+  tư vấn trước đó) — giữ từ vựng mảng cũ không bị rơi rụng khỏi trí nhớ học viên. "secondary_sub_
+  domain" KHÔNG bắt buộc ở mọi chuỗi và KHÔNG được trùng "sub_domain" của chính chuỗi đó, nhưng
+  tối thiểu khoảng 15% tổng số chuỗi của chunk này PHẢI có "secondary_sub_domain" hợp lệ (đếm
+  được bằng code, thiếu sẽ bị coi KHÔNG ĐẠT phải sinh lại — giống cách chia đều "sub_domain" ở
+  trên).
 Hết 1 chuỗi thì đổi SETTING/TÌNH HUỐNG/NGƯỜI ĐỐI THOẠI cho chuỗi tiếp theo (tránh cảm giác 1
 series bất tận xuyên suốt cả level) — nhân vật chính CÓ THỂ lặp lại (đúng dàn cố định ở trên),
 chỉ KHÔNG lặp lại NGUYÊN VẸN cùng 1 bối cảnh/tình huống/người đối thoại của chuỗi ngay trước đó.
@@ -437,7 +455,8 @@ markdown code fence:
       "setting": "<bối cảnh/không gian, cụ thể>",
       "counterpart_role": "<vai trò người đối thoại, hoặc rỗng nếu bài đọc thuần>",
       "arc": "<mạch diễn biến mở đầu -> phát triển -> kết thúc>",
-      "sub_domain": "<1 trong các mảng dịch vụ con đã cho trong user prompt — CHỈ điền nếu ngành này có khai báo mảng con, để rỗng "" nếu không có>"
+      "sub_domain": "<1 trong các mảng dịch vụ con đã cho trong user prompt — CHỈ điền nếu ngành này có khai báo mảng con, để rỗng "" nếu không có>",
+      "secondary_sub_domain": "<mảng dịch vụ con THỨ HAI lồng ghép cùng chuỗi này để chuyển tiếp mượt hoặc ôn lại mảng cũ (xem hướng dẫn ở BƯỚC 1) — để rỗng "" nếu chuỗi này thuần 1 mảng>"
     }
   ],
   "frames": {
@@ -471,7 +490,7 @@ function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts
     `- Người đối thoại: ${interlocutorsLine}`,
     `- Thuật ngữ lõi: ${occupationProfile.core_terms.join(", ")}`,
     ...(Array.isArray(occupationProfile.sub_domains) && occupationProfile.sub_domains.length
-      ? [`- CÁC MẢNG DỊCH VỤ CON của ngành này (BẮT BUỘC gắn "sub_domain" cho MỖI story_chain, chỉ dùng ĐÚNG các giá trị sau, chia ĐỀU qua các chuỗi, không dồn phần lớn vào 1-2 mảng quen thuộc): ${occupationProfile.sub_domains.join(", ")}`]
+      ? [`- CÁC MẢNG DỊCH VỤ CON của ngành này (BẮT BUỘC gắn "sub_domain" cho MỖI story_chain, chỉ dùng ĐÚNG các giá trị sau, chia ĐỀU qua các chuỗi, không dồn phần lớn vào 1-2 mảng quen thuộc): ${occupationProfile.sub_domains.join(", ")} — và nhớ gắn thêm "secondary_sub_domain" ở khoảng 15% số chuỗi để chuyển tiếp mượt giữa 2 mảng liền kề + thỉnh thoảng ôn lại mảng cũ (xem hướng dẫn chi tiết ở BƯỚC 1 bên dưới)`]
       : []),
     "",
     `Cấp độ cần sinh chủ đề: ${level}`,
@@ -596,6 +615,11 @@ function validateSituationTypeDistribution(gotFrames) {
 // quen thuộc (spa ~31%) và gần như bỏ quên 1 mảng khác (trang điểm ~2%) — giống hệt lỗi
 // situation_type đã gặp trước đó, "nêu suông" trong prompt không đủ, phải có tiêu chí ĐẾM ĐƯỢC.
 const MAX_SINGLE_SUBDOMAIN_RATIO = 0.3;
+// 2026-08-19 — Minh: xoay vòng cứng (chỉ validator trên) khiến chuyển mảng bị NGẮT ĐỘT NGỘT và
+// học viên quên từ vựng mảng cũ khi level đã chuyển hẳn sang mảng mới. "secondary_sub_domain"
+// (xem LEVEL_SYSTEM_PROMPT BƯỚC 1) dùng cho chuyển tiếp mượt giữa 2 mảng liền kề + ôn lại mảng
+// cũ — đếm được bằng code, giống mọi validator khác ở trên, để không chỉ "nêu suông" trong prompt.
+const MIN_SECONDARY_BLEND_RATIO = 0.15;
 function validateSubDomainDiversity(chains, subDomains) {
   if (!Array.isArray(subDomains) || subDomains.length < 2) return [];
   const problems = [];
@@ -621,6 +645,29 @@ function validateSubDomainDiversity(chains, subDomains) {
   const missingDomains = subDomains.filter((sd) => !counts[sd] && total >= subDomains.length);
   if (missingDomains.length) {
     problems.push(`thiếu hẳn mảng: ${missingDomains.join(", ")} — mỗi mảng trong "${subDomains.join(", ")}" phải xuất hiện ít nhất 1 chuỗi khi đủ số lượng`);
+  }
+  const secondaryUnknown = [...new Set(
+    chains.map((c) => String(c?.secondary_sub_domain || "").trim()).filter((sd) => sd && !subDomains.includes(sd))
+  )];
+  if (secondaryUnknown.length) {
+    problems.push(`secondary_sub_domain lạ ngoài danh sách cho phép: ${secondaryUnknown.join(", ")} (chỉ được dùng: ${subDomains.join(", ")})`);
+  }
+  const selfBlend = chains.find((c) => {
+    const secondary = String(c?.secondary_sub_domain || "").trim();
+    return secondary && secondary === String(c?.sub_domain || "").trim();
+  });
+  if (selfBlend) {
+    problems.push(`secondary_sub_domain trùng chính "sub_domain" của cùng 1 chuỗi — phải là mảng KHÁC để tạo chuyển tiếp/ôn lại thật`);
+  }
+  if (total >= subDomains.length) {
+    const blendCount = chains.filter((c) => {
+      const secondary = String(c?.secondary_sub_domain || "").trim();
+      return secondary && subDomains.includes(secondary) && secondary !== String(c?.sub_domain || "").trim();
+    }).length;
+    const minBlend = Math.max(1, Math.floor(total * MIN_SECONDARY_BLEND_RATIO));
+    if (blendCount < minBlend) {
+      problems.push(`chỉ ${blendCount}/${total} chuỗi có "secondary_sub_domain" hợp lệ để chuyển tiếp/ôn lại mảng cũ, cần tối thiểu ${minBlend} (~${Math.round(MIN_SECONDARY_BLEND_RATIO * 100)}%) — không được chỉ xoay vòng cứng từng mảng riêng biệt`);
+    }
   }
   return problems;
 }
