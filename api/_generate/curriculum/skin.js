@@ -331,11 +331,12 @@ huống của vị trí đó — TUYỆT ĐỐI KHÔNG được viết bất k�
 dưới đây.
 
 DÀN NHÂN VẬT CỐ ĐỊNH (2026-08-14, Minh chốt — áp dụng cho MỌI chuỗi có ít nhất 1 vị trí "hội
-thoại"): nhân vật NHÂN VIÊN PHÍA CÔNG TY/NGÀNH (vai chính lặp lại xuyên suốt, khác với người đối
-thoại/khách/đối tác thay đổi theo từng chuỗi) PHẢI lấy tên từ ĐÚNG danh sách sau, KHÔNG tự đặt
-tên khác cho vai này:
-- Nữ: Phương Ánh, Thúy Vy, Trang
-- Nam: Giàu, Khang
+thoại"; 2026-08-19, Minh nhắc lại NGHIÊM: mỗi ngành PHẢI có dàn nhân vật RIÊNG, TUYỆT ĐỐI KHÔNG
+dùng lại tên đã gắn cho ngành khác — xem danh sách CỤ THỂ của ĐÚNG ngành này trong user prompt,
+mục "DÀN NHÂN VẬT CỐ ĐỊNH của ngành này"): nhân vật NHÂN VIÊN PHÍA CÔNG TY/NGÀNH (vai chính lặp
+lại xuyên suốt, khác với người đối thoại/khách/đối tác thay đổi theo từng chuỗi) PHẢI lấy tên từ
+ĐÚNG danh sách đã cho trong user prompt cho ngành này, KHÔNG tự đặt tên khác cho vai này, và
+TUYỆT ĐỐI KHÔNG mượn tên thuộc dàn nhân vật của một ngành khác dù nghe hợp lý.
 Xoay vòng ĐỀU cả 5 tên qua các chuỗi khác nhau (không dồn phần lớn chuỗi cho đúng 1-2 tên quen
 thuộc) — MỘT tên CÓ THỂ xuất hiện lại ở chuỗi khác sau này trong CÙNG level (đây là dàn nhân vật
 cố định của cả giáo trình, KHÔNG phải nhân vật dùng 1 lần rồi bỏ), miễn ở chuỗi mới đó nhân vật
@@ -489,16 +490,26 @@ tử đã khớp vị trí). "story_chains" PHẢI phủ HẾT mọi vị trí t
 sót vị trí nào ngoài mọi chuỗi), các "start_position"/"end_position" của các chuỗi liên tiếp
 không chồng lấn nhau.`;
 
+// Dàn nhân vật cố định MẶC ĐỊNH — GIỮ NGUYÊN danh sách gốc (2026-08-14) chỉ dành riêng cho Kế
+// toán, dùng làm fallback khi occupationProfile KHÔNG khai báo "character_pool" riêng (learning_
+// goals cũ trước 2026-08-19 chưa có field này) — KHÔNG đổi để không ảnh hưởng hành vi Kế toán
+// đã chạy ổn định. Ngành MỚI (Làm Đẹp và các ngành sau) PHẢI khai báo character_pool RIÊNG, KHÔNG
+// dùng chung dàn tên này — bug thật Minh bắt được 2026-08-19: Làm Đẹp lỡ dùng lại nguyên dàn tên
+// của Kế toán vì trước đó danh sách bị hardcode DÙNG CHUNG cho mọi ngành.
+const DEFAULT_KE_TOAN_CHARACTER_POOL = { female: ["Phương Ánh", "Thúy Vy", "Trang"], male: ["Giàu", "Khang"] };
+
 function buildLevelUserPrompt({ occupationProfile, level, frames, requiredCounts, skinGeneralForLevel, spineSlots }) {
   const interlocutorsLine = occupationProfile.interlocutors
     .map((i) => `${i.role} (${i.register})`)
     .join(", ");
+  const characterPool = occupationProfile.character_pool || DEFAULT_KE_TOAN_CHARACTER_POOL;
   const lines = [
     "Chân dung nghề đã chốt (dùng nguyên, không suy luận lại):",
     `- Nghề/ngành: ${occupationProfile.merged_occupation}`,
     `- Phạm vi giao tiếp chính: ${occupationProfile.primary_communication_scope}`,
     `- Người đối thoại: ${interlocutorsLine}`,
     `- Thuật ngữ lõi: ${occupationProfile.core_terms.join(", ")}`,
+    `- DÀN NHÂN VẬT CỐ ĐỊNH của ngành này (dùng cho vai nhân viên phía công ty/ngành ở MỌI chuỗi có hội thoại, xem quy tắc đầy đủ ở trên — TUYỆT ĐỐI KHÔNG dùng tên thuộc dàn nhân vật của ngành KHÁC): Nữ: ${characterPool.female.join(", ")} — Nam: ${characterPool.male.join(", ")}`,
     ...(Array.isArray(occupationProfile.sub_domains) && occupationProfile.sub_domains.length
       ? [`- CÁC MẢNG DỊCH VỤ CON của ngành này (BẮT BUỘC gắn "sub_domain" cho MỖI story_chain, chỉ dùng ĐÚNG các giá trị sau, chia ĐỀU qua các chuỗi, không dồn phần lớn vào 1-2 mảng quen thuộc): ${occupationProfile.sub_domains.join(", ")} — và nhớ gắn thêm "secondary_sub_domain" ở khoảng 15% số chuỗi để chuyển tiếp mượt giữa 2 mảng liền kề + thỉnh thoảng ôn lại mảng cũ (xem hướng dẫn chi tiết ở BƯỚC 1 bên dưới)`]
       : []),

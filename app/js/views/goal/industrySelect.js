@@ -52,7 +52,12 @@ registerTranslations({
 // Làm Đẹp: mỹ phẩm/spa/trang điểm/nail/tóc) — đọc bởi skin.js để BẮT BUỘC + kiểm tra bằng code
 // việc chia đều chủ đề qua các mảng con, xem validateSubDomainDiversity() trong skin.js. Ngành
 // không có mảng con (vd Kế toán) truyền mảng rỗng/bỏ qua tham số, giữ nguyên hành vi cũ.
-function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms, subDomains) {
+// "characterPool" (2026-08-19, Minh bắt lỗi thật: Làm Đẹp lỡ dùng lại NGUYÊN dàn nhân vật cố
+// định của Kế toán vì trước đó api/_generate/curriculum/skin.js hardcode 1 danh sách DÙNG CHUNG
+// cho mọi ngành) — mỗi ngành PHẢI có dàn tên RIÊNG, KHÔNG dùng lại tên đã gắn cho ngành khác.
+// Không truyền cho Kế toán (giữ occupation_profile cũ, skin.js tự fallback về đúng dàn tên gốc
+// đã dùng ổn định — xem DEFAULT_KE_TOAN_CHARACTER_POOL trong skin.js).
+function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms, subDomains, characterPool) {
   return {
     is_general: false,
     // "is_fixed_catalog" (2026-08-04) — khớp đúng cờ mới thêm ở insertLearningGoal() trong
@@ -64,6 +69,7 @@ function occupationProfile(mergedOccupation, scope, interlocutors, coreTerms, su
     interlocutors,
     core_terms: coreTerms,
     ...(subDomains?.length ? { sub_domains: subDomains } : {}),
+    ...(characterPool ? { character_pool: characterPool } : {}),
     confidence: { merged_occupation: "cao", interlocutors: "cao", core_terms: "cao" },
   };
 }
@@ -134,7 +140,8 @@ const BEAUTY_PROFILE = occupationProfile(
     "hair treatment",
     "skin type",
   ],
-  ["Mỹ phẩm", "Spa", "Trang điểm", "Nail", "Tóc"]
+  ["Mỹ phẩm", "Spa", "Trang điểm", "Nail", "Tóc"],
+  { female: ["Ngọc Hân", "Bảo Trâm", "Diễm My"], male: ["Quang Huy", "Minh Tuấn"] }
 );
 
 // Chuyên ngành KHÁC — chỉ trưng bày đúng khung ảnh mẫu, KHÔNG chọn được (Minh: "ghi ra và cho
