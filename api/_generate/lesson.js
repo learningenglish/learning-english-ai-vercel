@@ -2164,26 +2164,26 @@ async function analyzePhraseGroupsInChunks(toAnalyze, existingGroupsList) {
     // mà CUỐI CÙNG VẪN THẤT BẠI (#a-B2 vẫn "chưa đủ" sau 8 lượt) — tiền mất tật mang. Quay lại
     // ĐÚNG 2 lượt cùng tier mặc định rồi bỏ qua — câu khó thật sự cần sửa bằng RULE (như đã làm
     // với contraction/dấu nháy cong/cụm 3-từ hôm nay), không phải trả tiền hy vọng may mắn.
-    const freshResults = await Promise.all(
-      plan
-        .filter((p) => !p.reused)
-        .map(async (p) => {
-          const chunk = [{ text: p.sentence }];
-          const dictMap = await lookupVocabDictionary(sentenceWordTokens(p.sentence));
-          const dictionaryHint = buildDictionaryHint(dictMap, contextTranslation);
-          let result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
-          if (!result.ok) result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
-          if (!result.ok) {
-            console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, p.sentence.slice(0, 60));
-            return { ok: false };
-          }
-          const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
-          // Học thêm từ MỚI vào từ điển dùng chung — CHỜ xong (không fire-and-forget) vì hàm
-          // serverless có thể bị dừng ngay khi response chính trả về, promise chưa resolve sẽ
-          // mất luôn; lỗi ở đây không chặn luồng chính (xem try/catch trong upsertVocabDictionary()).
-          await upsertVocabDictionary(sentenceItem?.phrase_groups);
-          return { ok: true, groups: sentenceItem?.phrase_groups || [] };
-        })
+    const freshResults = await mapSentencesWithConcurrency(
+      plan.filter((p) => !p.reused),
+      SENTENCE_PARALLEL_LIMIT,
+      async (p) => {
+        const chunk = [{ text: p.sentence }];
+        const dictMap = await lookupVocabDictionary(sentenceWordTokens(p.sentence));
+        const dictionaryHint = buildDictionaryHint(dictMap, contextTranslation);
+        let result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
+        if (!result.ok) result = await callAnalyzePhraseGroups(chunk, undefined, dictionaryHint);
+        if (!result.ok) {
+          console.warn("[analyzePhraseGroupsInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, p.sentence.slice(0, 60));
+          return { ok: false };
+        }
+        const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+        // Học thêm từ MỚI vào từ điển dùng chung — CHỜ xong (không fire-and-forget) vì hàm
+        // serverless có thể bị dừng ngay khi response chính trả về, promise chưa resolve sẽ
+        // mất luôn; lỗi ở đây không chặn luồng chính (xem try/catch trong upsertVocabDictionary()).
+        await upsertVocabDictionary(sentenceItem?.phrase_groups);
+        return { ok: true, groups: sentenceItem?.phrase_groups || [] };
+      }
     );
     // BƯỚC 3: ghép lại ĐÚNG THỨ TỰ câu gốc.
     let freshIdx = 0;
@@ -2651,12 +2651,35 @@ function tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceRealTokens) {
 // không riêng cho phrase_groups) + tái dùng kết quả câu ĐÃ ĐÚNG khi "vá" lại (existingChunksList),
 // ĐÚNG kiến trúc đã verify ổn định cho phrase_groups — không leo thang model "strong" (đắt, không
 // đáng cho tính năng phụ), 1 câu thất bại cả 2 lượt thì bỏ qua RIÊNG câu đó.
-// GỌI SONG SONG TỪNG CÂU (2026-08-18, Minh: "cái nào làm song song được phải đưa vào code" — đối
-// chiếu file v6, tool cũ của Minh cũng gọi mỗi câu 1 lượt AI RIÊNG nhưng KHÔNG đợi câu này xong
-// mới gọi câu sau). Việc xác định câu nào TÁI DÙNG được (tryReuseSentenceChunks) chỉ là phép so
-// khớp mảng có sẵn, không gọi AI — làm phần đó TRƯỚC theo đúng thứ tự (cursorIdx phụ thuộc thứ tự)
-// để BIẾT câu nào thật sự cần hỏi AI, rồi gọi TẤT CẢ các câu đó CÙNG LÚC bằng Promise.all thay vì
-// tuần tự từng câu — không đổi số lượt gọi AI (không tăng chi phí), chỉ giảm THỜI GIAN CHỜ.
+// GIỚI HẠN SỐ CÂU GỌI SONG SONG CÙNG LÚC (2026-08-19, bug thật tự phát hiện qua đo thời gian: bài
+// #20-B1 gọi TẤT CẢ câu thiếu CÙNG LÚC không giới hạn — dồn 1 đợt burst request quá lớn từ CHÍNH 1
+// lượt gọi serverless, vừa làm 429 (rate-limit) DỄ XẢY RA HƠN (đối lập với mục đích ban đầu), vừa
+// khiến tổng thời gian CHỜ (Promise.all đợi câu chậm nhất) vượt hẳn trần thời gian 1 hàm serverless
+// (đo thật: 120 giây, bị Vercel cắt ngang trả 504, MẤT TRẮNG toàn bộ câu trong lượt đó, kể cả câu
+// đã xong). Giới hạn tối đa 4 câu song song cùng lúc — vẫn nhanh hơn hẳn tuần tự-từng-câu (bản cũ)
+// nhưng không tạo burst quá lớn.
+const SENTENCE_PARALLEL_LIMIT = 4;
+async function mapSentencesWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < items.length) {
+      const i = cursor++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+// GỌI SONG SONG TỪNG CÂU, CÓ GIỚI HẠN (2026-08-18, Minh: "cái nào làm song song được phải đưa vào
+// code" — đối chiếu file v6, tool cũ của Minh cũng gọi mỗi câu 1 lượt AI RIÊNG nhưng KHÔNG đợi câu
+// này xong mới gọi câu sau). Việc xác định câu nào TÁI DÙNG được (tryReuseSentenceChunks) chỉ là
+// phép so khớp mảng có sẵn, không gọi AI — làm phần đó TRƯỚC theo đúng thứ tự (cursorIdx phụ thuộc
+// thứ tự) để BIẾT câu nào thật sự cần hỏi AI, rồi gọi các câu đó CÙNG LÚC (tối đa
+// SENTENCE_PARALLEL_LIMIT câu 1 lượt, xem ghi chú ở trên) thay vì tuần tự từng câu — không đổi số
+// lượt gọi AI (không tăng chi phí), chỉ giảm THỜI GIAN CHỜ.
 async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
   const allItems = [];
   const debugSkips = [];
@@ -2672,22 +2695,22 @@ async function analyzeReadingChunksInChunks(toAnalyze, existingChunksList) {
       }
       return { reused: false, sentence };
     });
-    const freshResults = await Promise.all(
-      plan
-        .filter((p) => !p.reused)
-        .map(async (p) => {
-          const chunk = [{ text: p.sentence }];
-          let result = await callAnalyzeReadingChunks(chunk);
-          const attempt1Reason = result.reason;
-          const attempt1Debug = result.debugDetail;
-          if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
-          if (!result.ok) {
-            console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, p.sentence.slice(0, 60));
-            return { ok: false, sentence: p.sentence, attempt1Reason, attempt1Debug, attempt2Reason: result.reason, attempt2Debug: result.debugDetail };
-          }
-          const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
-          return { ok: true, chunks: sentenceItem?.reading_chunks || [] };
-        })
+    const freshResults = await mapSentencesWithConcurrency(
+      plan.filter((p) => !p.reused),
+      SENTENCE_PARALLEL_LIMIT,
+      async (p) => {
+        const chunk = [{ text: p.sentence }];
+        let result = await callAnalyzeReadingChunks(chunk);
+        const attempt1Reason = result.reason;
+        const attempt1Debug = result.debugDetail;
+        if (!result.ok) result = await callAnalyzeReadingChunks(chunk);
+        if (!result.ok) {
+          console.warn("[analyzeReadingChunksInChunks] bỏ qua 1 câu thất bại cả 2 lượt:", result.reason, p.sentence.slice(0, 60));
+          return { ok: false, sentence: p.sentence, attempt1Reason, attempt1Debug, attempt2Reason: result.reason, attempt2Debug: result.debugDetail };
+        }
+        const sentenceItem = result.items.find((x) => x.index === 0) || result.items[0];
+        return { ok: true, chunks: sentenceItem?.reading_chunks || [] };
+      }
     );
     let freshIdx = 0;
     const combinedChunks = [];
