@@ -408,6 +408,16 @@ tiếp riêng của nó, KHÔNG đổi khung để hợp câu chuyện). Với M
   tối thiểu khoảng 15% tổng số chuỗi của chunk này PHẢI có "secondary_sub_domain" hợp lệ (đếm
   được bằng code, thiếu sẽ bị coi KHÔNG ĐẠT phải sinh lại — giống cách chia đều "sub_domain" ở
   trên).
+  CẢNH BÁO TỰ GẮN NHÃN "secondary_sub_domain" SUÔNG KHÔNG CÓ THẬT TRONG "arc" (lỗi thật bắt được
+  qua test: chuỗi gắn "sub_domain": "Nail", "secondary_sub_domain": "Spa" nhưng "arc" chỉ viết
+  "Giàu giới thiệu lịch làm việc trong ngày và chia sẻ về các dịch vụ nail được khách nước ngoài
+  ưa thích" — KHÔNG hề nhắc gì tới Spa, chỉ gắn tag cho đủ tỉ lệ code yêu cầu, không làm đúng mục
+  đích chuyển tiếp/ôn lại thật). Gắn "secondary_sub_domain" mà KHÔNG viết "arc" nhắc THẬT tới mảng
+  đó là SAI, coi như CHƯA làm, dù qua được kiểm tra tỉ lệ bằng code. Câu hỏi tự kiểm trước khi
+  chốt: "Nếu xoá field 'secondary_sub_domain' đi, người đọc CHỈ dựa vào 'arc' có tự nhận ra chuỗi
+  này có nhắc/liên quan tới mảng đó không?" — nếu KHÔNG, PHẢI viết lại "arc" để chèn 1 chi tiết cụ
+  thể (vật dụng/sản phẩm/hành động) thuộc ĐÚNG mảng phụ đó vào, hoặc bỏ hẳn "secondary_sub_domain"
+  của chuỗi đó và chọn chuỗi khác phù hợp hơn để đạt tỉ lệ 15%.
 Hết 1 chuỗi thì đổi SETTING/TÌNH HUỐNG/NGƯỜI ĐỐI THOẠI cho chuỗi tiếp theo (tránh cảm giác 1
 series bất tận xuyên suốt cả level) — nhân vật chính CÓ THỂ lặp lại (đúng dàn cố định ở trên),
 chỉ KHÔNG lặp lại NGUYÊN VẸN cùng 1 bối cảnh/tình huống/người đối thoại của chuỗi ngay trước đó.
