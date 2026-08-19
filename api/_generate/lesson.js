@@ -2867,6 +2867,20 @@ Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc 
   };
 }
 
+// TẠM THỜI (2026-08-19) — chẩn đoán câu hỏi Minh: "tra từ có dùng lại từ đã lưu không". Bảng
+// vocab_dictionary chỉ ghi/đọc bằng SUPABASE_SERVICE_ROLE_KEY (bỏ qua RLS) nên không tự kiểm tra
+// được bằng anon key từ script ngoài — cần 1 action đọc thật qua đúng key server dùng.
+export async function debug_vocab_dictionary_stats(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/vocab_dictionary?select=word,word_type,meaning,level&order=created_at.desc&limit=10`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, Prefer: "count=exact" },
+  });
+  const rows = await r.json();
+  const range = r.headers.get("content-range") || "";
+  const total = Number(range.split("/")[1] || rows.length);
+  return { content: JSON.stringify({ total, sample: rows }) };
+}
+
 // Action CÔNG KHAI (đăng ký trong chat.js) — dùng cho STAGE riêng trong publish-lesson.mjs, chạy
 // cho MỌI bài ngay sau khi có nội dung (không phải giám khảo lấy mẫu ngẫu nhiên đã bỏ, xem ghi chú
 // ở checkGrammarScopeViolation() bên trên).
