@@ -2688,9 +2688,16 @@ function tryReuseSentenceChunks(existingChunks, cursorIdx, sentenceRealTokens) {
 // lượt gọi serverless, vừa làm 429 (rate-limit) DỄ XẢY RA HƠN (đối lập với mục đích ban đầu), vừa
 // khiến tổng thời gian CHỜ (Promise.all đợi câu chậm nhất) vượt hẳn trần thời gian 1 hàm serverless
 // (đo thật: 120 giây, bị Vercel cắt ngang trả 504, MẤT TRẮNG toàn bộ câu trong lượt đó, kể cả câu
-// đã xong). Giới hạn tối đa 4 câu song song cùng lúc — vẫn nhanh hơn hẳn tuần tự-từng-câu (bản cũ)
-// nhưng không tạo burst quá lớn.
-const SENTENCE_PARALLEL_LIMIT = 4;
+// đã xong). ĐẶT LẠI 4->20 (2026-08-19, Minh đối chiếu với công cụ tham khảo "v6" — công cụ đó bắn
+// TOÀN BỘ 20-40 câu cùng lúc không giới hạn, không hề gián đoạn): xác nhận bug 429/504 ở #20-B1
+// KHÔNG PHẢI do bản chất "nhiều lượt gọi cùng lúc", mà do 2 điều kiện lúc đó: (a) API key DÙNG
+// CHUNG với traffic thật khác đang cạnh tranh cùng hạn mức — hiện app CHƯA có người dùng thật,
+// chỉ script sinh bài đang dùng key này, không có tranh chấp; (b) hạn mức 120s vẫn còn, nhưng
+// nhiều câu chạy CÙNG LÚC (thay vì nhiều ĐỢT nối tiếp ở limit thấp) thực ra RÚT NGẮN tổng thời
+// gian chờ khi KHÔNG bị rate-limit — ít đợt hơn, càng khó chạm trần 120s hơn, không phải ngược
+// lại. Nếu sau này app có traffic thật (nhiều học viên dùng cùng lúc), CẦN đánh giá lại giá trị
+// này — không phải hằng số vĩnh viễn.
+const SENTENCE_PARALLEL_LIMIT = 20;
 async function mapSentencesWithConcurrency(items, limit, fn) {
   const results = new Array(items.length);
   let cursor = 0;
