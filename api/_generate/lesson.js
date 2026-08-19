@@ -2976,64 +2976,126 @@ export async function analyze_lesson_grammar_scope(data, ctx) {
 // việc này — khác hẳn ngữ pháp đã có checkGrammarScopeViolation() ở trên làm lớp phòng thủ thứ 2.
 // Đây là lớp đó cho từ vựng — CÙNG KIẾN TRÚC (action riêng, chạy SAU khi có nội dung, KHÔNG chặn/
 // xoá bài tự động — Minh: "không cần xóa bài", chỉ báo cho Claude/Minh soát tay).
-// KHÁC BIỆT QUAN TRỌNG với ngữ pháp: ngữ pháp có GRAMMAR_CATALOG (danh sách đã đóng băng, so khớp
-// CHẮC CHẮN được điểm nào đã dạy). Từ vựng thì KHÔNG có kho từ CEFR nội bộ nào — phải dựa vào
-// phán đoán CEFR của chính AI (kém chắc chắn hơn), nên đây CHỈ nên coi là gợi ý cần đọc tay, không
-// phải quy tắc cứng như ngữ pháp.
+// DÙNG LẠI TỪ ĐIỂN DÙNG CHUNG (2026-08-19, Minh bắt lỗi thật: bản đầu gọi AI phán đoán CEFR MỖI
+// LẦN kiểm tra, cùng 1 từ ("customer"/"appointment") ra kết quả KHÁC NHAU giữa các lượt — "lần 1
+// A2, lần 2 B1" — Minh: "đây không phải lỗi AI... không dùng lại mà gọi AI... là lỗi của Claude
+// code". Đúng — "vocab_dictionary" (từ điển dùng chung, xem lookupVocabDictionary()/
+// upsertVocabDictionary() ở trên, đã xây cho tra từ) ĐÃ CÓ SẴN cột "level" cho mỗi (word,
+// word_type) — sửa lại: TRA TỪ ĐIỂN TRƯỚC (0 lượt AI, hoàn toàn nhất quán vì đọc lại ĐÚNG 1 giá
+// trị đã lưu), CHỈ gọi AI cho từ THỰC SỰ CHƯA CÓ trong từ điển, rồi LƯU LẠI level đó — từ SAU
+// không bao giờ phải hỏi AI lại đúng từ này nữa, hết drift.
+const VOCAB_LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1"];
+
+// Lưu "level" cho các từ MỚI (lần đầu xác định qua AI) vào từ điển dùng chung — CÙNG on_conflict
+// (word, word_type) như upsertVocabDictionary(), chỉ khác nguồn gọi (đây là lượt kiểm tra CEFR,
+// không phải lượt tra từ/tooltip).
+async function upsertVocabLevels(entries) {
+  const rows = entries
+    .map((e) => ({ word: normalizePhraseWord(e.word), word_type: e.type || "?", meaning: e.meaning || "", level: e.level }))
+    .filter((r) => r.word && r.level);
+  if (!rows.length) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/vocab_dictionary?on_conflict=word,word_type`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(rows),
+    });
+  } catch (e) {
+    console.error("upsertVocabLevels error:", e);
+  }
+}
+
 async function checkVocabularyScopeViolation(level, vocabulary) {
   // CHỈ xét từ THƯỜNG (is_specialized !== true) — từ chuyên ngành ĐƯỢC PHÉP vượt cấp theo đúng
   // quy tắc đã xác nhận, không thuộc phạm vi kiểm tra này.
   const generalWords = (vocabulary || []).filter((v) => v && v.is_specialized !== true && v.word);
-  if (!generalWords.length) return { ok: true, violation: false, word: null, evidence_verified: false };
+  if (!generalWords.length) return { ok: true, violation: false, word: null };
 
-  const wordLines = generalWords.map((v) => `- "${v.word}" (${v.type || "?"}): ${v.meaning || ""}`).join("\n");
+  const levelIdx = VOCAB_LEVEL_ORDER.indexOf(level);
+  const minFlagIdx = Math.min(levelIdx + 2, VOCAB_LEVEL_ORDER.length - 1); // cách ÍT NHẤT 2 cấp mới báo, xem ghi chú dưới
 
-  // SIẾT LẠI NGƯỠNG (2026-08-19, Minh soát 86 bài thật: 23/86 bị gắn cờ, phần lớn là từ A2 thông
-  // thường như "appointment"/"schedule"/"customers" bị gắn cờ SAI dù chỉ cách 1 CẤP LIỀN KỀ — đúng
-  // trường hợp quy tắc "không phải biên giới 2 cấp liền kề" đã cấm nhưng model vẫn báo; còn có 1
-  // lỗi rõ ràng: gắn cờ "PM" dù giờ giấc là chủ đề CƠ BẢN của A1). Thêm NGƯỠNG SỐ CỤ THỂ (cách ÍT
-  // NHẤT 2 cấp, không phải "rõ ràng" chung chung — model tự đánh giá "rõ ràng" quá lỏng) + DANH
-  // SÁCH LOẠI TRỪ CỨNG cho các nhóm từ hay bị gắn cờ oan.
-  const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1"];
-  const levelIdx = LEVEL_ORDER.indexOf(level);
-  const minFlagLevel = LEVEL_ORDER[Math.min(levelIdx + 2, LEVEL_ORDER.length - 1)] || "C1";
-  const system = `Bạn là chuyên gia từ vựng tiếng Anh theo khung CEFR. Nhiệm vụ DUY NHẤT: kiểm tra danh sách từ vựng THƯỜNG (không phải từ chuyên ngành) dưới đây của 1 bài học cấp ${level} có từ nào THỰC SỰ vượt cấp RÕ RỆT không.
+  // BƯỚC 1 — TRA TỪ ĐIỂN DÙNG CHUNG TRƯỚC (0 lượt AI): từ nào đã có "level" đã lưu từ lượt trước
+  // (của CHÍNH bài này hoặc bài KHÁC dùng lại) thì dùng THẲNG giá trị đó, không hỏi AI lại.
+  const dictMap = await lookupVocabDictionary(generalWords.map((v) => v.word));
+  const known = [];
+  const unknown = [];
+  for (const v of generalWords) {
+    const norm = normalizePhraseWord(v.word);
+    const entries = dictMap[norm];
+    const match = entries?.find((e) => e.type === v.type && e.level) || entries?.find((e) => e.level);
+    if (match) known.push({ word: v.word, level: match.level });
+    else unknown.push(v);
+  }
+
+  const findViolation = (list) => {
+    for (const k of list) {
+      const idx = VOCAB_LEVEL_ORDER.indexOf(k.level);
+      if (idx >= 0 && idx >= minFlagIdx) return k;
+    }
+    return null;
+  };
+
+  const knownViolation = findViolation(known);
+  if (knownViolation) {
+    return {
+      ok: true,
+      violation: true,
+      word: knownViolation.word,
+      reason: `Đã có trong từ điển dùng chung ở mức ${knownViolation.level}, vượt cấp ${level} (bài học cấp ${level}).`,
+      source: "dictionary",
+    };
+  }
+
+  // BƯỚC 2 — CHỈ từ THỰC SỰ CHƯA CÓ trong từ điển mới cần hỏi AI (thường là thiểu số, đa phần từ
+  // thông dụng lặp lại giữa các bài đã có sẵn từ trước). Hỏi 1 LƯỢT DUY NHẤT cho TOÀN BỘ từ chưa
+  // biết của bài này (không phải từng từ 1 lượt) — xin CEFR level của TỪNG từ, không phải chỉ có/
+  // không vi phạm, để LƯU LẠI dùng cho mọi bài sau.
+  if (!unknown.length) return { ok: true, violation: false, word: null };
+
+  const wordLines = unknown.map((v) => `- "${v.word}" (${v.type || "?"}): ${v.meaning || ""}`).join("\n");
+  const system = `Bạn là chuyên gia từ vựng tiếng Anh theo khung CEFR (Oxford 3000/5000 hoặc tương đương). Nhiệm vụ DUY NHẤT: xác định mức CEFR (A1/A2/B1/B2/C1) THẬT SỰ của MỖI từ dưới đây theo cách dùng THÔNG DỤNG NHẤT của từ đó (không xét ngữ cảnh chuyên ngành cụ thể).
 
 QUY TẮC:
-- CHỈ xét từ vựng PHỔ THÔNG (không phải thuật ngữ chuyên ngành — danh sách dưới đây ĐÃ được lọc bỏ hết từ chuyên ngành, coi như KHÔNG có từ chuyên ngành nào trong danh sách này).
-- NGƯỠNG SỐ CỤ THỂ (BẮT BUỘC, không suy diễn theo cảm tính): bài này cấp ${level} — CHỈ được báo vi phạm nếu từ đó ở mức ${minFlagLevel} TRỞ LÊN (tức cách ÍT NHẤT 2 cấp). Từ chỉ cao hơn ĐÚNG 1 cấp liền kề (vd bài A1 mà từ là A2, bài A2 mà từ là B1) TUYỆT ĐỐI KHÔNG được báo vi phạm, dù có "nghe hơi khó" — đây là vùng chấp nhận được, không phải lỗi.
-- LOẠI TRỪ CỨNG (KHÔNG BAO GIỜ báo vi phạm cho các nhóm sau, bất kể cấp độ, vì đây LÀ chủ đề CƠ BẢN dạy ngay từ A1): số đếm, giờ giấc (o'clock, AM, PM, half past...), ngày/tháng/thứ trong tuần, đại từ, giới từ cơ bản (in, on, at, to, from...), động từ "to be/have/do" và biến thể, từ chào hỏi/lịch sự cơ bản (please, thank you, sorry, excuse me), tên riêng người/địa điểm.
-- Nếu không có từ nào đạt ngưỡng ${minFlagLevel} trở lên — KHÔNG VI PHẠM, kể cả khi có vài từ hơi cao hơn 1 cấp.
+- Đánh giá THEO ĐÚNG CHUẨN CEFR thông dụng — KHÔNG suy diễn quá khắt khe. Số đếm, giờ giấc (AM/PM, o'clock), ngày/tháng/thứ, đại từ, giới từ cơ bản, động từ "to be/have/do", từ chào hỏi/lịch sự cơ bản (please, thank you, sorry) LUÔN LÀ A1, không được gán cao hơn.
+- Mỗi từ CHỈ 1 mức CEFR duy nhất, chọn mức PHỔ BIẾN NHẤT theo từ điển học thuật chuẩn (Oxford 3000 = A1-B1, Oxford 5000 = B2-C1), không chọn mức hiếm/ít dùng.
 
-Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc false, "word": "<từ vi phạm rõ nhất, hoặc null>", "reason": "<lý do ngắn gọn bằng tiếng Việt tại sao từ này vượt cấp, PHẢI nêu rõ từ này ở mức CEFR nào, hoặc null>"}`;
+Trả về ĐÚNG JSON, không kèm chữ nào khác: {"levels": {"<từ 1>": "A1 hoặc A2 hoặc B1 hoặc B2 hoặc C1", "<từ 2>": "..."}}`;
 
   const r = await generateStructuredJSON({
     tier: "default",
     temperature: 0,
-    maxTokens: 300,
+    maxTokens: 400,
     messages: [
       { role: "system", content: system },
       { role: "user", content: wordLines },
     ],
   });
-  if (!r.ok || !r.data) return { ok: false, error: "vocabulary_scope_check_call_or_parse_failed" };
+  if (!r.ok || !r.data?.levels) return { ok: false, error: "vocabulary_scope_check_call_or_parse_failed" };
 
-  // XÁC MINH từ báo vi phạm THẬT SỰ có trong danh sách (cùng nguyên tắc chống bịa đã dùng cho
-  // "evidence" của ngữ pháp) — AI đôi khi tự bịa hoặc viết sai chính tả từ.
-  const violationRaw = !!r.data.violation;
-  const wordRaw = r.data.word || null;
   const normalize = (s) => String(s || "").toLowerCase().trim();
-  const evidenceVerified = violationRaw && wordRaw
-    ? generalWords.some((v) => normalize(v.word) === normalize(wordRaw))
-    : false;
+  const newlyLeveled = unknown
+    .map((v) => {
+      const lvl = r.data.levels[v.word] || Object.entries(r.data.levels).find(([w]) => normalize(w) === normalize(v.word))?.[1];
+      return VOCAB_LEVEL_ORDER.includes(lvl) ? { word: v.word, type: v.type, meaning: v.meaning, level: lvl } : null;
+    })
+    .filter(Boolean);
 
+  // LƯU LẠI vào từ điển dùng chung — TỪ SAU không bao giờ phải hỏi AI lại đúng từ này nữa, xem
+  // ghi chú đầu hàm. Chờ xong (không fire-and-forget, cùng lý do đã áp dụng cho upsertVocabDictionary).
+  await upsertVocabLevels(newlyLeveled);
+
+  const newViolation = findViolation(newlyLeveled);
   return {
     ok: true,
-    violation: violationRaw && evidenceVerified,
-    word: wordRaw,
-    reason: r.data.reason || null,
-    evidence_verified: evidenceVerified,
-    raw_violation: violationRaw,
+    violation: !!newViolation,
+    word: newViolation?.word || null,
+    reason: newViolation ? `Từ điển dùng chung MỚI xác định mức ${newViolation.level}, vượt cấp ${level} (bài học cấp ${level}).` : null,
+    source: newViolation ? "ai_new" : null,
   };
 }
 
