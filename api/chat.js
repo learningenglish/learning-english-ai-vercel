@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, analyze_lesson_grammar_scope, insert_manual_lesson, set_lesson_title_tag, patch_lesson_content_item_field } from "./_generate/lesson.js";
+import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, analyze_lesson_grammar_scope, analyze_lesson_vocabulary_scope, patch_lesson_vocabulary_word, insert_manual_lesson, set_lesson_title_tag, patch_lesson_content_item_field } from "./_generate/lesson.js";
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
 import { ensure_skin_chunk } from "./_generate/curriculum/skinBatch.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
@@ -1281,6 +1281,11 @@ const ACTIONS = {
   // generate_lesson() cho MỌI bài (không phải giám khảo lấy mẫu ngẫu nhiên), xem
   // checkGrammarScopeViolation() trong lesson.js + STAGE riêng trong publish-lesson.mjs.
   analyze_lesson_grammar_scope,
+  // Kiểm tra TỪ VỰNG vượt cấp (2026-08-19) — lớp phòng thủ tương tự ngữ pháp ở trên, nhưng CHỈ
+  // báo cho soát tay (Minh: "không cần xóa bài"), không tự chặn/xoá — xem
+  // checkVocabularyScopeViolation() trong lesson.js.
+  analyze_lesson_vocabulary_scope,
+  patch_lesson_vocabulary_word,
   patch_lesson_content_item_field,
   // Chèn bài học VIẾT TAY khi generate_lesson() cứ lỗi lặp lại cho 1 slot cụ thể (2026-08-18,
   // Minh: "thay thế bước 1 dùng API sinh bài bị lỗi quá nhiều, sinh lại là không thể chấp nhận")

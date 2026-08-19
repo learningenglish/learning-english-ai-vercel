@@ -2969,6 +2969,126 @@ export async function analyze_lesson_grammar_scope(data, ctx) {
   return { content: JSON.stringify(result) };
 }
 
+// KIỂM TRA TỪ VỰNG VƯỢT CẤP (2026-08-19) — Minh đọc bài #2-A1 (Làm Đẹp) thấy từ "nghe như B1"
+// (moisturizer, facial treatment...), hỏi có ràng buộc từ vựng không. Xác nhận: CÓ quy tắc trong
+// prompt generate_lesson (dòng 551, "Tuyệt đối không dùng ngữ pháp hoặc từ vựng vượt cấp độ được
+// yêu cầu, TRỪ CÁC TỪ CHUYÊN NGÀNH được chỉ định") nhưng KHÔNG có lớp kiểm tra CODE nào xác nhận
+// việc này — khác hẳn ngữ pháp đã có checkGrammarScopeViolation() ở trên làm lớp phòng thủ thứ 2.
+// Đây là lớp đó cho từ vựng — CÙNG KIẾN TRÚC (action riêng, chạy SAU khi có nội dung, KHÔNG chặn/
+// xoá bài tự động — Minh: "không cần xóa bài", chỉ báo cho Claude/Minh soát tay).
+// KHÁC BIỆT QUAN TRỌNG với ngữ pháp: ngữ pháp có GRAMMAR_CATALOG (danh sách đã đóng băng, so khớp
+// CHẮC CHẮN được điểm nào đã dạy). Từ vựng thì KHÔNG có kho từ CEFR nội bộ nào — phải dựa vào
+// phán đoán CEFR của chính AI (kém chắc chắn hơn), nên đây CHỈ nên coi là gợi ý cần đọc tay, không
+// phải quy tắc cứng như ngữ pháp.
+async function checkVocabularyScopeViolation(level, vocabulary) {
+  // CHỈ xét từ THƯỜNG (is_specialized !== true) — từ chuyên ngành ĐƯỢC PHÉP vượt cấp theo đúng
+  // quy tắc đã xác nhận, không thuộc phạm vi kiểm tra này.
+  const generalWords = (vocabulary || []).filter((v) => v && v.is_specialized !== true && v.word);
+  if (!generalWords.length) return { ok: true, violation: false, word: null, evidence_verified: false };
+
+  const wordLines = generalWords.map((v) => `- "${v.word}" (${v.type || "?"}): ${v.meaning || ""}`).join("\n");
+
+  const system = `Bạn là chuyên gia từ vựng tiếng Anh theo khung CEFR. Nhiệm vụ DUY NHẤT: kiểm tra danh sách từ vựng THƯỜNG (không phải từ chuyên ngành) dưới đây của 1 bài học cấp ${level} có từ nào THỰC SỰ vượt cấp không.
+
+QUY TẮC:
+- CHỈ xét từ vựng PHỔ THÔNG (không phải thuật ngữ chuyên ngành — danh sách dưới đây ĐÃ được lọc bỏ hết từ chuyên ngành, coi như KHÔNG có từ chuyên ngành nào trong danh sách này).
+- Đánh giá THEO ĐÚNG CHUẨN CEFR thông dụng (Oxford/Cambridge 3000-5000 hoặc tương đương) cho từng cấp:
+  A1: ~500-800 từ cơ bản nhất (gia đình, số đếm, màu sắc, hoạt động hàng ngày, đồ vật quen thuộc).
+  A2: mở rộng thêm các chủ đề đời sống quen thuộc (mua sắm, du lịch, sở thích).
+  B1: từ trừu tượng vừa phải, ý kiến/cảm xúc phức tạp hơn.
+  B2: từ học thuật nhẹ, sắc thái nghĩa.
+  C1: từ vựng nâng cao, ít thông dụng.
+- CHỈ báo vi phạm nếu có từ RÕ RÀNG cao hơn hẳn cấp đã cho (không phải trường hợp mơ hồ, biên giới giữa 2 cấp liền kề) — nghi ngờ nhẹ thì KHÔNG báo.
+- Nếu không có từ nào vượt cấp rõ rệt — KHÔNG VI PHẠM.
+
+Trả về ĐÚNG JSON, không kèm chữ nào khác: {"violation": true hoặc false, "word": "<từ vi phạm rõ nhất, hoặc null>", "reason": "<lý do ngắn gọn bằng tiếng Việt tại sao từ này vượt cấp, hoặc null>"}`;
+
+  const r = await generateStructuredJSON({
+    tier: "default",
+    temperature: 0,
+    maxTokens: 300,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: wordLines },
+    ],
+  });
+  if (!r.ok || !r.data) return { ok: false, error: "vocabulary_scope_check_call_or_parse_failed" };
+
+  // XÁC MINH từ báo vi phạm THẬT SỰ có trong danh sách (cùng nguyên tắc chống bịa đã dùng cho
+  // "evidence" của ngữ pháp) — AI đôi khi tự bịa hoặc viết sai chính tả từ.
+  const violationRaw = !!r.data.violation;
+  const wordRaw = r.data.word || null;
+  const normalize = (s) => String(s || "").toLowerCase().trim();
+  const evidenceVerified = violationRaw && wordRaw
+    ? generalWords.some((v) => normalize(v.word) === normalize(wordRaw))
+    : false;
+
+  return {
+    ok: true,
+    violation: violationRaw && evidenceVerified,
+    word: wordRaw,
+    reason: r.data.reason || null,
+    evidence_verified: evidenceVerified,
+    raw_violation: violationRaw,
+  };
+}
+
+// Action CÔNG KHAI (đăng ký trong chat.js) — CÙNG CÁCH DÙNG analyze_lesson_grammar_scope, chạy
+// SAU khi có nội dung, kết quả chỉ để BÁO CHO Claude/Minh soát tay (KHÔNG tự xoá/sinh lại bài).
+export async function analyze_lesson_vocabulary_scope(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  if (!data.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
+
+  const table = data.is_news ? "news_lessons" : "lessons";
+  const selectRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(data.lesson_id)}&select=vocabulary,level,source,user_id`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+  );
+  if (!selectRes.ok) return { error: "Không đọc được bài học.", status: 502 };
+  const row = (await selectRes.json())?.[0];
+  if (!row || !Array.isArray(row.vocabulary)) return { error: "Không tìm thấy bài học.", status: 404 };
+  if (!data.is_news && row.source === "user_text" && row.user_id !== ctx.studentId) {
+    return { error: "Không tìm thấy bài học.", status: 404 };
+  }
+
+  const result = await checkVocabularyScopeViolation(row.level, row.vocabulary);
+  if (!result.ok) return { error: "Kiểm tra từ vựng lỗi: " + result.error, status: 502 };
+  return { content: JSON.stringify(result) };
+}
+
+// VÁ 1 TỪ VỰNG THỦ CÔNG (2026-08-19) — CÙNG KIẾN TRÚC patch_lesson_content_item_field ở trên,
+// dùng khi checkVocabularyScopeViolation xác nhận 1 từ vượt cấp thật cần sửa nghĩa/ví dụ/đổi từ
+// khác, KHÔNG gọi AI, KHÔNG xoá bài (Minh: "không cần xóa bài, vá đầy đủ"). Ghi thẳng bằng service
+// role — chi phí 0.
+export async function patch_lesson_vocabulary_word(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const { lesson_id, word, patch } = data;
+  if (!lesson_id || !word || typeof patch !== "object") {
+    return { error: "Thiếu hoặc sai 'lesson_id'/'word'/'patch'.", status: 400 };
+  }
+  const selectRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lesson_id)}&select=vocabulary`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  const rows = await selectRes.json();
+  const vocabulary = rows?.[0]?.vocabulary;
+  if (!Array.isArray(vocabulary)) return { error: "Không tìm thấy bài/từ vựng.", status: 404 };
+  const idx = vocabulary.findIndex((v) => v?.word === word);
+  if (idx < 0) return { error: "Không tìm thấy từ trong bài.", status: 404 };
+  vocabulary[idx] = { ...vocabulary[idx], ...patch };
+  const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lesson_id)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ vocabulary }),
+  });
+  if (!patchRes.ok) return { error: "Lưu thất bại.", status: 502 };
+  return { content: JSON.stringify({ ok: true }) };
+}
+
 // Đặt tiền tố số hiệu (vd "#1-A2 ") cho bài mẫu — 2026-08-13, Minh: "tại sao không đánh # để tôi
 // dễ nhận biết" khi kiểm tra bài mẫu sinh thử. CÙNG PATTERN set_lesson_cover_image (client bị
 // REVOKE UPDATE cột "title"/"title_vi" trực tiếp, xem supabase/019_lessons.sql) — chỉ chủ bài
