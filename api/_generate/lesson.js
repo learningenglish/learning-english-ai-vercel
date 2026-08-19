@@ -2114,16 +2114,27 @@ async function upsertVocabDictionary(phraseGroups) {
 // làm ngữ cảnh — để AI tự chọn ĐÚNG nghĩa phù hợp thay vì đoán mò hoặc luôn lấy lựa chọn đầu tiên.
 function buildDictionaryHint(dictMap, contextTranslation) {
   const entries = Object.entries(dictMap).filter(([, opts]) => opts.length);
-  if (!entries.length) return "";
-  const lines = entries.map(([word, options]) => {
-    const opts = options.map((o) => `${o.type}: "${o.meaning}"${o.level ? ` (cấp ${o.level})` : ""}`).join(" HOẶC ");
-    return `- "${word}": ${opts}`;
-  });
-  const ambiguityNote = entries.some(([, opts]) => opts.length > 1)
-    ? `\nMột số từ có NHIỀU lựa chọn (đa nghĩa tuỳ loại từ) — dùng bản dịch tổng quát của câu${contextTranslation ? ` ("${contextTranslation}")` : ""} để chọn ĐÚNG nghĩa phù hợp ngữ cảnh, không lấy bừa lựa chọn đầu tiên.`
-    : "";
-  return `TỪ ĐIỂN THAM KHẢO (đã xác định từ các bài trước — DÙNG LẠI ĐÚNG các giá trị này nếu từ xuất hiện với ĐÚNG loại từ tương ứng, không tự sáng tạo nghĩa/cấp độ khác cho các từ này):
-${lines.join("\n")}${ambiguityNote}`;
+  const parts = [];
+  if (entries.length) {
+    const lines = entries.map(([word, options]) => {
+      const opts = options.map((o) => `${o.type}: "${o.meaning}"${o.level ? ` (cấp ${o.level})` : ""}`).join(" HOẶC ");
+      return `- "${word}": ${opts}`;
+    });
+    parts.push(`TỪ ĐIỂN THAM KHẢO (đã xác định từ các bài trước — DÙNG LẠI ĐÚNG các giá trị này nếu từ xuất hiện với ĐÚNG loại từ tương ứng, không tự sáng tạo nghĩa/cấp độ khác cho các từ này):\n${lines.join("\n")}`);
+    if (entries.some(([, opts]) => opts.length > 1)) {
+      parts.push(`Một số từ có NHIỀU lựa chọn (đa nghĩa tuỳ loại từ) — dùng "NGHĨA CÂU ĐÃ XÁC NHẬN" bên dưới (nếu có) để chọn ĐÚNG nghĩa phù hợp ngữ cảnh, không lấy bừa lựa chọn đầu tiên.`);
+    }
+  }
+  // LUÔN đưa "nghĩa câu đã xác nhận" (từ bước tách câu chạy TRƯỚC) làm ngữ cảnh chung — KHÔNG CHỈ
+  // khi có từ đa nghĩa (bug thật 2026-08-19, Minh chỉ ra: "tham khảo nghĩa tách câu để gán vào từ
+  // bị thiếu... tại sao vẫn không áp dụng" — trước đây contextTranslation bị BỎ HẲN nếu dictMap
+  // rỗng, dù bản dịch ĐÚNG đã có sẵn). Giúp AI cấu trúc đúng cụm/từ khó (rút gọn "Here's", cụm
+  // nhiều từ "next to") ngay cả khi từ đó HOÀN TOÀN MỚI, chưa từng có trong từ điển — đặc biệt hữu
+  // ích cho LƯỢT THỬ LẠI (cả 2 lượt gọi đều dùng chung hint này, xem analyzePhraseGroupsInChunks).
+  if (contextTranslation) {
+    parts.push(`NGHĨA CÂU ĐÃ XÁC NHẬN (từ bước tách câu, ĐÃ ĐÚNG — dùng làm ngữ cảnh để phân tích/cấu trúc cụm và gỡ nghĩa từng từ chính xác hơn, KHÔNG dịch lại khác đi): "${contextTranslation}"`);
+  }
+  return parts.join("\n\n");
 }
 
 // GỌI SONG SONG TỪNG CÂU (2026-08-18, Minh: "cái nào làm song song được phải đưa vào code") —
