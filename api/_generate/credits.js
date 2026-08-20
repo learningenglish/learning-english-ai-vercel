@@ -47,17 +47,21 @@ export async function refundAiCredits(studentId, amount = 2) {
 export async function get_credit_balance(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}&select=package_tier,ai_credits_balance,ai_credits_reset_at`,
+    `${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}&select=package_tier,ai_credits_balance,ai_credits_reset_at,is_admin`,
     { headers: SERVICE_HEADERS }
   );
   if (!r.ok) return { error: "Không đọc được số dư Credit.", status: 502 };
   const rows = await r.json();
   const row = rows?.[0];
   if (!row) return { error: "Không tìm thấy tài khoản học viên.", status: 404 };
+  // "is_admin" (2026-08-20, Minh: "admin là không giới hạn") — consume_ai_credits() (migration 044)
+  // ĐÃ bỏ qua trừ credit thật cho admin, nhưng số cột "ai_credits_balance" trong DB vẫn là giá trị
+  // thấp/0 bình thường (không tự đồng bộ) — hiện số LỚN ở đây để UI (header.js) không hiện nhầm
+  // icon khoá dù thực tế không hề bị chặn.
   return {
     content: JSON.stringify({
       packageTier: row.package_tier,
-      balance: row.ai_credits_balance,
+      balance: row.is_admin ? 999 : row.ai_credits_balance,
       resetAt: row.ai_credits_reset_at,
     }),
   };

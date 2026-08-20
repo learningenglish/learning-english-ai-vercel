@@ -90,9 +90,13 @@ async function archiveOtherActiveGoals(studentId, exceptGoalId) {
 // SỐ LẦN ĐỔI THÀNH CÔNG + SỐ BÀI ĐÃ HOÀN THÀNH của đúng chuyên ngành đang active — 2 khái niệm khác
 // nhau, xem spec mục 8 "CẦN PHÂN BIỆT SWITCH COUNT VÀ CURRENT PROGRESS").
 async function getStudentPackageInfo(studentId) {
-  const rows = await restGet(`students?id=eq.${studentId}&select=package_tier,specialization_switch_count`);
+  const rows = await restGet(`students?id=eq.${studentId}&select=package_tier,specialization_switch_count,is_admin`);
   const row = rows?.[0];
-  return { packageTier: row?.package_tier || "FREE", switchCount: row?.specialization_switch_count || 0 };
+  return {
+    packageTier: row?.package_tier || "FREE",
+    switchCount: row?.specialization_switch_count || 0,
+    isAdmin: !!row?.is_admin,
+  };
 }
 
 // Đếm bài ĐÃ HOÀN THÀNH (completed_at HOẶC fully_listened_at — đúng tín hiệu "Đã học" đã dùng thống
@@ -143,11 +147,15 @@ async function insertLearningGoal(studentId, profile, rawKeywords, level) {
   const currentGoal = currentGoalRows?.[0] || null;
   const isRealSwitch = currentGoal && !currentGoal.occupation_profile?.is_general && !profile?.is_general;
   if (isRealSwitch) {
-    const { packageTier, switchCount } = await getStudentPackageInfo(studentId);
-    const completed = await countCompletedLessonsForGoal(studentId, currentGoal.raw_keywords);
-    const gate = canSwitchSpecialization(packageTier, switchCount, completed);
-    if (!gate.canSwitch) {
-      return { switchBlocked: true, ...gate, packageTier, switchCount };
+    const { packageTier, switchCount, isAdmin } = await getStudentPackageInfo(studentId);
+    // "isAdmin" (2026-08-20, Minh: "admin là không giới hạn") — bỏ qua HẲN việc tính/kiểm tra gate,
+    // admin đổi chuyên ngành tự do bất cứ lúc nào để test.
+    if (!isAdmin) {
+      const completed = await countCompletedLessonsForGoal(studentId, currentGoal.raw_keywords);
+      const gate = canSwitchSpecialization(packageTier, switchCount, completed);
+      if (!gate.canSwitch) {
+        return { switchBlocked: true, ...gate, packageTier, switchCount };
+      }
     }
   }
 
@@ -206,7 +214,12 @@ export async function get_specialization_switch_status(data, ctx) {
   if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
   const currentGoalRows = await restGet(`learning_goals?user_id=eq.${ctx.studentId}&status=eq.active&select=id,raw_keywords,occupation_profile`);
   const currentGoal = currentGoalRows?.[0] || null;
-  const { packageTier, switchCount } = await getStudentPackageInfo(ctx.studentId);
+  const { packageTier, switchCount, isAdmin } = await getStudentPackageInfo(ctx.studentId);
+  // "isAdmin" (2026-08-20, Minh: "admin là không giới hạn") — luôn báo canSwitch=true, KHÔNG cần
+  // tính completed thật (đỡ 1 lượt query không cần thiết).
+  if (isAdmin) {
+    return { content: JSON.stringify({ packageTier, switchCount, completed: 0, required: 0, canSwitch: true }) };
+  }
   if (!currentGoal || currentGoal.occupation_profile?.is_general) {
     // Chưa có chuyên ngành thật nào đang active — đổi/lần chọn tiếp theo luôn tự do.
     return { content: JSON.stringify({ packageTier, switchCount, completed: 0, required: 0, canSwitch: true }) };
