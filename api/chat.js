@@ -1,5 +1,19 @@
 import { createHash } from "node:crypto";
-import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analyze_lesson_reading_chunks, analyze_lesson_grammar_scope, analyze_lesson_vocabulary_scope, patch_lesson_vocabulary_word, insert_manual_lesson, set_lesson_title_tag, patch_lesson_content_item_field, list_lesson_previews } from "./_generate/lesson.js";
+import {
+  generate_lesson,
+  analyze_user_text,
+  analyze_lesson_phrase_groups,
+  analyze_lesson_reading_chunks,
+  analyze_lesson_grammar_scope,
+  analyze_lesson_vocabulary_scope,
+  patch_lesson_vocabulary_word,
+  insert_manual_lesson,
+  set_lesson_title_tag,
+  patch_lesson_content_item_field,
+  list_lesson_previews,
+  admin_list_lessons_by_slot,
+  admin_delete_lesson,
+} from "./_generate/lesson.js";
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
 import { ensure_skin_chunk } from "./_generate/curriculum/skinBatch.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
@@ -1308,6 +1322,11 @@ const ACTIONS = {
   // Xem trước bài bị khoá theo gói (2026-08-20, Minh: "các bài khác phải hiển thị nhưng khóa và
   // để icon khóa") — service role, chỉ trả metadata hiển thị, xem lesson.js.
   list_lesson_previews,
+  // Xem/dọn bài rác theo Ngành+Cấp độ (2026-08-20, Minh: "#77, #79, #59, 57, 76, 78, 80 làm đẹp
+  // bị dư (rác)") — admin tự xem toàn bộ danh sách theo spine_slot + xoá đúng dòng rác, xem
+  // lesson.js.
+  admin_list_lessons_by_slot,
+  admin_delete_lesson,
   // Chèn bài học VIẾT TAY khi generate_lesson() cứ lỗi lặp lại cho 1 slot cụ thể (2026-08-18,
   // Minh: "thay thế bước 1 dùng API sinh bài bị lỗi quá nhiều, sinh lại là không thể chấp nhận")
   // — vẫn qua ĐÚNG validateLessonShape(), không tự chấm điểm chính mình, xem lesson.js.

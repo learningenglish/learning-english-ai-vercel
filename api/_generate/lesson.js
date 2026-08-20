@@ -17,6 +17,7 @@
 import { SUPABASE_URL, PRO_GATE_ENFORCED } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
 import { consumeAiCredits, refundAiCredits } from "./credits.js";
+import { isAdmin } from "./billing.js";
 import { getGrammarIdsTaughtUpTo } from "./curriculum/grammar-order.js";
 import { GRAMMAR_CATALOG } from "./curriculum/grammar-catalog.js";
 
@@ -1918,6 +1919,48 @@ export async function list_lesson_previews(data, ctx) {
     return { error: "Không tải được danh sách xem trước.", status: 502 };
   }
   return { content: JSON.stringify({ lessons: await r.json() }) };
+}
+
+// ====== QUẢN TRỊ: xem/dọn bài rác theo Ngành + Cấp độ (2026-08-20, Minh: "#77, #79, #59, 57, 76,
+// 78, 80 làm đẹp bị dư (rác)") — chưa rõ CỤ THỂ "rác" nghĩa là gì (trùng nội dung? sai dữ liệu?
+// ngoài phạm vi giáo trình dự kiến?) vì sandbox này KHÔNG có quyền đọc thẳng Supabase (service-role
+// key ở đây là placeholder, xem ghi chú CLAUDE.md/bộ nhớ) — thêm công cụ NÀY để Minh (qua admin
+// UI thật, có session thật) tự xem toàn bộ danh sách theo spine_slot và xoá đúng dòng rác, KHÔNG
+// đoán mò/tự xoá thay. ======
+
+// Liệt kê TOÀN BỘ bài của 1 (industry, level) sắp theo spine_slot — đủ chi tiết để soi ra bài
+// trùng/lạc (tiêu đề, loại nội dung, tình huống, thời điểm tạo).
+export async function admin_list_lessons_by_slot(data, ctx) {
+  if (!(await isAdmin(ctx))) return { error: "Không có quyền quản trị.", status: 403 };
+  const industry = data?.industry;
+  const level = data?.level;
+  if (!industry || !level) return { error: "Thiếu 'industry' hoặc 'level'.", status: 400 };
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/lessons?source=eq.ai_generated&industry=eq.${encodeURIComponent(industry)}&level=eq.${encodeURIComponent(level)}` +
+      "&select=id,title,title_vi,content_type,spine_slot,situation_type,created_at&order=spine_slot.asc.nullslast",
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
+  );
+  if (!r.ok) {
+    console.error("admin_list_lessons_by_slot error:", r.status, await r.text().catch(() => ""));
+    return { error: "Không tải được danh sách.", status: 502 };
+  }
+  return { content: JSON.stringify({ lessons: await r.json() }) };
+}
+
+// Xoá HẲN 1 bài (irreversible) — CHỈ admin, CHỈ 1 id 1 lượt gọi (không xoá hàng loạt theo filter,
+// tránh xoá nhầm diện rộng). UI (admin.js) tự có bước xác nhận trước khi gọi action này.
+export async function admin_delete_lesson(data, ctx) {
+  if (!(await isAdmin(ctx))) return { error: "Không có quyền quản trị.", status: 403 };
+  if (!data?.lesson_id) return { error: "Thiếu 'lesson_id'.", status: 400 };
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(data.lesson_id)}`, {
+    method: "DELETE",
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!r.ok) {
+    console.error("admin_delete_lesson error:", r.status, await r.text().catch(() => ""));
+    return { error: "Xoá thất bại.", status: 502 };
+  }
+  return { content: JSON.stringify({ ok: true }) };
 }
 
 // meta không phải 1 phần "hợp đồng dữ liệu" Lesson JSON (mục 4 brief) — chỉ để /app/ hiển

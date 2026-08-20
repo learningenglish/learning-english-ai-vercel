@@ -153,3 +153,17 @@ export async function adminAutoFillLessonCover(lesson) {
   if (!setRes.ok) return setRes;
   return { ok: true, data: JSON.parse(setRes.content) };
 }
+
+// ====== QUẢN TRỊ: xem/dọn bài rác theo Ngành + Cấp độ (2026-08-20, Minh: "một số bài rác đã xử
+// lý chưa" — #77/#79/#59/57/76/78/80 Làm Đẹp) ======
+export async function adminListLessonsBySlot(industry, level) {
+  const res = await callChatAction("admin_list_lessons_by_slot", { industry, level });
+  if (!res.ok) return res;
+  return { ok: true, data: JSON.parse(res.content) };
+}
+
+export async function adminDeleteLesson(lessonId) {
+  const res = await callChatAction("admin_delete_lesson", { lesson_id: lessonId });
+  if (!res.ok) return res;
+  return { ok: true, data: JSON.parse(res.content) };
+}

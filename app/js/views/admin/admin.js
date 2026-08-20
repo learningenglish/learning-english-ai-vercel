@@ -14,7 +14,7 @@ import { getSession } from "../../session.js";
 import { showToast } from "../../toast.js";
 import { escapeHtml, formatDate } from "../../utils.js";
 import { adminListPendingPayments, adminConfirmPayment, adminGrantPackage, adminListPackageGrants } from "../../packageApi.js";
-import { adminListLessonsMissingCover, adminAutoFillLessonCover } from "../../lessonApi.js";
+import { adminListLessonsMissingCover, adminAutoFillLessonCover, adminListLessonsBySlot, adminDeleteLesson } from "../../lessonApi.js";
 import { PACKAGE_LABELS, UPGRADABLE_TIERS, formatVnd } from "../../packageConfig.js";
 import { t, registerTranslations } from "../../i18n.js";
 
@@ -53,12 +53,26 @@ registerTranslations({
   "Không có bài nào thiếu ảnh bìa.": "No lessons are missing a cover image.",
   "Tìm ảnh": "Find image",
   "Đã gán ảnh bìa.": "Cover image set.",
+  // "Xem/dọn bài rác" (2026-08-20, Minh: "Một số bài rác đã xử lý chưa" — #77/#79/#59/57/76/78/80
+  // Làm Đẹp) — chưa rõ CỤ THỂ "rác" là gì (sandbox không đọc thẳng được DB), công cụ này để Minh
+  // tự xem toàn bộ danh sách theo spine_slot rồi tự quyết định xoá dòng nào.
+  "Xem bài theo Ngành + Cấp độ": "View lessons by industry + level",
+  "Xem": "View",
+  "Xoá": "Delete",
+  "Xác nhận xoá bài này? Không thể hoàn tác.": "Delete this lesson? This cannot be undone.",
+  "Đã xoá bài.": "Lesson deleted.",
+  "Chưa có bài nào khớp.": "No lessons match.",
 });
 
 // Chỉ để ẨN/HIỆN UI (không phải lớp bảo mật thật — server tự kiểm tra lại qua ADMIN_EMAILS trong
 // billing.js::isAdmin()). App này KHÔNG có build step/biến môi trường phía client (xem config.js)
 // nên phải lặp lại giá trị ở đây, giống cách APP_SECRET đã nhúng thẳng client từ trước.
 const ADMIN_EMAIL_ALLOWLIST = ["kimchinamvn@gmail.com"];
+
+// Chỉ 2 ngành ĐÃ có nội dung thật (xem project_industry_rollout_roadmap trong bộ nhớ) — Điều
+// dưỡng/Giao tiếp tổng quát chưa sinh bài, không cần liệt kê ở đây.
+const INSPECT_INDUSTRIES = ["Kế toán", "Làm Đẹp"];
+const INSPECT_LEVELS = ["A1", "A2", "B1", "B2"];
 
 // THÊM 3/5 ngày (2026-08-20, Minh: "Trong gói tặng, thêm cho tôi gói 3 ngày và 5 ngày" — dùng thử
 // nghiệm ngắn hạn, cạnh 3/6/12 THÁNG cũ dành cho khách thật) — "value" gộp "<số>:<đơn vị>" thành 1
@@ -123,6 +137,23 @@ function missingCoverRowHtml(lesson) {
   `;
 }
 
+function inspectLessonRowHtml(lesson) {
+  const label = lesson.title_vi || lesson.title || "?";
+  const slot = Number.isInteger(lesson.spine_slot) ? `#${lesson.spine_slot}` : "?";
+  return `
+    <div class="admin-order-row" data-inspect-row="${lesson.id}">
+      <div class="admin-order-info">
+        <div class="admin-order-user">${slot} · ${escapeHtml(label)}</div>
+        <div class="admin-order-meta">
+          ${escapeHtml(lesson.content_type || "—")}${lesson.situation_type ? " · " + escapeHtml(lesson.situation_type) : ""}
+          · ${formatDate(lesson.created_at)}
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost" data-delete-lesson="${lesson.id}">${t("Xoá")}</button>
+    </div>
+  `;
+}
+
 function pendingOrderRowHtml(order) {
   const label = order.students?.full_name || order.students?.email || "?";
   return `
@@ -147,6 +178,10 @@ export function renderAdmin(mount) {
     grantsLoading: isAdminUser,
     missingCovers: [],
     missingCoversLoading: isAdminUser,
+    inspectIndustry: INSPECT_INDUSTRIES[0],
+    inspectLevel: INSPECT_LEVELS[0],
+    inspectLessons: null, // null = chưa xem lần nào, [] = đã xem nhưng rỗng
+    inspectLoading: false,
   };
 
   render();
@@ -235,6 +270,34 @@ export function renderAdmin(mount) {
             : `<p class="muted">${t("Không có bài nào thiếu ảnh bìa.")}</p>`
         }
       </div>
+
+      <p class="progress-section-title">${t("Xem bài theo Ngành + Cấp độ")}</p>
+      <div class="card admin-grant-card">
+        <label class="field">
+          <span class="field-question">${t("Ngành")}</span>
+          <select id="inspect-industry-select">
+            ${INSPECT_INDUSTRIES.map((ind) => `<option value="${escapeHtml(ind)}" ${ind === state.inspectIndustry ? "selected" : ""}>${escapeHtml(ind)}</option>`).join("")}
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-question">${t("Cấp độ")}</span>
+          <select id="inspect-level-select">
+            ${INSPECT_LEVELS.map((lv) => `<option value="${lv}" ${lv === state.inspectLevel ? "selected" : ""}>${lv}</option>`).join("")}
+          </select>
+        </label>
+        <button type="button" class="btn btn-primary btn-block" id="inspect-view-btn">${t("Xem")}</button>
+      </div>
+      <div id="admin-inspect-list">
+        ${
+          state.inspectLoading
+            ? `<p class="muted">...</p>`
+            : state.inspectLessons === null
+            ? ""
+            : state.inspectLessons.length
+            ? state.inspectLessons.map(inspectLessonRowHtml).join("")
+            : `<p class="muted">${t("Chưa có bài nào khớp.")}</p>`
+        }
+      </div>
     `;
   }
 
@@ -245,6 +308,14 @@ export function renderAdmin(mount) {
     mount.querySelector("#grant-submit-btn")?.addEventListener("click", submitGrant);
     mount.querySelectorAll("[data-fill-cover]").forEach((btn) => {
       btn.addEventListener("click", () => fillCover(btn.dataset.fillCover, btn));
+    });
+    mount.querySelector("#inspect-view-btn")?.addEventListener("click", () => {
+      state.inspectIndustry = mount.querySelector("#inspect-industry-select").value;
+      state.inspectLevel = mount.querySelector("#inspect-level-select").value;
+      loadInspectLessons();
+    });
+    mount.querySelectorAll("[data-delete-lesson]").forEach((btn) => {
+      btn.addEventListener("click", () => deleteLesson(btn.dataset.deleteLesson, btn));
     });
   }
 
@@ -284,6 +355,31 @@ export function renderAdmin(mount) {
     // Gán xong -> bỏ khỏi danh sách "thiếu ảnh" NGAY (không cần tải lại cả danh sách) — tự xoá
     // đúng dòng đó khỏi state + DOM.
     state.missingCovers = state.missingCovers.filter((l) => l.id !== lessonId);
+    render();
+  }
+
+  async function loadInspectLessons() {
+    state.inspectLoading = true;
+    render();
+    const res = await adminListLessonsBySlot(state.inspectIndustry, state.inspectLevel);
+    state.inspectLoading = false;
+    state.inspectLessons = res.ok ? res.data.lessons || [] : [];
+    if (!res.ok) showToast(res.error || t("Có lỗi xảy ra."));
+    render();
+  }
+
+  // Xoá THẬT, không thể hoàn tác — bắt buộc xác nhận qua confirm() trước khi gọi action.
+  async function deleteLesson(lessonId, btn) {
+    if (!confirm(t("Xác nhận xoá bài này? Không thể hoàn tác."))) return;
+    btn.disabled = true;
+    const res = await adminDeleteLesson(lessonId);
+    if (!res.ok) {
+      btn.disabled = false;
+      showToast(res.error || t("Có lỗi xảy ra."));
+      return;
+    }
+    showToast(t("Đã xoá bài."));
+    state.inspectLessons = (state.inspectLessons || []).filter((l) => l.id !== lessonId);
     render();
   }
 
