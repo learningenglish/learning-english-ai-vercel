@@ -113,7 +113,7 @@ export function renderHome(mount) {
            chữ xuất hiện — đúng cảm giác "chớp/giật". Đổi sang "visibility:hidden" (vẫn chiếm
            đúng chỗ trong layout ngay từ lúc vẽ trang đầu tiên) + text rỗng "&nbsp;" giữ chiều
            cao dòng, JS chỉ đổi text + visibility, không còn phát sinh dịch chuyển bố cục. -->
-      <h1 class="screen-title app-header-title home-track-title" id="home-track-title" style="visibility:hidden">&nbsp;</h1>
+      <h1 class="screen-title app-header-title home-track-title" id="home-track-title" style="visibility:hidden;opacity:0">&nbsp;</h1>
       <h1 class="home-greeting">${t("Xin chào")}${name ? " " + escapeHtml(name) : ""} 👋</h1>
       <p class="home-subgreeting">${t("Hôm nay bạn muốn học gì?")}</p>
 
@@ -192,7 +192,17 @@ export function renderHome(mount) {
       }
       const titleEl = mount.querySelector("#home-track-title");
       titleEl.innerHTML = goalDisplayTitle(goal); // đã escapeHtml() bên trong goalDisplayTitle()
+      // SỬA 2026-08-20 (Minh: "Màn home vẫn còn cảm giác nhảy... do bị chớp nhẹ") — trước đây đổi
+      // "visibility" suông (ẩn/hiện tức thì, không có bước chuyển) khiến chữ "bụp" ra đột ngột
+      // ngay khi getActiveLearningGoal() tải xong — tách biệt hẳn với hiệu ứng fade-in chung của
+      // ".screen" (chỉ chạy 1 lần lúc màn vừa mount, đã kết thúc trước khi lượt fetch này về).
+      // Đổi opacity CÙNG LÚC với visibility (transition CSS ở .home-track-title, xem style.css) —
+      // "visibility" đổi tức thì nhưng vô hình vì opacity vẫn =0 lúc đó, "opacity" mới là phần MẮT
+      // THẤY chuyển động mượt từ 0->1, không cần requestAnimationFrame vì trạng thái opacity:0 ban
+      // đầu đã được vẽ từ NHIỀU khung hình trước (ngay lúc mount), không nằm cùng 1 tick với đổi
+      // này.
       titleEl.style.visibility = "visible";
+      titleEl.style.opacity = "1";
     })
     .catch(() => {
       // Lỗi mạng lúc kiểm tra -> không chặn Home, cứ để người dùng dùng bình thường.

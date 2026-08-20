@@ -3,7 +3,12 @@ import { generate_lesson, analyze_user_text, analyze_lesson_phrase_groups, analy
 import { judge_lesson_quality, orphan_lessons_for_preview } from "./_generate/lessonJudge.js";
 import { ensure_skin_chunk } from "./_generate/curriculum/skinBatch.js";
 import { generate_writing_task, grade_writing, save_writing_favorite, list_writing_genres } from "./_generate/writing.js";
-import { set_lesson_cover_image, search_lesson_cover_image } from "./_generate/coverImage.js";
+import {
+  set_lesson_cover_image,
+  search_lesson_cover_image,
+  admin_list_lessons_missing_cover,
+  admin_set_lesson_cover_image,
+} from "./_generate/coverImage.js";
 import { generate_lesson_full_audio } from "./_generate/audio.js";
 import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
 // 2026-08-11 (rà soát toàn app, xem _archive/mentor-ai-personal-flow/) — 14 action Mentor AI cá
@@ -1333,6 +1338,8 @@ const ACTIONS = {
   // tiếp (chỉ is_favorite mở cho client, xem supabase/019_lessons.sql).
   search_lesson_cover_image,
   set_lesson_cover_image,
+  admin_list_lessons_missing_cover,
+  admin_set_lesson_cover_image,
   // Thêm 1 từ vào "vocabulary" của bài (nhóm "Đã tra"), xem api/_generate/vocab.js. Bản "_news"
   // ghi vào news_lessons (công khai, không user_id). MỒ CÔI (2026-08-05, "sửa gốc tính năng tra
   // từ") — client KHÔNG còn gọi tới nữa (word_lookup/persistLookedUpWord đã bỏ, tra từ giờ đọc

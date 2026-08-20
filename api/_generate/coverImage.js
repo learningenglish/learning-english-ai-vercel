@@ -37,6 +37,7 @@
 // thật: PATCH nhắm vào lesson KHÔNG PHẢI của student này -> khớp 0 hàng, không lỗi, không rò
 // rỉ dữ liệu — không cần thêm 1 lượt SELECT riêng chỉ để tự kiểm tra ownership.
 import { SUPABASE_URL } from "./_shared.js";
+import { isAdmin } from "./billing.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const COVER_BUCKET = "lesson-covers";
@@ -288,6 +289,75 @@ async function reuploadCoverImage(sourceUrl, path) {
     return null;
   }
   return `${SUPABASE_URL}/storage/v1/object/public/${COVER_BUCKET}/${path}`;
+}
+
+// ====== QUẢN TRỊ: vá ảnh bìa thiếu (2026-08-20, Minh: "#11 #17 A1 kế toán thiếu hình") ======
+// "set_lesson_cover_image" gốc ở trên PATCH kèm "&user_id=eq.<ctx.studentId>" — ĐÚNG cho luồng tự
+// động ngay lúc tạo bài (bài đó thuộc chính ctx.studentId), nhưng bài "ai_generated" giáo trình
+// dùng CHUNG (xem 038_lessons_shared_curriculum.sql) thuộc user_id của script publish-lesson.mjs
+// đã chạy, KHÔNG PHẢI của người xem — filter đó khớp 0 hàng nếu admin gọi thẳng hàm cũ. 2 action
+// dưới đây dùng isAdmin(ctx) (billing.js) thay vì chỉ "đã đăng nhập" + KHÔNG lọc theo user_id khi
+// PATCH — admin được sửa ảnh bìa bất kỳ bài chia sẻ nào, đúng nguyên tắc "admin là không giới hạn"
+// đã áp dụng cho các action quản trị khác trong billing.js.
+
+// Liệt kê bài CHƯA có ảnh bìa (cover_thumb_url IS NULL) — lọc tuỳ chọn theo industry/level/
+// content_type, dùng cho UI "Sửa ảnh bìa" ở màn Quảng Cáo (admin.js).
+export async function admin_list_lessons_missing_cover(data, ctx) {
+  if (!(await isAdmin(ctx))) return { error: "Không có quyền quản trị.", status: 403 };
+  let q =
+    "lessons?source=eq.ai_generated&cover_thumb_url=is.null&select=id,title,title_vi,level,industry,content_type,spine_slot" +
+    "&order=level.asc,spine_slot.asc.nullslast&limit=100";
+  if (data?.industry === null) q += "&industry=is.null";
+  else if (data?.industry) q += `&industry=eq.${encodeURIComponent(data.industry)}`;
+  if (data?.level) q += `&level=eq.${encodeURIComponent(data.level)}`;
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!r.ok) {
+    console.error("admin_list_lessons_missing_cover error:", r.status, await r.text().catch(() => ""));
+    return { error: "Không tải được danh sách.", status: 502 };
+  }
+  return { content: JSON.stringify({ lessons: await r.json() }) };
+}
+
+// Giống hệt set_lesson_cover_image nhưng KHÔNG lọc theo user_id (admin sửa bài chia sẻ chung).
+export async function admin_set_lesson_cover_image(data, ctx) {
+  if (!(await isAdmin(ctx))) return { error: "Không có quyền quản trị.", status: 403 };
+  if (!data.lesson_id || !data.thumb_url || !data.detail_url) return { error: "Thiếu 'lesson_id', 'thumb_url' hoặc 'detail_url'.", status: 400 };
+
+  try {
+    const [internalThumbUrl, internalDetailUrl] = await Promise.all([
+      reuploadCoverImage(data.thumb_url, `${data.lesson_id}/thumb.jpg`),
+      reuploadCoverImage(data.detail_url, `${data.lesson_id}/detail.jpg`),
+    ]);
+    if (!internalThumbUrl || !internalDetailUrl) {
+      return { error: "Không tải/lưu được ảnh bìa.", status: 502 };
+    }
+
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(data.lesson_id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        cover_image_url: internalDetailUrl,
+        cover_thumb_url: internalThumbUrl,
+        cover_source_url: data.source_url || null,
+      }),
+    });
+    if (!r.ok) {
+      console.error("admin_set_lesson_cover_image PATCH error:", r.status, await r.text());
+      return { error: "Không lưu được ảnh bìa.", status: 502 };
+    }
+    return { content: JSON.stringify({ ok: true, cover_image_url: internalDetailUrl, cover_thumb_url: internalThumbUrl }) };
+  } catch (e) {
+    console.error("admin_set_lesson_cover_image error:", e);
+    return { error: "Không lưu được ảnh bìa.", status: 502 };
+  }
 }
 
 export async function set_lesson_cover_image(data, ctx) {

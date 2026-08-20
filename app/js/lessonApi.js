@@ -125,3 +125,31 @@ export async function fetchAndSaveLessonCover(lesson) {
     // Im lặng — xem ghi chú ở trên, đây là tính năng "cố gắng tốt nhất", không chặn luồng chính.
   }
 }
+
+// ====== QUẢN TRỊ: vá ảnh bìa thiếu (2026-08-20, Minh: "#11 #17 A1 kế toán thiếu hình") ======
+// Danh sách bài CHƯA có ảnh, dùng cho UI "Sửa ảnh bìa" ở màn Quảng Cáo (admin.js).
+export async function adminListLessonsMissingCover(filters) {
+  const res = await callChatAction("admin_list_lessons_missing_cover", filters || {});
+  if (!res.ok) return res;
+  return { ok: true, data: JSON.parse(res.content) };
+}
+
+// GỘP search_lesson_cover_image + admin_set_lesson_cover_image thành 1 lượt gọi cho UI — CÙNG
+// luồng tự động fetchAndSaveLessonCover() ở trên, chỉ khác action set dùng quyền admin (không lọc
+// theo user_id sở hữu, vì bài "ai_generated" KHÔNG thuộc riêng ai — xem ghi chú trong coverImage.js).
+export async function adminAutoFillLessonCover(lesson) {
+  const title = (lesson.title_vi || lesson.title || "").trim();
+  if (!title) return { ok: false, error: "Bài thiếu tiêu đề." };
+  const imgRes = await callChatAction("search_lesson_cover_image", { title, content_type: lesson.content_type });
+  if (!imgRes.ok) return imgRes;
+  const { image } = JSON.parse(imgRes.content);
+  if (!image?.thumbUrl || !image?.detailUrl) return { ok: false, error: "Không tìm được ảnh phù hợp." };
+  const setRes = await callChatAction("admin_set_lesson_cover_image", {
+    lesson_id: lesson.id,
+    thumb_url: image.thumbUrl,
+    detail_url: image.detailUrl,
+    source_url: image.sourceUrl,
+  });
+  if (!setRes.ok) return setRes;
+  return { ok: true, data: JSON.parse(setRes.content) };
+}

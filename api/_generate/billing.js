@@ -92,7 +92,10 @@ export async function get_my_payment_orders(data, ctx) {
 // ====== QUẢN TRỊ (chỉ Minh dùng, KHÔNG lộ cho user thường) ======
 // ctx (api/chat.js) chỉ có {studentId, mentorId}, KHÔNG có email sẵn — tự đọc email từ "students"
 // bằng service role rồi so với ADMIN_EMAILS (đơn giản/đủ dùng cho 1 người quản trị lúc này).
-async function isAdmin(ctx) {
+// EXPORT (2026-08-20) — coverImage.js cần dùng lại ĐÚNG hàm này cho action "admin_set_lesson_cover_image"
+// (sửa ảnh bìa bài học CHUNG, không phải bài của riêng ctx.studentId — cần quyền admin thay vì chỉ
+// "đã đăng nhập"), tránh viết lại 1 bản isAdmin() thứ 2 lệch nhau.
+export async function isAdmin(ctx) {
   if (!ctx?.studentId) return false;
   const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (!adminEmails.length) return false;

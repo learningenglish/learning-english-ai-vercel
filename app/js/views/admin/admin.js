@@ -14,6 +14,7 @@ import { getSession } from "../../session.js";
 import { showToast } from "../../toast.js";
 import { escapeHtml, formatDate } from "../../utils.js";
 import { adminListPendingPayments, adminConfirmPayment, adminGrantPackage, adminListPackageGrants } from "../../packageApi.js";
+import { adminListLessonsMissingCover, adminAutoFillLessonCover } from "../../lessonApi.js";
 import { PACKAGE_LABELS, UPGRADABLE_TIERS, formatVnd } from "../../packageConfig.js";
 import { t, registerTranslations } from "../../i18n.js";
 
@@ -46,6 +47,12 @@ registerTranslations({
   "Đang chờ đăng ký": "Awaiting sign-up",
   "ngày": "days",
   "tháng": "months",
+  // "Sửa ảnh bìa" (2026-08-20, Minh: "#11 #17 A1 kế toán thiếu hình") — liệt kê bài chưa có ảnh
+  // bìa + nút tự tìm-gán ảnh (Unsplash/Pexels/Wikimedia, cùng nguồn tự động lúc tạo bài).
+  "Bài thiếu ảnh bìa": "Lessons missing a cover image",
+  "Không có bài nào thiếu ảnh bìa.": "No lessons are missing a cover image.",
+  "Tìm ảnh": "Find image",
+  "Đã gán ảnh bìa.": "Cover image set.",
 });
 
 // Chỉ để ẨN/HIỆN UI (không phải lớp bảo mật thật — server tự kiểm tra lại qua ADMIN_EMAILS trong
@@ -102,6 +109,20 @@ function pendingGrantRowHtml(pending) {
   `;
 }
 
+function missingCoverRowHtml(lesson) {
+  const label = lesson.title_vi || lesson.title || "?";
+  const slot = Number.isInteger(lesson.spine_slot) ? `#${lesson.spine_slot} · ` : "";
+  return `
+    <div class="admin-order-row" data-cover-row="${lesson.id}">
+      <div class="admin-order-info">
+        <div class="admin-order-user">${escapeHtml(label)}</div>
+        <div class="admin-order-meta">${slot}${escapeHtml(lesson.level)} · ${escapeHtml(lesson.industry || "—")}</div>
+      </div>
+      <button type="button" class="btn btn-primary" data-fill-cover="${lesson.id}">${t("Tìm ảnh")}</button>
+    </div>
+  `;
+}
+
 function pendingOrderRowHtml(order) {
   const label = order.students?.full_name || order.students?.email || "?";
   return `
@@ -118,7 +139,15 @@ function pendingOrderRowHtml(order) {
 export function renderAdmin(mount) {
   const session = getSession();
   const isAdminUser = ADMIN_EMAIL_ALLOWLIST.includes((session?.user?.email || "").toLowerCase());
-  const state = { pendingOrders: [], loading: isAdminUser, grants: [], pendingGrants: [], grantsLoading: isAdminUser };
+  const state = {
+    pendingOrders: [],
+    loading: isAdminUser,
+    grants: [],
+    pendingGrants: [],
+    grantsLoading: isAdminUser,
+    missingCovers: [],
+    missingCoversLoading: isAdminUser,
+  };
 
   render();
   wireAppHeader(mount);
@@ -126,6 +155,7 @@ export function renderAdmin(mount) {
   if (isAdminUser) {
     loadPendingOrders();
     loadGrantHistory();
+    loadMissingCovers();
   }
 
   function render() {
@@ -194,6 +224,17 @@ export function renderAdmin(mount) {
             : `<p class="muted">${t("Chưa tặng gói nào.")}</p>`
         }
       </div>
+
+      <p class="progress-section-title">${t("Bài thiếu ảnh bìa")}</p>
+      <div id="admin-missing-cover-list">
+        ${
+          state.missingCoversLoading
+            ? `<p class="muted">...</p>`
+            : state.missingCovers.length
+            ? state.missingCovers.map(missingCoverRowHtml).join("")
+            : `<p class="muted">${t("Không có bài nào thiếu ảnh bìa.")}</p>`
+        }
+      </div>
     `;
   }
 
@@ -202,6 +243,9 @@ export function renderAdmin(mount) {
       btn.addEventListener("click", () => confirmOrder(btn.dataset.confirmOrder, btn));
     });
     mount.querySelector("#grant-submit-btn")?.addEventListener("click", submitGrant);
+    mount.querySelectorAll("[data-fill-cover]").forEach((btn) => {
+      btn.addEventListener("click", () => fillCover(btn.dataset.fillCover, btn));
+    });
   }
 
   async function loadPendingOrders() {
@@ -216,6 +260,30 @@ export function renderAdmin(mount) {
     state.grantsLoading = false;
     state.grants = res.ok ? res.data.grants || [] : [];
     state.pendingGrants = res.ok ? res.data.pendingGrants || [] : [];
+    render();
+  }
+
+  async function loadMissingCovers() {
+    const res = await adminListLessonsMissingCover();
+    state.missingCoversLoading = false;
+    state.missingCovers = res.ok ? res.data.lessons || [] : [];
+    render();
+  }
+
+  async function fillCover(lessonId, btn) {
+    const lesson = state.missingCovers.find((l) => l.id === lessonId);
+    if (!lesson) return;
+    btn.disabled = true;
+    const res = await adminAutoFillLessonCover(lesson);
+    if (!res.ok) {
+      btn.disabled = false;
+      showToast(res.error || t("Có lỗi xảy ra."));
+      return;
+    }
+    showToast(t("Đã gán ảnh bìa."));
+    // Gán xong -> bỏ khỏi danh sách "thiếu ảnh" NGAY (không cần tải lại cả danh sách) — tự xoá
+    // đúng dòng đó khỏi state + DOM.
+    state.missingCovers = state.missingCovers.filter((l) => l.id !== lessonId);
     render();
   }
 

@@ -1794,12 +1794,22 @@ textarea:focus {
   height: 52px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--surface);
   border-radius: 999px;
-  padding: 0 10px;
+  padding: 0 8px;
   box-shadow: 0 12px 30px rgba(31, 41, 55, 0.15);
   z-index: 50;
+}
+
+/* SỬA 2026-08-20 (Minh: "giãn cách các icon loa, loop và tốc độ hẹp lại về bên phải, cho thanh
+   timeline dài ra") — gộp 3 nút bên phải vào 1 khối RIÊNG, khoảng cách hẹp hơn hẳn khoảng cách
+   chung ".audio-bar" (6px) — nhường tối đa chỗ cho ".audio-progress-track" (flex:1) ở giữa. */
+.audio-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .audio-time {
@@ -3203,6 +3213,11 @@ textarea:focus {
    tự dời xuống theo, không cần chỉnh riêng. */
 .home-track-title {
   margin: 6px 0 0;
+  /* SỬA 2026-08-20 (Minh: "Màn home vẫn còn cảm giác nhảy... do bị chớp nhẹ") — chữ trước đây
+     "bụp" ra tức thì khi getActiveLearningGoal() tải xong (chỉ đổi visibility, không transition).
+     home.js giờ đổi opacity CÙNG LÚC với visibility — transition ở đây khiến mắt thấy MỜ DẦN HIỆN
+     RA thay vì xuất hiện đột ngột. */
+  transition: opacity 0.3s ease;
   /* SỬA 2026-08-20 (Minh: "Anh Văn Chuyên ngành Kế toán bị xuống dòng... 2 dòng canh giữa") —
      BỎ padding-left lệch trái cũ (dành cho căn theo icon các tiêu đề khác, xem ghi chú lịch sử
      dưới) — giờ LUÔN 2 dòng cố định + canh GIỮA (home.js dựng sẵn <br> ở đúng chỗ ngắt, không

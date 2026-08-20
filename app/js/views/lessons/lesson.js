@@ -772,12 +772,19 @@ export async function renderLessonDetail(mount, params, opts = {}) {
           <div class="audio-progress-thumb" id="audio-progress-thumb"></div>
         </div>
         <span class="audio-time"><span id="audio-time-elapsed">0:00</span>/<span id="audio-time-total">0:00</span></span>
-        <div class="audio-volume-wrap">
-          <button type="button" class="audio-btn" id="audio-volume-btn" title="${t("Âm lượng")}">${icon("volume", { size: 15 })}</button>
-          <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
+        <!-- SỬA 2026-08-20 (Minh: "thanh timeline quá ngắn, điều chỉnh giãn cách các icon loa,
+             loop và tốc độ hẹp lại về bên phải, cho thanh timeline dài ra") — gộp 3 nút CÒN LẠI
+             (âm lượng/lặp lại/tốc độ, các nút KHÔNG cần rộng như thanh kéo) vào 1 khối riêng
+             ".audio-controls-right" với khoảng cách hẹp hơn hẳn — nhường lại chỗ thừa cho
+             ".audio-progress-track" (flex:1, tự nới ra chiếm hết phần trống). -->
+        <div class="audio-controls-right">
+          <div class="audio-volume-wrap">
+            <button type="button" class="audio-btn" id="audio-volume-btn" title="${t("Âm lượng")}">${icon("volume", { size: 15 })}</button>
+            <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="1" step="0.1" value="1" hidden />
+          </div>
+          <button type="button" class="audio-btn audio-btn-loop" id="audio-replay" title="${t("Lặp lại")}">${icon("repeat", { size: 15 })}<span class="audio-loop-badge">1</span></button>
+          <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="${t("Tốc độ đọc")}">1x</button>
         </div>
-        <button type="button" class="audio-btn audio-btn-loop" id="audio-replay" title="${t("Lặp lại")}">${icon("repeat", { size: 15 })}<span class="audio-loop-badge">1</span></button>
-        <button type="button" class="audio-btn audio-btn-speed" id="audio-speed" title="${t("Tốc độ đọc")}">1x</button>
       </div>
     `;
   }
