@@ -697,15 +697,8 @@ textarea:focus {
   opacity: 0.75;
 }
 
-/* Header màn Cài đặt (2026-08-20) — tiêu đề trái + badge tên gói phải, thay hàng "Gói của tôi"
-   trong danh sách cũ. */
-.settings-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
+/* "Gói của tôi" (2026-08-20) — tên gói hiện tại, nền pill nhỏ, nằm bên phải hàng "Gói của tôi"
+   TRƯỚC dấu chevron (không phải badge góc header — Minh sửa lại ý ban đầu). */
 .package-name-badge {
   background: var(--purple-soft, var(--surface-soft));
   color: var(--purple);
@@ -3976,6 +3969,13 @@ textarea:focus {
 .settings-row-clickable {
   cursor: pointer;
   color: var(--text);
+}
+
+/* "Gói của tôi" — nhãn tên gói + chevron nằm CHUNG bên phải hàng (2026-08-20). */
+.settings-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* 2026-08-11 (Minh: "Thêm chuyên ngành (Nâng cấp gói)" dài hơn hẳn "Đổi chuyên ngành" cũ) — phòng

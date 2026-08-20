@@ -16,8 +16,9 @@ registerTranslations({
   "Ngôn ngữ": "Language",
   "Tiếng Việt": "Vietnamese",
   // 2026-08-20 (Minh): "Thêm chuyên ngành (Nâng cấp gói)" -> "Đổi chuyên ngành" (nhãn cũ nhắc lại
-  // "nâng cấp gói" gây trùng ý với badge gói mới ở góc phải, xem "package-name-badge" bên dưới).
+  // "nâng cấp gói" gây trùng ý với hàng "Gói của tôi" ngay phía trên).
   "Đổi chuyên ngành": "Change industry",
+  "Gói của tôi": "My plan",
   "Tài khoản": "Account",
   "Thông tin ứng dụng": "App info",
   "Giao diện": "Appearance",
@@ -68,16 +69,7 @@ export function renderProfile(mount) {
   const currentLang = getUiLang();
   mount.innerHTML = `
     <div class="screen">
-      <!-- "package-name-badge" (2026-08-20, Minh: "Gói của tôi đưa ra màn hình setting (Không tạo
-           card riêng) Chỉ chú thích bên góc phải Tên gói (Dùng nền)") — THAY hàng "Gói của tôi"
-           trong danh sách CŨ (đã gỡ) bằng 1 badge nhỏ góc phải header, chỉ hiện TÊN gói hiện tại
-           (vd "Free"), bấm vào mới điều hướng sang màn nâng cấp (xem views/settings/packages.js,
-           giờ đổi tên "Nâng cấp gói" — không còn tự xưng "Gói của tôi" nữa, tên gói đã lộ sẵn ở
-           đây rồi). -->
-      <div class="settings-header-row">
-        <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} ${t("Cài đặt")}</h1>
-        <button type="button" class="package-name-badge" id="package-name-badge">--</button>
-      </div>
+      <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} ${t("Cài đặt")}</h1>
 
       <div class="card profile-card">
         <!-- "Ngôn ngữ" (2026-08-12, Minh: "thêm ngôn ngữ giao diện: tiếng Anh") — chuyển từ hàng
@@ -96,8 +88,18 @@ export function renderProfile(mount) {
       </div>
 
       <div class="card profile-card">
+        <!-- 2026-08-20 (Minh sửa lại lần 2 — bản trước đưa badge lên góc header SAI ý): "Gói của
+             tôi" là 1 HÀNG bình thường TRÊN "Đổi chuyên ngành" (không phải card/badge header
+             riêng) — tên gói (vd "Free") hiện ngay bên phải, TRƯỚC dấu ">", dùng nền pill nhỏ. -->
+        <div class="settings-row settings-row-clickable" id="my-package-row">
+          <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Gói của tôi")}</span>
+          <span class="settings-row-right">
+            <span class="package-name-badge" id="package-name-badge">--</span>
+            ${icon("chevron-right", { size: 18 })}
+          </span>
+        </div>
         <!-- 2026-08-20 (Minh): đổi nhãn "Thêm chuyên ngành (Nâng cấp gói)" -> "Đổi chuyên ngành"
-             (nhãn cũ trùng ý "nâng cấp gói" với badge tên gói mới ở góc phải header). -->
+             (nhãn cũ trùng ý "nâng cấp gói" với hàng "Gói của tôi" ngay phía trên). -->
         <div class="settings-row settings-row-clickable" id="change-industry-row">
           <span class="icon-text">${icon("briefcase", { size: 18 })} ${t("Đổi chuyên ngành")}</span>
           ${icon("chevron-right", { size: 18 })}
@@ -197,7 +199,7 @@ export function renderProfile(mount) {
   // "/change" ở cuối hash để quyết định hiện/ẩn thanh điều hướng ngoài (xem app.js).
   mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select/change"));
 
-  mount.querySelector("#package-name-badge").addEventListener("click", () => navigate("/packages"));
+  mount.querySelector("#my-package-row").addEventListener("click", () => navigate("/packages"));
   getCreditBalance().then((res) => {
     const badge = mount.querySelector("#package-name-badge");
     if (badge && res.ok) badge.textContent = PACKAGE_LABELS[res.data.packageTier]?.label || res.data.packageTier;
