@@ -18,7 +18,9 @@ import { PACKAGE_LABELS, UPGRADABLE_TIERS, formatVnd } from "../../packageConfig
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
-  "Quản trị": "Admin",
+  // "Quảng Cáo" (2026-08-20, Minh: "ẩn chức năng Quản Trị dưới vỏ bọc quảng cáo") — chỉ đổi
+  // NHÃN + ICON hiển thị (xem app.js NAV_TABS), toàn bộ phân quyền thật giữ nguyên bên dưới.
+  "Quảng Cáo": "Ads",
   "Sắp ra mắt": "Coming soon",
   "Đơn hàng chờ duyệt": "Orders pending approval",
   "Không có đơn hàng nào đang chờ.": "No orders pending.",
@@ -74,7 +76,7 @@ export function renderAdmin(mount) {
   function render() {
     mount.innerHTML = `
       <div class="screen">
-        ${appHeaderHtml(`<span style="color:var(--purple)">${icon("shield", { size: 22 })}</span> ${t("Quản trị")}`)}
+        ${appHeaderHtml(`<span style="color:var(--purple)">${icon("megaphone", { size: 22 })}</span> ${t("Quảng Cáo")}`)}
         ${isAdminUser ? adminPanelHtml() : comingSoonHtml()}
       </div>
     `;
@@ -86,7 +88,7 @@ export function renderAdmin(mount) {
     return `
       <div class="screen-center" style="padding-top:60px">
         <div class="card" style="text-align:center">
-          ${icon("shield", { size: 40 })}
+          ${icon("megaphone", { size: 40 })}
           <p class="muted" style="margin-top:12px">${t("Sắp ra mắt")}</p>
         </div>
       </div>

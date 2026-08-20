@@ -228,6 +228,16 @@ body::after {
   background-size: calc(min(72vw, 420px) * 1.2922) calc(min(72vw, 420px) * 0.8615);
 }
 
+/* Tắt watermark trên màn Bài học/Hội thoại (2026-08-20, Minh gửi ảnh thật: logo lớn "lộ" ngay
+   giữa các khung xương lúc đang tải danh sách bài — "tôi không muốn thấy hiển thị này"). Watermark
+   định vị CỐ ĐỊNH theo viewport (position:fixed, "center 38%"), không theo nội dung trang — ở màn
+   này danh sách bài (thật lẫn khung xương) luôn nằm đúng dải đó, khe hở 12px giữa các thẻ đủ để lộ
+   logo to. Dùng :has() tắt hẳn ở màn này thay vì chỉnh lại khe hở/kích thước logo (ảnh hưởng mọi
+   màn khác) — hỗ trợ tốt trên trình duyệt Android hiện đại (Chrome/WebView 2024+). */
+body:has(.lessons-screen)::after {
+  display: none;
+}
+
 /* ===== Icon SVG dùng chung (app/js/icons.js) — thay thế TOÀN BỘ emoji cũ. stroke="currentColor"
    nên chỉ cần set "color" trên phần tử cha là icon đổi màu theo, không cần class riêng cho
    từng ngữ cảnh (nav active, badge, nút...). ===== */
@@ -651,7 +661,8 @@ textarea:focus {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .streak-badge {
@@ -660,7 +671,7 @@ textarea:focus {
   gap: 4px;
   background: var(--surface);
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 10px;
   font-weight: 600;
   color: var(--orange);
   box-shadow: var(--shadow-card);
@@ -742,6 +753,20 @@ textarea:focus {
 .app-header-title {
   margin: 0;
   font-size: 1.25rem;
+}
+
+/* SỬA 2026-08-20 (Minh: "Văn bản/Luyện Viết bị xuống dòng. Đảm bảo 1 dòng. Các icon khác thu hẹp
+   lại và lệch về bên phải") — tiêu đề (vd "Văn bản Beta") trước đây không có white-space riêng,
+   bị ép xuống 2 dòng khi header-right (icon Lưu trữ + badge Credit/chuỗi ngày + icon Cài đặt)
+   chiếm hết chỗ trên màn hẹp. Chỉ áp dụng TRONG ".app-header" (không trúng ".home-track-title"
+   của Home — element đó KHÔNG nằm trong ".app-header", tự canh riêng qua <br> cố định, xem khối
+   CSS ".home-track-title"). overflow/ellipsis chỉ là lưới đỡ cuối cùng — sau khi thu hẹp
+   header-right ở trên, tiêu đề thực tế đủ chỗ hiện trọn vẹn, không cần cắt. */
+.app-header .app-header-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* ===== Search + filter row ===== */
@@ -1455,15 +1480,17 @@ textarea:focus {
 
 .lesson-card-meta {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   align-items: center;
   font-size: 0.8rem;
-  /* SỬA 2026-08-20 (Minh: "Chữ Chưa học khi bài hơn 2 chữ số là bị xuống dòng") — badge "#11"/
-     "#17" (3 ký tự) chiếm nhiều chỗ hơn "#5" (2 ký tự) khiến badge "Chưa học" còn lại KHÔNG đủ
-     rộng, chữ BÊN TRONG nó tự xuống dòng — cho phép cả HÀNG badge wrap xuống dòng MỚI khi chật
-     (flex-wrap), thay vì để chữ vỡ dòng ngay trong 1 badge. */
-  flex-wrap: wrap;
-  row-gap: 4px;
+  /* SỬA 2026-08-20 LẦN 2 (Minh: "#STT Level Chưa học/Đã học nằm cùng 1 dòng, không xuống hàng.
+     Thu hẹp giãn cách icon") — LẦN ĐẦU chỉ cho phép cả hàng badge wrap xuống dòng mới khi chật
+     (flex-wrap), tránh chữ vỡ dòng NGAY TRONG 1 badge — nhưng Minh xem lại muốn CẢ 3 badge LUÔN
+     1 hàng, không wrap dòng nào cả. Quay lại nowrap + giảm gap/padding badge (xem .badge,
+     .learn-status-badge bên dưới) để 3 badge đủ chỗ trên 1 hàng kể cả "#11"/"#17".
+  */
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 /* Nhãn lĩnh vực/chuyên mục cạnh ngày tạo (2026-07-28, "bỏ toggle Của tôi/Tin tức") — co lại +
@@ -1498,9 +1525,10 @@ textarea:focus {
   background: var(--purple-soft);
   color: var(--purple);
   border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 0.75rem;
+  padding: 2px 7px;
+  font-size: 0.7rem;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 /* "#N" thứ tự bài trong khung giáo trình (2026-08-06, spine_slot — xem lessonCard.js) — CỐ
@@ -3415,20 +3443,21 @@ textarea:focus {
   text-align: center;
 }
 
+/* SỬA 2026-08-20 (Minh: "Đổi font chữ... Thay STUDY thành ENGLISH, cho font chữ lớn hơn, đảm bảo
+   1 dòng") — cỡ chữ CỐ ĐỊNH cũ (0.75rem) không co giãn theo màn hình, trong khi chữ mới "MOSAIC
+   ENGLISH" dài hơn "MOSAIC STUDY" 2 ký tự -> dễ tràn/xuống dòng trên máy hẹp nếu chỉ tăng cỡ chữ
+   suông. Dùng clamp() theo vw (tỉ lệ THEO ĐỘ RỘNG MÀN HÌNH thật, không phải hằng số) + nowrap: chữ
+   TỰ co giãn vừa khít 1 dòng ở MỌI độ rộng máy, không cần đoán cứng 1 cỡ chữ riêng cho từng máy.
+   Bỏ letter-spacing rộng cũ (0.06em) — cùng lý do, nhường chỗ cho chữ dài hơn. */
 .industry-select-tagline {
   color: var(--chip-orange, #f97316);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  margin: 0 0 10px;
+  font-size: clamp(0.72rem, 4.1vw, 1.05rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin: 0 0 14px;
   text-align: center;
   text-transform: uppercase;
-}
-
-.industry-select-subtitle {
-  color: var(--text-dim);
-  margin: 0;
-  text-align: center;
+  white-space: nowrap;
 }
 
 .industry-list {
@@ -3717,17 +3746,20 @@ textarea:focus {
   flex-shrink: 0;
 }
 
-/* "Chưa học/Đang học/Đã học" (2026-08-04, Phần A4) — badge trên thẻ danh sách bài. */
+/* "Chưa học/Đang học/Đã học" (2026-08-04, Phần A4) — badge trên thẻ danh sách bài. Font-size/
+   padding thu hẹp lần 2026-08-20 cùng .badge/.lesson-card-meta — xem ghi chú tại đó. */
 .learn-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 0.72rem;
+  gap: 2px;
+  font-size: 0.66rem;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
   white-space: nowrap;
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .learn-status-not-started {

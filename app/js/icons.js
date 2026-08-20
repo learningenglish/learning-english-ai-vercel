@@ -80,6 +80,9 @@ const PATHS = {
   // "Tài khoản"/"Thông tin ứng dụng" (2026-08-05, màn Cài đặt).
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5h.01"/>',
+  // "Quảng Cáo" (2026-08-20, Minh: "ẩn chức năng Quản Trị dưới vỏ bọc quảng cáo") — tab Admin
+  // đổi nhãn + icon để không lộ đây là màn quản trị, xem app.js NAV_TABS + views/admin/admin.js.
+  megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
 };
 
 // "name": tên icon trong PATHS ở trên. "size"/"strokeWidth": tuỳ biến kích thước hiển thị.

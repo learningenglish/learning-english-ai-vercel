@@ -27,8 +27,11 @@ import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
   "Chọn chuyên ngành<br />để bắt đầu": "Choose an industry<br />to get started",
-  "HỌC TIẾNG ANH CÙNG MOSAIC STUDY": "LEARN ENGLISH WITH MOSAIC STUDY",
-  "Nội dung được thiết kế riêng<br />cho công việc của bạn": "Content designed specifically<br />for your job",
+  // "MOSAIC ENGLISH" (2026-08-20, Minh: đổi "STUDY" -> "ENGLISH", cho font lớn hơn, đảm bảo 1
+  // dòng — xem .industry-select-tagline trong style.css, dùng clamp() theo vw thay vì cỡ chữ cố
+  // định để LUÔN vừa 1 dòng bất kể độ rộng màn hình, dù chữ dài hơn bản "STUDY" cũ) — BỎ hẳn dòng
+  // phụ đề "Nội dung được thiết kế riêng cho công việc của bạn" theo yêu cầu, không còn dùng nữa.
+  "HỌC TIẾNG ANH CÙNG MOSAIC ENGLISH": "LEARN ENGLISH WITH MOSAIC ENGLISH",
   "Sắp ra mắt": "Coming soon",
   "Chuyên ngành này sắp ra mắt, chưa có nội dung để học.": "This industry is coming soon, no content to learn yet.",
   "Không tạo được lộ trình, thử lại nhé.": "Couldn't create your learning path, please try again.",
@@ -288,8 +291,7 @@ export function renderIndustrySelect(mount) {
     mount.innerHTML = `
       <div class="screen industry-select-screen">
         <h1 class="industry-select-title">${t("Chọn chuyên ngành<br />để bắt đầu")}</h1>
-        <p class="industry-select-tagline">${t("HỌC TIẾNG ANH CÙNG MOSAIC STUDY")}</p>
-        <p class="industry-select-subtitle">${t("Nội dung được thiết kế riêng<br />cho công việc của bạn")}</p>
+        <p class="industry-select-tagline">${t("HỌC TIẾNG ANH CÙNG MOSAIC ENGLISH")}</p>
         ${state.blockedInfo ? switchBlockedPanelHtml(state.blockedInfo, state.currentGoalTitle) : ""}
         <div class="industry-list">
           ${INDUSTRIES.map((ind) => industryRowHtml(ind)).join("")}

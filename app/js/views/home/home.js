@@ -26,7 +26,20 @@ registerTranslations({
   "Luyện viết theo chủ đề": "Practice writing by topic",
   "ngày": "days",
   "bài đã học": "lessons done",
+  // "Anh Văn Giao Tiếp" / "Chuyên Ngành {X}" (2026-08-20, Minh: "Đổi tên và Viết Hoa từng chữ...
+  // Anh Văn Giao Tiếp / Chuyên Ngành Làm Đẹp") — thay hẳn cụm cũ "Anh văn chuyên ngành {X}" (1
+  // cụm liền), xem goalDisplayTitle() bên dưới. Bản tiếng Anh KHÔNG dịch sát nghĩa từng chữ (đọc
+  // ngô nghê) — giữ cấu trúc gốc "English for {X}" đã dùng ổn định trước đó.
+  "Anh Văn Giao Tiếp": "Communication English",
+  "Chuyên Ngành": "for",
 });
+
+// Viết Hoa từng chữ (2026-08-20, Minh: "Viết Hoa từng chữ") — CHỈ đổi CHỮ CÁI ĐẦU mỗi từ thành
+// hoa, giữ nguyên phần còn lại (không ép lowercase phần sau — occupation_profile.merged_occupation
+// vốn đã đúng dấu tiếng Việt, chỉ có vài giá trị viết thường chữ đầu như "Kế toán").
+function titleCaseVi(str) {
+  return str.replace(/(^|\s)(\S)/g, (m, sp, ch) => sp + ch.toUpperCase());
+}
 
 // "goal.title" (2026-08-13, Minh: giao diện tiếng Anh vẫn hiện tên chuyên ngành tiếng Việt) là
 // câu TĨNH dựng sẵn ở server LÚC TẠO goal (buildGoalConfirmationDisplay()/buildConfirmationDisplay()
@@ -39,10 +52,18 @@ registerTranslations({
 // dòng [sai chỗ]... Dòng 1: Anh Văn Chuyên ngành / Dòng 2: Kế Toán, 2 dòng canh giữa". Ngắt dòng
 // CỐ ĐỊNH bằng <br> ngay tại đây (không để trình duyệt tự ngắt theo độ rộng màn hình, dễ ngắt
 // giữa 1 từ trên máy hẹp) — escapeHtml() TÊN NGÀNH vì giờ ghép vào bằng innerHTML.
+// SỬA LẦN 2 (cùng ngày, Minh xem lại trên máy thật với ngành Làm Đẹp, đổi hẳn cách ghép chữ):
+// "Đổi tên và Viết Hoa từng chữ: Dòng 1 Anh Văn Giao Tiếp / Dòng 2 Chuyên Ngành Làm Đẹp, canh
+// giữa" — Dòng 1 giờ là 1 cụm CỐ ĐỊNH (không đổi theo ngành), Dòng 2 mới chứa tên ngành, có tiền
+// tố "Chuyên Ngành" + Viết Hoa từng chữ (titleCaseVi(), xem trên) áp cho tên ngành vì dữ liệu gốc
+// có giá trị chưa đúng chuẩn ("Kế toán" thay vì "Kế Toán").
 function goalDisplayTitle(goal) {
   const profile = goal?.occupation_profile;
   if (profile?.is_general) return t("Giao Tiếp Tổng Quát");
-  if (profile?.merged_occupation) return `${t("Anh văn chuyên ngành")}<br>${escapeHtml(t(profile.merged_occupation))}`;
+  if (profile?.merged_occupation) {
+    const occ = escapeHtml(titleCaseVi(t(profile.merged_occupation)));
+    return `${t("Anh Văn Giao Tiếp")}<br>${t("Chuyên Ngành")} ${occ}`;
+  }
   return escapeHtml(goal.title); // lưới đỡ cho goal cũ (nếu có) thiếu occupation_profile
 }
 

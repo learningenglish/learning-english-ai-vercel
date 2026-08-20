@@ -23,7 +23,7 @@ import { t, registerTranslations } from "./i18n.js";
 registerTranslations({
   "Trang chủ": "Home",
   "Tiến trình": "Progress",
-  "Quản trị": "Admin",
+  "Quảng Cáo": "Ads",
 });
 import { icon } from "./icons.js";
 // Import theo ĐÚNG cây thư mục sắp theo luồng (2026-08-12, rà soát tổ chức file/thư mục —
@@ -52,10 +52,14 @@ applyFontSize();
 // Nhãn tab (2026-08-12, Minh: "đồng bộ tiếng Việt là không có từ tiếng Anh, trừ khi quá thông
 // dụng") — 3/4 nhãn trước đây để nguyên tiếng Anh (Home/Ads/Setting), không phải từ vay mượn
 // thông dụng — đổi hẳn sang tiếng Việt, bản tiếng Anh giờ qua t() khi chọn English.
+// "Quảng Cáo" (2026-08-20, Minh: "ẩn chức năng Quản Trị dưới vỏ bọc quảng cáo. Nếu người dùng
+// thấy chữ Quản Trị thì không hay") — ĐỔI NHÃN + ICON (shield -> megaphone), route "/admin" và
+// toàn bộ logic phân quyền THẬT giữ NGUYÊN (xem views/admin/admin.js — ADMIN_EMAIL_ALLOWLIST +
+// server tự kiểm tra lại qua ADMIN_EMAILS), đây CHỈ là lớp vỏ hiển thị.
 const NAV_TABS = [
   { path: "/home", label: "Trang chủ", icon: "home" },
   { path: "/progress", label: "Tiến trình", icon: "bar-chart" },
-  { path: "/admin", label: "Quản trị", icon: "shield" },
+  { path: "/admin", label: "Quảng Cáo", icon: "megaphone" },
   { path: "/profile", label: "Cài đặt", icon: "settings" },
 ];
 

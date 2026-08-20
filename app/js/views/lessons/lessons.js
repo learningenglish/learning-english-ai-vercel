@@ -137,7 +137,7 @@ export function renderLessons(mount, params) {
   }
 
   mount.innerHTML = `
-    <div class="screen">
+    <div class="screen lessons-screen">
       ${appHeaderHtml(`<span>${titleText}</span>`, undefined, { showBack: true })}
 
       <div class="level-card-row" id="level-card-row">${levelCardRowHtml()}</div>
