@@ -270,6 +270,25 @@ body:has(.lessons-screen)::after {
   max-width: 480px;
   margin: 0 auto;
   padding: 20px 16px;
+  /* SỬA 2026-08-20 (Minh: "Chuyển đổi các màn cảm giác bị nhảy. Hãy đổi hiệu ứng hiện lên chậm để
+     mắt không cảm giác bị nhảy") — router.js render() thay ".screen" bằng innerHTML NGAY LẬP TỨC
+     (mount.innerHTML=""; rồi renderFn() gắn nội dung mới), không có bước chuyển tiếp nào -> mắt
+     thấy nội dung "nhảy" đổi thẳng. MỌI màn đều dùng chung class ".screen" làm khung ngoài cùng
+     (14 file views/*) nên chỉ cần 1 animation ở ĐÚNG class này, tự áp dụng cho MỌI lượt chuyển màn
+     mà không cần sửa router.js hay từng view riêng — mỗi lần router tạo phần tử ".screen" MỚI
+     (innerHTML luôn dựng lại từ đầu), animation tự chạy lại từ đầu. */
+  animation: screen-fade-in 0.25s ease-out;
+}
+
+@keyframes screen-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .screen-center {

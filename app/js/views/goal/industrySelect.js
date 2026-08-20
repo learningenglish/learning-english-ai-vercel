@@ -290,8 +290,10 @@ export function renderIndustrySelect(mount) {
   function render() {
     mount.innerHTML = `
       <div class="screen industry-select-screen">
-        <h1 class="industry-select-title">${t("Chọn chuyên ngành<br />để bắt đầu")}</h1>
+        <!-- 2026-08-20 (Minh: "HỌC TIẾNG ANH CÙNG MOSAIC ENGLISH nằm trên câu Chọn Chuyên Ngành để
+             bắt đầu") — đổi thứ tự: tagline lên TRƯỚC, tiêu đề xuống SAU. -->
         <p class="industry-select-tagline">${t("HỌC TIẾNG ANH CÙNG MOSAIC ENGLISH")}</p>
+        <h1 class="industry-select-title">${t("Chọn chuyên ngành<br />để bắt đầu")}</h1>
         ${state.blockedInfo ? switchBlockedPanelHtml(state.blockedInfo, state.currentGoalTitle) : ""}
         <div class="industry-list">
           ${INDUSTRIES.map((ind) => industryRowHtml(ind)).join("")}
