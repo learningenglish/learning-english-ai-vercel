@@ -42,6 +42,7 @@ import { renderLessonDetail } from "./views/lessons/lesson.js";
 import { renderProgress } from "./views/progress/progress.js";
 import { renderAdmin } from "./views/admin/admin.js";
 import { renderProfile } from "./views/settings/profile.js";
+import { renderPackages } from "./views/settings/packages.js";
 
 applyTheme();
 watchSystemTheme();
@@ -79,6 +80,7 @@ registerRoute("/lesson", renderLessonDetail);
 registerRoute("/progress", renderProgress);
 registerRoute("/admin", renderAdmin);
 registerRoute("/profile", renderProfile);
+registerRoute("/packages", renderPackages);
 
 // Bắt buộc đăng nhập cho MỌI route trừ /login (RLS bảo vệ dữ liệu thật, đây chỉ là UX
 // điều hướng — không phải lớp bảo mật, đúng luật cứng #7). Mặc định sau đăng nhập -> /home

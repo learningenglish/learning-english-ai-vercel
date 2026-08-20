@@ -194,10 +194,18 @@ export function renderWritingPractice(mount) {
   let audioTotalSec = 0;
 
   render();
-  loadAppHeaderStats(mount).then((r) => {
-    if (r) headerCache = { streakText: r.streak, tierText: r.tier };
+  loadAppHeaderStats(mount, { showCreditCounter: true }).then((r) => {
+    if (r) headerCache = { creditText: r.creditText };
   });
   loadGenres();
+
+  // Vừa tiêu credit cho 1 lượt chấm bài — làm mới số dư hiện trên header NGAY, cập nhật cache để
+  // KHÔNG bị "--" thoáng qua ở lượt render() kế tiếp (đúng cơ chế cache đã dùng cho streak/tier).
+  function refreshCreditBadge() {
+    loadAppHeaderStats(mount, { showCreditCounter: true }).then((r) => {
+      if (r) headerCache = { creditText: r.creditText };
+    });
+  }
 
   async function loadGenres() {
     const res = await listWritingGenres();
@@ -211,6 +219,7 @@ export function renderWritingPractice(mount) {
         ${appHeaderHtml(STEP_TITLES[state.step], headerCache, {
           showBack: true,
           archivePath: state.step === "genre" ? "/writing-archive" : undefined,
+          showCreditCounter: true,
         })}
         ${
           state.step === "genre"
@@ -922,6 +931,8 @@ export function renderWritingPractice(mount) {
     state.cleanCoverImage = null;
     state.step = "result";
     render();
+    // Vừa tiêu credit cho lượt chấm bài vừa xong — làm mới ngay (xem refreshCreditBadge() ở trên).
+    refreshCreditBadge();
   }
 
   // router.js gọi hàm trả về này (nếu có) TRƯỚC khi vẽ màn kế tiếp — dừng phát nếu người dùng

@@ -10,6 +10,7 @@
 import { navigate } from "./router.js";
 import { icon } from "./icons.js";
 import { getStreakAndStats } from "./db.js";
+import { getCreditBalance } from "./packageApi.js";
 import { t, registerTranslations } from "./i18n.js";
 
 registerTranslations({
@@ -67,6 +68,10 @@ let sharedStatsCache = {};
 // Lưu trữ CỤC BỘ riêng thay vì 1 màn Yêu thích chung) — có giá trị -> chèn thêm 1 icon "Lưu trữ"
 // NGAY TRƯỚC nút cài đặt, bấm vào điều hướng tới đúng path đó (views/writingPractice.js ->
 // "/writing-archive", views/createFromText.js -> "/analysis-archive").
+// opts.showCreditCounter (2026-08-20, spec "CƠ CẤU GÓI MOSAIC" — Minh: "Đổi icon tính chuỗi ngày
+// học ở màn Phân tích và Luyện viết thành bộ đếm credit") — THAY HẲN badge chuỗi ngày học bằng
+// số dư AI Credit, CHỈ bật ở views/createFromText.js (Phân tích) + views/writingPractice.js
+// (Luyện viết) — 2 màn DUY NHẤT thật sự tiêu credit, mọi màn khác giữ nguyên badge chuỗi ngày.
 export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
   const back = opts.showBack ? backChevronHtml() : "";
   const left = titleHtml
@@ -82,17 +87,20 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
   const archiveBtn = opts.archivePath
     ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="${t("Lưu trữ")}">${icon("bookmark", { size: 20 })}</button>`
     : "";
-  // "archiveBtn" ĐỨNG TRƯỚC streak-badge (2026-08-04, Minh: "icon lưu trữ nằm bên trái icon
-  // chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — streak-badge giờ LUÔN kề
+  const rightBadge = opts.showCreditCounter
+    ? `<div class="streak-badge credit-badge" id="credit-badge">${icon("sparkles", { size: 16 })} <span id="credit-value">${cache.creditText ?? "--"}</span></div>`
+    : `<div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>`;
+  // "archiveBtn" ĐỨNG TRƯỚC streak-badge/credit-badge (2026-08-04, Minh: "icon lưu trữ nằm bên
+  // trái icon chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — badge giờ LUÔN kề
   // ngay cạnh nút cài đặt (2 phần tử LUÔN có mặt trên mọi màn), archiveBtn (chỉ có ở 1-2 màn)
-  // chèn thêm vào bên TRÁI thay vì xen giữa — vị trí streak so với nút cài đặt không đổi dù màn
+  // chèn thêm vào bên TRÁI thay vì xen giữa — vị trí badge so với nút cài đặt không đổi dù màn
   // có/không có nút Lưu trữ.
   return `
     <div class="app-header">
       ${left}
       <div class="header-right">
         ${archiveBtn}
-        <div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>
+        ${rightBadge}
         <button type="button" class="settings-btn" id="settings-btn" aria-label="${t("Hồ sơ & cài đặt").replace(/&/g, "&amp;")}">${icon("settings", { size: 20 })}</button>
       </div>
     </div>
@@ -125,7 +133,23 @@ export function wireBackLink(mount, onBack) {
 // MỌI màn có header gọi, cộng thêm bất kỳ lượt nào view đang mở TỰ gọi riêng cùng lúc (vd
 // writingPractice.js::loadGenres()) — gộp ở đây giảm ĐƯỢC 1 lượt refresh token đồng thời trên
 // TOÀN BỘ các màn đó cùng lúc, không cần sửa từng file riêng.
-export async function loadAppHeaderStats(mount) {
+// opts.showCreditCounter — TẢI SỐ DƯ CREDIT thay vì streak (đúng cặp với appHeaderHtml() ở
+// trên). KHÔNG gộp vào sharedStatsCache (streak/tier dùng CHUNG mọi màn, credit chỉ 2 màn) — giữ
+// creditText trong CHÍNH object trả về, view gọi tự lưu lại nếu cần cache qua nhiều lần render()
+// (giống cách createLesson.js/writingPractice.js đã tự cache streak/tier trước đây).
+export async function loadAppHeaderStats(mount, opts = {}) {
+  if (opts.showCreditCounter) {
+    try {
+      const res = await getCreditBalance();
+      if (!res.ok) return null;
+      const creditText = String(res.data.balance);
+      const creditEl = mount.querySelector("#credit-value");
+      if (creditEl) creditEl.textContent = creditText;
+      return { creditText, packageTier: res.data.packageTier };
+    } catch {
+      return null;
+    }
+  }
   try {
     const { streak, totalXp } = await getStreakAndStats();
     const tier = tierLabel(totalXp);

@@ -41,7 +41,7 @@ registerTranslations({
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(t("Văn bản"), undefined, { showBack: true, archivePath: "/analysis-archive" })}
+      ${appHeaderHtml(t("Văn bản"), undefined, { showBack: true, archivePath: "/analysis-archive", showCreditCounter: true })}
 
       <label class="field">
         <span class="field-question">${t("Dán văn bản của bạn")}</span>
@@ -57,7 +57,7 @@ export function renderCreateFromText(mount) {
   // giữ vai trò đó, back từ đây phải về Home.
   wireBackLink(mount, () => navigate("/home"));
   wireAppHeader(mount);
-  loadAppHeaderStats(mount);
+  loadAppHeaderStats(mount, { showCreditCounter: true });
 
   // Mốc 600 từ (2026-07-28, chốt với Minh — thay 3000 cũ) — chặn NGAY ở UI trước khi gửi AI:
   // nút "Phân tích" tự vô hiệu hoá khi ngoài khoảng, không phải chỉ báo lỗi SAU khi bấm.
@@ -101,6 +101,9 @@ export function renderCreateFromText(mount) {
       return;
     }
     const lesson = res.data.lesson;
+    // Vừa tiêu credit cho lượt phân tích này — làm mới số dư hiện trên header NGAY (không đợi
+    // chuyển màn/mount lại), fire-and-forget vì không chặn luồng chính.
+    loadAppHeaderStats(mount, { showCreditCounter: true });
     // Phân tích cụm từ + tách câu PHẢI XONG TRƯỚC khi hiện bài (2026-08-11, cùng lý do ở
     // createLesson.js — Minh: "AI làm trước hoàn chỉnh... không còn phù hợp việc click vào mới
     // tra từ"). Best-effort: lỗi tạm thời không chặn hẳn việc xem bài, chỉ log lại.

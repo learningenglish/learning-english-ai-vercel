@@ -25,6 +25,7 @@ registerTranslations({
   "Luyện viết": "Writing practice",
   "Luyện viết theo chủ đề": "Practice writing by topic",
   "ngày": "days",
+  "bài đã học": "lessons done",
 });
 
 // "goal.title" (2026-08-13, Minh: giao diện tiếng Anh vẫn hiện tên chuyên ngành tiếng Việt) là
@@ -91,7 +92,10 @@ export function renderHome(mount) {
       <p class="home-subgreeting">${t("Hôm nay bạn muốn học gì?")}</p>
 
       <div class="streak-card">
-        <div class="streak-card-label">${t("Chuỗi ngày học")}</div>
+        <div class="streak-card-top">
+          <div class="streak-card-label">${t("Chuỗi ngày học")}</div>
+          <span class="streak-card-lessons-count" id="streak-lessons-count">--</span>
+        </div>
         <div class="streak-card-row">
           <span class="streak-card-value" id="streak-value">--</span>
           <div class="streak-card-bar"><div class="streak-card-bar-fill" id="streak-bar-fill" style="width:0%"></div></div>
@@ -118,8 +122,12 @@ export function renderHome(mount) {
   });
 
   getStreakAndStats()
-    .then(({ streak: days, totalXp }) => {
+    .then(({ streak: days, totalXp, completedCount }) => {
       mount.querySelector("#streak-value").textContent = `${days} ${t("ngày")}`;
+      // Số bài đã học ở góc trên bên phải card chuỗi ngày (2026-08-20, Minh: "Thêm số bài đã học
+      // ở card chuỗi ngày học ở góc trên bên phải") — TÁI DÙNG completedCount đã tính sẵn trong
+      // CÙNG lượt getStreakAndStats() này, không gọi thêm API riêng.
+      mount.querySelector("#streak-lessons-count").textContent = `${completedCount} ${t("bài đã học")}`;
       const pct = Math.min(100, Math.round((days / STREAK_WEEKLY_GOAL) * 100));
       mount.querySelector("#streak-bar-fill").style.width = `${pct}%`;
       // 2026-08-07 (Minh bắt bug thật: "Chuỗi ngày học ở ngoài là 0, nhưng vào trong là --") —

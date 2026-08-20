@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { SUPABASE_URL, PRO_GATE_ENFORCED } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
 import { resolveOwnedGoalId } from "./lesson.js";
+import { consumeAiCredits, refundAiCredits } from "./credits.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -720,15 +721,27 @@ export async function grade_writing(data, ctx) {
   const sentences = splitSentences(data.text);
   if (!sentences.length) return { error: "Không đọc được câu nào trong bài viết.", status: 400 };
 
+  // (a.2) Ví AI Credit dùng chung Phân tích/Luyện viết (spec "CƠ CẤU GÓI MOSAIC") — trừ NGAY
+  // TRƯỚC lượt gọi AI thật (reserve), hoàn lại nếu thất bại (refund). Tính CHO ĐÚNG 1 lượt "Gửi
+  // bài viết" (grade_writing) — KHÔNG trừ ở generate_writing_task (giao đề), vì "lượt dùng"
+  // Luyện viết thật sự mà spec nói tới là hành động nộp bài chấm, khớp đúng ghi chú sẵn có ở đầu
+  // file "grade_writing... tốn phí thật mỗi lần bấm 'Gửi bài viết'". Các lượt gọi AI PHỤ bên
+  // trong (clean_rewrite/reference_essay tuỳ mức điểm) KHÔNG tính thêm credit — vẫn 1 giá cố định
+  // 2 credit/lượt nộp bài, đúng spec "mỗi lượt dùng = 2 credit" (không leo thang theo nội bộ).
+  const creditCheck = await consumeAiCredits(ctx.studentId);
+  if (!creditCheck.allowed) return { error: creditCheck.message, status: 403 };
+
   // (b) Gọi AI + parse + validate (khớp số câu, xem gradeWithRetry).
   const r = await gradeWithRetry({ level: data.level, industry: data.industry, task: data.task, sentences });
   if (!r || !r.ok) {
     if (r?.parseError) console.error("[grade_writing] parse error:", r.text?.slice(0, 500));
+    await refundAiCredits(ctx.studentId);
     return { error: r?.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r?.status || 502 };
   }
   const parsed = r.data;
   if (!isValidGradeShape(parsed, sentences.length)) {
     console.error("[grade_writing] validate FAIL sau retry — segments:", parsed?.segments?.length, "expected:", sentences.length);
+    await refundAiCredits(ctx.studentId);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
@@ -819,7 +832,10 @@ export async function grade_writing(data, ctx) {
     segments,
     notices,
   });
-  if (!saved) return { error: "Chấm bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
+  if (!saved) {
+    await refundAiCredits(ctx.studentId);
+    return { error: "Chấm bài thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
+  }
 
   const isWeak = tier.key === "weak";
   return {

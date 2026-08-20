@@ -10,7 +10,13 @@ import { add_vocab_word, add_news_vocab_word } from "./_generate/vocab.js";
 // nhân hoá đã archive cùng mentor.js/createLesson.js, chỉ "create_goal" còn sống (dùng bởi
 // views/industrySelect.js — chọn 1 vị trí trong danh mục cố định, không sinh bài). ĐỔI TÊN
 // 2026-08-12 (mentor.js -> goal.js, mentor_create_goal -> create_goal, rà soát đặt tên toàn app).
-import { create_goal } from "./_generate/goal.js";
+import { create_goal, get_specialization_switch_status } from "./_generate/goal.js";
+// Gói User (Free/A1-A2/B1/B2) + AI Credits dùng chung Phân tích/Luyện viết (2026-08-20, spec
+// "CƠ CẤU GÓI MOSAIC") — xem supabase/040_package_credits_specialization.sql cho phần RPC/RLS.
+import { get_credit_balance } from "./_generate/credits.js";
+// Thanh toán nội địa VN qua VietQR (Minh chỉ có tài khoản ngân hàng cá nhân, chưa có merchant
+// account cổng nào) — xem api/_generate/billing.js.
+import { create_payment_order, get_my_payment_orders, admin_confirm_payment, admin_list_pending_payments, admin_grant_package } from "./_generate/billing.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1334,6 +1340,18 @@ const ACTIONS = {
   // tên từ mentor.js 2026-08-12, rút gọn 2026-08-11, 14 action Mentor AI cá nhân hoá khác archive
   // cùng đợt).
   create_goal,
+  // Đọc tiến độ đổi chuyên ngành (không gọi AI) — industrySelect.js hiện "Đã học X/Y bài" TRƯỚC
+  // khi bấm đổi, xem api/_generate/goal.js.
+  get_specialization_switch_status,
+  // Số dư AI Credit (header Phân tích/Luyện viết, card Tiến trình), xem api/_generate/credits.js.
+  get_credit_balance,
+  // Thanh toán nội địa VN (VietQR) — tạo đơn + mã QR, đọc trạng thái đơn của chính user, xác nhận
+  // thủ công (chỉ admin, tự kiểm tra quyền bên trong), xem api/_generate/billing.js.
+  create_payment_order,
+  get_my_payment_orders,
+  admin_confirm_payment,
+  admin_list_pending_payments,
+  admin_grant_package,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

@@ -16,6 +16,7 @@
 // quy ước), CHƯA làm ở đợt này vì bảng chỉ ghi log nội bộ, không lộ ra UI/API nào — ưu tiên thấp.
 import { SUPABASE_URL } from "./_shared.js";
 import { buildConfirmationDisplay } from "./curriculum/skin.js";
+import { canSwitchSpecialization } from "../_shared/packages.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SERVICE_HEADERS = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
@@ -84,6 +85,44 @@ async function archiveOtherActiveGoals(studentId, exceptGoalId) {
   return goalIds;
 }
 
+// BỘ ĐẾM ĐỔI CHUYÊN NGÀNH THEO GÓI (2026-08-19, spec "CƠ CẤU GÓI MOSAIC") — TÁCH RIÊNG khỏi giới hạn
+// "5 lĩnh vực trọn đời" cũ ở trên (giới hạn đó đếm SỐ LĨNH VỰC KHÁC NHAU đã từng tạo; bộ đếm này đếm
+// SỐ LẦN ĐỔI THÀNH CÔNG + SỐ BÀI ĐÃ HOÀN THÀNH của đúng chuyên ngành đang active — 2 khái niệm khác
+// nhau, xem spec mục 8 "CẦN PHÂN BIỆT SWITCH COUNT VÀ CURRENT PROGRESS").
+async function getStudentPackageInfo(studentId) {
+  const rows = await restGet(`students?id=eq.${studentId}&select=package_tier,specialization_switch_count`);
+  const row = rows?.[0];
+  return { packageTier: row?.package_tier || "FREE", switchCount: row?.specialization_switch_count || 0 };
+}
+
+// Đếm bài ĐÃ HOÀN THÀNH (completed_at HOẶC fully_listened_at — đúng tín hiệu "Đã học" đã dùng thống
+// nhất ở app/js/db.js) thuộc ĐÚNG chuyên ngành đang active.
+//
+// QUAN TRỌNG (bẫy đã tự bắt trước khi deploy): "lessons.goal_id" KHÔNG PHẢI khoá nối đúng ở đây —
+// với bài "ai_generated" (giáo trình DÙNG CHUNG cho mọi tài khoản, xem 038_lessons_shared_curriculum.sql),
+// "goal_id" là metadata LÚC SINH BÀI (goal của tài khoản/script đã chạy publish-lesson.mjs khi đó),
+// KHÔNG PHẢI goal của từng user đang xem/hoàn thành bài — 2 khái niệm hoàn toàn khác nhau. Khoá nối
+// ĐÚNG là chuỗi tên ngành: "lessons.industry" (cột text, set lúc sinh bài — xem lesson.js dòng ~1817)
+// PHẢI khớp "learning_goals.raw_keywords" (chuỗi ngành user đã chọn, xem industrySelect.js) — cả 2
+// cùng lưu ĐÚNG 1 chuỗi hiển thị như "Làm Đẹp"/"Kế toán".
+async function countCompletedLessonsForGoal(studentId, industryName) {
+  if (!industryName) return 0;
+  const q =
+    `lesson_progress?select=id,lessons!inner(industry)` +
+    `&user_id=eq.${studentId}&lessons.industry=eq.${encodeURIComponent(industryName)}` +
+    `&or=(completed_at.not.is.null,fully_listened_at.not.is.null)`;
+  const rows = await restGet(q);
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+async function incrementSwitchCount(studentId) {
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_specialization_switch_count`, {
+    method: "POST",
+    headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_student_id: studentId }),
+  }).catch((e) => console.error("goal.js incrementSwitchCount error:", e));
+}
+
 async function insertLearningGoal(studentId, profile, rawKeywords, level) {
   // Chỉ đếm/chặn khi TẠO LĨNH VỰC CHUYÊN NGÀNH THẬT — "Giao tiếp tổng quát" (is_general) không
   // tính. "is_fixed_catalog" (2026-08-04) — danh mục vị trí Kế toán CỐ ĐỊNH/hữu hạn (8 vị trí,
@@ -95,9 +134,27 @@ async function insertLearningGoal(studentId, profile, rawKeywords, level) {
       return { limitReached: true, used, max: MAX_LIFETIME_INDUSTRY_GOALS };
     }
   }
+
+  // GATING ĐỔI CHUYÊN NGÀNH THEO GÓI (2026-08-19) — CHỈ áp dụng khi đang RỜI 1 chuyên ngành THẬT
+  // (không phải Giao Tiếp Tổng Quát) SANG 1 chuyên ngành THẬT KHÁC (không phải Giao Tiếp Tổng Quát).
+  // Đổi qua lại với Giao Tiếp Tổng Quát, hoặc LẦN CHỌN ĐẦU TIÊN (chưa có goal active nào), luôn được
+  // phép tự do — không tốn lượt đổi, không cần đủ bài.
+  const currentGoalRows = await restGet(`learning_goals?user_id=eq.${studentId}&status=eq.active&select=id,raw_keywords,occupation_profile`);
+  const currentGoal = currentGoalRows?.[0] || null;
+  const isRealSwitch = currentGoal && !currentGoal.occupation_profile?.is_general && !profile?.is_general;
+  if (isRealSwitch) {
+    const { packageTier, switchCount } = await getStudentPackageInfo(studentId);
+    const completed = await countCompletedLessonsForGoal(studentId, currentGoal.raw_keywords);
+    const gate = canSwitchSpecialization(packageTier, switchCount, completed);
+    if (!gate.canSwitch) {
+      return { switchBlocked: true, ...gate, packageTier, switchCount };
+    }
+  }
+
   // Tạo lĩnh vực MỚI luôn thay thế goal đang hoạt động hiện tại.
   const archived = await archiveOtherActiveGoals(studentId, null);
   if (archived === null) return null;
+  if (isRealSwitch) await incrementSwitchCount(studentId);
   const display = buildGoalConfirmationDisplay(profile);
   const validLevel = VALID_LEVELS.includes(level) ? level : null;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/learning_goals`, {
@@ -134,6 +191,27 @@ export async function create_goal(data, ctx) {
   if (result?.limitReached) {
     return { error: `Bạn đã dùng hết ${result.max} lượt tạo lĩnh vực chuyên ngành.`, status: 403 };
   }
+  if (result?.switchBlocked) {
+    // status 200 (không phải lỗi hệ thống) — client hiển thị tiến độ + nút "Nâng cấp gói", không
+    // phải thông báo lỗi đỏ. Xem industrySelect.js.
+    return { content: JSON.stringify({ switchBlocked: true, ...result }) };
+  }
   if (!result) return { error: "Tạo mục tiêu thất bại, vui lòng thử lại.", status: 502 };
   return { content: JSON.stringify(result) };
+}
+
+// Đọc tiến độ đổi chuyên ngành (KHÔNG gọi AI) — dùng cho industrySelect.js hiện "Đã học X/Y bài" TRƯỚC
+// khi người dùng bấm đổi (create_goal chỉ trả kết quả SAU khi đã bấm).
+export async function get_specialization_switch_status(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  const currentGoalRows = await restGet(`learning_goals?user_id=eq.${ctx.studentId}&status=eq.active&select=id,raw_keywords,occupation_profile`);
+  const currentGoal = currentGoalRows?.[0] || null;
+  const { packageTier, switchCount } = await getStudentPackageInfo(ctx.studentId);
+  if (!currentGoal || currentGoal.occupation_profile?.is_general) {
+    // Chưa có chuyên ngành thật nào đang active — đổi/lần chọn tiếp theo luôn tự do.
+    return { content: JSON.stringify({ packageTier, switchCount, completed: 0, required: 0, canSwitch: true }) };
+  }
+  const completed = await countCompletedLessonsForGoal(ctx.studentId, currentGoal.raw_keywords);
+  const gate = canSwitchSpecialization(packageTier, switchCount, completed);
+  return { content: JSON.stringify({ packageTier, switchCount, ...gate }) };
 }

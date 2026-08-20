@@ -1966,8 +1966,201 @@ nhiều lỗi QUY TRÌNH lãng phí tiền thật (Minh bắt lỗi trực tiế
 4. **File nhật ký này PHẢI cập nhật NGAY sau khi xong 1 việc** (đúng dòng đầu file đã ghi rõ) —
    không để dồn nhiều ngày rồi viết bù hồi tưởng (mất chi tiết thật, như mục 08-14→08-18 ở trên).
 
-**Việc còn dở:** hoàn thiện nốt A1 Làm Đẹp (7-13 bài residual — ưu tiên phần KHÔNG tốn thêm AI
-trước: vá tay câu khó bằng `patch_lesson_content_item_field`/`patch_lesson_vocabulary_word`, chỉ
-sinh lại AI cho phần thật sự cần); A2 Làm Đẹp mới có nội dung 63/89, CHƯA qua tra từ/audio/ảnh bìa;
-CHƯA quyết định có tiếp tục A2/B1 Làm Đẹp ngay hay tạm dừng — đang chờ Minh chỉ đạo sau khi thấy
-báo cáo chi phí.
+**Cập nhật cùng ngày (phiên tiếp theo, sau khi Minh top-up rồi hết credit lần 2):**
+- **A2 Làm Đẹp: HOÀN TẤT 81/81.** Root-cause: `buildDictionaryHint()` trước đây CHỈ chèn nghĩa câu
+  đã tách (`contextTranslation`) vào prompt tra từ khi từ điển có từ đa nghĩa — bỏ sót phần lớn ca
+  lỗi thật (từ MỚI/cụm khó như "Here's", "next to" không có trong từ điển nên không bao giờ được
+  chèn ngữ cảnh, kể cả lúc retry). Minh chỉ ra đúng 2 lần ("tại sao vẫn không áp dụng?", "bước đối
+  chiếu nghĩa với tách câu không làm?") trước khi tìm ra. Sửa: LUÔN chèn khối "NGHĨA CÂU ĐÃ XÁC
+  NHẬN" khi có `contextTranslation`, không điều kiện theo đa nghĩa nữa (commit `319540e`). Retry
+  round 3 sau fix vẫn còn 9-10 bài residual do AI lặp lại đúng lỗi cũ sau đủ 4 lượt → vá tay 8 bài
+  (thiếu vài từ lẻ) bằng `patch_lesson_content_item_field`, 0 chi phí AI. `#64-A2` phát hiện nặng
+  hơn dự kiến: **TOÀN BỘ 12 câu là tiếng Việt** thay vì tiếng Anh (không phải 1 câu như nghi ban
+  đầu) — xoá bài (xin phép Minh trước, thao tác xoá DB bị chặn tự động), sinh lại đúng slot 64 qua
+  `SLOT_START=63 SLOT_LIMIT=1`, đạt đủ ngay lần đầu.
+- **B1 Làm Đẹp — review nội dung:** đối chiếu 3 cờ ngữ pháp nghi ngờ (`#21` hiện tại hoàn thành tiếp
+  diễn, `#24` câu bị động, `#57` "used to") với `grammar-catalog.js` thật — CẢ 3 đều nằm trong phạm
+  vi B1 (không phải lỗi vượt cấp), tự duyệt `CONTENT_APPROVED=1`.
+- **BUG NGHIÊM TRỌNG mới phát hiện — ghi đè dữ liệu khi chạy song song:** `analyze_lesson_phrase_
+  groups` và `analyze_lesson_reading_chunks` (`api/_generate/lesson.js`) đều đọc `content` MỘT LẦN
+  lúc đầu hàm rồi PATCH ĐÈ CẢ CỘT mỗi lần lưu — cách viết này AN TOÀN khi chạy 1 mình, nhưng từ khi
+  đổi sang chạy 2 action này SONG SONG THẬT cho cùng 1 bài (`processLessonFully`, Promise.all), việc
+  ghi SAU dùng bản `content` CŨ (thiếu field việc kia vừa lưu) đè mất kết quả ĐÚNG của việc kia. Hậu
+  quả thật: B1 stage2+ lần đầu chạy hết 85 bài, chỉ 37/85 đạt — 48 bài có `phrase_groups` ĐÚNG nhưng
+  `reading_chunks` TRẮNG HOÀN TOÀN dù log báo "OK" (AI đã trả đúng, dữ liệu bị xoá SAU ĐÓ, không phải
+  AI sai — kiểm tra kỹ 0 mã lỗi HTTP/429 trong log, loại trừ khả năng hết credit giữa chừng). Đây là
+  lỗi do CHÍNH tôi gây ra khi thêm chạy song song trước đó mà không rà soát hệ quả ở bước lưu. Sửa
+  tận gốc: thêm `patchLessonItemFieldFresh()` — đọc lại `content` TƯƠI ngay trước MỖI lần ghi, chỉ
+  merge đúng field/item của action đó lên bản tươi rồi ghi lại, thu hẹp cửa sổ race gần như về 0.
+  Áp dụng cho cả 2 action + bỏ hẳn patch-cuối-cùng kiểu ghi-đè-cả-mảng ở `analyze_lesson_reading_
+  chunks` (dư thừa, chính là nguồn bug). Commit `d76cf23`, đã deploy.
+- **Không khôi phục được `reading_chunks` gốc đã mất** — kiểm tra kỹ: log script (0 lần xuất hiện
+  JSON gốc), code server (không có `console.log` nào in dữ liệu ra ngoài, nên cả Vercel function log
+  cũng không có gì để giữ) — dữ liệu ĐÃ mất vĩnh viễn, không có bản sao ở đâu.
+- **Minh hết credit lần 2 ngay lúc này** ("Tôi đã hết kinh phí") — theo đúng nguyên tắc "không dễ
+  dãi gọi AI, mỗi level chỉ gọi AI 1 lần", Minh yêu cầu tự dịch/tự tách câu bằng CODE (không gọi AI)
+  cho 48 bài B1 mất `reading_chunks`: dùng `translation` (dịch cả đoạn) đã có sẵn trong DB, tách câu
+  2 phía Anh/Việt bằng regex, ghép cặp theo thứ tự, xác nhận khớp CHÍNH XÁC token thật trước khi ghi
+  (không đoán mò) — 0 chi phí AI. Script `selfpatch_b1_reading_chunks.mjs` (scratchpad), đang chạy.
+
+**BÀI HỌC QUY TRÌNH bổ sung (nghiêm trọng nhất phiên này):**
+5. **Khi đổi kiến trúc từ "chạy nối tiếp" sang "chạy song song", PHẢI rà soát lại TẤT CẢ bước ghi dữ
+   liệu dùng chung (đọc-sửa-ghi cả khối), không chỉ tập trung vào việc các LƯỢT GỌI AI chạy song
+   song — race condition ở bước LƯU nguy hiểm hơn nhiều vì ÂM THẦM mất dữ liệu ĐÃ ĐÚNG mà không báo
+   lỗi gì (log vẫn in "OK"), rất khó phát hiện nếu không đối chiếu trực tiếp với DB thật.
+6. **Log tiến trình PHẢI in đủ dữ liệu quan trọng (không chỉ trạng thái "OK"/"lỗi")** khi có nguy cơ
+   mất dữ liệu — nếu log giữ lại JSON `reading_chunks` gốc, phiên này đã khôi phục được thay vì phải
+   tốn thêm 1 lượt xử lý (dù lần này khôi phục bằng code, không tốn AI, nhưng lần sau có thể không
+   may mắn như vậy).
+
+**Việc còn dở → ĐÃ XONG (cùng phiên, tiếp sau khi hết credit):**
+- Script tự tách câu chạy xong: 607/607 item vá `reading_chunks` thành công, 0 lỗi, 0 fallback —
+  xác nhận lại bằng tokenizer thật: 48/48 bài B1 đủ 100% `reading_chunks`.
+- Phát hiện thêm 20/48 bài còn khoảng hở nhỏ `phrase_groups` (338 từ, residual CŨ có trước bug,
+  không liên quan) — vá tay TOÀN BỘ 33 item (tự đếm token tay + script tự đối chiếu lại trước khi
+  ghi, không đoán mò), 0 lỗi, xác nhận lại: **0 từ thiếu trên cả 48 bài**.
+- 3 bài thiếu ảnh bìa (`#6`, `#8`, `#21-B1`) — tìm lại qua Unsplash/Pexels/Wikimedia (miễn phí,
+  không qua OpenAI), cả 3 xong.
+- **B1 Làm Đẹp: HOÀN TẤT 85/85** — đủ nội dung, tra từ, tách câu, audio (đã sinh từ đợt chạy đầu,
+  trước khi hết credit), ảnh bìa. Không tốn thêm 1 lượt AI nào từ lúc hết credit.
+
+**Việc còn dở (thật, sau phiên này):** A1 Làm Đẹp vẫn còn 7-13 bài residual (task #74) chưa xử lý;
+Điều Dưỡng — Minh yêu cầu bắt đầu rồi TỰ DỪNG LẠI ngay khi nghĩ kỹ (xem "BÀI HỌC" cuối) — CHỈ đã
+thêm `NURSING_PROFILE` (hạ tầng phân loại, không nội dung) vào `industrySelect.js`, KHÔNG sinh bài
+nào; chờ có credit thật + đi qua đúng pipeline AI, không tự viết tay. Toàn bộ công việc cần AI vẫn
+ĐANG DỪNG vì hết credit — chỉ làm được việc 0-chi-phí-AI cho tới khi Minh nạp thêm.
+
+**BÀI HỌC QUY TRÌNH bổ sung (Điều Dưỡng — Minh tự sửa quyết định của chính mình, đáng ghi nhớ):**
+7. Không phải mọi ngành đều nên áp dụng "tự viết tay khi hết credit" như Làm Đẹp — Điều Dưỡng có
+   RỦI RO SAI KIẾN THỨC CHUYÊN MÔN (triệu chứng/thuốc/xử lý khẩn cấp), không chỉ rủi ro "nội dung
+   kém tự nhiên". Minh ban đầu nói "tự sinh nội dung" nhưng tự dừng lại ngay khi nghĩ kỹ hệ quả —
+   PHẢI tự đánh giá RỦI RO NỘI DUNG (không chỉ rủi ro chi phí/kỹ thuật) trước khi áp dụng lại 1 giải
+   pháp đã dùng thành công cho ngành khác. Checklist 10 mục Minh cho (triệu chứng/chăm sóc bệnh
+   nhân/thuốc/dụng cụ/giao tiếp bệnh nhân/giao tiếp bác sĩ/ghi nhận thông tin/hướng dẫn bệnh nhân/
+   tình huống khẩn cấp/thuật ngữ y khoa) lưu trong bộ nhớ `project_nursing_industry_deferred.md`,
+   dùng khi ngành này thật sự bắt đầu.
+
+## 2026-08-20 — Chuyển sang set Gói User (Free/A1-A2/B1/B2) + AI Credits + Thanh toán VietQR
+
+Minh: đang hết credit API cho sinh nội dung, gửi spec "CƠ CẤU GÓI MOSAIC" (2 lần, lần 2 bổ sung
+gói Free) yêu cầu triển khai LOGIC THẬT (không chỉ UI) cho 4 gói + Credit dùng chung Phân tích/
+Luyện viết + đổi chuyên ngành theo bộ đếm, cộng 4 việc UI cụ thể. Đã đọc kỹ code liên quan trước
+khi lên kế hoạch (EnterPlanMode/ExitPlanMode), viết kế hoạch tại
+`C:\Users\Minh\.claude\plans\delightful-chasing-rossum.md`.
+
+**Payment provider — đổi hướng giữa chừng:** định làm Stripe trước (không cần chờ đóng TWA), Minh
+báo Stripe KHÔNG hỗ trợ Việt Nam. Trao đổi thêm: Minh chỉ có tài khoản ngân hàng cá nhân, không có
+merchant account cổng nào (VNPay/PayOS/Momo đều cần đăng ký doanh nghiệp); hỏi có tạo Stripe chọn
+quốc gia khác được không — giải thích vi phạm điều khoản Stripe trừ khi có pháp nhân nước ngoài
+thật (Stripe Atlas, chi phí + nghĩa vụ thuế Mỹ, không phải việc tôi tư vấn được) — không phải giải
+pháp "bài bản" như Minh muốn, chỉ là chữa cháy. Chốt: **VietQR chuyển khoản trực tiếp** (dịch vụ
+ảnh QR công khai miễn phí `img.vietqr.io`, không cần đăng ký/API key) — bootstrap, xác nhận THỦ
+CÔNG (Minh tự duyệt qua action `admin_confirm_payment`), có thể nâng cấp lên webhook tự động
+(SePay/Casso) sau mà không đổi kiến trúc. Minh cung cấp STK thật: `PHATLOC2423597` / ACB /
+VO HUYNH ANH LAM — lưu vào 3 biến môi trường (`PAYMENT_BANK_CODE`, `PAYMENT_ACCOUNT_NUMBER`,
+`PAYMENT_ACCOUNT_NAME`), KHÔNG hard-code vào source.
+
+**Đã làm xong (backend, syntax-check OK toàn bộ, CHƯA deploy/chưa test thật):**
+- `api/_shared/packages.js` (MỚI) — nguồn cấu hình gói DUY NHẤT: `PACKAGE_CONFIG` (levels/
+  lessonLimits/monthlyCredits/switchMode mỗi tier), `getSwitchPolicy`/`canSwitchSpecialization`/
+  `isLevelAllowed`/`getLessonLimit`.
+- `supabase/040_package_credits_specialization.sql` (MỚI, **Minh CHƯA chạy — cần tự dán vào
+  Supabase SQL Editor**) — cột mới trên `students` (package_tier/ai_credits_balance/
+  ai_credits_reset_at/specialization_switch_count/subscription_*); RPC `consume_ai_credits`/
+  `refund_ai_credits` (tái dùng khuôn `for update`+lazy-reset của `consume_student_credit` cũ, KHÔNG
+  đụng bảng/RPC đó — luồng Mentor-Student khác); RPC `increment_specialization_switch_count`; viết
+  lại RLS `lessons` qua hàm `can_view_lesson()` (đúng ghi chú để sẵn từ `038` "khi triển khai phân
+  gói cần viết lại policy này") — **PHẦN RỦI RO CAO NHẤT của việc này**, sai 1 điều kiện có thể ẩn
+  hết bài học hoặc lộ hết, BẮT BUỘC test bằng tài khoản thật trước khi coi là xong; bảng
+  `payment_orders` + RPC `confirm_payment_order` (atomic, kích hoạt gói+credit+subscription cùng
+  lúc khi Minh duyệt đơn).
+- `api/_generate/credits.js`, `api/_generate/billing.js` (MỚI) — `consumeAiCredits`/
+  `refundAiCredits` (reserve-trước-gọi-AI, refund-nếu-lỗi), `create_payment_order`/
+  `get_my_payment_orders`/`admin_confirm_payment`/`admin_list_pending_payments` (admin tự kiểm tra
+  quyền qua `ADMIN_EMAILS`, chưa có UI admin — xem "Việc còn dở").
+- `api/_generate/goal.js` — gating đổi chuyên ngành trong `insertLearningGoal()`: đếm bài đã hoàn
+  thành của ĐÚNG chuyên ngành đang active qua `lessons.industry` khớp `learning_goals.raw_keywords`
+  (**tự bắt lỗi trước khi deploy**: ban đầu định join qua `goal_id` — SAI vì với giáo trình dùng
+  chung `ai_generated`, `goal_id` là metadata lúc SINH BÀI, không phải goal của người đang xem/học,
+  sẽ luôn đếm ra ~0 cho user thật). Thêm action `get_specialization_switch_status`.
+- Đăng ký đủ 6 action mới vào `api/chat.js` ACTIONS map.
+- Gắn `consumeAiCredits`/`refundAiCredits` thật vào `analyze_user_text` (lesson.js) và `grade_writing`
+  (writing.js, KHÔNG tính credit ở `generate_writing_task`/giao đề — chỉ tính ở bước nộp bài chấm,
+  đúng nghĩa "1 lượt dùng Luyện viết").
+
+**Đã làm xong (UI, 4 việc Minh yêu cầu + màn Gói):**
+1. Header Phân tích + Luyện viết: badge chuỗi ngày → bộ đếm Credit (`header.js` `opts.
+   showCreditCounter`, icon sparkles màu tím phân biệt icon lửa cam của streak) — chỉ 2 màn này.
+2. Tiến trình: card thứ 4 "Credit còn lại", đổi lưới `.progress-summary-grid` từ 3 cột 1 hàng sang
+   2×2 (Minh: "nếu chật, chia 2 hàng").
+3. Home: số "bài đã học" ở góc trên-phải card chuỗi ngày học (tái dùng `completedCount` đã có sẵn
+   trong `getStreakAndStats()`, không gọi API riêng).
+4. `industrySelect.js`: khi `create_goal` trả `switchBlocked`, hiện panel tiến độ (X/Y bài đã học +
+   lý do MAX_SWITCHES_REACHED/NOT_ENOUGH_LESSONS) + nút "Nâng cấp gói" thay vì chặn bằng toast rồi
+   thôi như trước.
+5. Màn MỚI "Gói của tôi" (`views/settings/packages.js`, route `/packages`, vào từ 1 hàng mới trong
+   Cài đặt) — hiện gói/credit hiện tại, 3 card nâng cấp (A1-A2/B1/B2), bấm nâng cấp mở overlay QR
+   VietQR (số tiền/nội dung chuyển khoản/STK/tên) qua `create_payment_order`.
+
+**Việc còn dở (thật, chưa xong hết task Minh giao):**
+- **Minh CHƯA chạy migration `040_...sql`** — mọi action mới sẽ LỖI cho tới khi chạy. Cần dán vào
+  Supabase SQL Editor.
+- **Chưa xác nhận Minh đã thêm 3 biến môi trường** `PAYMENT_BANK_CODE`/`PAYMENT_ACCOUNT_NUMBER`/
+  `PAYMENT_ACCOUNT_NAME` qua Vercel Dashboard (CLI `vercel env` bị treo do tương tác, không dùng
+  được trong sandbox này) — thiếu thì `create_payment_order` trả lỗi 503 có chủ đích (không hard-code
+  fallback).
+- **CHƯA test thật** bất kỳ action/RLS nào bằng tài khoản thật (cần migration chạy xong trước) —
+  đặc biệt case rủi ro nhất: RLS `can_view_lesson()` (ẩn/lộ bài sai), 3 mốc switch-count 5→10→15→15
+  mãi mãi, Free đúng 1 lần đổi cần 5 bài, credit không âm, refund khi AI lỗi, loại trừ Giao Tiếp
+  Tổng Quát khỏi bộ đếm.
+- **Chưa có UI admin duyệt đơn hàng** — `admin_confirm_payment`/`admin_list_pending_payments` mới có
+  action, `admin.js` vẫn cố tình để "Sắp ra mắt" (ghi chú sẵn từ trước: "xây phần này ở lệnh riêng
+  sau", không tự ý mở rộng phạm vi hôm nay) — Minh cần cách khác để duyệt đơn tạm thời (gọi action
+  trực tiếp qua script, hoặc chờ đợt sau xây UI admin).
+- Đã bump `CACHE_NAME` (`v92`→`v93`) + thêm 3 file mới vào `SHELL_FILES` trong `app/sw.js`.
+- Google Play Billing/TWA vẫn đúng thứ tự cuối lộ trình gốc — chưa đụng.
+
+**BÀI HỌC QUY TRÌNH:**
+8. Khi user chỉ có tài khoản ngân hàng cá nhân (không merchant account cổng nào), đừng mặc định đề
+   xuất cổng thanh toán quốc tế/trong nước cần đăng ký doanh nghiệp trước — hỏi rõ "anh có tài khoản
+   merchant ở đâu chưa" SỚM hơn, tránh đi vòng qua Stripe rồi VNPay/PayOS trước khi tới được lựa
+   chọn thực tế nhất (VietQR bootstrap).
+
+## 2026-08-20 (tiếp) — Admin: tài khoản toàn quyền + "Gói tặng" + scaffold webhook tự động duyệt
+
+Minh chạy xong migration `040` (xác nhận qua kết quả query 4 cột), rồi hỏi thêm 3 việc tôi bỏ sót ở
+lượt báo cáo trước: (1) email xác nhận thanh toán, (2) màn admin duyệt đơn cụ thể là gì/ở đâu, (3)
+tài khoản admin + "gói tặng" theo tháng. Đã trả lời rõ (1)+(2) bằng chữ (AskUserQuestion 2 lần liên
+tiếp không hiện được, đúng `feedback_ask_user_question_reliability` — chuyển hẳn sang hỏi bằng văn
+bản thường, không thử lại tool). Minh xác nhận admin = `kimchinamvn@gmail.com`, yêu cầu làm "gói
+tặng" (3/6/12 tháng) + tự động duyệt khi thanh toán xong.
+
+**Đã làm xong (syntax-check OK, CHƯA deploy):**
+- `supabase/041_package_grants.sql` (MỚI, **Minh CHƯA chạy**) — bảng audit `package_grants` +
+  RPC `grant_package()` atomic (set package_tier/credits/subscription_expires_at + ghi audit ai
+  tặng/tặng gì/khi nào), TÁCH RIÊNG khỏi `payment_orders`/`confirm_payment_order` (gói tặng không
+  có đơn hàng/số tiền thật, dùng chung sẽ phải nhồi amount=0 giả).
+- `api/_generate/billing.js` — thêm `admin_grant_package` (tra email -> student_id, gọi RPC), đăng
+  ký vào `api/chat.js`.
+- `app/js/views/admin/admin.js` — VIẾT LẠI: 2 khu vực thật đầu tiên (Đơn hàng chờ duyệt + form Tặng
+  gói), gate hiển thị bằng email session so với allowlist HARD-CODE client (`kimchinamvn@gmail.com`,
+  chỉ để ẩn UI — quyền THẬT vẫn do server tự kiểm tra qua `ADMIN_EMAILS`). Non-admin vẫn thấy "Sắp ra
+  mắt" y hệt cũ.
+- `api/webhooks/payment.js` (MỚI, endpoint THẬT `/api/webhooks/payment`, không qua `/api/chat`) —
+  scaffold nhận webhook từ SePay/Casso: xác thực bằng `PAYMENT_WEBHOOK_SECRET` (query `?token=`),
+  trích mã đơn `MOSAIC...` từ nội dung chuyển khoản bằng regex, ĐỐI CHIẾU SỐ TIỀN trước khi xác
+  nhận (an toàn — memo đúng chữ nhưng tiền sai KHÔNG tự kích hoạt gói), gọi `confirm_payment_order`
+  tự động. **CHƯA nối dịch vụ thật nào** — tên trường dữ liệu (`content`/`description`/`data[]`...)
+  là suy đoán hợp lý từ 2 dịch vụ phổ biến, cần đối chiếu lại payload thật khi Minh có tài khoản
+  SePay/Casso, khả năng phải chỉnh tên trường.
+- Bump `CACHE_NAME` `v93`→`v94`.
+
+**Việc còn dở:**
+- Migration `041` Minh chưa chạy.
+- Biến môi trường Minh chưa xác nhận đã thêm: `PAYMENT_BANK_CODE`/`PAYMENT_ACCOUNT_NUMBER`/
+  `PAYMENT_ACCOUNT_NAME`/`ADMIN_EMAILS=kimchinamvn@gmail.com` (đã hướng dẫn cách thêm qua Vercel
+  Dashboard, CLI `vercel env add` bị treo trong sandbox này do cần tương tác).
+- Email xác nhận thanh toán — Minh CHƯA quyết định (đang chờ, đề xuất Resend nếu làm).
+- Webhook tự động — Minh CHƯA đăng ký SePay/Casso, endpoint chỉ là khung sẵn, chưa hoạt động thật.
+- Toàn bộ hệ thống Gói/Credit/Payment VẪN CHƯA test bằng tài khoản thật (chờ deploy + biến môi
+  trường xong).

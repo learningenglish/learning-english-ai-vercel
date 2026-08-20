@@ -22,6 +22,7 @@ import { createGoal } from "../../goalApi.js";
 import { escapeHtml } from "../../utils.js";
 import { icon } from "../../icons.js";
 import { showToast } from "../../toast.js";
+import { getActiveLearningGoal } from "../../db.js";
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
@@ -31,6 +32,13 @@ registerTranslations({
   "Sắp ra mắt": "Coming soon",
   "Chuyên ngành này sắp ra mắt, chưa có nội dung để học.": "This industry is coming soon, no content to learn yet.",
   "Không tạo được lộ trình, thử lại nhé.": "Couldn't create your learning path, please try again.",
+  // Chặn đổi chuyên ngành theo bộ đếm gói (2026-08-20, spec "CƠ CẤU GÓI MOSAIC").
+  "Chưa đủ điều kiện đổi chuyên ngành": "Not eligible to switch industry yet",
+  "Bạn đã dùng hết lượt đổi chuyên ngành miễn phí của gói Free.": "You've used your free industry switch on the Free plan.",
+  "Nâng cấp gói để đổi chuyên ngành bất cứ lúc nào.": "Upgrade your plan to switch industries anytime.",
+  "bài đã học": "lessons completed",
+  "Nâng cấp gói": "Upgrade plan",
+  "Đã hiểu": "Got it",
   "Giao Tiếp Tổng Quát": "General English",
   "Anh văn chuyên ngành": "English for",
   "Kế toán": "Accounting",
@@ -224,10 +232,42 @@ const INDUSTRIES = [
   ...OTHER_INDUSTRIES.map((ind) => ({ ...ind, real: false })),
 ];
 
+// Thông điệp lý do bị chặn (2026-08-20) — khớp "reason" trả về từ canSwitchSpecialization()
+// (api/_shared/packages.js): "MAX_SWITCHES_REACHED" (gói Free đã dùng hết 1 lượt đổi trọn đời) vs
+// "NOT_ENOUGH_LESSONS" (gói trả phí, chưa đủ số bài yêu cầu của lượt đổi kế tiếp).
+function blockedReasonMessage(reason) {
+  if (reason === "MAX_SWITCHES_REACHED") return t("Bạn đã dùng hết lượt đổi chuyên ngành miễn phí của gói Free.");
+  return t("Nâng cấp gói để đổi chuyên ngành bất cứ lúc nào.");
+}
+
+function switchBlockedPanelHtml(info, currentGoalTitle) {
+  return `
+    <div class="switch-blocked-panel">
+      <div class="switch-blocked-title">${icon("lock", { size: 18 })} ${t("Chưa đủ điều kiện đổi chuyên ngành")}</div>
+      <p class="switch-blocked-body">
+        ${escapeHtml(currentGoalTitle || "")} — ${info.completed}/${info.required} ${t("bài đã học")}.
+        ${blockedReasonMessage(info.reason)}
+      </p>
+      <div class="switch-blocked-actions">
+        <button type="button" class="btn btn-primary" id="switch-blocked-upgrade-btn">${t("Nâng cấp gói")}</button>
+        <button type="button" class="btn btn-ghost" id="switch-blocked-dismiss-btn">${t("Đã hiểu")}</button>
+      </div>
+    </div>
+  `;
+}
+
 export function renderIndustrySelect(mount) {
   const state = {
     submitting: false,
+    blockedInfo: null, // { reason, required, completed } khi create_goal trả switchBlocked
+    currentGoalTitle: null,
   };
+
+  getActiveLearningGoal()
+    .then((g) => {
+      state.currentGoalTitle = g?.title || null;
+    })
+    .catch(() => {});
 
   render();
 
@@ -243,6 +283,7 @@ export function renderIndustrySelect(mount) {
         <h1 class="industry-select-title">${t("Chọn chuyên ngành<br />để bắt đầu")}</h1>
         <p class="industry-select-tagline">${t("HỌC TIẾNG ANH CÙNG MOSAIC STUDY")}</p>
         <p class="industry-select-subtitle">${t("Nội dung được thiết kế riêng<br />cho công việc của bạn")}</p>
+        ${state.blockedInfo ? switchBlockedPanelHtml(state.blockedInfo, state.currentGoalTitle) : ""}
         <div class="industry-list">
           ${INDUSTRIES.map((ind) => industryRowHtml(ind)).join("")}
         </div>
@@ -275,6 +316,11 @@ export function renderIndustrySelect(mount) {
         selectPosition(ind.profile, ind.label);
       });
     });
+    mount.querySelector("#switch-blocked-upgrade-btn")?.addEventListener("click", () => navigate("/packages"));
+    mount.querySelector("#switch-blocked-dismiss-btn")?.addEventListener("click", () => {
+      state.blockedInfo = null;
+      render();
+    });
   }
 
   async function selectGeneral() {
@@ -297,12 +343,21 @@ export function renderIndustrySelect(mount) {
   async function selectPosition(profile, rawKeywords) {
     if (state.submitting) return;
     state.submitting = true;
+    state.blockedInfo = null;
     render();
     const res = await createGoal(profile, rawKeywords, null);
+    state.submitting = false;
     if (!res.ok) {
-      state.submitting = false;
       render();
       showToast(res.error || t("Không tạo được lộ trình, thử lại nhé."));
+      return;
+    }
+    // "switchBlocked" (2026-08-20, api/_generate/goal.js create_goal) — chưa đủ điều kiện đổi
+    // chuyên ngành theo bộ đếm gói, status 200 (không phải lỗi hệ thống) — hiện tiến độ + nút
+    // "Nâng cấp gói" thay vì điều hướng đi (KHÔNG dùng return, sau if còn logic render() chung).
+    if (res.data?.switchBlocked) {
+      state.blockedInfo = res.data;
+      render();
       return;
     }
     navigate("/home");

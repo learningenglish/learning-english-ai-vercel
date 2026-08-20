@@ -667,6 +667,13 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* Bộ đếm AI Credit (header.js opts.showCreditCounter, 2026-08-20) — dùng LẠI khung .streak-badge,
+   chỉ đổi màu sang --purple để phân biệt "lượt AI còn lại" với "chuỗi ngày học" (--orange), tránh
+   người dùng tưởng nhầm 2 con số khác bản chất là cùng 1 thứ. */
+.credit-badge {
+  color: var(--purple);
+}
+
 /* KHÔNG còn nền tròn (yêu cầu người dùng) — icon trơn, màu theo .icon mặc định (currentColor
    kế thừa từ var(--text) trên body) là đủ tương phản trên nền màn hình sáng. */
 .settings-btn {
@@ -3116,9 +3123,26 @@ textarea:focus {
   margin-bottom: 16px;
 }
 
+/* "streak-card-top" (2026-08-20, Minh: "Thêm số bài đã học ở card chuỗi ngày học ở góc trên bên
+   phải") — hàng ngang chứa nhãn (trái) + số bài đã học (phải), thay cho streak-card-label đứng 1
+   mình trước đây. */
+.streak-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .streak-card-label {
   font-weight: 600;
-  margin-bottom: 10px;
+}
+
+.streak-card-lessons-count {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .streak-card-row {
@@ -3325,6 +3349,213 @@ textarea:focus {
   width: 100%;
 }
 
+/* "switch-blocked-panel" (2026-08-20, spec "CƠ CẤU GÓI MOSAIC" — chưa đủ điều kiện đổi chuyên
+   ngành) — hiện NGAY TRÊN danh sách industry-list khi create_goal() trả switchBlocked, đúng vị
+   trí người dùng vừa bấm để họ thấy phản hồi ngay, không phải cuộn xuống. */
+.switch-blocked-panel {
+  background: var(--surface);
+  border: 1px solid var(--chip-orange, #f97316);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
+  margin-top: 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.switch-blocked-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--chip-orange, #f97316);
+}
+
+.switch-blocked-body {
+  margin: 8px 0 12px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.switch-blocked-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Màn "Gói của tôi" (2026-08-20, views/settings/packages.js) */
+.package-current-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.package-current-label {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.package-current-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--purple);
+  margin: 4px 0 8px;
+}
+
+.package-current-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--purple);
+}
+
+.package-pending-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-soft);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.package-tier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.package-tier-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+
+.package-tier-card.is-current {
+  border: 1px solid var(--purple);
+}
+
+.package-tier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.package-tier-label {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.package-tier-price {
+  font-weight: 600;
+  color: var(--purple);
+}
+
+.package-tier-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 6px 0 12px;
+}
+
+.package-tier-current-badge {
+  display: inline-block;
+  background: var(--surface-soft);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+
+/* Overlay QR VietQR (2026-08-20) — modal đơn giản, không cần thư viện — che toàn màn hình khi mở
+   để người dùng tập trung quét mã, "Đóng" tắt overlay quay lại danh sách gói. */
+.package-qr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.package-qr-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  max-width: 360px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  text-align: center;
+}
+
+.package-qr-title {
+  font-size: 1.1rem;
+  margin: 0 0 12px;
+}
+
+.package-qr-image {
+  width: 100%;
+  max-width: 260px;
+  border-radius: 8px;
+  margin: 0 auto 14px;
+  display: block;
+}
+
+.package-qr-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  font-size: 0.85rem;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--surface-soft);
+}
+
+.package-qr-note {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 12px 0;
+}
+
+/* Tab Quản trị: duyệt đơn + tặng gói (2026-08-20, views/admin/admin.js) */
+.admin-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.admin-order-user {
+  font-weight: 600;
+}
+
+.admin-order-meta {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.admin-grant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* Danh sách PHẲNG 1 tầng (2026-08-05, bỏ accordion "lĩnh vực -> vị trí" — Minh: "chỉ dùng
    chuyên ngành") — mỗi chuyên ngành 1 hàng ĐỘC LẬP (thay .industry-select-card bọc ngoài +
    .industry-select-header bên trong của bản accordion cũ), không còn xổ ra danh sách con. */
@@ -3435,7 +3666,10 @@ textarea:focus {
 
 .progress-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* 4 card (2026-08-20, thêm "Credit còn lại" cho spec gói/thanh toán) — 3 card gốc 1 hàng vốn
+     đã vừa khít, thêm card thứ 4 sẽ chật (Minh: "nếu hàng quá chật, có thể chia 2 hàng") -> đổi
+     sang lưới 2x2 thay vì cố nhồi 4 cột hẹp. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin: 16px 0 8px;
 }

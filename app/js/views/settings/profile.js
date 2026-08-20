@@ -14,6 +14,7 @@ registerTranslations({
   "Ngôn ngữ": "Language",
   "Tiếng Việt": "Vietnamese",
   "Thêm chuyên ngành (Nâng cấp gói)": "Add industry (Upgrade plan)",
+  "Gói của tôi": "My plan",
   "Tài khoản": "Account",
   "Thông tin ứng dụng": "App info",
   "Giao diện": "Appearance",
@@ -83,6 +84,13 @@ export function renderProfile(mount) {
       </div>
 
       <div class="card profile-card">
+        <!-- "Gói của tôi" (2026-08-20, spec "CƠ CẤU GÓI MOSAIC" mục 5 Minh yêu cầu) — màn THẬT
+             hiển thị gói/credit hiện tại + nút nâng cấp (xem views/settings/packages.js), khác hẳn
+             "Thêm chuyên ngành" bên dưới (đó là ĐỔI chuyên ngành, không phải xem/nâng cấp gói). -->
+        <div class="settings-row settings-row-clickable" id="my-package-row">
+          <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Gói của tôi")}</span>
+          ${icon("chevron-right", { size: 18 })}
+        </div>
         <!-- 2026-08-11 (Minh): đổi nhãn "Đổi chuyên ngành" -> "Thêm chuyên ngành (Nâng cấp gói)"
              — ĐÚNG bản đã đổi ở createLesson.js (nút "#change-goal-btn"), lỡ sót hàng NÀY (menu
              Cài đặt) khi sửa đợt trước — cùng ý nghĩa: đây là lối vào để THÊM 1 chuyên ngành. -->
@@ -183,6 +191,7 @@ export function renderProfile(mount) {
   // ngành đang ở BÊN TRONG luồng, không phải lần chọn đầu tiên, cần icon Home/Tiến trình... để
   // quay lại") — cùng renderIndustrySelect(), chỉ khác app.js::renderBottomNav() đọc thêm
   // "/change" ở cuối hash để quyết định hiện/ẩn thanh điều hướng ngoài (xem app.js).
+  mount.querySelector("#my-package-row").addEventListener("click", () => navigate("/packages"));
   mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select/change"));
 
   mount.querySelector("#account-row").addEventListener("click", () => {

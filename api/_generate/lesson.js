@@ -16,6 +16,7 @@
 // Gọi AI đi qua api/_shared/aiProvider.js (lớp trừu tượng OpenAI/Gemini dùng chung toàn repo).
 import { SUPABASE_URL, PRO_GATE_ENFORCED } from "./_shared.js";
 import { generateStructuredJSON } from "../_shared/aiProvider.js";
+import { consumeAiCredits, refundAiCredits } from "./credits.js";
 import { getGrammarIdsTaughtUpTo } from "./curriculum/grammar-order.js";
 import { GRAMMAR_CATALOG } from "./curriculum/grammar-catalog.js";
 
@@ -1842,6 +1843,12 @@ export async function analyze_user_text(data, ctx) {
   const limitCheck = await checkDailyTextAnalysisLimit(ctx.studentId);
   if (!limitCheck.allowed) return { error: limitCheck.message, status: 403 };
 
+  // (a.2) Ví AI Credit (spec "CƠ CẤU GÓI MOSAIC") — trừ NGAY TRƯỚC lượt gọi OpenAI thật (reserve),
+  // hoàn lại nếu bước nào sau đó thất bại (refund) — KHÔNG thay thế checkDailyTextAnalysisLimit ở
+  // trên (mục đích khác: chống bot/spam, không phải theo gói), cộng thêm.
+  const creditCheck = await consumeAiCredits(ctx.studentId);
+  if (!creditCheck.allowed) return { error: creditCheck.message, status: 403 };
+
   // (b) Gọi AI + parse + validate.
   const r = await generateStructuredJSON({
     maxTokens: 6000, // trần chung MAX_TOKENS_CAP (aiProvider.js) — nâng từ 4000 (2026-08-09):
@@ -1855,6 +1862,7 @@ export async function analyze_user_text(data, ctx) {
   });
   if (!r.ok) {
     if (r.parseError) console.error("[analyze_user_text] parse error:", r.text?.slice(0, 500));
+    await refundAiCredits(ctx.studentId);
     return { error: r.error || "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: r.status || 502 };
   }
   const parsed = r.data;
@@ -1867,6 +1875,7 @@ export async function analyze_user_text(data, ctx) {
   const validation = validateLessonShape(parsed, { expectedWords: wc });
   if (!validation.valid) {
     console.error("[analyze_user_text] validate FAIL:", validation.reason, validation.actualWords, validation.expectedWords);
+    await refundAiCredits(ctx.studentId);
     return { error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại.", status: 502 };
   }
 
@@ -1875,7 +1884,10 @@ export async function analyze_user_text(data, ctx) {
   // resolveOwnedGoalId ở trên) trước khi gắn, KHÔNG lỗi cả lượt phân tích nếu goal_id sai/thiếu.
   const goalId = await resolveOwnedGoalId(data.goal_id, ctx.studentId);
   const saved = await insertLesson(buildLessonInsertRow(parsed, { userId: ctx.studentId, source: "user_text", goalId }));
-  if (!saved) return { error: "Phân tích thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
+  if (!saved) {
+    await refundAiCredits(ctx.studentId);
+    return { error: "Phân tích thành công nhưng lưu thất bại, vui lòng thử lại.", status: 502 };
+  }
 
   return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };
 }

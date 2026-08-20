@@ -13,6 +13,7 @@ import { getProgressOverview } from "../../db.js";
 import { escapeHtml } from "../../utils.js";
 import { icon } from "../../icons.js";
 import { wireAppHeader } from "../../header.js";
+import { getCreditBalance } from "../../packageApi.js";
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
@@ -38,14 +39,20 @@ registerTranslations({
   "Chưa học": "Not started",
   "Không tải được.": "Couldn't load.",
   "Không tải được lịch sử học.": "Couldn't load learning history.",
+  "Credit còn lại": "Credits left",
 });
 
+// Card thứ 4 "Credit còn lại" (2026-08-20, spec "CƠ CẤU GÓI MOSAIC" — Minh: "Thêm bộ đếm credit
+// ở màn Tiến trình bên cạnh bộ đếm bài đã học") — id RIÊNG (progress-summary-credit-value), tải
+// SONG SONG với getProgressOverview() ở load() bên dưới (nguồn dữ liệu khác hẳn — get_credit_balance,
+// không thuộc getProgressOverview()), không chặn nhau nếu 1 trong 2 lỗi.
 function summaryCardsHtml() {
   return `
     <div class="progress-summary-grid" id="progress-summary">
       <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">${t("Kỷ lục chuỗi ngày")}</div></div>
       <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">${t("Bài đã học")}</div></div>
       <div class="progress-summary-card"><div class="progress-summary-value">--</div><div class="progress-summary-label">${t("Chuỗi ngày")}</div></div>
+      <div class="progress-summary-card"><div class="progress-summary-value" id="progress-summary-credit-value">--</div><div class="progress-summary-label">${t("Credit còn lại")}</div></div>
     </div>
   `;
 }
@@ -127,6 +134,16 @@ export function renderProgress(mount) {
   `;
   wireAppHeader(mount);
   load();
+  loadCredit();
+
+  // Tách RIÊNG khỏi load() (getProgressOverview()) — nguồn khác hẳn (get_credit_balance đọc
+  // "students", không đụng lesson_progress/writing_submissions) — lỗi ở đây không nên kéo cả
+  // màn Tiến trình báo lỗi, chỉ để "--" ở đúng 1 card đó.
+  async function loadCredit() {
+    const res = await getCreditBalance();
+    const el = mount.querySelector("#progress-summary-credit-value");
+    if (el && res.ok) el.textContent = res.data.balance;
+  }
 
   // 1 LƯỢT GỌI DUY NHẤT (getProgressOverview()) thay vì 5 lượt riêng biệt qua 3 Promise.all
   // trước đó — dựng LẠI toàn bộ nội dung (thống kê/thanh tiến trình/lịch sử) từ CÙNG 1 kết quả,
