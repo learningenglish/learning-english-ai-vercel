@@ -232,7 +232,10 @@ const INDUSTRIES = [
   { key: "general", label: "Giao Tiếp Tổng Quát", icon: "message-circle", chip: "blue", real: false },
   { key: "accounting", label: "Kế toán", icon: "dollar-sign", chip: "orange", real: true, profile: ACCOUNTING_PROFILE },
   { key: "beauty", label: "Làm Đẹp", icon: "sparkles", chip: "purple", real: true, profile: BEAUTY_PROFILE },
-  { key: "nursing", label: "Điều dưỡng", icon: "flask", chip: "orange", real: true, profile: NURSING_PROFILE },
+  // "real: false" (2026-08-20, Minh: "Chuyên ngành điều dưỡng chưa có, khóa để sắp ra mắt") —
+  // hạ tầng phân loại đã có (NURSING_PROFILE) nhưng CHƯA sinh nội dung bài học thật, xem
+  // project_nursing_industry_deferred trong bộ nhớ.
+  { key: "nursing", label: "Điều dưỡng", icon: "flask", chip: "orange", real: false, profile: NURSING_PROFILE },
   ...OTHER_INDUSTRIES.map((ind) => ({ ...ind, real: false })),
 ];
 

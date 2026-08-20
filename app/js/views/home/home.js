@@ -35,11 +35,15 @@ registerTranslations({
 // ĐÚNG cùng bảng dịch industrySelect.js dùng (t()) — vừa ra tiếng Anh đúng khi đổi ngôn ngữ, vừa
 // ĐỒNG BỘ nhãn với màn "Chọn chuyên ngành" (trước đây lệch: màn chọn "Tiếng Anh Giao Tiếp" nhưng
 // Home lại "Giao tiếp tổng quát" — 2 chuỗi khác nhau cho cùng 1 lựa chọn).
+// TRẢ VỀ HTML (không phải text thuần) — 2026-08-20, Minh: "Anh Văn Chuyên ngành Kế toán bị xuống
+// dòng [sai chỗ]... Dòng 1: Anh Văn Chuyên ngành / Dòng 2: Kế Toán, 2 dòng canh giữa". Ngắt dòng
+// CỐ ĐỊNH bằng <br> ngay tại đây (không để trình duyệt tự ngắt theo độ rộng màn hình, dễ ngắt
+// giữa 1 từ trên máy hẹp) — escapeHtml() TÊN NGÀNH vì giờ ghép vào bằng innerHTML.
 function goalDisplayTitle(goal) {
   const profile = goal?.occupation_profile;
   if (profile?.is_general) return t("Giao Tiếp Tổng Quát");
-  if (profile?.merged_occupation) return `${t("Anh văn chuyên ngành")} ${t(profile.merged_occupation)}`;
-  return goal.title; // lưới đỡ cho goal cũ (nếu có) thiếu occupation_profile
+  if (profile?.merged_occupation) return `${t("Anh văn chuyên ngành")}<br>${escapeHtml(t(profile.merged_occupation))}`;
+  return escapeHtml(goal.title); // lưới đỡ cho goal cũ (nếu có) thiếu occupation_profile
 }
 
 // "chip" = màu icon vuông bo góc riêng cho từng card, KHÔNG đổi theo Theme Color Palette (màu
@@ -154,7 +158,7 @@ export function renderHome(mount) {
         return;
       }
       const titleEl = mount.querySelector("#home-track-title");
-      titleEl.textContent = goalDisplayTitle(goal);
+      titleEl.innerHTML = goalDisplayTitle(goal); // đã escapeHtml() bên trong goalDisplayTitle()
       titleEl.style.visibility = "visible";
     })
     .catch(() => {

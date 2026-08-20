@@ -1458,6 +1458,12 @@ textarea:focus {
   gap: 8px;
   align-items: center;
   font-size: 0.8rem;
+  /* SỬA 2026-08-20 (Minh: "Chữ Chưa học khi bài hơn 2 chữ số là bị xuống dòng") — badge "#11"/
+     "#17" (3 ký tự) chiếm nhiều chỗ hơn "#5" (2 ký tự) khiến badge "Chưa học" còn lại KHÔNG đủ
+     rộng, chữ BÊN TRONG nó tự xuống dòng — cho phép cả HÀNG badge wrap xuống dòng MỚI khi chật
+     (flex-wrap), thay vì để chữ vỡ dòng ngay trong 1 badge. */
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 
 /* Nhãn lĩnh vực/chuyên mục cạnh ngày tạo (2026-07-28, "bỏ toggle Của tôi/Tin tức") — co lại +
@@ -3158,12 +3164,12 @@ textarea:focus {
    tự dời xuống theo, không cần chỉnh riêng. */
 .home-track-title {
   margin: 6px 0 0;
-  /* Mọi tiêu đề dùng appHeaderHtml() (Ads/Setting/...) có icon 22px + gap 4px ĐỨNG TRƯỚC chữ,
-     nên chữ đầu tiêu đề đó nằm lệch phải ~26px so với mép .screen. Tiêu đề Home không có icon
-     (đổi text theo Chuyên ngành, không hợp gắn icon cố định) nên chữ nằm sát mép — 2026-08-10,
-     Minh: "chữ A đầu không khớp với chữ A của Ads". Bù đúng 26px để mọi tiêu đề trong app cùng 1
-     điểm bắt đầu chữ, không thêm icon giả. */
-  padding-left: 26px;
+  /* SỬA 2026-08-20 (Minh: "Anh Văn Chuyên ngành Kế toán bị xuống dòng... 2 dòng canh giữa") —
+     BỎ padding-left lệch trái cũ (dành cho căn theo icon các tiêu đề khác, xem ghi chú lịch sử
+     dưới) — giờ LUÔN 2 dòng cố định + canh GIỮA (home.js dựng sẵn <br> ở đúng chỗ ngắt, không
+     để trình duyệt tự ngắt dòng lung tung theo độ rộng màn hình). */
+  text-align: center;
+  line-height: 1.3;
 }
 
 .home-settings-btn {
@@ -3720,6 +3726,8 @@ textarea:focus {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .learn-status-not-started {
