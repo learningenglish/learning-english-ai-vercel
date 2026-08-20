@@ -19,7 +19,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SERVICE_HEADERS = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
 const PAYMENT_WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET;
 
-const ORDER_REF_PATTERN = /MOSAIC[A-Z0-9]{12}/;
+// Khớp buildOrderRef() (billing.js, 2026-08-20 — đổi để vừa giới hạn "Nhận diện mã thanh toán" của
+// SePay): tiền tố "MOSAI" (5 ký tự chữ, đúng giới hạn tối đa của SePay) + 6-8 chữ số (Minh cấu
+// hình hậu tố "Số nguyên" 6-8 ký tự trong Cấu trúc mã thanh toán — code luôn sinh đúng 8, chấp
+// nhận 6-8 ở đây để không vỡ nếu Minh đổi khoảng cấu hình sau này).
+const ORDER_REF_PATTERN = /MOSAI\d{6,8}/;
 
 // Gom mọi "giao dịch" có thể có trong payload — SePay gửi 1 object phẳng/lượt gọi, Casso gửi
 // {data: [...]} có thể nhiều giao dịch/lượt gọi — chuẩn hoá về 1 mảng để xử lý chung 1 đường.

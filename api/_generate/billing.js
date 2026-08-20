@@ -18,14 +18,15 @@ const PAYMENT_BANK_CODE = process.env.PAYMENT_BANK_CODE; // vd "ACB"
 const PAYMENT_ACCOUNT_NUMBER = process.env.PAYMENT_ACCOUNT_NUMBER;
 const PAYMENT_ACCOUNT_NAME = process.env.PAYMENT_ACCOUNT_NAME;
 
-// Mã tham chiếu ĐƠN HÀNG — PHẢI ngắn (VietQR addInfo có giới hạn ký tự thực tế theo từng ngân hàng,
-// an toàn dưới ~25 ký tự), PHẢI dò lại được ĐÚNG user khi Minh xác nhận thủ công (không cần đoán/tra
-// cứu chéo). Định dạng: "MOSAIC" + 8 ký tự đầu của studentId (đủ để tra cứu, đọc được qua giọng đọc
-// ngân hàng khi Minh xem sao kê).
-function buildOrderRef(studentId) {
-  const short = (studentId || "").replace(/-/g, "").slice(0, 8).toUpperCase();
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `MOSAIC${short}${rand}`;
+// Mã tham chiếu ĐƠN HÀNG — 2026-08-20, đổi định dạng để KHỚP giới hạn "Nhận diện mã thanh toán" của
+// SePay (Cấu hình chung -> Cấu trúc mã thanh toán, Minh đã cấu hình thật): tiền tố tối đa 5 ký tự
+// CHỮ CÁI ("MOSAI", KHÔNG phải "MOSAIC" — 6 ký tự vượt giới hạn 5), hậu tố CHỈ hỗ trợ kiểu "Số
+// nguyên" (thuần chữ số, không được lẫn chữ cái) — bản cũ dùng hậu tố base36 lẫn chữ cái, KHÔNG
+// khớp được. Hậu tố 8 chữ số ngẫu nhiên (đủ ngắn, đủ tránh trùng ở quy mô app này — order_ref có
+// ràng buộc UNIQUE ở DB, trùng cực hiếm sẽ tự lỗi 502, user bấm lại là ra mã mới).
+function buildOrderRef() {
+  const digits = Math.floor(10000000 + Math.random() * 90000000); // đúng 8 chữ số
+  return `MOSAI${digits}`;
 }
 
 // KHÔNG gọi AI — tạo 1 "payment_orders" pending + trả URL ảnh QR VietQR tương ứng.
@@ -39,7 +40,7 @@ export async function create_payment_order(data, ctx) {
     return { error: "Hệ thống thanh toán chưa được cấu hình, vui lòng liên hệ hỗ trợ.", status: 503 };
   }
   const amount = PACKAGE_CONFIG[targetTier].price;
-  const orderRef = buildOrderRef(ctx.studentId);
+  const orderRef = buildOrderRef();
 
   const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/payment_orders`, {
     method: "POST",
