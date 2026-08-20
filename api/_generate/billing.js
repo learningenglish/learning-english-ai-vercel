@@ -138,16 +138,20 @@ export async function admin_list_pending_payments(data, ctx) {
 // ====== "Gói tặng" (2026-08-20, Minh: "Tặng 3 tháng, Tặng 6 tháng, Tặng 1 năm cho các level" cho
 // tài khoản được admin duyệt) — cấp thủ công 1 gói trả phí, KHÔNG qua thanh toán thật, xem
 // supabase/041_package_grants.sql cho RPC atomic + bảng audit "package_grants".
-const VALID_GRANT_MONTHS = [3, 6, 12];
+// THÊM 2 mốc NGÀY (2026-08-20, Minh: "Trong gói tặng, thêm cho tôi gói 3 ngày và 5 ngày" — dùng
+// thử nghiệm ngắn hạn) — xem supabase/046_package_grant_duration_days.sql (đổi "months" thành cặp
+// "duration_value"+"duration_unit" ở cả DB lẫn đây).
+const VALID_GRANT_DURATIONS = { day: [3, 5], month: [3, 6, 12] };
 
 export async function admin_grant_package(data, ctx) {
   if (!(await isAdmin(ctx))) return { error: "Không có quyền quản trị.", status: 403 };
   const targetEmail = (data?.targetEmail || "").trim().toLowerCase();
   const tier = data?.tier;
-  const months = Number(data?.months);
+  const durationValue = Number(data?.durationValue);
+  const durationUnit = data?.durationUnit;
   if (!targetEmail) return { error: "Thiếu email tài khoản cần tặng.", status: 400 };
   if (!["A1_A2", "B1", "B2"].includes(tier)) return { error: "Gói không hợp lệ.", status: 400 };
-  if (!VALID_GRANT_MONTHS.includes(months)) return { error: "Thời hạn không hợp lệ.", status: 400 };
+  if (!VALID_GRANT_DURATIONS[durationUnit]?.includes(durationValue)) return { error: "Thời hạn không hợp lệ.", status: 400 };
 
   const adminEmailRows = await (
     await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}&select=email`, { headers: SERVICE_HEADERS })
@@ -168,7 +172,13 @@ export async function admin_grant_package(data, ctx) {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/schedule_package_grant`, {
       method: "POST",
       headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_email: targetEmail, p_tier: tier, p_months: months, p_granted_by: grantedByEmail }),
+      body: JSON.stringify({
+        p_email: targetEmail,
+        p_tier: tier,
+        p_duration_value: durationValue,
+        p_duration_unit: durationUnit,
+        p_granted_by: grantedByEmail,
+      }),
     });
     if (!r.ok) {
       console.error("billing.js admin_grant_package (schedule) error:", r.status, await r.text().catch(() => ""));
@@ -187,7 +197,13 @@ export async function admin_grant_package(data, ctx) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/grant_package`, {
     method: "POST",
     headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify({ p_student_id: target.id, p_tier: tier, p_months: months, p_granted_by: grantedByEmail }),
+    body: JSON.stringify({
+      p_student_id: target.id,
+      p_tier: tier,
+      p_duration_value: durationValue,
+      p_duration_unit: durationUnit,
+      p_granted_by: grantedByEmail,
+    }),
   });
   if (!r.ok) {
     console.error("billing.js admin_grant_package error:", r.status, await r.text().catch(() => ""));

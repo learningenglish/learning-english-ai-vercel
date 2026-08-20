@@ -29,6 +29,8 @@ registerTranslations({
   "Email tài khoản": "Account email",
   "Gói": "Plan",
   "Thời hạn": "Duration",
+  "3 ngày": "3 days",
+  "5 ngày": "5 days",
   "3 tháng": "3 months",
   "6 tháng": "6 months",
   "1 năm": "1 year",
@@ -44,10 +46,16 @@ registerTranslations({
 // nên phải lặp lại giá trị ở đây, giống cách APP_SECRET đã nhúng thẳng client từ trước.
 const ADMIN_EMAIL_ALLOWLIST = ["kimchinamvn@gmail.com"];
 
-const GRANT_MONTH_OPTIONS = [
-  { value: 3, label: "3 tháng" },
-  { value: 6, label: "6 tháng" },
-  { value: 12, label: "1 năm" },
+// THÊM 3/5 ngày (2026-08-20, Minh: "Trong gói tặng, thêm cho tôi gói 3 ngày và 5 ngày" — dùng thử
+// nghiệm ngắn hạn, cạnh 3/6/12 THÁNG cũ dành cho khách thật) — "value" gộp "<số>:<đơn vị>" thành 1
+// chuỗi duy nhất để dùng trực tiếp làm value <option> (HTML <option> chỉ nhận 1 chuỗi), tách lại ở
+// submitGrant() bên dưới, xem supabase/046_package_grant_duration_days.sql.
+const GRANT_DURATION_OPTIONS = [
+  { value: "3:day", label: "3 ngày" },
+  { value: "5:day", label: "5 ngày" },
+  { value: "3:month", label: "3 tháng" },
+  { value: "6:month", label: "6 tháng" },
+  { value: "12:month", label: "1 năm" },
 ];
 
 function pendingOrderRowHtml(order) {
@@ -122,8 +130,8 @@ export function renderAdmin(mount) {
         </label>
         <label class="field">
           <span class="field-question">${t("Thời hạn")}</span>
-          <select id="grant-months-select">
-            ${GRANT_MONTH_OPTIONS.map((o) => `<option value="${o.value}">${t(o.label)}</option>`).join("")}
+          <select id="grant-duration-select">
+            ${GRANT_DURATION_OPTIONS.map((o) => `<option value="${o.value}">${t(o.label)}</option>`).join("")}
           </select>
         </label>
         <button type="button" class="btn btn-primary btn-block" id="grant-submit-btn">${t("Tặng")}</button>
@@ -160,11 +168,12 @@ export function renderAdmin(mount) {
   async function submitGrant() {
     const email = mount.querySelector("#grant-email-input").value.trim();
     const tier = mount.querySelector("#grant-tier-select").value;
-    const months = Number(mount.querySelector("#grant-months-select").value);
+    // "3:day"/"12:month" -> { durationValue: 3, durationUnit: "day" } (xem GRANT_DURATION_OPTIONS).
+    const [durationValueStr, durationUnit] = mount.querySelector("#grant-duration-select").value.split(":");
     if (!email) return;
     const btn = mount.querySelector("#grant-submit-btn");
     btn.disabled = true;
-    const res = await adminGrantPackage(email, tier, months);
+    const res = await adminGrantPackage(email, tier, Number(durationValueStr), durationUnit);
     btn.disabled = false;
     if (!res.ok) {
       showToast(res.error || t("Có lỗi xảy ra."));

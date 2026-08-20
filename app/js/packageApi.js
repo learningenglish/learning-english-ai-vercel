@@ -45,6 +45,8 @@ export async function adminConfirmPayment(orderRef) {
 }
 
 // { ok, message, package_tier, expires_at, targetEmail }
-export async function adminGrantPackage(targetEmail, tier, months) {
-  return callAndParse("admin_grant_package", { targetEmail, tier, months });
+// "durationUnit": "day" | "month" (2026-08-20, thêm mốc 3/5 ngày cạnh 3/6/12 tháng cũ, xem
+// admin.js GRANT_DURATION_OPTIONS).
+export async function adminGrantPackage(targetEmail, tier, durationValue, durationUnit) {
+  return callAndParse("admin_grant_package", { targetEmail, tier, durationValue, durationUnit });
 }

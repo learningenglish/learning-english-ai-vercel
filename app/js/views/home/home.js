@@ -9,7 +9,8 @@ import { getActiveLearningGoal, getStreakAndStats } from "../../db.js";
 import { getSession } from "../../session.js";
 import { icon } from "../../icons.js";
 import { escapeHtml } from "../../utils.js";
-import { primeSharedStats } from "../../header.js";
+import { primeSharedStats, primeSharedCredit } from "../../header.js";
+import { getCreditBalance } from "../../packageApi.js";
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
@@ -165,6 +166,17 @@ export function renderHome(mount) {
     .catch(() => {
       mount.querySelector("#streak-value").textContent = `0 ${t("ngày")}`;
     });
+
+  // Làm ấm cache Credit (2026-08-20, Minh: "bộ đếm tối thấy --, muốn hiển thị ngay ở TẤT CẢ các
+  // biến liên quan") — CÙNG lý do/cơ chế với primeSharedStats() ở trên, áp dụng cho Credit: Home
+  // không tự hiển thị số Credit nào (chỉ gọi để LÀM ẤM sharedStatsCache), nhưng nhờ vậy màn Phân
+  // tích/Luyện viết/Cài đặt/Nâng cấp gói mở SAU Home (luôn đúng thứ tự vì Home là trang chính sau
+  // đăng nhập) đọc được số thật NGAY từ lượt render đầu tiên, không còn thấy "--" thoáng qua.
+  getCreditBalance()
+    .then((res) => {
+      if (res.ok) primeSharedCredit(res.data.balance, res.data.packageTier);
+    })
+    .catch(() => {});
 
   // Chưa có mục tiêu đang hoạt động (lần đầu, hoặc vừa "Đổi vị trí" ở Setting) -> Home không có
   // gì để hiện, đưa thẳng vào màn chọn chuyên ngành thay vì hiện Home rỗng. CÓ mục tiêu -> hiện

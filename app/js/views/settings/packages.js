@@ -4,7 +4,7 @@
 // tại + nút nâng cấp mở QR VietQR (api/_generate/billing.js, xác nhận thủ công phía Minh trong
 // giai đoạn khởi đầu — chưa có merchant account cổng nào).
 import { navigate } from "../../router.js";
-import { appHeaderHtml, wireAppHeader, wireBackLink } from "../../header.js";
+import { appHeaderHtml, wireAppHeader, wireBackLink, getSharedCreditBalance, getSharedPackageTier } from "../../header.js";
 import { icon } from "../../icons.js";
 import { escapeHtml } from "../../utils.js";
 import { showToast } from "../../toast.js";
@@ -70,9 +70,13 @@ function qrPanelHtml(order) {
 }
 
 export function renderPackages(mount) {
+  // SỬA 2026-08-20 (Minh: "bộ đếm tối thấy --, muốn hiển thị ngay ở tất cả các biến liên quan")
+  // — khởi tạo từ cache dùng chung (header.js, được Home "làm ấm" ngay lúc đăng nhập) thay vì
+  // luôn null/"FREE" mặc định — nếu cache đã có (hầu hết trường hợp, vì luôn qua Home trước), màn
+  // này hiện đúng số NGAY từ lượt vẽ đầu tiên, không đợi load() bên dưới tải lại.
   const state = {
-    balance: null,
-    packageTier: "FREE",
+    balance: getSharedCreditBalance(),
+    packageTier: getSharedPackageTier() || "FREE",
     pendingOrder: null,
     qrOrder: null,
     upgrading: false,

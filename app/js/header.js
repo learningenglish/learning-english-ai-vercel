@@ -50,6 +50,27 @@ function tierLabel(xp) {
 // KHÔNG PHẢI đợi tải xong mới có gì để hiện.
 let sharedStatsCache = {};
 
+// SỬA 2026-08-20 (Minh: "bộ đếm tối thấy --. Tôi muốn hiển thị ngay, không hiển thị -- ở tất cả
+// các biến liên quan") — "creditText"/"packageTier" giờ CŨNG lưu vào ĐÚNG cache dùng chung này
+// (trước đây chỉ streak/tier dùng, credit luôn fetch mới mỗi lượt mount -> LUÔN "--" 1 nhịp dù
+// đã xem qua rồi). views/home/home.js "làm ấm" cache này bằng getCreditBalance() NGAY LÚC MOUNT
+// (giống hệt cơ chế primeSharedStats() cho streak) — vì Home luôn là màn đầu tiên sau đăng nhập,
+// mọi màn mở SAU ĐÓ (Phân tích/Luyện viết/Cài đặt/Nâng cấp gói) đọc được số thật ngay, không cần
+// đợi lượt fetch riêng của chính nó.
+export function primeSharedCredit(balance, packageTier) {
+  sharedStatsCache.creditText = String(balance);
+  sharedStatsCache.creditLocked = balance <= 0;
+  sharedStatsCache.packageTier = packageTier;
+}
+
+export function getSharedCreditBalance() {
+  return sharedStatsCache.creditText != null ? Number(sharedStatsCache.creditText) : null;
+}
+
+export function getSharedPackageTier() {
+  return sharedStatsCache.packageTier ?? null;
+}
+
 // titleHtml: có -> hiện tiêu đề màn (thay avatar, dùng cho Yêu thích/Thư viện AI/Lịch sử/Tiến
 // trình...). KHÔNG truyền (undefined) -> hiện avatar+tier badge (CHỈ màn "Phổ biến" — màn duy
 // nhất còn giữ nhân dạng cá nhân ở vị trí này; "Tạo bài học" dùng opts.hideTierBadge, xem dưới).
@@ -88,7 +109,7 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
     ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="${t("Lưu trữ")}">${icon("bookmark", { size: 20 })}</button>`
     : "";
   const rightBadge = opts.showCreditCounter
-    ? `<div class="streak-badge credit-badge" id="credit-badge"><span id="credit-badge-icon">${icon("sparkles", { size: 16 })}</span> <span id="credit-value">${cache.creditText ?? "--"}</span></div>`
+    ? `<div class="streak-badge credit-badge ${cache.creditLocked ? "credit-badge-locked" : ""}" id="credit-badge"><span id="credit-badge-icon">${icon(cache.creditLocked ? "lock" : "sparkles", { size: 16 })}</span> <span id="credit-value">${cache.creditText ?? "--"}</span></div>`
     : `<div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>`;
   // "archiveBtn" ĐỨNG TRƯỚC streak-badge/credit-badge (2026-08-04, Minh: "icon lưu trữ nằm bên
   // trái icon chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — badge giờ LUÔN kề
@@ -144,6 +165,7 @@ export async function loadAppHeaderStats(mount, opts = {}) {
       if (!res.ok) return null;
       const balance = res.data.balance;
       const creditText = String(balance);
+      primeSharedCredit(balance, res.data.packageTier);
       const creditEl = mount.querySelector("#credit-value");
       if (creditEl) creditEl.textContent = creditText;
       // Hết credit (2026-08-20, Minh: "nếu hết khóa và hiển thị icon khóa") — đổi icon

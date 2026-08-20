@@ -8,6 +8,7 @@ import { getPalettePreference, setPalettePreference, PALETTES } from "../../pale
 import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../../fontSize.js";
 import { getAutoScrollPreference, setAutoScrollPreference } from "../../autoScroll.js";
 import { getCreditBalance } from "../../packageApi.js";
+import { getSharedPackageTier } from "../../header.js";
 import { PACKAGE_LABELS } from "../../packageConfig.js";
 import { t, getUiLang, setUiLang, registerTranslations } from "../../i18n.js";
 
@@ -94,7 +95,13 @@ export function renderProfile(mount) {
              "Nâng cấp gói" RIÊNG ngay bên dưới. -->
         <div class="settings-row" id="my-package-row">
           <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Gói của tôi")}</span>
-          <span class="package-name-badge" id="package-name-badge">--</span>
+          <span class="package-name-badge" id="package-name-badge">${
+            // SỬA 2026-08-20 (Minh: "bộ đếm tối thấy --, muốn hiển thị ngay") — đọc từ cache dùng
+            // chung (header.js, Home đã "làm ấm" ngay lúc đăng nhập) thay vì luôn "--" mặc định.
+            // Không escapeHtml() — PACKAGE_LABELS là hằng số TĨNH trong code (packageConfig.js),
+            // không phải dữ liệu người dùng nhập, an toàn ghép thẳng vào innerHTML.
+            getSharedPackageTier() ? PACKAGE_LABELS[getSharedPackageTier()]?.label || getSharedPackageTier() : "--"
+          }</span>
         </div>
         <div class="settings-row settings-row-clickable" id="upgrade-package-row">
           <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Nâng cấp gói")}</span>

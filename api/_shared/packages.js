@@ -14,7 +14,11 @@ export const PACKAGE_CONFIG = {
     levels: ["A1", "A2", "B1", "B2"],
     // Giới hạn bài THEO THỨ TỰ spine_slot của TỪNG chuyên ngành đang trải nghiệm (không phải tổng số
     // bài đã học) — xem RLS can_view_lesson() trong migration 041.
-    lessonLimits: { A1: 5, A2: 5, B1: 3, B2: 3 },
+    // NỚI RỘNG 2026-08-20 (Minh: "Số bài giới hạn hiện tại nới rộng thêm: A1:15, A2:15, B1:6") —
+    // B2 tăng CÙNG mức B1 (Minh xác nhận qua AskUserQuestion "Tăng lên 6, giống B1") — SỬA Ở ĐÂY
+    // THÔI CHƯA ĐỦ, hàm SQL package_free_lesson_limit() (migration 040) đã CHẠY RỒI nên KHÔNG tự
+    // cập nhật theo file này — xem migration 045 (CREATE OR REPLACE lại đúng hàm đó) để đồng bộ.
+    lessonLimits: { A1: 15, A2: 15, B1: 6, B2: 6 },
     // 5 -> 3 (2026-08-20, Minh: "Tk free nên có 03 credit") — SỬA ở ĐÂY THÔI CHƯA ĐỦ, hàm SQL
     // package_monthly_credits() (migration 040) đã CHẠY RỒI nên KHÔNG tự cập nhật theo file này —
     // xem migration 042 (CREATE OR REPLACE lại đúng hàm đó) để đồng bộ.
