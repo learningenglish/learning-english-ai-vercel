@@ -62,6 +62,7 @@ registerTranslations({
   "Xác nhận xoá bài này? Không thể hoàn tác.": "Delete this lesson? This cannot be undone.",
   "Đã xoá bài.": "Lesson deleted.",
   "Chưa có bài nào khớp.": "No lessons match.",
+  "Trùng số bài": "Duplicate slot",
 });
 
 // Chỉ để ẨN/HIỆN UI (không phải lớp bảo mật thật — server tự kiểm tra lại qua ADMIN_EMAILS trong
@@ -137,13 +138,16 @@ function missingCoverRowHtml(lesson) {
   `;
 }
 
-function inspectLessonRowHtml(lesson) {
+// "isDuplicate" (2026-08-20, Minh xác nhận "rác" = "Trùng số bài" — nhiều bài CÙNG 1 spine_slot,
+// hẳn do 1 đợt sinh bài lặp lại không dọn bản cũ) — tô đỏ + badge cảnh báo cho MỌI dòng nằm trong
+// 1 nhóm slot bị trùng, giúp Minh soi ra ngay không cần tự đếm bằng mắt qua cả danh sách dài.
+function inspectLessonRowHtml(lesson, isDuplicate) {
   const label = lesson.title_vi || lesson.title || "?";
   const slot = Number.isInteger(lesson.spine_slot) ? `#${lesson.spine_slot}` : "?";
   return `
-    <div class="admin-order-row" data-inspect-row="${lesson.id}">
+    <div class="admin-order-row ${isDuplicate ? "admin-order-row-duplicate" : ""}" data-inspect-row="${lesson.id}">
       <div class="admin-order-info">
-        <div class="admin-order-user">${slot} · ${escapeHtml(label)}</div>
+        <div class="admin-order-user">${slot} · ${escapeHtml(label)} ${isDuplicate ? `<span class="badge badge-danger">${t("Trùng số bài")}</span>` : ""}</div>
         <div class="admin-order-meta">
           ${escapeHtml(lesson.content_type || "—")}${lesson.situation_type ? " · " + escapeHtml(lesson.situation_type) : ""}
           · ${formatDate(lesson.created_at)}
@@ -152,6 +156,16 @@ function inspectLessonRowHtml(lesson) {
       <button type="button" class="btn btn-ghost" data-delete-lesson="${lesson.id}">${t("Xoá")}</button>
     </div>
   `;
+}
+
+// Đếm số lần mỗi spine_slot xuất hiện — trả về Set các spine_slot XUẤT HIỆN >1 LẦN (trùng).
+function findDuplicateSlots(lessons) {
+  const counts = new Map();
+  for (const l of lessons) {
+    if (!Number.isInteger(l.spine_slot)) continue;
+    counts.set(l.spine_slot, (counts.get(l.spine_slot) || 0) + 1);
+  }
+  return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([slot]) => slot));
 }
 
 function pendingOrderRowHtml(order) {
@@ -294,7 +308,10 @@ export function renderAdmin(mount) {
             : state.inspectLessons === null
             ? ""
             : state.inspectLessons.length
-            ? state.inspectLessons.map(inspectLessonRowHtml).join("")
+            ? (() => {
+                const dupSlots = findDuplicateSlots(state.inspectLessons);
+                return state.inspectLessons.map((l) => inspectLessonRowHtml(l, dupSlots.has(l.spine_slot))).join("");
+              })()
             : `<p class="muted">${t("Chưa có bài nào khớp.")}</p>`
         }
       </div>
