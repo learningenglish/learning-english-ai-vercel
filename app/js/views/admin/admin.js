@@ -33,6 +33,7 @@ registerTranslations({
   "Tặng": "Gift",
   "Đã xác nhận đơn hàng.": "Order confirmed.",
   "Đã tặng gói.": "Plan gifted.",
+  "Chưa có tài khoản — đã lên lịch, tự áp dụng khi đăng ký.": "No account yet — scheduled, will apply automatically once they sign up.",
   "Có lỗi xảy ra.": "Something went wrong.",
 });
 
@@ -167,7 +168,10 @@ export function renderAdmin(mount) {
       showToast(res.error || t("Có lỗi xảy ra."));
       return;
     }
-    showToast(t("Đã tặng gói."));
+    // "scheduled" (2026-08-20, Minh: "phải set luôn, không đợi người ta đăng ký mới tặng được") —
+    // email chưa có tài khoản -> billing.js tự LÊN LỊCH thay vì báo lỗi, tự áp dụng lúc email đó
+    // đăng ký. Hiện rõ 2 trạng thái khác nhau, tránh Minh tưởng nhầm đã tặng thành công NGAY.
+    showToast(res.data.scheduled ? t("Chưa có tài khoản — đã lên lịch, tự áp dụng khi đăng ký.") : t("Đã tặng gói."));
     mount.querySelector("#grant-email-input").value = "";
   }
 }

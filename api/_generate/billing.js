@@ -149,18 +149,40 @@ export async function admin_grant_package(data, ctx) {
   if (!["A1_A2", "B1", "B2"].includes(tier)) return { error: "Gói không hợp lệ.", status: 400 };
   if (!VALID_GRANT_MONTHS.includes(months)) return { error: "Thời hạn không hợp lệ.", status: 400 };
 
+  const adminEmailRows = await (
+    await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}&select=email`, { headers: SERVICE_HEADERS })
+  ).json();
+  const grantedByEmail = adminEmailRows?.[0]?.email || "unknown";
+
   const lookupRes = await fetch(`${SUPABASE_URL}/rest/v1/students?email=eq.${encodeURIComponent(targetEmail)}&select=id,email`, {
     headers: SERVICE_HEADERS,
   });
   if (!lookupRes.ok) return { error: "Không tra được tài khoản.", status: 502 };
   const targetRows = await lookupRes.json();
   const target = targetRows?.[0];
-  if (!target) return { error: "Không tìm thấy tài khoản với email này.", status: 404 };
 
-  const adminEmailRows = await (
-    await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${ctx.studentId}&select=email`, { headers: SERVICE_HEADERS })
-  ).json();
-  const grantedByEmail = adminEmailRows?.[0]?.email || "unknown";
+  // Email CHƯA có tài khoản (2026-08-20, Minh: "phải set luôn, không đợi người ta đăng ký mới
+  // tặng được") — LÊN LỊCH thay vì báo lỗi, xem supabase/043_pending_package_grants.sql —
+  // handle_new_user() tự áp dụng NGAY lúc email này đăng ký tài khoản mới.
+  if (!target) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/schedule_package_grant`, {
+      method: "POST",
+      headers: { ...SERVICE_HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_email: targetEmail, p_tier: tier, p_months: months, p_granted_by: grantedByEmail }),
+    });
+    if (!r.ok) {
+      console.error("billing.js admin_grant_package (schedule) error:", r.status, await r.text().catch(() => ""));
+      return { error: "Lên lịch tặng gói thất bại.", status: 502 };
+    }
+    return {
+      content: JSON.stringify({
+        ok: true,
+        scheduled: true,
+        message: "Chưa có tài khoản — đã lên lịch, tự áp dụng ngay khi email này đăng ký.",
+        targetEmail,
+      }),
+    };
+  }
 
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/grant_package`, {
     method: "POST",
@@ -174,5 +196,5 @@ export async function admin_grant_package(data, ctx) {
   const rows = await r.json();
   const result = rows?.[0];
   if (!result?.ok) return { error: result?.message || "Tặng gói thất bại.", status: 400 };
-  return { content: JSON.stringify({ ...result, targetEmail: target.email }) };
+  return { content: JSON.stringify({ ...result, scheduled: false, targetEmail: target.email }) };
 }

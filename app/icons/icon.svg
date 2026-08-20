@@ -14,5 +14,5 @@
   <path d="M140 230 L256 170 L372 230 L256 290 Z" fill="url(#accent)" />
   <path d="M256 290 L256 340" stroke="#2dd4bf" stroke-width="10" stroke-linecap="round" />
   <circle cx="256" cy="360" r="10" fill="#2dd4bf" />
-  <text x="256" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="#e8eaed">LEA</text>
+  <text x="256" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="#e8eaed">M</text>
 </svg>
