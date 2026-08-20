@@ -1892,6 +1892,34 @@ export async function analyze_user_text(data, ctx) {
   return { content: JSON.stringify({ lesson: saved, meta: buildMeta(r) }) };
 }
 
+// "Xem trước bài bị khoá" (2026-08-20, spec "CƠ CẤU GÓI MOSAIC" — Minh: "các bài khác phải hiển
+// thị nhưng khóa và để icon khóa") — RLS mới (supabase/040) khiến bài NGOÀI hạn mức gói Free BỊ
+// ẨN HOÀN TOÀN khỏi query trực tiếp Supabase client (đúng thiết kế bảo mật, xem can_view_lesson()
+// trong migration) — nhưng UI cần BIẾT các bài đó TỒN TẠI để vẽ thẻ khoá đúng vị trí trong khung
+// giáo trình, không thể lấy qua RLS. Action NÀY dùng service role CỐ Ý BỎ QUA RLS — CHỈ trả
+// METADATA HIỂN THỊ (tiêu đề/ảnh bìa/level/vị trí), TUYỆT ĐỐI không trả content/vocabulary/
+// grammar/exercises (đó mới là thứ Free cần trả phí mới xem được) — client dùng để so khớp với
+// danh sách bài ĐÃ MỞ (RLS trả về bình thường), bài nào có trong preview nhưng KHÔNG có trong
+// danh sách đã mở thì vẽ khoá.
+export async function list_lesson_previews(data, ctx) {
+  if (!ctx?.studentId) return { error: "Chỉ áp dụng cho Student.", status: 400 };
+  let q =
+    "lessons?source=eq.ai_generated&select=id,title,title_vi,level,content_type,cover_image_url,cover_thumb_url,spine_slot" +
+    "&order=level.asc,spine_slot.asc.nullslast";
+  if (VALID_CONTENT_TYPES.includes(data?.content_type)) q += `&content_type=eq.${data.content_type}`;
+  if (data?.industry === null) q += "&industry=is.null";
+  else if (data?.industry) q += `&industry=eq.${encodeURIComponent(data.industry)}`;
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!r.ok) {
+    console.error("list_lesson_previews error:", r.status, await r.text().catch(() => ""));
+    return { error: "Không tải được danh sách xem trước.", status: 502 };
+  }
+  return { content: JSON.stringify({ lessons: await r.json() }) };
+}
+
 // meta không phải 1 phần "hợp đồng dữ liệu" Lesson JSON (mục 4 brief) — chỉ để /app/ hiển
 // thị thời gian/token/chi phí ước tính lúc đo Phase 0/3, KHÔNG lưu vào bảng "lessons".
 function buildMeta(r) {

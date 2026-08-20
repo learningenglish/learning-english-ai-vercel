@@ -88,7 +88,7 @@ export function appHeaderHtml(titleHtml, cache = sharedStatsCache, opts = {}) {
     ? `<button type="button" class="settings-btn" id="archive-btn" data-archive-path="${opts.archivePath}" aria-label="${t("Lưu trữ")}">${icon("bookmark", { size: 20 })}</button>`
     : "";
   const rightBadge = opts.showCreditCounter
-    ? `<div class="streak-badge credit-badge" id="credit-badge">${icon("sparkles", { size: 16 })} <span id="credit-value">${cache.creditText ?? "--"}</span></div>`
+    ? `<div class="streak-badge credit-badge" id="credit-badge"><span id="credit-badge-icon">${icon("sparkles", { size: 16 })}</span> <span id="credit-value">${cache.creditText ?? "--"}</span></div>`
     : `<div class="streak-badge">${icon("flame", { size: 16, filled: true })} <span id="streak-value">${cache.streakText ?? "--"}</span></div>`;
   // "archiveBtn" ĐỨNG TRƯỚC streak-badge/credit-badge (2026-08-04, Minh: "icon lưu trữ nằm bên
   // trái icon chuỗi ngày học, đảm bảo chuỗi ngày học đồng bộ, không bị nhảy") — badge giờ LUÔN kề
@@ -142,10 +142,20 @@ export async function loadAppHeaderStats(mount, opts = {}) {
     try {
       const res = await getCreditBalance();
       if (!res.ok) return null;
-      const creditText = String(res.data.balance);
+      const balance = res.data.balance;
+      const creditText = String(balance);
       const creditEl = mount.querySelector("#credit-value");
       if (creditEl) creditEl.textContent = creditText;
-      return { creditText, packageTier: res.data.packageTier };
+      // Hết credit (2026-08-20, Minh: "nếu hết khóa và hiển thị icon khóa") — đổi icon
+      // sparkles -> lock + thêm class để CSS làm mờ badge, báo ngay trên header trước khi người
+      // dùng kịp bấm nút gửi (view gọi hàm này còn tự khoá thêm nút submit, xem createFromText.js/
+      // writingPractice.js — đây chỉ lo phần hiển thị badge).
+      const badgeEl = mount.querySelector("#credit-badge");
+      const badgeIconEl = mount.querySelector("#credit-badge-icon");
+      const isLocked = balance <= 0;
+      if (badgeEl) badgeEl.classList.toggle("credit-badge-locked", isLocked);
+      if (badgeIconEl) badgeIconEl.innerHTML = icon(isLocked ? "lock" : "sparkles", { size: 16 });
+      return { creditText, balance, packageTier: res.data.packageTier };
     } catch {
       return null;
     }

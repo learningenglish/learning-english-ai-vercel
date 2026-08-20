@@ -667,11 +667,46 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* Nhãn "Beta" (2026-08-20, Minh: "Phân tích không thấy dán nhãn Beta") — card Home + tiêu đề màn
+   Phân tích, đánh dấu tính năng còn thử nghiệm. */
+.beta-badge {
+  display: inline-block;
+  background: var(--chip-orange, #f97316);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 7px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 /* Bộ đếm AI Credit (header.js opts.showCreditCounter, 2026-08-20) — dùng LẠI khung .streak-badge,
    chỉ đổi màu sang --purple để phân biệt "lượt AI còn lại" với "chuỗi ngày học" (--orange), tránh
    người dùng tưởng nhầm 2 con số khác bản chất là cùng 1 thứ. */
 .credit-badge {
   color: var(--purple);
+}
+
+/* Hết credit (2026-08-20, header.js loadAppHeaderStats()) — làm mờ + đổi màu báo hiệu, icon đã
+   tự đổi sang khoá phía JS. */
+.credit-badge-locked {
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
+/* Nút dạng link trong 1 dòng thông báo (vd "Nâng cấp gói" ngay trong panel báo hết Credit) —
+   không phải nút hành động chính, chỉ gạch chân + màu accent, không có nền/viền. */
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--purple);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 /* KHÔNG còn nền tròn (yêu cầu người dùng) — icon trơn, màu theo .icon mặc định (currentColor
@@ -1354,6 +1389,28 @@ textarea:focus {
 .lesson-card-body {
   flex: 1;
   min-width: 0;
+}
+
+/* Thẻ bài KHOÁ theo gói Free (2026-08-20, lessonCard.js::lockedLessonCardHtml()) — GIỮ khung
+   ".lesson-card" (đồng bộ kích thước/khoảng cách với thẻ thường), chỉ làm mờ + đổi con trỏ để
+   người dùng hiểu ngay đây KHÔNG bấm mở được như thẻ khác. */
+.lesson-card-locked {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.lesson-card-locked .lesson-card-title {
+  color: var(--text-dim);
+}
+
+.lesson-card-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
 }
 
 /* KHÔNG uppercase — cùng kiểu chữ thường với .content-text (nội dung bài đọc thật), tránh

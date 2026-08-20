@@ -51,6 +51,8 @@ registerTranslations({
   "Từ vựng": "Vocabulary",
   "Cụm từ": "Phrases",
   "Gửi bài viết": "Submit essay",
+  "Bạn đã hết Credit tháng này. Nâng cấp gói để dùng tiếp.": "You're out of credits this month. Upgrade your plan to keep using this.",
+  "Nâng cấp gói": "Upgrade plan",
   "Không có gợi ý từ vựng riêng cho đề này.": "No specific vocabulary suggestions for this topic.",
   "Không có gợi ý cụm từ riêng cho đề này.": "No specific phrase suggestions for this topic.",
   "Điểm mạnh": "Strengths",
@@ -164,6 +166,7 @@ export function renderWritingPractice(mount) {
     savedReference: false,
     cleanCoverImage: null, // Item 3 (2026-07-27) — ảnh minh hoạ CHỈ cho Bài viết hoàn chỉnh (khá/giỏi), tải LƯỜI khi mở màn đó, tái dùng pipeline ảnh miễn phí có sẵn (search_lesson_cover_image).
     goalId: null, // 2026-08-06, tái cấu trúc theo cây mới — tải NGẦM ngay dưới đây, dùng khi lưu (saveFavorite()).
+    creditLocked: false, // 2026-08-20, Minh: "nếu hết khóa và hiển thị icon khóa" — xem renderWriteStep().
   };
   getActiveLearningGoal()
     .then((g) => {
@@ -195,7 +198,10 @@ export function renderWritingPractice(mount) {
 
   render();
   loadAppHeaderStats(mount, { showCreditCounter: true }).then((r) => {
-    if (r) headerCache = { creditText: r.creditText };
+    if (!r) return;
+    headerCache = { creditText: r.creditText };
+    state.creditLocked = r.balance <= 0;
+    if (state.step === "write") render();
   });
   loadGenres();
 
@@ -203,7 +209,9 @@ export function renderWritingPractice(mount) {
   // KHÔNG bị "--" thoáng qua ở lượt render() kế tiếp (đúng cơ chế cache đã dùng cho streak/tier).
   function refreshCreditBadge() {
     loadAppHeaderStats(mount, { showCreditCounter: true }).then((r) => {
-      if (r) headerCache = { creditText: r.creditText };
+      if (!r) return;
+      headerCache = { creditText: r.creditText };
+      state.creditLocked = r.balance <= 0;
     });
   }
 
@@ -331,8 +339,12 @@ export function renderWritingPractice(mount) {
       </div>
       <div class="card writing-support-panel" id="support-panel">${renderSupportPanel()}</div>
 
-      <div id="write-result-slot"></div>
-      <button type="button" class="btn btn-primary btn-block" id="submit-writing-btn">${t("Gửi bài viết")}</button>
+      <div id="write-result-slot">${
+        state.creditLocked
+          ? `<div class="result-panel result-error">${icon("lock", { size: 16 })} ${t("Bạn đã hết Credit tháng này. Nâng cấp gói để dùng tiếp.")} <button type="button" class="btn-link" id="write-upgrade-link">${t("Nâng cấp gói")}</button></div>`
+          : ""
+      }</div>
+      <button type="button" class="btn btn-primary btn-block" id="submit-writing-btn" ${state.creditLocked ? "disabled" : ""}>${t("Gửi bài viết")}</button>
     `;
   }
 
@@ -748,6 +760,7 @@ export function renderWritingPractice(mount) {
   }
 
   function wireWriteStep() {
+    mount.querySelector("#write-upgrade-link")?.addEventListener("click", () => navigate("/packages"));
     const textarea = mount.querySelector("#writing-textarea");
     const wc = mount.querySelector("#writing-wordcount");
     textarea.addEventListener("input", () => {
@@ -908,6 +921,7 @@ export function renderWritingPractice(mount) {
   }
 
   async function submitWriting() {
+    if (state.creditLocked) return; // phòng hờ nút bị bấm dù đã disabled (vd double-click nhanh)
     const resultSlot = mount.querySelector("#write-result-slot");
     const n = countWords(state.text);
     if (n < 10) {

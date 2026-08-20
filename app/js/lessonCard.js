@@ -67,6 +67,33 @@ export function lessonCardHtml(l) {
   `;
 }
 
+// Thẻ bài BỊ KHOÁ theo gói Free (2026-08-20, Minh: "các bài khác phải hiển thị nhưng khóa và để
+// icon khóa") — dựng từ "preview" (metadata thuần từ list_lesson_previews(), KHÔNG có content/
+// progress) — KHÔNG có data-id/không gắn listener click (views/lessons.js chỉ wire
+// ".lesson-card" thường qua wireLessonCards(), thẻ khoá dùng class RIÊNG ".lesson-card-locked" cố
+// tình không khớp selector đó, tự động không bấm được — không cần thêm cờ disabled thủ công).
+export function lockedLessonCardHtml(preview) {
+  return `
+    <div class="lesson-card lesson-card-locked">
+      <div class="lesson-card-cover">
+        ${
+          preview.cover_thumb_url || preview.cover_image_url
+            ? `<img src="${escapeHtml(preview.cover_thumb_url || preview.cover_image_url)}" alt="" onerror="this.style.display='none'" />`
+            : ""
+        }
+        <div class="lesson-card-lock-overlay">${icon("lock", { size: 20 })}</div>
+      </div>
+      <div class="lesson-card-body">
+        <div class="lesson-card-title">${escapeHtml(preview.title_vi || preview.title)}</div>
+        <div class="lesson-card-meta">
+          ${Number.isInteger(preview.spine_slot) ? `<span class="badge badge-slot">#${preview.spine_slot}</span>` : ""}
+          <span class="badge">${escapeHtml(preview.level)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // Thẻ carousel "BÀI ĐANG ĐỌC" (màn Bài học, lướt ngang) — ảnh bìa PHỦ KÍN thẻ + lớp gradient
 // tối phía dưới để chữ không bị trộn vào nền minh hoạ (yêu cầu người dùng), khác hẳn thẻ danh
 // sách thường (.lesson-card) vốn ảnh bìa chỉ là thumbnail nhỏ bên cạnh. Không có cover ->

@@ -54,7 +54,7 @@ function goalDisplayTitle(goal) {
 const HOME_CARDS = [
   { id: "reading", label: "Bài đọc", sub: "Rèn luyện kỹ năng đọc hiểu", icon: "book", path: "/lessons/reading", chip: "blue" },
   { id: "dialogue", label: "Hội thoại", sub: "Thực hành giao tiếp thực tế", icon: "message-circle", path: "/lessons/dialogue", chip: "green" },
-  { id: "analyze", label: "Phân tích", sub: "AI phân tích và đánh giá", icon: "flask", path: "/create-text", chip: "orange" },
+  { id: "analyze", label: "Phân tích", sub: "AI phân tích và đánh giá", icon: "flask", path: "/create-text", chip: "orange", beta: true },
   { id: "writing", label: "Luyện viết", sub: "Luyện viết theo chủ đề", icon: "edit-3", path: "/writing", chip: "purple" },
 ];
 
@@ -108,7 +108,7 @@ export function renderHome(mount) {
           (c) => `
           <button type="button" class="feature-card" data-path="${c.path}">
             <span class="feature-card-icon chip-${c.chip}">${icon(c.icon, { size: 22 })}</span>
-            <span class="feature-card-label">${escapeHtml(t(c.label))}</span>
+            <span class="feature-card-label">${escapeHtml(t(c.label))}${c.beta ? ` <span class="beta-badge">Beta</span>` : ""}</span>
             <span class="feature-card-sub">${escapeHtml(t(c.sub))}</span>
           </button>
         `

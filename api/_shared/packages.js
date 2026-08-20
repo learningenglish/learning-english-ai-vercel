@@ -15,7 +15,10 @@ export const PACKAGE_CONFIG = {
     // Giới hạn bài THEO THỨ TỰ spine_slot của TỪNG chuyên ngành đang trải nghiệm (không phải tổng số
     // bài đã học) — xem RLS can_view_lesson() trong migration 041.
     lessonLimits: { A1: 5, A2: 5, B1: 3, B2: 3 },
-    monthlyCredits: 5,
+    // 5 -> 3 (2026-08-20, Minh: "Tk free nên có 03 credit") — SỬA ở ĐÂY THÔI CHƯA ĐỦ, hàm SQL
+    // package_monthly_credits() (migration 040) đã CHẠY RỒI nên KHÔNG tự cập nhật theo file này —
+    // xem migration 042 (CREATE OR REPLACE lại đúng hàm đó) để đồng bộ.
+    monthlyCredits: 3,
     aiCostPerUse: 2,
     switchMode: "ONE_FREE_SWITCH",
   },

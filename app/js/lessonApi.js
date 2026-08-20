@@ -41,6 +41,15 @@ async function callAndParse(action, payload) {
   }
 }
 
+// Xem trước bài bị khoá theo gói (2026-08-20, Minh: "các bài khác phải hiển thị nhưng khóa và để
+// icon khóa") — service role, CHỈ trả metadata hiển thị (không content/vocabulary/exercises), xem
+// list_lesson_previews() trong api/_generate/lesson.js. "industry": undefined = không lọc, null =
+// industry IS NULL (Giao Tiếp Tổng Quát), chuỗi = đúng 1 ngành — CÙNG quy ước industryFilter của
+// listAiGeneratedLessons() trong db.js.
+export async function listLessonPreviews({ contentType, industry } = {}) {
+  return callAndParse("list_lesson_previews", { content_type: contentType, industry });
+}
+
 // "Vá" phrase_groups cho bài CŨ (2026-08-05, "sửa gốc tính năng tra từ") — gọi ĐÚNG 1 LẦN khi
 // người dùng bấm vào 1 từ mà bài CHƯA có dữ liệu sẵn (bài sinh trước khi có tính năng gom cụm
 // từ, xem phraseGroupToEntry() trong views/lesson.js) — phân tích LẠI CẢ BÀI trong 1 lượt gọi

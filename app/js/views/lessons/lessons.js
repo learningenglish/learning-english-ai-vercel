@@ -16,8 +16,9 @@
 // db.js::listAiGeneratedLessons()).
 import { navigate } from "../../router.js";
 import { listAiGeneratedLessons, listInProgressLessons, getActiveLearningGoal } from "../../db.js";
+import { listLessonPreviews } from "../../lessonApi.js";
 import { icon } from "../../icons.js";
-import { lessonCardHtml, continueCardHtml, wireLessonCards } from "../../lessonCard.js";
+import { lessonCardHtml, lockedLessonCardHtml, continueCardHtml, wireLessonCards } from "../../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
 import { t, registerTranslations } from "../../i18n.js";
 
@@ -138,6 +139,11 @@ export function renderLessons(mount, params) {
   });
 
   let allLessons = [];
+  // "allPreviews" (2026-08-20, Minh: "các bài khác phải hiển thị nhưng khóa và để icon khóa") —
+  // SIÊU TẬP metadata mọi bài ai_generated khớp industry+content_type (bất kể gói, service role
+  // bỏ qua RLS, xem list_lesson_previews() trong lesson.js) — dùng để vẽ thẻ khoá cho bài NGOÀI
+  // hạn mức gói Free, vốn đã bị RLS ẩn hoàn toàn khỏi "allLessons" ở trên.
+  let allPreviews = [];
 
   function renderContinueSection(lessons) {
     const section = mount.querySelector("#continue-section");
@@ -160,14 +166,33 @@ export function renderLessons(mount, params) {
     // "state.level" LUÔN là 1 trong 5 cấp độ hợp lệ (không còn "all" — xem getLevelPreference()/
     // wire() phía trên) — luôn lọc, không còn nhánh "hiện hết".
     const lessons = allLessons.filter((l) => l.level === state.level);
-    if (!lessons.length) {
+    const previews = allPreviews.filter((p) => p.level === state.level);
+    if (!lessons.length && !previews.length) {
       const base = t(contentType === "dialogue" ? "Chưa có bài hội thoại nào" : "Chưa có bài đọc nào");
       const suffix = ` ${t("ở cấp độ")} ${state.level}`;
       listEl.innerHTML = `<p class="muted">${base}${suffix}.</p>`;
       return;
     }
-    listEl.innerHTML = lessons.map((l) => lessonCardHtml(l)).join("");
-    wireLessonCards(listEl, { onOpen: (id) => navigate(`/lesson/${id}`) });
+    // Duyệt THEO THỨ TỰ "previews" (server đã sắp spine_slot) làm khung chính — bài nào ĐÃ mở
+    // (RLS cho qua, có mặt trong "lessons") render thẻ thường, bài nào KHÔNG (Free vượt hạn mức)
+    // render thẻ khoá — giữ ĐÚNG vị trí trong khung giáo trình thay vì dồn hết bài khoá xuống cuối.
+    const unlockedById = new Map(lessons.map((l) => [l.id, l]));
+    const coveredIds = new Set();
+    const cardsHtml = previews.map((p) => {
+      coveredIds.add(p.id);
+      const full = unlockedById.get(p.id);
+      return full ? lessonCardHtml(full) : lockedLessonCardHtml(p);
+    });
+    // Bài ĐÃ mở nhưng không khớp preview nào (hiếm — vd lệch industry/content_type do dữ liệu cũ)
+    // — vẫn hiện, nối cuối, không để mất bài khỏi danh sách.
+    lessons.forEach((l) => {
+      if (!coveredIds.has(l.id)) cardsHtml.push(lessonCardHtml(l));
+    });
+    listEl.innerHTML = cardsHtml.join("");
+    // "cardSelector" loại trừ thẻ khoá — locked card CỐ Ý dùng chung class ".lesson-card" (đồng bộ
+    // khung/kích thước) nhưng KHÔNG được bấm mở (không có data-id để mở đúng bài, thẻ khoá không
+    // dẫn đi đâu cả).
+    wireLessonCards(listEl, { onOpen: (id) => navigate(`/lesson/${id}`), cardSelector: ".lesson-card:not(.lesson-card-locked)" });
   }
 
   async function load() {
@@ -180,11 +205,16 @@ export function renderLessons(mount, params) {
       // CÙNG 1 chuyên ngành, nhưng KHÔNG trộn GIỮA các chuyên ngành khác nhau.
       const goal = await getActiveLearningGoal().catch(() => null);
       const industryFilter = goal ? (goal.occupation_profile?.is_general ? null : goal.raw_keywords) : undefined;
-      const [lessons, inProgress] = await Promise.all([
+      const [lessons, inProgress, previewsRes] = await Promise.all([
         listAiGeneratedLessons({ filter: contentType, industryFilter }),
         listInProgressLessons({ limit: 6, industryFilter }).catch(() => []),
+        // Lỗi tải preview KHÔNG chặn cả màn — chỉ đơn giản là chưa vẽ được thẻ khoá lần này, bài
+        // ĐÃ MỞ vẫn hiện bình thường (allPreviews rỗng -> renderList() coi như mọi bài "phủ" hết
+        // qua nhánh fallback cuối, xem renderList()).
+        listLessonPreviews({ contentType, industry: industryFilter }).catch(() => ({ ok: false })),
       ]);
       allLessons = lessons;
+      allPreviews = previewsRes.ok ? previewsRes.data.lessons || [] : [];
       renderContinueSection(inProgress);
       renderList();
     } catch {

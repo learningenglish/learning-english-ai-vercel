@@ -14,6 +14,7 @@ import { createLessonFromText, fetchAndSaveLessonCover, analyzeLessonPhraseGroup
 import { getActiveLearningGoal } from "../../db.js";
 import { escapeHtml, countWords } from "../../utils.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
+import { icon } from "../../icons.js";
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
@@ -36,12 +37,14 @@ registerTranslations({
   "Cấp độ văn bản:": "Text level:",
   "Xem bài học": "View lesson",
   "Có lỗi xảy ra.": "Something went wrong.",
+  "Bạn đã hết Credit tháng này. Nâng cấp gói để dùng tiếp.": "You're out of credits this month. Upgrade your plan to keep using this.",
+  "Nâng cấp gói": "Upgrade plan",
 });
 
 export function renderCreateFromText(mount) {
   mount.innerHTML = `
     <div class="screen">
-      ${appHeaderHtml(t("Văn bản"), undefined, { showBack: true, archivePath: "/analysis-archive", showCreditCounter: true })}
+      ${appHeaderHtml(`${t("Văn bản")} <span class="beta-badge">Beta</span>`, undefined, { showBack: true, archivePath: "/analysis-archive", showCreditCounter: true })}
 
       <label class="field">
         <span class="field-question">${t("Dán văn bản của bạn")}</span>
@@ -57,7 +60,19 @@ export function renderCreateFromText(mount) {
   // giữ vai trò đó, back từ đây phải về Home.
   wireBackLink(mount, () => navigate("/home"));
   wireAppHeader(mount);
-  loadAppHeaderStats(mount, { showCreditCounter: true });
+  // "creditLocked" (2026-08-20, Minh: "nếu hết khóa và hiển thị icon khóa") — TÁCH RIÊNG khỏi
+  // "outOfRange" (độ dài văn bản) trong listener "input" bên dưới, cả 2 điều kiện CÙNG quyết định
+  // nút có bấm được hay không — thiếu 1 trong 2 đều phải khoá.
+  let creditLocked = false;
+  loadAppHeaderStats(mount, { showCreditCounter: true }).then((r) => {
+    if (r && r.balance <= 0) {
+      creditLocked = true;
+      submitBtn.disabled = true;
+      mount.querySelector("#paste-result-slot").innerHTML =
+        `<div class="result-panel result-error">${icon("lock", { size: 16 })} ${t("Bạn đã hết Credit tháng này. Nâng cấp gói để dùng tiếp.")} <button type="button" class="btn-link" id="paste-upgrade-link">${t("Nâng cấp gói")}</button></div>`;
+      mount.querySelector("#paste-upgrade-link")?.addEventListener("click", () => navigate("/packages"));
+    }
+  });
 
   // Mốc 600 từ (2026-07-28, chốt với Minh — thay 3000 cũ) — chặn NGAY ở UI trước khi gửi AI:
   // nút "Phân tích" tự vô hiệu hoá khi ngoài khoảng, không phải chỉ báo lỗi SAU khi bấm.
@@ -72,7 +87,7 @@ export function renderCreateFromText(mount) {
       `${n} ${t("từ")}` +
       (n < 20 ? ` (${t("tối thiểu 20 từ")})` : n > MAX_WORDS ? ` (${t("tối đa")} ${MAX_WORDS} ${t("từ, chia nhỏ ra")})` : "");
     wc.classList.toggle("field-hint-error", outOfRange);
-    submitBtn.disabled = outOfRange;
+    submitBtn.disabled = outOfRange || creditLocked;
   });
   submitBtn.disabled = true; // rỗng lúc đầu (0 từ) -> dưới ngưỡng tối thiểu, khoá sẵn cho khớp
 
