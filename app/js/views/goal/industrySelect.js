@@ -225,7 +225,11 @@ const GENERAL_PROFILE = {
 };
 
 const INDUSTRIES = [
-  { key: "general", label: "Giao Tiếp Tổng Quát", icon: "message-circle", chip: "blue", real: true },
+  // "real: false" (2026-08-20, Minh: "Giao tiếp Tổng quát để sắp ra mắt") — CHƯA có nội dung thật
+  // (đúng lộ trình đã chốt: Kế toán -> Làm Đẹp -> Điều Dưỡng -> Giao Tiếp Tổng Quát SAU CÙNG, xem
+  // project_industry_rollout_roadmap trong bộ nhớ) — hiện "Sắp ra mắt" + chặn bấm giống
+  // OTHER_INDUSTRIES bên dưới, tránh người dùng thử app chọn nhầm vào 1 chuyên ngành trống.
+  { key: "general", label: "Giao Tiếp Tổng Quát", icon: "message-circle", chip: "blue", real: false },
   { key: "accounting", label: "Kế toán", icon: "dollar-sign", chip: "orange", real: true, profile: ACCOUNTING_PROFILE },
   { key: "beauty", label: "Làm Đẹp", icon: "sparkles", chip: "purple", real: true, profile: BEAUTY_PROFILE },
   { key: "nursing", label: "Điều dưỡng", icon: "flask", chip: "orange", real: true, profile: NURSING_PROFILE },
