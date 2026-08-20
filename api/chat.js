@@ -16,7 +16,14 @@ import { create_goal, get_specialization_switch_status } from "./_generate/goal.
 import { get_credit_balance } from "./_generate/credits.js";
 // Thanh toán nội địa VN qua VietQR (Minh chỉ có tài khoản ngân hàng cá nhân, chưa có merchant
 // account cổng nào) — xem api/_generate/billing.js.
-import { create_payment_order, get_my_payment_orders, admin_confirm_payment, admin_list_pending_payments, admin_grant_package } from "./_generate/billing.js";
+import {
+  create_payment_order,
+  get_my_payment_orders,
+  admin_confirm_payment,
+  admin_list_pending_payments,
+  admin_grant_package,
+  admin_list_package_grants,
+} from "./_generate/billing.js";
 
 /**
  * Vercel Serverless Function — /api/chat
@@ -1355,6 +1362,7 @@ const ACTIONS = {
   admin_confirm_payment,
   admin_list_pending_payments,
   admin_grant_package,
+  admin_list_package_grants,
 
   // Student Pro tự tạo đề: kiểm tra + trừ 10 credit atomic ĐÚNG 1 LẦN trước khi frontend
   // bắt đầu chuỗi gọi generate_exam_legacy song song (không gọi OpenAI ở action này —

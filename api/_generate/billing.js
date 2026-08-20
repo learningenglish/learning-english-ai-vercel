@@ -214,3 +214,29 @@ export async function admin_grant_package(data, ctx) {
   if (!result?.ok) return { error: result?.message || "Tặng gói thất bại.", status: 400 };
   return { content: JSON.stringify({ ...result, scheduled: false, targetEmail: target.email }) };
 }
+
+// Lịch sử tặng gói (2026-08-20, Minh: "tôi kiểm tra các gói tặng ở đâu? Trong phần quản trị không
+// thấy list gì hết" — trước đây chỉ có FORM tặng mới, không có nơi xem lại) — trả về CẢ 2 loại:
+// "grants" (đã tặng thật, bảng package_grants — audit, xem 041/046) VÀ "pendingGrants" (đã lên
+// lịch cho email CHƯA đăng ký, bảng pending_package_grants — xem 043/046, applied_at=null nghĩa là
+// còn đang chờ). Không gộp chung 1 danh sách vì 2 trạng thái khác hẳn nhau, UI cần phân biệt rõ.
+export async function admin_list_package_grants(data, ctx) {
+  if (!(await isAdmin(ctx))) return { error: "Không có quyền quản trị.", status: 403 };
+  const [grantsRes, pendingRes] = await Promise.all([
+    fetch(
+      `${SUPABASE_URL}/rest/v1/package_grants?select=id,tier,duration_value,duration_unit,granted_by_email,created_at,expires_at,students(email,full_name)&order=created_at.desc&limit=50`,
+      { headers: SERVICE_HEADERS }
+    ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/pending_package_grants?applied_at=is.null&select=id,email,tier,duration_value,duration_unit,granted_by_email,created_at&order=created_at.desc&limit=50`,
+      { headers: SERVICE_HEADERS }
+    ),
+  ]);
+  if (!grantsRes.ok || !pendingRes.ok) return { error: "Không đọc được lịch sử tặng gói.", status: 502 };
+  return {
+    content: JSON.stringify({
+      grants: await grantsRes.json(),
+      pendingGrants: await pendingRes.json(),
+    }),
+  };
+}

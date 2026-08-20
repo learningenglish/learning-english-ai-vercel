@@ -12,8 +12,8 @@ import { icon } from "../../icons.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats } from "../../header.js";
 import { getSession } from "../../session.js";
 import { showToast } from "../../toast.js";
-import { escapeHtml } from "../../utils.js";
-import { adminListPendingPayments, adminConfirmPayment, adminGrantPackage } from "../../packageApi.js";
+import { escapeHtml, formatDate } from "../../utils.js";
+import { adminListPendingPayments, adminConfirmPayment, adminGrantPackage, adminListPackageGrants } from "../../packageApi.js";
 import { PACKAGE_LABELS, UPGRADABLE_TIERS, formatVnd } from "../../packageConfig.js";
 import { t, registerTranslations } from "../../i18n.js";
 
@@ -39,6 +39,13 @@ registerTranslations({
   "Đã tặng gói.": "Plan gifted.",
   "Chưa có tài khoản — đã lên lịch, tự áp dụng khi đăng ký.": "No account yet — scheduled, will apply automatically once they sign up.",
   "Có lỗi xảy ra.": "Something went wrong.",
+  // "Lịch sử tặng gói" (2026-08-20, Minh: "tôi kiểm tra các gói tặng ở đâu? Trong phần quản trị
+  // không thấy list gì hết") — trước đây chỉ có FORM tặng mới, chưa có nơi xem lại.
+  "Lịch sử tặng gói": "Gift history",
+  "Chưa tặng gói nào.": "No gifts yet.",
+  "Đang chờ đăng ký": "Awaiting sign-up",
+  "ngày": "days",
+  "tháng": "months",
 });
 
 // Chỉ để ẨN/HIỆN UI (không phải lớp bảo mật thật — server tự kiểm tra lại qua ADMIN_EMAILS trong
@@ -58,6 +65,43 @@ const GRANT_DURATION_OPTIONS = [
   { value: "12:month", label: "1 năm" },
 ];
 
+// "3:day" -> "3 ngày", "12:month" -> "1 năm" (Minh đặt tên riêng cho mốc 12 tháng, xem
+// GRANT_DURATION_OPTIONS) — dùng chung cho cả hàng "đã tặng" lẫn "đang chờ đăng ký".
+function durationLabel(value, unit) {
+  if (unit === "month" && value === 12) return t("1 năm");
+  return `${value} ${t(unit === "day" ? "ngày" : "tháng")}`;
+}
+
+function grantRowHtml(grant) {
+  const label = grant.students?.full_name || grant.students?.email || "?";
+  return `
+    <div class="admin-order-row">
+      <div class="admin-order-info">
+        <div class="admin-order-user">${escapeHtml(label)}</div>
+        <div class="admin-order-meta">
+          ${escapeHtml(PACKAGE_LABELS[grant.tier]?.label || grant.tier)} · ${durationLabel(grant.duration_value, grant.duration_unit)}
+          · ${formatDate(grant.expires_at)} · ${escapeHtml(grant.granted_by_email)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function pendingGrantRowHtml(pending) {
+  return `
+    <div class="admin-order-row">
+      <div class="admin-order-info">
+        <div class="admin-order-user">${escapeHtml(pending.email)}</div>
+        <div class="admin-order-meta">
+          ${escapeHtml(PACKAGE_LABELS[pending.tier]?.label || pending.tier)} · ${durationLabel(pending.duration_value, pending.duration_unit)}
+          · ${formatDate(pending.created_at)} · ${escapeHtml(pending.granted_by_email)}
+        </div>
+      </div>
+      <span class="badge">${t("Đang chờ đăng ký")}</span>
+    </div>
+  `;
+}
+
 function pendingOrderRowHtml(order) {
   const label = order.students?.full_name || order.students?.email || "?";
   return `
@@ -74,12 +118,15 @@ function pendingOrderRowHtml(order) {
 export function renderAdmin(mount) {
   const session = getSession();
   const isAdminUser = ADMIN_EMAIL_ALLOWLIST.includes((session?.user?.email || "").toLowerCase());
-  const state = { pendingOrders: [], loading: isAdminUser };
+  const state = { pendingOrders: [], loading: isAdminUser, grants: [], pendingGrants: [], grantsLoading: isAdminUser };
 
   render();
   wireAppHeader(mount);
   loadAppHeaderStats(mount);
-  if (isAdminUser) loadPendingOrders();
+  if (isAdminUser) {
+    loadPendingOrders();
+    loadGrantHistory();
+  }
 
   function render() {
     mount.innerHTML = `
@@ -136,6 +183,17 @@ export function renderAdmin(mount) {
         </label>
         <button type="button" class="btn btn-primary btn-block" id="grant-submit-btn">${t("Tặng")}</button>
       </div>
+
+      <p class="progress-section-title">${t("Lịch sử tặng gói")}</p>
+      <div id="admin-grants-list">
+        ${
+          state.grantsLoading
+            ? `<p class="muted">...</p>`
+            : state.grants.length || state.pendingGrants.length
+            ? state.pendingGrants.map(pendingGrantRowHtml).join("") + state.grants.map(grantRowHtml).join("")
+            : `<p class="muted">${t("Chưa tặng gói nào.")}</p>`
+        }
+      </div>
     `;
   }
 
@@ -150,6 +208,14 @@ export function renderAdmin(mount) {
     const res = await adminListPendingPayments();
     state.loading = false;
     state.pendingOrders = res.ok ? res.data.orders || [] : [];
+    render();
+  }
+
+  async function loadGrantHistory() {
+    const res = await adminListPackageGrants();
+    state.grantsLoading = false;
+    state.grants = res.ok ? res.data.grants || [] : [];
+    state.pendingGrants = res.ok ? res.data.pendingGrants || [] : [];
     render();
   }
 
@@ -184,5 +250,6 @@ export function renderAdmin(mount) {
     // đăng ký. Hiện rõ 2 trạng thái khác nhau, tránh Minh tưởng nhầm đã tặng thành công NGAY.
     showToast(res.data.scheduled ? t("Chưa có tài khoản — đã lên lịch, tự áp dụng khi đăng ký.") : t("Đã tặng gói."));
     mount.querySelector("#grant-email-input").value = "";
+    loadGrantHistory();
   }
 }

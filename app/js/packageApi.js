@@ -50,3 +50,10 @@ export async function adminConfirmPayment(orderRef) {
 export async function adminGrantPackage(targetEmail, tier, durationValue, durationUnit) {
   return callAndParse("admin_grant_package", { targetEmail, tier, durationValue, durationUnit });
 }
+
+// { grants: [{id,tier,duration_value,duration_unit,granted_by_email,created_at,expires_at,
+//   students:{email,full_name}}], pendingGrants: [{id,email,tier,duration_value,duration_unit,
+//   granted_by_email,created_at}] } — 2026-08-20, Minh: "kiểm tra các gói tặng ở đâu?".
+export async function adminListPackageGrants() {
+  return callAndParse("admin_list_package_grants");
+}
