@@ -75,22 +75,13 @@ function setLevelPreference(contentType, level) {
   }
 }
 
-// Khung "xương" (skeleton) thay cho dòng chữ "Đang tải..." — TÁI DÙNG nguyên hình dạng từ bản
-// gốc (cùng lý do: tránh giật bố cục khi dữ liệu về, xem _archive/old-nav/lessons.js).
-function skeletonListHtml(count = 3) {
-  return Array.from(
-    { length: count },
-    () => `
-    <div class="lesson-card lesson-card-skeleton">
-      <div class="lesson-card-cover skeleton-shimmer"></div>
-      <div class="lesson-card-body">
-        <div class="skeleton-line skeleton-shimmer" style="width:70%;height:14px;margin-bottom:8px"></div>
-        <div class="skeleton-line skeleton-shimmer" style="width:45%;height:11px;margin-bottom:8px"></div>
-        <div class="skeleton-line skeleton-shimmer" style="width:30%;height:11px"></div>
-      </div>
-    </div>
-  `
-  ).join("");
+// SỬA 2026-08-20 (Minh xem ảnh thật: "các card rỗng... tôi không muốn thấy hiển thị này") — bản
+// khung "xương" (3 thẻ giả hình dạng .lesson-card) BỎ HẲN, thay bằng 1 spinner tròn canh giữa đơn
+// giản (TÁI DÙNG đúng class ".spinner" đã dùng cho Đang phân tích/Đang chấm bài — xem
+// createFromText.js/writingPractice.js) — không còn 3 khối xám to chiếm chỗ + không còn khớp vị
+// trí ngay dải watermark logo (xem thêm rule "body:has(.lessons-screen)::after" trong style.css).
+function skeletonListHtml() {
+  return `<div class="lessons-list-loading"><div class="spinner"></div></div>`;
 }
 
 export function renderLessons(mount, params) {
