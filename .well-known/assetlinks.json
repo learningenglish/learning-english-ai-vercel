@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "app.vercel.learning_english_ai_vercel.twa",
-        "sha256_cert_fingerprints": ["99:1E:E3:7C:3E:CB:BA:7D:5F:AA:29:98:CF:09:1F:19:86:88:CA:F8:73:44:17:EC:D1:CA:90:BD:35:2C:7B:09"]
+        "sha256_cert_fingerprints": ["00:47:01:93:F0:0C:F1:13:EB:C2:D7:89:FB:D6:3A:D2:A8:6A:38:FC:5E:91:E1:C1:EF:9A:64:77:47:BB:FF:A6"]
       }
     }]
