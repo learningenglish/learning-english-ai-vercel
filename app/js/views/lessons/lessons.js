@@ -20,6 +20,7 @@ import { listLessonPreviews } from "../../lessonApi.js";
 import { icon } from "../../icons.js";
 import { lessonCardHtml, lockedLessonCardHtml, continueCardHtml, wireLessonCards } from "../../lessonCard.js";
 import { appHeaderHtml, wireAppHeader, loadAppHeaderStats, wireBackLink } from "../../header.js";
+import { showToast } from "../../toast.js";
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
@@ -30,6 +31,8 @@ registerTranslations({
   "Chưa có bài đọc nào": "No reading lessons yet",
   "ở cấp độ": "at level",
   "Không tải được danh sách bài học.": "Couldn't load the lesson list.",
+  "Sắp ra mắt": "Coming soon",
+  "Cấp độ này sắp ra mắt, chưa có bài nào để học.": "This level is coming soon, no lessons yet.",
   // Nhãn phụ LEVEL_CARDS (2026-08-12, dịch bỏ chữ tiếng Anh viết tắt trong khung tiếng Việt —
   // Minh: "giao diện tiếng Việt không lẫn tiếng Anh trừ từ mượn thông dụng").
   "Sơ cấp": "Begin.",
@@ -92,24 +95,52 @@ function skeletonListHtml(count = 3) {
 
 export function renderLessons(mount, params) {
   const contentType = params?.[0] === "dialogue" ? "dialogue" : "reading";
-  const state = { level: getLevelPreference(contentType) };
+  // "levelsWithContent" (2026-08-20, Minh: "Chưa có bài hội thoại ở B2, C1 thì dùng khóa: đồng
+  // thời B2 và C1 thêm dòng sắp ra mắt. Click không vào... Không cho truy cập vào") — null nghĩa
+  // là CHƯA BIẾT (chưa tải xong dữ liệu), tính thật SAU load() từ CHÍNH dữ liệu đã có (allLessons+
+  // allPreviews, xem bên dưới) — KHÔNG hard-code cứng B2/C1, để tự cập nhật khi sau này có bài
+  // thật cho các cấp đó, không cần sửa lại code.
+  const state = { level: getLevelPreference(contentType), levelsWithContent: null };
   const titleText = t(contentType === "dialogue" ? "Hội thoại" : "Bài đọc");
+
+  function levelCardRowHtml() {
+    return LEVEL_CARDS.map((l) => {
+      const noContent = state.levelsWithContent && !state.levelsWithContent.has(l.level);
+      return `
+        <button type="button" class="level-card chip-${l.chip} ${state.level === l.level ? "active" : ""} ${noContent ? "is-coming-soon" : ""}" data-level="${l.level}">
+          <span class="level-card-icon">${icon(noContent ? "lock" : "book-open", { size: 18 })}</span>
+          <span class="level-card-name">${l.level}</span>
+          <span class="level-card-sub">${noContent ? t("Sắp ra mắt") : t(l.sub)}</span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function wireLevelCards() {
+    mount.querySelectorAll(".level-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const lv = card.dataset.level;
+        if (state.levelsWithContent && !state.levelsWithContent.has(lv)) {
+          showToast(t("Cấp độ này sắp ra mắt, chưa có bài nào để học."));
+          return;
+        }
+        // KHÔNG còn "tắt" level đang chọn để hiện "Tất cả" (2026-08-13, Minh: "không để như hiện
+        // tại là tôi có thể tắt A1 và toàn bộ bài đều hiển thị") — bấm lại đúng level đang active
+        // thì giữ nguyên, chỉ đổi khi bấm 1 level KHÁC.
+        if (state.level === lv) return;
+        state.level = lv;
+        setLevelPreference(contentType, state.level);
+        mount.querySelectorAll(".level-card").forEach((c) => c.classList.toggle("active", c.dataset.level === state.level));
+        renderList();
+      });
+    });
+  }
 
   mount.innerHTML = `
     <div class="screen">
       ${appHeaderHtml(`<span>${titleText}</span>`, undefined, { showBack: true })}
 
-      <div class="level-card-row">
-        ${LEVEL_CARDS.map(
-          (l) => `
-          <button type="button" class="level-card chip-${l.chip} ${state.level === l.level ? "active" : ""}" data-level="${l.level}">
-            <span class="level-card-icon">${icon("book-open", { size: 18 })}</span>
-            <span class="level-card-name">${l.level}</span>
-            <span class="level-card-sub">${t(l.sub)}</span>
-          </button>
-        `
-        ).join("")}
-      </div>
+      <div class="level-card-row" id="level-card-row">${levelCardRowHtml()}</div>
 
       <div id="continue-section" hidden>
         <div class="section-label-row"><span class="section-label-tab">${t("Bài học gần đây")}</span></div>
@@ -123,20 +154,7 @@ export function renderLessons(mount, params) {
   wireAppHeader(mount);
   wireBackLink(mount, () => navigate("/home"));
   loadAppHeaderStats(mount);
-
-  mount.querySelectorAll(".level-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const lv = card.dataset.level;
-      // KHÔNG còn "tắt" level đang chọn để hiện "Tất cả" (2026-08-13, Minh: "không để như hiện
-      // tại là tôi có thể tắt A1 và toàn bộ bài đều hiển thị") — bấm lại đúng level đang active
-      // thì giữ nguyên, chỉ đổi khi bấm 1 level KHÁC.
-      if (state.level === lv) return;
-      state.level = lv;
-      setLevelPreference(contentType, state.level);
-      mount.querySelectorAll(".level-card").forEach((c) => c.classList.toggle("active", c.dataset.level === state.level));
-      renderList();
-    });
-  });
+  wireLevelCards();
 
   let allLessons = [];
   // "allPreviews" (2026-08-20, Minh: "các bài khác phải hiển thị nhưng khóa và để icon khóa") —
@@ -215,6 +233,24 @@ export function renderLessons(mount, params) {
       ]);
       allLessons = lessons;
       allPreviews = previewsRes.ok ? previewsRes.data.lessons || [] : [];
+      // Chỉ tính levelsWithContent khi CẢ 2 nguồn tải xong bình thường — nếu preview lỗi mạng
+      // (previewsRes.ok === false), KHÔNG được kết luận nhầm "cấp độ chưa có bài" chỉ vì thiếu dữ
+      // liệu preview, dễ khoá NHẦM cấp độ thật ra có bài (Free chỉ thấy 1 phần allLessons, không
+      // đại diện đủ để tính rỗng/không-rỗng).
+      if (previewsRes.ok) {
+        state.levelsWithContent = new Set([...allLessons, ...allPreviews].map((l) => l.level));
+        // Level đang chọn (từ localStorage lần trước) hoá ra KHÔNG có bài nào -> rơi về cấp độ
+        // ĐẦU TIÊN thật sự có bài (thường A1), tránh vào thẳng 1 màn trống/khoá bất ngờ.
+        if (state.levelsWithContent.size && !state.levelsWithContent.has(state.level)) {
+          const fallback = LEVEL_CARDS.map((l) => l.level).find((lv) => state.levelsWithContent.has(lv));
+          if (fallback) {
+            state.level = fallback;
+            setLevelPreference(contentType, state.level);
+          }
+        }
+        mount.querySelector("#level-card-row").innerHTML = levelCardRowHtml();
+        wireLevelCards();
+      }
       renderContinueSection(inProgress);
       renderList();
     } catch {

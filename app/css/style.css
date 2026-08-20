@@ -3365,6 +3365,21 @@ textarea:focus {
   color: var(--chip-orange);
 }
 
+/* Cấp độ CHƯA CÓ bài nào (2026-08-20, Minh: "Chưa có bài hội thoại ở B2, C1 thì dùng khóa... thêm
+   dòng sắp ra mắt. Click không vào... Không cho truy cập") — override MÀU chip active phía trên
+   (thứ tự CSS sau thắng), khoá thị giác + không cho bấm chọn (views/lessons.js tự chặn trong JS,
+   đây chỉ lo phần nhìn). */
+.level-card.is-coming-soon {
+  cursor: default;
+  opacity: 0.55;
+  border-color: var(--border);
+  background: var(--surface);
+}
+.level-card.is-coming-soon .level-card-icon,
+.level-card.is-coming-soon .level-card-name {
+  color: var(--text-dim);
+}
+
 /* Màn "Chọn chuyên ngành" — danh mục cố định 1 tầng, PHẲNG (views/industrySelect.js, bỏ tầng
    "vị trí" 2026-08-05). GIAO DIỆN RIÊNG (2026-08-04) — bỏ hẳn .screen-center cũ (flex row canh
    giữa, chỉ hợp cho 1 khối duy nhất như thẻ đăng nhập — dùng nhầm ở đây làm tiêu đề/thẻ bị xếp
