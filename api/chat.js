@@ -1697,7 +1697,15 @@ export default async function handler(req, res) {
       return "";
     }
   })();
-  const isProjectVercelHost = /^learning-english-ai-vercel-[a-z0-9-]+-learningenglishai\.vercel\.app$/.test(originHost);
+  // SỬA 2026-08-20 (Minh bắt lỗi thật: tài khoản mới bấm "Chọn chuyên ngành" báo 403 "Origin
+  // blocked") — regex CŨ chỉ khớp dạng "...-<hash-hoặc-branch>-learningenglishai.vercel.app",
+  // BỎ SÓT chính domain production NGẮN mọi người dùng thật đang truy cập:
+  // "learning-english-ai-vercel.vercel.app" (không có hậu tố) VÀ
+  // "learning-english-ai-vercel-learningenglishai.vercel.app" (có hậu tố org nhưng không có
+  // hash/branch ở giữa) — cả 2 xác nhận qua `vercel inspect` là alias THẬT của deployment
+  // production. Nới regex: phần giữa + hậu tố org đều TÙY CHỌN, vẫn neo chặt đầu/cuối chuỗi
+  // (không mở rộng cho *.vercel.app khác).
+  const isProjectVercelHost = /^learning-english-ai-vercel(-[a-z0-9-]+)?(-learningenglishai)?\.vercel\.app$/.test(originHost);
   const originAllowed =
     ALLOWED_ORIGINS.includes(origin) ||
     (!!selfOrigin && origin === selfOrigin) ||
