@@ -7,14 +7,17 @@ import { getThemePreference, setThemePreference } from "../../theme.js";
 import { getPalettePreference, setPalettePreference, PALETTES } from "../../palette.js";
 import { getFontSizePreference, setFontSizePreference, FONT_SIZES } from "../../fontSize.js";
 import { getAutoScrollPreference, setAutoScrollPreference } from "../../autoScroll.js";
+import { getCreditBalance } from "../../packageApi.js";
+import { PACKAGE_LABELS } from "../../packageConfig.js";
 import { t, getUiLang, setUiLang, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
   "Cài đặt": "Settings",
   "Ngôn ngữ": "Language",
   "Tiếng Việt": "Vietnamese",
-  "Thêm chuyên ngành (Nâng cấp gói)": "Add industry (Upgrade plan)",
-  "Gói của tôi": "My plan",
+  // 2026-08-20 (Minh): "Thêm chuyên ngành (Nâng cấp gói)" -> "Đổi chuyên ngành" (nhãn cũ nhắc lại
+  // "nâng cấp gói" gây trùng ý với badge gói mới ở góc phải, xem "package-name-badge" bên dưới).
+  "Đổi chuyên ngành": "Change industry",
   "Tài khoản": "Account",
   "Thông tin ứng dụng": "App info",
   "Giao diện": "Appearance",
@@ -65,7 +68,16 @@ export function renderProfile(mount) {
   const currentLang = getUiLang();
   mount.innerHTML = `
     <div class="screen">
-      <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} ${t("Cài đặt")}</h1>
+      <!-- "package-name-badge" (2026-08-20, Minh: "Gói của tôi đưa ra màn hình setting (Không tạo
+           card riêng) Chỉ chú thích bên góc phải Tên gói (Dùng nền)") — THAY hàng "Gói của tôi"
+           trong danh sách CŨ (đã gỡ) bằng 1 badge nhỏ góc phải header, chỉ hiện TÊN gói hiện tại
+           (vd "Free"), bấm vào mới điều hướng sang màn nâng cấp (xem views/settings/packages.js,
+           giờ đổi tên "Nâng cấp gói" — không còn tự xưng "Gói của tôi" nữa, tên gói đã lộ sẵn ở
+           đây rồi). -->
+      <div class="settings-header-row">
+        <h1 class="screen-title icon-text app-header-title">${icon("settings", { size: 22 })} ${t("Cài đặt")}</h1>
+        <button type="button" class="package-name-badge" id="package-name-badge">--</button>
+      </div>
 
       <div class="card profile-card">
         <!-- "Ngôn ngữ" (2026-08-12, Minh: "thêm ngôn ngữ giao diện: tiếng Anh") — chuyển từ hàng
@@ -84,18 +96,10 @@ export function renderProfile(mount) {
       </div>
 
       <div class="card profile-card">
-        <!-- "Gói của tôi" (2026-08-20, spec "CƠ CẤU GÓI MOSAIC" mục 5 Minh yêu cầu) — màn THẬT
-             hiển thị gói/credit hiện tại + nút nâng cấp (xem views/settings/packages.js), khác hẳn
-             "Thêm chuyên ngành" bên dưới (đó là ĐỔI chuyên ngành, không phải xem/nâng cấp gói). -->
-        <div class="settings-row settings-row-clickable" id="my-package-row">
-          <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Gói của tôi")}</span>
-          ${icon("chevron-right", { size: 18 })}
-        </div>
-        <!-- 2026-08-11 (Minh): đổi nhãn "Đổi chuyên ngành" -> "Thêm chuyên ngành (Nâng cấp gói)"
-             — ĐÚNG bản đã đổi ở createLesson.js (nút "#change-goal-btn"), lỡ sót hàng NÀY (menu
-             Cài đặt) khi sửa đợt trước — cùng ý nghĩa: đây là lối vào để THÊM 1 chuyên ngành. -->
+        <!-- 2026-08-20 (Minh): đổi nhãn "Thêm chuyên ngành (Nâng cấp gói)" -> "Đổi chuyên ngành"
+             (nhãn cũ trùng ý "nâng cấp gói" với badge tên gói mới ở góc phải header). -->
         <div class="settings-row settings-row-clickable" id="change-industry-row">
-          <span class="icon-text">${icon("briefcase", { size: 18 })} ${t("Thêm chuyên ngành (Nâng cấp gói)")}</span>
+          <span class="icon-text">${icon("briefcase", { size: 18 })} ${t("Đổi chuyên ngành")}</span>
           ${icon("chevron-right", { size: 18 })}
         </div>
         <!-- "Tài khoản"/"Thông tin ứng dụng" (2026-08-05, sửa lỗi tràn khung — Minh: "chữ bị tràn
@@ -191,8 +195,13 @@ export function renderProfile(mount) {
   // ngành đang ở BÊN TRONG luồng, không phải lần chọn đầu tiên, cần icon Home/Tiến trình... để
   // quay lại") — cùng renderIndustrySelect(), chỉ khác app.js::renderBottomNav() đọc thêm
   // "/change" ở cuối hash để quyết định hiện/ẩn thanh điều hướng ngoài (xem app.js).
-  mount.querySelector("#my-package-row").addEventListener("click", () => navigate("/packages"));
   mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select/change"));
+
+  mount.querySelector("#package-name-badge").addEventListener("click", () => navigate("/packages"));
+  getCreditBalance().then((res) => {
+    const badge = mount.querySelector("#package-name-badge");
+    if (badge && res.ok) badge.textContent = PACKAGE_LABELS[res.data.packageTier]?.label || res.data.packageTier;
+  });
 
   mount.querySelector("#account-row").addEventListener("click", () => {
     showToast(session?.user?.email || t("Chưa đăng nhập"));

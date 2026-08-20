@@ -13,7 +13,6 @@ import { PACKAGE_LABELS, UPGRADABLE_TIERS, formatVnd } from "../../packageConfig
 import { t, registerTranslations } from "../../i18n.js";
 
 registerTranslations({
-  "Gói của tôi": "My plan",
   "Gói hiện tại": "Current plan",
   "Credit còn lại": "Credits left",
   "credit/tháng": "credits/month",
@@ -85,7 +84,10 @@ export function renderPackages(mount) {
   function render() {
     mount.innerHTML = `
       <div class="screen">
-        ${appHeaderHtml(t("Gói của tôi"), undefined, { showBack: true })}
+        <!-- 2026-08-20 (Minh): "Gói của tôi (Hiện tại)" -> "Nâng cấp gói" — tên gói hiện tại đã lộ
+             sẵn qua badge góc phải màn Cài đặt (xem profile.js), màn này giờ CHỈ còn vai trò
+             nâng cấp, không cần tự xưng "của tôi" nữa. -->
+        ${appHeaderHtml(t("Nâng cấp gói"), undefined, { showBack: true })}
 
         <div class="package-current-card">
           <div class="package-current-label">${t("Gói hiện tại")}</div>

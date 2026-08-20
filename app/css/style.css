@@ -697,6 +697,26 @@ textarea:focus {
   opacity: 0.75;
 }
 
+/* Header màn Cài đặt (2026-08-20) — tiêu đề trái + badge tên gói phải, thay hàng "Gói của tôi"
+   trong danh sách cũ. */
+.settings-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.package-name-badge {
+  background: var(--purple-soft, var(--surface-soft));
+  color: var(--purple);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 /* Nút dạng link trong 1 dòng thông báo (vd "Nâng cấp gói" ngay trong panel báo hết Credit) —
    không phải nút hành động chính, chỉ gạch chân + màu accent, không có nền/viền. */
 .btn-link {
