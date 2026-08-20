@@ -88,18 +88,20 @@ export function renderProfile(mount) {
       </div>
 
       <div class="card profile-card">
-        <!-- 2026-08-20 (Minh sửa lại lần 2 — bản trước đưa badge lên góc header SAI ý): "Gói của
-             tôi" là 1 HÀNG bình thường TRÊN "Đổi chuyên ngành" (không phải card/badge header
-             riêng) — tên gói (vd "Free") hiện ngay bên phải, TRƯỚC dấu ">", dùng nền pill nhỏ. -->
-        <div class="settings-row settings-row-clickable" id="my-package-row">
+        <!-- 2026-08-20 (Minh sửa lần 3 — TÁCH RIÊNG 2 hàng, bản trước gộp chung 1 hàng "Gói của
+             tôi" kèm luôn nút bấm nâng cấp là SAI): "Gói của tôi" giờ CHỈ hiển thị (tên gói bên
+             phải, KHÔNG bấm được) — hành động điều hướng sang màn nâng cấp chuyển hẳn sang hàng
+             "Nâng cấp gói" RIÊNG ngay bên dưới. -->
+        <div class="settings-row" id="my-package-row">
           <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Gói của tôi")}</span>
-          <span class="settings-row-right">
-            <span class="package-name-badge" id="package-name-badge">--</span>
-            ${icon("chevron-right", { size: 18 })}
-          </span>
+          <span class="package-name-badge" id="package-name-badge">--</span>
+        </div>
+        <div class="settings-row settings-row-clickable" id="upgrade-package-row">
+          <span class="icon-text">${icon("sparkles", { size: 18 })} ${t("Nâng cấp gói")}</span>
+          ${icon("chevron-right", { size: 18 })}
         </div>
         <!-- 2026-08-20 (Minh): đổi nhãn "Thêm chuyên ngành (Nâng cấp gói)" -> "Đổi chuyên ngành"
-             (nhãn cũ trùng ý "nâng cấp gói" với hàng "Gói của tôi" ngay phía trên). -->
+             (nhãn cũ trùng ý "nâng cấp gói" với 2 hàng gói phía trên). -->
         <div class="settings-row settings-row-clickable" id="change-industry-row">
           <span class="icon-text">${icon("briefcase", { size: 18 })} ${t("Đổi chuyên ngành")}</span>
           ${icon("chevron-right", { size: 18 })}
@@ -199,7 +201,7 @@ export function renderProfile(mount) {
   // "/change" ở cuối hash để quyết định hiện/ẩn thanh điều hướng ngoài (xem app.js).
   mount.querySelector("#change-industry-row").addEventListener("click", () => navigate("/industry-select/change"));
 
-  mount.querySelector("#my-package-row").addEventListener("click", () => navigate("/packages"));
+  mount.querySelector("#upgrade-package-row").addEventListener("click", () => navigate("/packages"));
   getCreditBalance().then((res) => {
     const badge = mount.querySelector("#package-name-badge");
     if (badge && res.ok) badge.textContent = PACKAGE_LABELS[res.data.packageTier]?.label || res.data.packageTier;
