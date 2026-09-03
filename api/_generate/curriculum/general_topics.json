@@ -1,0 +1,117 @@
+{
+  "A1": {
+    "meeting_intro": [
+      "Bảo Ngọc tự giới thiệu bản thân trong buổi họp mặt đầu tiên của lớp học tiếng Anh buổi tối.",
+      "Bảo Ngọc và Quang Huy hỏi thăm tên, quê quán của nhau khi ngồi cạnh nhau trong buổi học đầu tiên.",
+      "Hà My viết một đoạn giới thiệu ngắn về bản thân và sở thích để đăng lên nhóm chat của lớp học vẽ mới.",
+      "Hà My chào hỏi và tự giới thiệu với Diệu Linh khi cả hai đến sớm trước buổi học vẽ đầu tiên.",
+      "Đức Anh đọc lại tin nhắn giới thiệu bản thân của một người bạn mới quen trên ứng dụng kết bạn du lịch.",
+      "Đức Anh và người bạn mới quen ở sân bay trò chuyện, hỏi nhau thích đi du lịch kiểu gì."
+    ],
+    "close_ones": [
+      "Diệu Linh kể cho bạn thân nghe về em trai nhỏ của mình qua một đoạn tin nhắn dài.",
+      "Diệu Linh và Bảo Ngọc trò chuyện về sở thích của mèo cưng nhà Diệu Linh.",
+      "Quang Huy giới thiệu về bố mẹ mình trong một bài viết ngắn cho lớp học tiếng Anh.",
+      "Quang Huy và Hà My nói chuyện về sở thích nấu ăn của mẹ Quang Huy.",
+      "Hà My viết về người bạn thân nhất của mình và lý do họ thân nhau từ nhỏ.",
+      "Hà My và Đức Anh nói về sở thích chơi thể thao của anh trai Hà My."
+    ],
+    "numeric_info": [
+      "Bảo Ngọc điền vào một mẫu đơn đăng ký thẻ thư viện, ghi tuổi và số điện thoại của mình.",
+      "Bảo Ngọc và nhân viên thư viện xác nhận lại tuổi và số điện thoại khi làm thẻ.",
+      "Quang Huy đếm số người trong gia đình mình để điền vào tờ khai tạm trú.",
+      "Quang Huy và bác tổ trưởng dân phố trao đổi về số người trong nhà khi khai tạm trú.",
+      "Diệu Linh ghi lại tuổi của từng thành viên trong gia đình vào một tấm thiệp mừng thọ ông.",
+      "Diệu Linh và em họ hỏi nhau tuổi để xếp chỗ ngồi đúng vai vế trong bữa tiệc gia đình."
+    ],
+    "time_schedule": [
+      "Hà My viết lịch học thêm tiếng Anh của mình trong tuần vào một tờ giấy dán trên tủ lạnh.",
+      "Hà My và Bảo Ngọc nói chuyện về việc thích học vào buổi tối hơn buổi sáng.",
+      "Đức Anh lên lịch tập gym 3 buổi mỗi tuần sau giờ làm.",
+      "Đức Anh và Quang Huy trò chuyện về việc thích tập gym buổi tối vì vắng người hơn.",
+      "Diệu Linh ghi chú giờ mở cửa của quán cà phê yêu thích để rủ bạn đi cuối tuần.",
+      "Diệu Linh và Hà My bàn xem nên đi quán cà phê lúc mấy giờ vì cả hai đều thích chỗ vắng khách.",
+      "Quang Huy lên kế hoạch giờ giấc cho chuyến về quê thăm ông bà cuối tuần.",
+      "Quang Huy và Bảo Ngọc trò chuyện về việc thích đi xe khách đêm để tiết kiệm thời gian."
+    ],
+    "current_state": [
+      "Bảo Ngọc viết về tâm trạng vui vẻ của mình vào một ngày trời đẹp cuối tuần.",
+      "Bảo Ngọc và Đức Anh nói chuyện về việc trời đang mưa nên phải đổi giờ hẹn đi chơi.",
+      "Hà My mô tả cảm giác mệt của mình sau một tuần làm việc bận rộn.",
+      "Hà My và Diệu Linh bàn nhau dời giờ gặp mặt muộn hơn vì Hà My đang rất mệt.",
+      "Đức Anh kể về cảm giác hào hứng của mình trước chuyến đi biển sắp tới.",
+      "Đức Anh và Quang Huy thống nhất lại giờ xuất phát đi biển vì thời tiết đang tốt.",
+      "Diệu Linh viết về cảm giác hồi hộp của mình trước buổi phỏng vấn xin việc làm thêm.",
+      "Diệu Linh và Bảo Ngọc xác nhận lại giờ phỏng vấn vì Diệu Linh đang rất lo lắng."
+    ],
+    "space_objects": [
+      "Quang Huy mô tả góc học tập trong phòng mình và những món đồ anh thích nhất ở đó.",
+      "Quang Huy nhờ Đức Anh lấy giúp quyển sách đang để trên kệ cao trong phòng.",
+      "Hà My mô tả căn bếp nhỏ của mình và chiếc bình hoa cô thích đặt trên bàn ăn.",
+      "Hà My nhờ Diệu Linh lấy giúp chiếc bình hoa để trên nóc tủ bếp.",
+      "Bảo Ngọc mô tả góc ban công trồng cây cô yêu thích nhất trong nhà.",
+      "Bảo Ngọc nhờ hàng xóm giúp tưới mấy chậu cây trên ban công khi cô đi vắng.",
+      "Đức Anh mô tả kệ sách trong phòng khách và vài cuốn sách anh thích đọc lại nhiều lần.",
+      "Đức Anh nhờ em gái lấy giúp cuốn sách đang để dưới đáy kệ."
+    ],
+    "service_ordering": [
+      "Diệu Linh gọi một ly cà phê sữa đá tại quầy pha chế quen thuộc gần nhà.",
+      "Diệu Linh hỏi nhân viên quán cà phê xem quán mở cửa đến mấy giờ tối nay.",
+      "Quang Huy kể về món phở bò yêu thích mà anh luôn gọi ở quán quen đầu ngõ.",
+      "Quang Huy gọi món phở bò và xin thêm rau sống tại quán ăn quen.",
+      "Hà My ghi nhớ khung giờ phục vụ bữa sáng của khách sạn để dậy sớm ăn kịp.",
+      "Hà My và nhân viên khách sạn trò chuyện về món bánh mì cô thích nhất trong bữa sáng.",
+      "Bảo Ngọc gọi một phần bánh ngọt và một tách trà nóng tại quán bánh gần công viên.",
+      "Bảo Ngọc hỏi nhân viên quán bánh xem mấy giờ có mẻ bánh mới ra lò."
+    ],
+    "simple_request_booking": [
+      "Đức Anh gọi điện đặt trước một bàn cho 4 người tại nhà hàng cho buổi sinh nhật bạn.",
+      "Đức Anh và nhân viên nhà hàng xác nhận lại giờ đặt bàn vào tối thứ Bảy.",
+      "Diệu Linh đặt trước một phòng đơn tại khách sạn nhỏ ven biển cho kỳ nghỉ cuối tuần.",
+      "Diệu Linh và lễ tân khách sạn thống nhất giờ nhận phòng vào chiều thứ Sáu.",
+      "Quang Huy đặt trước vé xem phim suất tối cho anh và Hà My.",
+      "Quang Huy và Hà My hẹn nhau giờ gặp mặt trước rạp chiếu phim.",
+      "Bảo Ngọc đặt lịch cắt tóc trước tại tiệm quen gần nhà cho cuối tuần.",
+      "Bảo Ngọc và thợ cắt tóc thống nhất lại giờ hẹn vì Bảo Ngọc bận việc đột xuất."
+    ],
+    "directions_movement": [
+      "Hà My hỏi thăm một người lạ trên phố cách đi đến bưu điện gần nhất.",
+      "Hà My hỏi người đó ước tính mất bao lâu để đi bộ đến bưu điện.",
+      "Đức Anh hỏi đường một du khách nước ngoài đang cầm bản đồ tìm ga tàu điện.",
+      "Đức Anh nói cho du khách biết chuyến tàu tiếp theo khởi hành lúc mấy giờ.",
+      "Quang Huy hỏi bảo vệ toà nhà cách đi đến thang máy khu văn phòng mới.",
+      "Quang Huy hỏi bảo vệ xem thang máy hoạt động đến mấy giờ tối.",
+      "Diệu Linh hỏi một bạn học cách đi từ cổng trường đến thư viện mới.",
+      "Diệu Linh hỏi bạn xem thư viện mở cửa đến mấy giờ chiều nay."
+    ],
+    "institutional_info": [
+      "Bảo Ngọc đọc thông báo giờ làm việc mới của trung tâm ngoại ngữ nơi cô đăng ký học.",
+      "Bảo Ngọc gọi điện hỏi nhân viên trung tâm cần chuẩn bị giấy tờ gì để đăng ký khoá học.",
+      "Đức Anh xem lịch làm việc mới dán ở bảng thông báo công ty.",
+      "Đức Anh hỏi phòng nhân sự cần nộp thêm giấy tờ gì cho hồ sơ làm việc mới.",
+      "Hà My xem giờ mở cửa mới của phòng khám nha khoa gần nhà trên bảng thông báo.",
+      "Hà My gọi điện hỏi lễ tân phòng khám cần mang theo giấy tờ gì khi khám lần đầu.",
+      "Quang Huy đọc thông báo lịch thi mới của trung tâm sát hạch lái xe.",
+      "Quang Huy hỏi nhân viên trung tâm cần chuẩn bị giấy tờ gì để đăng ký thi."
+    ],
+    "preferences_activities": [
+      "Diệu Linh viết về sở thích chơi cầu lông của mình mỗi sáng cuối tuần.",
+      "Diệu Linh và bạn học mới hỏi nhau thích chơi môn thể thao gì.",
+      "Quang Huy rủ Đức Anh cùng chơi bóng rổ vào chiều Chủ nhật.",
+      "Quang Huy và Đức Anh nói chuyện về việc cả hai đều thích xem bóng rổ trên tivi.",
+      "Hà My hỏi thăm sở thích nghe nhạc của người bạn mới quen trong lớp yoga.",
+      "Hà My rủ bạn mới đi nghe nhạc sống ở quán cà phê cuối tuần.",
+      "Bảo Ngọc viết về sở thích vẽ tranh màu nước của mình vào mỗi tối rảnh rỗi.",
+      "Bảo Ngọc và hàng xóm mới hỏi nhau thích loại hình nghệ thuật nào."
+    ],
+    "minor_health": [
+      "Đức Anh nhắn tin xin nghỉ làm vì bị cảm nhẹ và đau đầu.",
+      "Đức Anh và dược sĩ ở nhà thuốc trao đổi về triệu chứng cảm nhẹ để mua thuốc.",
+      "Diệu Linh nhắn tin xin phép nghỉ học vì bị đau bụng nhẹ.",
+      "Diệu Linh và bạn cùng lớp hỏi thăm nhau xem đã đỡ đau bụng chưa.",
+      "Quang Huy xin nghỉ buổi tập gym vì bị đau chân nhẹ sau khi chạy bộ.",
+      "Quang Huy và huấn luyện viên trao đổi về cơn đau chân để điều chỉnh bài tập.",
+      "Hà My nhắn tin cho cô giáo xin nghỉ buổi học vì bị đau họng nhẹ."
+    ]
+  }
+}
