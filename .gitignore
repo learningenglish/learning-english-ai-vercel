@@ -1,8 +1,12 @@
+# Bí mật / cấu hình cục bộ — KHÔNG commit
 .env
 .env.*
+!.env.example
 node_modules/
-test_race_condition.js
-test_cefr_stability.js
 .claude/
 .vercel
-.env*
+supabase/.temp/
+
+# Nhật ký làm việc nội bộ — chi phí, chiến lược giá, thông tin cá nhân.
+# Giữ ngoài Git để không lọt vào bản bàn giao IT. Bản chính ở D:\a Mosaic\Mosaic English\01-BAO-MAT\
+docs/NHAT-KY-LAM-VIEC.md
